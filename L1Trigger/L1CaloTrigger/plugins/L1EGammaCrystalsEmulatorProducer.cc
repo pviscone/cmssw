@@ -222,7 +222,7 @@ int getPhiMin_card(int card) {
   return phimin;
 }
 
-/* 
+/*
  * Replace in-line region boundary arithmetic with function that accounts for region 0 in negative eta cards
  * In the indexing convention of the old emulator,  region 0 is the region overlapping with the endcap, and is
  * only two towers wide in eta.
@@ -242,9 +242,9 @@ int getEtaMin_region(int card, int nregion) {
   }
 }
 
-/* 
+/*
  * Replace in-line region boundary arithmetic that accounts for region 0 in negative eta cards.
- * Same as above but for max eta of the region. 
+ * Same as above but for max eta of the region.
  */
 int getEtaMax_region(int card, int nregion) {
   // Special handling for negative-eta cards
@@ -350,7 +350,7 @@ private:
               getCrystal_etaID(position().eta()) >= getEtaMin_card(cc));
     };
 
-    /* 
+    /*
      * Check if it falls within the boundary card AND a region in the card.
      */
     bool isInCardAndRegion(int cc, int nregion) const {
@@ -411,8 +411,8 @@ L1EGCrystalClusterEmulatorProducer::L1EGCrystalClusterEmulatorProducer(const edm
       calib_(iConfig.getParameter<edm::ParameterSet>("calib")),
       caloGeometryTag_(esConsumes<CaloGeometry, CaloGeometryRecord>(edm::ESInputTag("", ""))),
       hbTopologyTag_(esConsumes<HcalTopology, HcalRecNumberingRecord>(edm::ESInputTag("", ""))) {
-  produces<l1tp2::CaloCrystalClusterCollection>();
-  produces<BXVector<l1t::EGamma> >();
+  produces<l1tp2::CaloCrystalClusterCollection>("L1CaloCrystalClusterCollection");
+  produces<BXVector<l1t::EGamma> >("L1EGammaBXVector");
   produces<l1tp2::CaloTowerCollection>("L1CaloTowerCollection");
 }
 
@@ -1199,8 +1199,8 @@ void L1EGCrystalClusterEmulatorProducer::produce(edm::Event& iEvent, const edm::
     }
   }
 
-  iEvent.put(std::move(L1EGXtalClusters));
-  iEvent.put(std::move(L1EGammas));
+  iEvent.put(std::move(L1EGXtalClusters), "L1CaloCrystalClusterCollection");
+  iEvent.put(std::move(L1EGammas), "L1EGammaBXVector");
   iEvent.put(std::move(L1CaloTowers), "L1CaloTowerCollection");
 }
 
