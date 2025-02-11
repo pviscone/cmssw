@@ -390,9 +390,16 @@ namespace l1ct {
     float floatDxy() const { return Scales::floatDxy(hwDxy); }
 
     static const int BITWIDTH_SLIM = pt_t::width + eta_t::width + phi_t::width + tkdeta_t::width + tkdphi_t::width + 1 +
-                                     z0_t::width + dxy_t::width + tkquality_t::width + redChi2Bin_t::width;
+                                     z0_t::width + dxy_t::width + tkquality_t::width;
 
-    static const int BITWIDTH = BITWIDTH_SLIM + redChi2Bin_t::width + redChi2Bin_t::width + stub_t::width;
+    static const int BITWIDTH_BARREL = BITWIDTH_SLIM + redChi2Bin_t::width;
+    static const int BITWIDTH_ENDCAP =
+        BITWIDTH_SLIM + redChi2Bin_t::width + redChi2Bin_t::width + redChi2Bin_t::width + stub_t::width;
+
+    static const int BITWIDTH =
+        BITWIDTH_SLIM + redChi2Bin_t::width + redChi2Bin_t::width + redChi2Bin_t::width + stub_t::width;
+
+#ifndef __SYNTHESIS__
 
     inline ap_uint<BITWIDTH> pack() const {
       ap_uint<BITWIDTH> ret;
@@ -413,6 +420,9 @@ namespace l1ct {
 
       return ret;
     }
+
+#endif
+
     inline static TkObj unpack(const ap_uint<BITWIDTH> &src) {
       TkObj ret;
       unsigned int start = 0;
@@ -431,7 +441,80 @@ namespace l1ct {
       unpack_from_bits(src, start, ret.hwStubs);
       return ret;
     }
-    inline ap_uint<BITWIDTH_SLIM> pack_slim() const { return pack()(BITWIDTH_SLIM - 1, 0); }
+
+    inline ap_uint<BITWIDTH_BARREL> pack_barrel() const {
+      ap_uint<BITWIDTH_BARREL> ret;
+      unsigned int start = 0;
+      pack_into_bits(ret, start, hwPt);
+      pack_into_bits(ret, start, hwEta);
+      pack_into_bits(ret, start, hwPhi);
+      pack_into_bits(ret, start, hwDEta);
+      pack_into_bits(ret, start, hwDPhi);
+      pack_bool_into_bits(ret, start, hwCharge);
+      pack_into_bits(ret, start, hwZ0);
+      pack_into_bits(ret, start, hwDxy);
+      pack_into_bits(ret, start, hwQuality);
+      pack_into_bits(ret, start, hwRedChi2RPhi);
+      return ret;
+    }
+
+    inline ap_uint<BITWIDTH_ENDCAP> pack_endcap() const {
+      ap_uint<BITWIDTH_ENDCAP> ret;
+      unsigned int start = 0;
+      pack_into_bits(ret, start, hwPt);
+      pack_into_bits(ret, start, hwEta);
+      pack_into_bits(ret, start, hwPhi);
+      pack_into_bits(ret, start, hwDEta);
+      pack_into_bits(ret, start, hwDPhi);
+      pack_bool_into_bits(ret, start, hwCharge);
+      pack_into_bits(ret, start, hwZ0);
+      pack_into_bits(ret, start, hwDxy);
+      pack_into_bits(ret, start, hwQuality);
+      pack_into_bits(ret, start, hwRedChi2RPhi);
+      pack_into_bits(ret, start, hwRedChi2RZ);
+      pack_into_bits(ret, start, hwRedChi2Bend);
+      pack_into_bits(ret, start, hwStubs);
+
+      return ret;
+    }
+
+    inline static TkObj unpack_barrel(const ap_uint<BITWIDTH_BARREL> &src) {
+      TkObj ret;
+      unsigned int start = 0;
+      unpack_from_bits(src, start, ret.hwPt);
+      unpack_from_bits(src, start, ret.hwEta);
+      unpack_from_bits(src, start, ret.hwPhi);
+      unpack_from_bits(src, start, ret.hwDEta);
+      unpack_from_bits(src, start, ret.hwDPhi);
+      unpack_bool_from_bits(src, start, ret.hwCharge);
+      unpack_from_bits(src, start, ret.hwZ0);
+      unpack_from_bits(src, start, ret.hwDxy);
+      unpack_from_bits(src, start, ret.hwQuality);
+      unpack_from_bits(src, start, ret.hwRedChi2RPhi);
+      return ret;
+    }
+
+    inline static TkObj unpack_endcap(const ap_uint<BITWIDTH_ENDCAP> &src) {
+      TkObj ret;
+      unsigned int start = 0;
+      unpack_from_bits(src, start, ret.hwPt);
+      unpack_from_bits(src, start, ret.hwEta);
+      unpack_from_bits(src, start, ret.hwPhi);
+      unpack_from_bits(src, start, ret.hwDEta);
+      unpack_from_bits(src, start, ret.hwDPhi);
+      unpack_bool_from_bits(src, start, ret.hwCharge);
+      unpack_from_bits(src, start, ret.hwZ0);
+      unpack_from_bits(src, start, ret.hwDxy);
+      unpack_from_bits(src, start, ret.hwQuality);
+      unpack_from_bits(src, start, ret.hwRedChi2RPhi);
+      unpack_from_bits(src, start, ret.hwRedChi2RZ);
+      unpack_from_bits(src, start, ret.hwRedChi2Bend);
+      unpack_from_bits(src, start, ret.hwStubs);
+      return ret;
+    }
+
+    inline ap_uint<BITWIDTH_SLIM> pack_slim() const { return pack_endcap()(BITWIDTH_SLIM - 1, 0); }
+
   };
   inline void clear(TkObj &c) { c.clear(); }
 
