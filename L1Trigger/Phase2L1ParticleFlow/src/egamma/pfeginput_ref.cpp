@@ -46,7 +46,8 @@ void EGInputSelectorEmulator::select_eginput(const l1ct::HadCaloObjEmu &in,
   out.hwHoe = in.hwHoe;
   out.hwPiProb = in.hwPiProb;
   out.hwEmProb = in.hwEmProb;
-  valid_out = (in.hwEmID & cfg.idMask) != 0;
+  // FIXME: we protect against hwEmPt == 0 but we should understand the origin of the problem
+  valid_out = (in.hwEmID & cfg.idMask) != 0 && out.hwPt != 0;
 }
 
 void EGInputSelectorEmulator::select_eginputs(const std::vector<HadCaloObjEmu> &hadcalo_in,
