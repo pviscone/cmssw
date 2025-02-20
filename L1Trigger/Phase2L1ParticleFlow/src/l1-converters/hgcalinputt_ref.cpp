@@ -161,6 +161,7 @@ l1ct::HadCaloObjEmu l1ct::HgcalClusterDecoderEmulator::decode(const l1ct::PFRegi
     // FIXME: we do not recompute hoe for now...
   }
 
+  
   // Calibrate pt and set error
   if (corrector_.valid()) {
     float newpt = corrector_.correctedPt(out.floatPt(), out.floatEmPt(), sector.floatGlbEta(out.hwEta));
@@ -194,10 +195,10 @@ bool l1ct::HgcalClusterDecoderEmulator::MultiClassID::evaluate(l1ct::HadCaloObjE
   softmax(raw_scores, sm_scores);
 
   unsigned int pt_bin = 0;
-  for (size_t i = wp_pt_.size() - 1; i > 0; --i) {
+  for (size_t i = wp_pt_.size(); i > 0; --i) {
     if (cl.hwPt >=
-        wp_pt_[i]) {  // FIXME: we use the cluster pt to determine the bin before changes due to EM interpretation?
-      pt_bin = i + 1;
+        wp_pt_[i-1]) {  // FIXME: we use the cluster pt to determine the bin before changes due to EM interpretation?
+      pt_bin = i;
       break;
     }
   }
