@@ -7,7 +7,10 @@
 l1ct::HgcalClusterDecoderEmulator::HgcalClusterDecoderEmulator(const edm::ParameterSet &pset)
     : slim_(pset.getParameter<bool>("slim")),
       multiclass_id_(pset.getParameterSet("multiclass_id")),
-      corrector_(pset.getParameter<std::string>("corrector"), pset.getParameter<double>("correctorEmfMax")),
+      corrector_(pset.getParameter<std::string>("corrector"),
+                 pset.getParameter<double>("correctorEmfMax"),
+                 false,
+                 pset.getParameter<bool>("emulateCorrections")),
       emInterpScenario_(setEmInterpScenario(pset.getParameter<std::string>("emInterpScenario"))) {}
 
 edm::ParameterSetDescription l1ct::HgcalClusterDecoderEmulator::getParameterSetDescription() {
@@ -15,6 +18,7 @@ edm::ParameterSetDescription l1ct::HgcalClusterDecoderEmulator::getParameterSetD
   description.add<bool>("slim", false);
   description.add<std::string>("corrector", "");
   description.add<double>("correctorEmfMax", -1);
+  description.add<bool>("emulateCorrections", false);
   description.add<edm::ParameterSetDescription>("multiclass_id", MultiClassID::getParameterSetDescription());
   description.add<std::string>("emInterpScenario", "No");
   return description;
@@ -51,10 +55,11 @@ l1ct::HgcalClusterDecoderEmulator::HgcalClusterDecoderEmulator(const std::string
                                                                bool slim,
                                                                const std::string &corrector,
                                                                float correctorEmfMax,
+                                                               bool emulateCorrections,
                                                                const std::string &emInterpScenario)
     : slim_{slim},
       multiclass_id_(model, wp_pt, wp_PU, wp_Pi, wp_EgEm, wp_PFEm),
-      corrector_(corrector, correctorEmfMax),
+      corrector_(corrector, correctorEmfMax, false, emulateCorrections),
       emInterpScenario_(setEmInterpScenario(emInterpScenario)) {}
 
 l1ct::HgcalClusterDecoderEmulator::~HgcalClusterDecoderEmulator() {}
@@ -161,7 +166,6 @@ l1ct::HadCaloObjEmu l1ct::HgcalClusterDecoderEmulator::decode(const l1ct::PFRegi
     // FIXME: we do not recompute hoe for now...
   }
 
-  
   // Calibrate pt and set error
   if (corrector_.valid()) {
     float newpt = corrector_.correctedPt(out.floatPt(), out.floatEmPt(), sector.floatGlbEta(out.hwEta));
@@ -197,11 +201,14 @@ bool l1ct::HgcalClusterDecoderEmulator::MultiClassID::evaluate(l1ct::HadCaloObjE
   unsigned int pt_bin = 0;
   for (size_t i = wp_pt_.size(); i > 0; --i) {
     if (cl.hwPt >=
-        wp_pt_[i-1]) {  // FIXME: we use the cluster pt to determine the bin before changes due to EM interpretation?
+        wp_pt_[i - 1]) {  // FIXME: we use the cluster pt to determine the bin before changes due to EM interpretation?
       pt_bin = i;
       break;
     }
   }
+  sm_scores[0] = 0;
+  sm_scores[1] = 0.5;
+  sm_scores[2] = 0.5;
   bool passPu = (sm_scores[0] >= wp_PU_[pt_bin]);
   // bool passPi = (sm_scores[1] >= wp_Pi_[pt_bin]);  // FIXME: where do we store this?
   bool passEgEm = (sm_scores[2] >= wp_EgEm_[pt_bin]);

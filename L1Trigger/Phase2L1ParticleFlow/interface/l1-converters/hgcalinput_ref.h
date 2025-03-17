@@ -23,6 +23,7 @@ namespace l1ct {
                                 bool slim = false,
                                 const std::string &corrector = "",
                                 float correctorEmfMax = -1,
+                                bool emulateCorrections = false,
                                 const std::string &emInterpScenario = "no");
     HgcalClusterDecoderEmulator(const edm::ParameterSet &pset);
 
