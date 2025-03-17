@@ -514,7 +514,6 @@ namespace l1ct {
     }
 
     inline ap_uint<BITWIDTH_SLIM> pack_slim() const { return pack_endcap()(BITWIDTH_SLIM - 1, 0); }
-
   };
   inline void clear(TkObj &c) { c.clear(); }
 
