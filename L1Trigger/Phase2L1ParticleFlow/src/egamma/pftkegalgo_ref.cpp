@@ -1,11 +1,10 @@
 #include "L1Trigger/Phase2L1ParticleFlow/interface/egamma/pftkegalgo_ref.h"
 #include "L1Trigger/Phase2L1ParticleFlow/interface/dbgPrintf.h"
-#include "DataFormats/L1TParticleFlow/interface/PFCluster.h"
+#ifdef CMSSW_GIT_HASH
 #include "DataFormats/L1TParticleFlow/interface/PFTrack.h"
-#include "DataFormats/L1TCalorimeterPhase2/interface/DigitizedClusterCorrelator.h"
 #include "DataFormats/L1TCalorimeterPhase2/interface/CaloCrystalCluster.h"
 #include "DataFormats/L1THGCal/interface/HGCalMulticluster.h"
-
+#endif
 #include <cmath>
 #include <cstdio>
 #include <algorithm>
@@ -337,6 +336,8 @@ id_score_t PFTkEGAlgoEmulator::compute_composite_score_eb(CompositeCandidate &ca
                                                           const std::vector<EmCaloObjEmu> &emcalo,
                                                           const std::vector<TkObjEmu> &track,
                                                           const PFTkEGAlgoEmuConfig::CompIDParameters &params) const {
+#ifdef CMSSW_GIT_HASH
+  // NOTE: not yet ready for HLS testbench
   // Get the cluster/track objects that form the composite candidate
   const auto &calo = emcalo[cand.cluster_idx];
   const auto &tk = track[cand.track_idx];
@@ -385,6 +386,9 @@ id_score_t PFTkEGAlgoEmulator::compute_composite_score_eb(CompositeCandidate &ca
   // std::cout << "  out BDT score: " << bdt_score[0] << std::endl;
   constexpr unsigned int MAX_SCORE = 1 << (bdt_eb_score_t::iwidth - 1);
   return bdt_score[0] / bdt_eb_score_t(MAX_SCORE);  // normalize to [-1,1]
+#else
+  return 0;
+#endif
 }
 
 id_score_t PFTkEGAlgoEmulator::compute_composite_score_ee(CompositeCandidate &cand,
@@ -393,6 +397,8 @@ id_score_t PFTkEGAlgoEmulator::compute_composite_score_ee(CompositeCandidate &ca
                                                           const std::vector<EmCaloObjEmu> &emcalo,
                                                           const std::vector<TkObjEmu> &track,
                                                           const PFTkEGAlgoEmuConfig::CompIDParameters &params) const {
+#ifdef CMSSW_GIT_HASH
+  // NOTE: this is not yet ready for emulation!
   // Get the cluster/track objects that form the composite candidate
   const auto &calo = emcalo[cand.cluster_idx];
   const auto &tk = track[cand.track_idx];
@@ -429,6 +435,9 @@ id_score_t PFTkEGAlgoEmulator::compute_composite_score_ee(CompositeCandidate &ca
   // std::cout << "  out BDT score: " << bdt_score[0] << std::endl;
   constexpr unsigned int MAX_SCORE = 1 << (bdt_ee_score_t::iwidth - 1);
   return bdt_score[0] / bdt_ee_score_t(MAX_SCORE);
+#else
+  return 0;
+#endif
 }
 
 id_score_t PFTkEGAlgoEmulator::compute_composite_score(CompositeCandidate &cand,
@@ -642,8 +651,8 @@ EGIsoEleObjEmu &PFTkEGAlgoEmulator::addEGIsoEleToPF(std::vector<EGIsoEleObjEmu> 
     // tight ele WP is set for tight BDT score
     egHwQual = (hwQual & 0x9) | ((bdtScore >= cfg.compIDparams.bdtScore_tight_wp) << 1);
   } else if (cfg.algorithm == PFTkEGAlgoEmuConfig::Algo::compositeEB_v0) {
-    vector<float> pt_bins = {0, 5, 10, 20, 30, 50};
-    vector<float> tight_wps = {0.19, 0.05, -0.35, -0.45, -0.5, -0.38};
+    std::vector<float> pt_bins = {0, 5, 10, 20, 30, 50};
+    std::vector<float> tight_wps = {0.19, 0.05, -0.35, -0.45, -0.5, -0.38};
 
     bool isTight = false;
 
@@ -657,8 +666,8 @@ EGIsoEleObjEmu &PFTkEGAlgoEmulator::addEGIsoEleToPF(std::vector<EGIsoEleObjEmu> 
     // tight ele WP is set for tight BDT score
     egHwQual = (hwQual & 0x9) | (isTight << 1);
   } else if (cfg.algorithm == PFTkEGAlgoEmuConfig::Algo::compositeEE_v1) {
-    vector<float> pt_bins = {0, 5, 10, 20, 30, 50};
-    vector<float> tight_wps = {
+    std::vector<float> pt_bins = {0, 5, 10, 20, 30, 50};
+    std::vector<float> tight_wps = {
         1.2367626271489272,
         0.3639653772014115,
         -0.8472978603872036,
