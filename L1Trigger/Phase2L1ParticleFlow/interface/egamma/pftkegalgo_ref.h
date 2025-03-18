@@ -37,7 +37,7 @@ namespace l1ct {
     std::vector<double> dPhiValues;
     float trkQualityPtMin;  // GeV
 
-    enum Algo { undefined = -1, elliptic = 0, compositeEE_v0 = 1, compositeEB_v0 = 2, compositeEE_v1 = 3 };
+    enum Algo { undefined = -1, elliptic = 0, compositeEE_v0 = 1, compositeEB_v0 = 2, compositeEE_v1 = 3, compositeEB_v1 = 4 };
 
     Algo algorithm;
     unsigned int nCompCandPerCluster;
