@@ -88,25 +88,26 @@ namespace l1ct {
 
     class SimpleWP : public WP {
       public:
-
-        SimpleWP(const edm::ParameterSet &);
         id_score_t wp_value;
-        static edm::ParameterSetDescription getParameterSetDescription();
-
         SimpleWP(id_score_t wp_value) : wp_value(wp_value) {wp_type = WPtype::score_cut;}
         bool apply (const id_score_t &score) const override { return score >= wp_value; }
     };
 
     class BinnedWP1D : public WP {
       public:
-        BinnedWP1D(const edm::ParameterSet &);
         std::string binned_variable;
         std::vector<double> bin_low_edges;
         std::vector<id_score_t> wp_values;
-        static edm::ParameterSetDescription getParameterSetDescription();
 
-        BinnedWP1D(const std::string &binned_variable, const std::vector<double> &bin_low_edges, const std::vector<id_score_t> &wp_values)
-            : binned_variable(binned_variable), bin_low_edges(bin_low_edges), wp_values(wp_values) {wp_type = WPtype::binned_cut_1d;}
+        BinnedWP1D(const std::string &binned_variable,
+            const std::vector<double> &bin_low_edges,
+            const std::vector<id_score_t> &wp_values):
+              binned_variable(binned_variable),
+              bin_low_edges(bin_low_edges),
+              wp_values(wp_values) {
+                assert(bin_low_edges.size() == wp_values.size() && "The size of bin_low_edges must match the size of wp_values.");
+                wp_type = WPtype::binned_cut_1d;
+        }
         std::string getBinnedVariableName() const override { return binned_variable; }
         bool apply (const float &var, const id_score_t &score) const override {
           auto it = std::upper_bound(bin_low_edges.begin(), bin_low_edges.end(), var);
@@ -119,10 +120,11 @@ namespace l1ct {
       return std::make_shared<SimpleWP>(value);
     }
 
-    static std::shared_ptr<WP> createWP(const std::string &binned_variable, const std::vector<id_score_t> &wp_values, const std::vector<double> &bin_low_edges) {
+    static std::shared_ptr<WP> createWP(const std::string &binned_variable,
+                                        const std::vector<id_score_t> &wp_values,
+                                        const std::vector<double> &bin_low_edges) {
       return std::make_shared<BinnedWP1D>(binned_variable, bin_low_edges, wp_values);
     }
-
 
     struct CompIDParameters {
       CompIDParameters(const edm::ParameterSet &);
