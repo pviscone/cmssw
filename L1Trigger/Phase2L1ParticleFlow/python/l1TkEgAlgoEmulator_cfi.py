@@ -8,20 +8,17 @@ CompositeParametersTkEleVec = cms.VPSet(
     cms.PSet(
         # NOTE: conifer BDT score is log(p/1-p)
         # the working points are cuts on BDT output logits [log(p/1-p)]/4 (range -1 to 1 to match the FW dataformat)
+        model=cms.string("L1Trigger/Phase2L1ParticleFlow/data/egamma/compositeID_EE_v0.json"),
         loose_wp=cms.PSet(
             value=cms.double(-0.181641)
             ),
         tight_wp=cms.PSet(
             value=cms.double(0.0527344)
-            ),
-        model=cms.string("L1Trigger/Phase2L1ParticleFlow/data/egamma/compositeID_EE_v0.json")
+            )
     ),
     #Algorithm 2: compositeEB_v0
     cms.PSet(
         model=cms.string("L1Trigger/Phase2L1ParticleFlow/data/egamma/compositeID_EB_v0.json"),
-        loose_wp=cms.PSet(
-            value=cms.double(-999.)
-            ),
         tight_wp=cms.PSet(
             var=cms.string("pt"),
             bins=cms.vdouble(0, 5, 10, 20, 30, 50),
@@ -31,9 +28,6 @@ CompositeParametersTkEleVec = cms.VPSet(
     #Algorithm 3: compositeEE_v1
     cms.PSet(
         model=cms.string("L1Trigger/Phase2L1ParticleFlow/data/egamma/compositeID_EE_v1.json"),
-        loose_wp=cms.PSet(
-            value=cms.double(-999.)
-            ),
         tight_wp=cms.PSet(
             var=cms.string("pt"),
             bins=cms.vdouble(0, 5, 10, 20, 30, 50),
@@ -43,9 +37,6 @@ CompositeParametersTkEleVec = cms.VPSet(
     #Algorithm 4: compositeEB_v1
     cms.PSet(
         model=cms.string("L1Trigger/Phase2L1ParticleFlow/data/egamma/compositeID_EB_v1.json"),
-        loose_wp=cms.PSet(
-            value=cms.double(-999.)
-            ),
         tight_wp=cms.PSet(
             var=cms.string("pt"),
             bins=cms.vdouble(0, 5, 10, 20, 30, 50),
