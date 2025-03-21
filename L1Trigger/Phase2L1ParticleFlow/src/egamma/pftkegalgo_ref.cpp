@@ -188,7 +188,9 @@ PFTkEGAlgoEmulator::PFTkEGAlgoEmulator(const PFTkEGAlgoEmuConfig &config)
       model_ = new conifer::BDT<bdt_eb_feature_t, bdt_eb_score_t, false>(resolvedFileName);
     } else if (cfg.algorithm == PFTkEGAlgoEmuConfig::Algo::compositeEE_v1) {
       model_ = new conifer::BDT<bdt_ee_feature_t, bdt_ee_score_t, false>(resolvedFileName);
-    } //TODO add eb_v1 model instance
+    } else if (cfg.algorithm == PFTkEGAlgoEmuConfig::Algo::compositeEB_v1) {
+      model_ = new conifer::BDT<bdt_eb_v1_feature_t, bdt_eb_v1_score_t, false>(resolvedFileName);
+    }
   }
 }
 
@@ -361,7 +363,9 @@ void PFTkEGAlgoEmulator::link_emCalo2tk_composite_eb_ee(const PFRegionEmu &r,
         score = compute_composite_score_eb(cand, sumTkPt, nTkMatch, emcalo_sel, track, cfg.compIDparams);
       } else if (cfg.algorithm == PFTkEGAlgoEmuConfig::Algo::compositeEE_v1) {
         score = compute_composite_score_ee(cand, sumTkPt, nTkMatch, emcalo_sel, track, cfg.compIDparams);
-      }//TODO add eb_v1 scores
+      } else if (cfg.algorithm == PFTkEGAlgoEmuConfig::Algo::compositeEB_v1) {
+        score = compute_composite_score_eb_v1(cand, sumTkPt, nTkMatch, emcalo_sel, track, cfg.compIDparams);
+      }
       if ((cfg.compIDparams.bdtScore_loose_wp->apply(score)) && (score > maxScore)) {
         maxScore = score;
         ibest = icand;
@@ -434,6 +438,85 @@ id_score_t PFTkEGAlgoEmulator::compute_composite_score_eb(CompositeCandidate &ca
   return 0;
 #endif
 }
+
+float scale(const float &x, const float &min_x, const int &bitshift, float inf = -1){
+  return inf + (x - min_x)/pow(2,bitshift);
+}
+
+id_score_t PFTkEGAlgoEmulator::compute_composite_score_eb_v1(CompositeCandidate &cand,
+                                                          float sumTkPt,
+                                                          unsigned int nTkMatch,
+                                                          const std::vector<EmCaloObjEmu> &emcalo,
+                                                          const std::vector<TkObjEmu> &track,
+                                                          const PFTkEGAlgoEmuConfig::CompIDParameters &params) const {
+#ifdef CMSSW_GIT_HASH
+  // NOTE: not yet ready for HLS testbench
+  // Get the cluster/track objects that form the composite candidate
+  const auto &calo = emcalo[cand.cluster_idx];
+  const auto &tk = track[cand.track_idx];
+  const l1tp2::CaloCrystalCluster *crycl = dynamic_cast<const l1tp2::CaloCrystalCluster *>(calo.src);
+
+  // Prepare the input features
+  // FIXME: use the EmCaloObj and TkObj to get all the features
+  // FIXME: make sure that all input features end up in the PFCluster and PFTrack objects with the right precision
+
+  // FIXME: 16 bit estimate for the inversion is approximate
+  ap_ufixed<16, 0> calo_invPt = l1ct::invert_with_shift<pt_t, ap_ufixed<16, 0>, 1024>(calo.hwPt);
+  // NOTE: this could be computed once per cluster and passed directly to the function
+  ap_ufixed<16, 0> tk_invPt = l1ct::invert_with_shift<pt_t, ap_ufixed<16, 0>, 1024>(tk.hwPt);
+
+  constexpr std::array<float, 1 << l1ct::redChi2Bin_t::width> chi2RPhiBins = {
+      {0.0, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 5.0, 6.0, 10.0, 15.0, 20.0, 35.0, 60.0, 200.0}};
+
+  typedef ap_ufixed<6, 0, AP_RND_CONV, AP_SAT> calo_ratio_t;
+
+  float cl_pt = calo.floatPt();
+  //This two ratios will be computed in the calotrigger and passed to the CTL1 in 6 bits
+  float cl_ss = static_cast<calo_ratio_t>(crycl->e2x5() / crycl->e5x5());
+  float cl_relIso = static_cast<calo_ratio_t>((iso_t(crycl->isolation()) * calo_invPt) >> 4);
+  float cl_staWP = calo.hwEmID & 0x1;
+  float cl_looseTkWP = (calo.hwEmID & 0x2) == 0x2;
+  float tk_chi2RPhi = chi2RPhiBins[tk.hwRedChi2RPhi.to_int()];
+  float tk_ptFrac = sumTkPt * tk_invPt.to_float();
+  float cltk_ptRatio = calo.hwPt * tk_invPt;
+  float cltk_nTkMatch = nTkMatch;
+  float cltk_absDeta = fabs(tk.hwEta.to_int() - calo.hwEta.to_int());
+  float cltk_absDphi = fabs(tk.hwPhi.to_int() - calo.hwPhi.to_int());
+
+  // Scaling
+  bdt_eb_v1_feature_t scaled_cl_pt = scale(cl_pt, 1.5, 5);
+  bdt_eb_v1_feature_t scaled_cl_ss = scale(cl_ss, 0.1875, -1);
+  bdt_eb_v1_feature_t scaled_cl_relIso = scale(cl_relIso, 0.0, -1);
+  bdt_eb_v1_feature_t scaled_cl_staWP = scale(cl_staWP, 0.0, 0);
+  bdt_eb_v1_feature_t scaled_cl_looseTkWP = scale(cl_looseTkWP, 0.0, 0);
+  bdt_eb_v1_feature_t scaled_tk_chi2RPhi = scale(tk_chi2RPhi, 0.0, 3);
+  bdt_eb_v1_feature_t scaled_tk_ptFrac = scale(tk_ptFrac, 1.0, 5);
+  bdt_eb_v1_feature_t scaled_cltk_ptRatio = scale(cltk_ptRatio, 0.0003669276, 4);
+  bdt_eb_v1_feature_t scaled_cltk_nTkMatch = scale(cltk_nTkMatch, 1.0, 3);
+  bdt_eb_v1_feature_t scaled_cltk_absDeta = scale(cltk_absDeta, 0.0, 2);
+  bdt_eb_v1_feature_t scaled_cltk_absDphi = scale(cltk_absDphi, 0.0, 5);
+
+  // Run BDT inference
+  std::vector<bdt_eb_v1_feature_t> inputs = {scaled_cl_pt,
+                                          scaled_cl_ss,
+                                          scaled_cl_relIso,
+                                          scaled_cl_staWP,
+                                          scaled_cl_looseTkWP,
+                                          scaled_tk_chi2RPhi,
+                                          scaled_tk_ptFrac,
+                                          scaled_cltk_ptRatio,
+                                          scaled_cltk_nTkMatch,
+                                          scaled_cltk_absDeta,
+                                          scaled_cltk_absDphi};
+  auto *composite_bdt_eb_ = static_cast<conifer::BDT<bdt_eb_v1_feature_t, bdt_eb_v1_score_t, false> *>(model_);
+  std::vector<bdt_eb_v1_score_t> bdt_score = composite_bdt_eb_->decision_function(inputs);
+  return bdt_score[0]/8;  // normalize to [-1,1]
+#else
+  return 0;
+#endif
+}
+
+
 
 id_score_t PFTkEGAlgoEmulator::compute_composite_score_ee(CompositeCandidate &cand,
                                                           float sumTkPt,

@@ -246,6 +246,9 @@ namespace l1ct {
     typedef ap_fixed<30, 20, AP_RND_CONV, AP_SAT> bdt_ee_feature_t;
     typedef ap_fixed<30, 20, AP_RND_CONV, AP_SAT> bdt_ee_score_t;
 
+    typedef ap_fixed<8, 1, AP_RND_CONV, AP_SAT> bdt_eb_v1_feature_t;
+    typedef ap_fixed<11, 4, AP_RND_CONV, AP_SAT> bdt_eb_v1_score_t;
+
   private:
     void link_emCalo2emCalo(const std::vector<EmCaloObjEmu> &emcalo, std::vector<int> &emCalo2emCalo) const;
 
@@ -277,6 +280,13 @@ namespace l1ct {
                                           const std::vector<EmCaloObjEmu> &emcalo,
                                           const std::vector<TkObjEmu> &track,
                                           const PFTkEGAlgoEmuConfig::CompIDParameters &params) const;
+
+    id_score_t compute_composite_score_eb_v1(CompositeCandidate &cand,
+                                            float sumTkPt,
+                                            unsigned int nTkMatch,
+                                            const std::vector<EmCaloObjEmu> &emcalo,
+                                            const std::vector<TkObjEmu> &track,
+                                            const PFTkEGAlgoEmuConfig::CompIDParameters &params) const;
 
     id_score_t compute_composite_score_ee(CompositeCandidate &cand,
                                           float sumTkPt,
