@@ -129,6 +129,10 @@ edm::ParameterSetDescription l1ct::PFTkEGAlgoEmuConfig::IsoParameters::getParame
   return description;
 }
 
+//Constructor to be used with createWP factory methods
+l1ct::PFTkEGAlgoEmuConfig::CompIDParameters::CompIDParameters(std::shared_ptr<WP> bdtScore_loose_wp, std::shared_ptr<WP> bdtScore_tight_wp, const std::string &model)
+          : bdtScore_loose_wp(bdtScore_loose_wp), bdtScore_tight_wp(bdtScore_tight_wp), conifer_model(model) {}
+
 l1ct::PFTkEGAlgoEmuConfig::CompIDParameters::CompIDParameters(const id_score_t &bdtScore_loose_wp, const id_score_t &bdtScore_tight_wp, const std::string &model)
           : bdtScore_loose_wp(createWP(bdtScore_loose_wp)), bdtScore_tight_wp(createWP(bdtScore_tight_wp)), conifer_model(model) {}
 
