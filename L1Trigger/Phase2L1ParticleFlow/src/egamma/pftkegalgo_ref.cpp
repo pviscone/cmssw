@@ -175,7 +175,8 @@ PFTkEGAlgoEmulator::PFTkEGAlgoEmulator(const PFTkEGAlgoEmuConfig &config)
     : cfg(config), model_(nullptr), debug_(cfg.debug) {
   if (cfg.algorithm == PFTkEGAlgoEmuConfig::Algo::compositeEE_v0 ||
       cfg.algorithm == PFTkEGAlgoEmuConfig::Algo::compositeEB_v0 ||
-      cfg.algorithm == PFTkEGAlgoEmuConfig::Algo::compositeEE_v1) {
+      cfg.algorithm == PFTkEGAlgoEmuConfig::Algo::compositeEE_v1 ||
+      cfg.algorithm == PFTkEGAlgoEmuConfig::Algo::compositeEB_v1 ) {
 #ifdef CMSSW_GIT_HASH
     auto resolvedFileName = edm::FileInPath(cfg.compIDparams.conifer_model).fullPath();
 #else
@@ -187,7 +188,7 @@ PFTkEGAlgoEmulator::PFTkEGAlgoEmulator(const PFTkEGAlgoEmuConfig &config)
       model_ = new conifer::BDT<bdt_eb_feature_t, bdt_eb_score_t, false>(resolvedFileName);
     } else if (cfg.algorithm == PFTkEGAlgoEmuConfig::Algo::compositeEE_v1) {
       model_ = new conifer::BDT<bdt_ee_feature_t, bdt_ee_score_t, false>(resolvedFileName);
-    }
+    } //TODO add eb_v1 model instance
   }
 }
 
@@ -324,8 +325,9 @@ void PFTkEGAlgoEmulator::link_emCalo2tk_composite_eb_ee(const PFRegionEmu &r,
       bool keep = false;
       if (cfg.algorithm == PFTkEGAlgoEmuConfig::Algo::compositeEE_v0) {
         keep = (d_phi * d_phi) + (d_eta * d_eta) < 0.04;
-      } else if ((cfg.algorithm == PFTkEGAlgoEmuConfig::Algo::compositeEB_v0) ||
-                 (cfg.algorithm == PFTkEGAlgoEmuConfig::Algo::compositeEE_v1)) {
+      } else if (cfg.algorithm == PFTkEGAlgoEmuConfig::Algo::compositeEB_v0 ||
+                 cfg.algorithm == PFTkEGAlgoEmuConfig::Algo::compositeEE_v1 ||
+                 cfg.algorithm == PFTkEGAlgoEmuConfig::Algo::compositeEB_v1 ) {
         keep = (((d_phi / dPhiMax) * (d_phi / dPhiMax)) + ((d_eta / dEtaMax) * (d_eta / dEtaMax))) < 1.;
       }
       if (keep) {
@@ -359,7 +361,7 @@ void PFTkEGAlgoEmulator::link_emCalo2tk_composite_eb_ee(const PFRegionEmu &r,
         score = compute_composite_score_eb(cand, sumTkPt, nTkMatch, emcalo_sel, track, cfg.compIDparams);
       } else if (cfg.algorithm == PFTkEGAlgoEmuConfig::Algo::compositeEE_v1) {
         score = compute_composite_score_ee(cand, sumTkPt, nTkMatch, emcalo_sel, track, cfg.compIDparams);
-      }
+      }//TODO add eb_v1 scores
       if ((cfg.compIDparams.bdtScore_loose_wp->apply(score)) && (score > maxScore)) {
         maxScore = score;
         ibest = icand;
@@ -691,7 +693,8 @@ EGIsoEleObjEmu &PFTkEGAlgoEmulator::addEGIsoEleToPF(std::vector<EGIsoEleObjEmu> 
   unsigned int egHwQual = hwQual;
   if (cfg.algorithm == PFTkEGAlgoEmuConfig::Algo::compositeEE_v0 ||
       cfg.algorithm == PFTkEGAlgoEmuConfig::Algo::compositeEB_v0 ||
-      cfg.algorithm == PFTkEGAlgoEmuConfig::Algo::compositeEE_v1) {
+      cfg.algorithm == PFTkEGAlgoEmuConfig::Algo::compositeEE_v1 ||
+      cfg.algorithm == PFTkEGAlgoEmuConfig::Algo::compositeEB_v1) {
     //Set tight WP
     bool is_tight = false;
     //If wp is a simple wp
