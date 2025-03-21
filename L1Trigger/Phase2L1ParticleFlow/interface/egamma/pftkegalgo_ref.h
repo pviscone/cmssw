@@ -66,6 +66,63 @@ namespace l1ct {
     EGIsoEleObjEmu::IsoType hwIsoTypeTkEle;
     EGIsoObjEmu::IsoType hwIsoTypeTkEm;
 
+    enum WPtype { score_cut = 0, binned_cut_1d = 1 };
+    class WP{
+      protected:
+        WPtype wp_type;
+      public:
+        WPtype getWPtype() const { return wp_type; }
+        virtual ~WP() = default;
+
+        virtual std::string getBinnedVariableName() const {
+            throw std::runtime_error("Not implemented for this WP type");
+        }
+        virtual bool apply(const id_score_t &score) const {
+            throw std::runtime_error("Not implemented for this WP type");
+        };
+        virtual bool apply(const float &var, const id_score_t &score) const {
+          throw std::runtime_error("Not implemented for this WP type");
+        };
+    };
+
+    class SimpleWP : public WP {
+      public:
+
+        SimpleWP(const edm::ParameterSet &);
+        id_score_t wp_value;
+        static edm::ParameterSetDescription getParameterSetDescription();
+
+        SimpleWP(id_score_t wp_value) : wp_value(wp_value) {wp_type = WPtype::score_cut;}
+        bool apply (const id_score_t &score) const override { return score >= wp_value; }
+    };
+
+    class BinnedWP1D : public WP {
+      public:
+        BinnedWP1D(const edm::ParameterSet &);
+        std::string binned_variable;
+        std::vector<double> bin_low_edges;
+        std::vector<id_score_t> wp_values;
+        static edm::ParameterSetDescription getParameterSetDescription();
+
+        BinnedWP1D(const std::string &binned_variable, const std::vector<double> &bin_low_edges, const std::vector<id_score_t> &wp_values)
+            : binned_variable(binned_variable), bin_low_edges(bin_low_edges), wp_values(wp_values) {wp_type = WPtype::binned_cut_1d;}
+        std::string getBinnedVariableName() const override { return binned_variable; }
+        bool apply (const float &var, const id_score_t &score) const override {
+          auto it = std::upper_bound(bin_low_edges.begin(), bin_low_edges.end(), var);
+          unsigned int bin_index = it - bin_low_edges.begin() - 1;
+          return (score > id_score_t(wp_values[bin_index]));
+        };
+    };
+
+    static std::shared_ptr<WP> createWP(const id_score_t &value) {
+      return std::make_shared<SimpleWP>(value);
+    }
+
+    static std::shared_ptr<WP> createWP(const std::string &binned_variable, const std::vector<id_score_t> &wp_values, const std::vector<double> &bin_low_edges) {
+      return std::make_shared<BinnedWP1D>(binned_variable, bin_low_edges, wp_values);
+    }
+
+
     struct CompIDParameters {
       CompIDParameters(const edm::ParameterSet &);
       CompIDParameters(double bdtScore_loose_wp, double bdtScore_tight_wp, const std::string &model)
