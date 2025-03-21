@@ -148,7 +148,7 @@ l1ct::PFTkEGAlgoEmuConfig::CompIDParameters::CompIDParameters(const edm::Paramet
           // Convert values to the appropriate types
           std::vector<id_score_t> wp_values(values.begin(), values.end());
 
-          return createWP(binned_variable, wp_values, bin_low_edges);
+          return createWP(binned_variable, bin_low_edges, wp_values);
       } else{//value HAS A DEFAULT OF -999
           // SimpleWP case
           id_score_t value = wp_pset.getParameter<double>("value");

@@ -121,14 +121,15 @@ namespace l1ct {
     }
 
     static std::shared_ptr<WP> createWP(const std::string &binned_variable,
-                                        const std::vector<id_score_t> &wp_values,
-                                        const std::vector<double> &bin_low_edges) {
+                                        const std::vector<double> &bin_low_edges,
+                                        const std::vector<id_score_t> &wp_values) {
       return std::make_shared<BinnedWP1D>(binned_variable, bin_low_edges, wp_values);
     }
 
     struct CompIDParameters {
       CompIDParameters(const edm::ParameterSet &);
       CompIDParameters(const id_score_t &, const id_score_t &, const std::string &);
+      CompIDParameters(std::shared_ptr<WP> bdtScore_loose_wp, std::shared_ptr<WP> bdtScore_tight_wp, const std::string &model);
       std::shared_ptr<WP> bdtScore_loose_wp;  // Conifer score/4
       std::shared_ptr<WP> bdtScore_tight_wp;  // Conifer score/4
       std::string conifer_model;
