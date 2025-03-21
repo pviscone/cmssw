@@ -205,6 +205,8 @@ namespace l1ct {
         algorithm = Algo::compositeEB_v0;
       else if (algo == 3)
         algorithm = Algo::compositeEE_v1;
+      else if (algo==4)
+        algorithm = Algo::compositeEB_v1;
       else
         throw std::invalid_argument("[PFTkEGAlgoEmuConfig]: Unknown algorithm type: " + std::to_string(algo));
     }
