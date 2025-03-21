@@ -4,6 +4,7 @@
 #include "DataFormats/L1TParticleFlow/interface/layer1_emulator.h"
 #include "DataFormats/L1TParticleFlow/interface/egamma.h"
 #include "DataFormats/L1TParticleFlow/interface/pf.h"
+#include "FWCore/ParameterSet/interface/ParameterSetDescription.h"
 #include "L1Trigger/Phase2L1ParticleFlow/interface/common/inversion.h"
 
 // FIXME: back to the old way of including conifer.h
@@ -125,11 +126,10 @@ namespace l1ct {
 
     struct CompIDParameters {
       CompIDParameters(const edm::ParameterSet &);
-      CompIDParameters(double bdtScore_loose_wp, double bdtScore_tight_wp, const std::string &model)
-          : bdtScore_loose_wp(bdtScore_loose_wp), bdtScore_tight_wp(bdtScore_tight_wp), conifer_model(model) {}
-      const id_score_t bdtScore_loose_wp;  // Conifer score/4
-      const id_score_t bdtScore_tight_wp;  // Conifer score/4
-      const std::string conifer_model;
+      CompIDParameters(const id_score_t &, const id_score_t &, const std::string &);
+      std::shared_ptr<WP> bdtScore_loose_wp;  // Conifer score/4
+      std::shared_ptr<WP> bdtScore_tight_wp;  // Conifer score/4
+      std::string conifer_model;
       static edm::ParameterSetDescription getParameterSetDescription();
     };
 
