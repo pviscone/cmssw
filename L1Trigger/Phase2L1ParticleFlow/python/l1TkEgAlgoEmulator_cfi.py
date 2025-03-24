@@ -40,7 +40,7 @@ CompositeParametersTkEleVec = cms.VPSet(
         tight_wp=cms.PSet(
             var=cms.string("pt"),
             bins=cms.vdouble(0, 5, 10, 20, 30, 50),
-            values=cms.vdouble(0.2, -0.027, -0.1, -0.1, -0.26, -0.08),
+            values=cms.vdouble(0.17, 0.018, -0.08, -0.11, -0.215, -0.15),
         ),
     )
 )
