@@ -47,7 +47,8 @@ l1ct::PFTkEGAlgoEmuConfig::PFTkEGAlgoEmuConfig(const edm::ParameterSet &pset)
                           pset.getParameter<bool>("doPfIso"),
                           static_cast<EGIsoEleObjEmu::IsoType>(pset.getParameter<uint32_t>("hwIsoTypeTkEle")),
                           static_cast<EGIsoObjEmu::IsoType>(pset.getParameter<uint32_t>("hwIsoTypeTkEm")),
-                          pset.getParameter<std::vector<edm::ParameterSet>>("compositeParametersTkEle").at(pset.getParameter<uint32_t>("algorithm")),
+                          pset.getParameter<std::vector<edm::ParameterSet>>("compositeParametersTkEle")
+                              .at(pset.getParameter<uint32_t>("algorithm")),
                           pset.getUntrackedParameter<uint32_t>("debug", 0)) {}
 
 edm::ParameterSetDescription l1ct::PFTkEGAlgoEmuConfig::getParameterSetDescription() {
@@ -96,7 +97,6 @@ edm::ParameterSetDescription l1ct::PFTkEGAlgoEmuConfig::getParameterSetDescripti
   description.add<unsigned int>("algorithm", 0);
   description.add<unsigned int>("nCompCandPerCluster", 3);
 
-
   edm::ParameterSetDescription wp_description;
   wp_description.add<double>("value", -999.);
   wp_description.addOptional<std::string>("var");
@@ -106,10 +106,8 @@ edm::ParameterSetDescription l1ct::PFTkEGAlgoEmuConfig::getParameterSetDescripti
   edm::ParameterSetDescription compositePSet;
   compositePSet.add<edm::ParameterSetDescription>("loose_wp", wp_description);
   compositePSet.add<edm::ParameterSetDescription>("tight_wp", wp_description);
-  compositePSet.add<std::string>("model","");
+  compositePSet.add<std::string>("model", "");
   description.addVPSet("compositeParametersTkEle", compositePSet);
-
-
 
   return description;
 }
@@ -130,30 +128,36 @@ edm::ParameterSetDescription l1ct::PFTkEGAlgoEmuConfig::IsoParameters::getParame
 }
 
 //Constructor to be used with createWP factory methods
-l1ct::PFTkEGAlgoEmuConfig::CompIDParameters::CompIDParameters(std::shared_ptr<WP> bdtScore_loose_wp, std::shared_ptr<WP> bdtScore_tight_wp, const std::string &model)
-          : bdtScore_loose_wp(bdtScore_loose_wp), bdtScore_tight_wp(bdtScore_tight_wp), conifer_model(model) {}
+l1ct::PFTkEGAlgoEmuConfig::CompIDParameters::CompIDParameters(std::shared_ptr<WP> bdtScore_loose_wp,
+                                                              std::shared_ptr<WP> bdtScore_tight_wp,
+                                                              const std::string &model)
+    : bdtScore_loose_wp(bdtScore_loose_wp), bdtScore_tight_wp(bdtScore_tight_wp), conifer_model(model) {}
 
-l1ct::PFTkEGAlgoEmuConfig::CompIDParameters::CompIDParameters(const id_score_t &bdtScore_loose_wp, const id_score_t &bdtScore_tight_wp, const std::string &model)
-          : bdtScore_loose_wp(createWP(bdtScore_loose_wp)), bdtScore_tight_wp(createWP(bdtScore_tight_wp)), conifer_model(model) {}
+l1ct::PFTkEGAlgoEmuConfig::CompIDParameters::CompIDParameters(const id_score_t &bdtScore_loose_wp,
+                                                              const id_score_t &bdtScore_tight_wp,
+                                                              const std::string &model)
+    : bdtScore_loose_wp(createWP(bdtScore_loose_wp)),
+      bdtScore_tight_wp(createWP(bdtScore_tight_wp)),
+      conifer_model(model) {}
 
 l1ct::PFTkEGAlgoEmuConfig::CompIDParameters::CompIDParameters(const edm::ParameterSet &pset) {
   auto parseWP = [](const edm::ParameterSet &wp_pset) -> std::shared_ptr<WP> {
-      if (wp_pset.exists("var") && wp_pset.exists("bins") && wp_pset.exists("values")) {
-          // BinnedWP1D case
-          std::string binned_variable = wp_pset.getParameter<std::string>("var");
+    if (wp_pset.exists("var") && wp_pset.exists("bins") && wp_pset.exists("values")) {
+      // BinnedWP1D case
+      std::string binned_variable = wp_pset.getParameter<std::string>("var");
 
-          std::vector<double> bin_low_edges = wp_pset.getParameter<std::vector<double>>("bins");
-          std::vector<double> values = wp_pset.getParameter<std::vector<double>>("values");
+      std::vector<double> bin_low_edges = wp_pset.getParameter<std::vector<double>>("bins");
+      std::vector<double> values = wp_pset.getParameter<std::vector<double>>("values");
 
-          // Convert values to the appropriate types
-          std::vector<id_score_t> wp_values(values.begin(), values.end());
+      // Convert values to the appropriate types
+      std::vector<id_score_t> wp_values(values.begin(), values.end());
 
-          return createWP(binned_variable, bin_low_edges, wp_values);
-      } else{//value HAS A DEFAULT OF -999
-          // SimpleWP case
-          id_score_t value = wp_pset.getParameter<double>("value");
-          return createWP(value);
-      }
+      return createWP(binned_variable, bin_low_edges, wp_values);
+    } else {  //value HAS A DEFAULT OF -999
+      // SimpleWP case
+      id_score_t value = wp_pset.getParameter<double>("value");
+      return createWP(value);
+    }
   };
   bdtScore_loose_wp = parseWP(pset.getParameter<edm::ParameterSet>("loose_wp"));
   bdtScore_tight_wp = parseWP(pset.getParameter<edm::ParameterSet>("tight_wp"));
@@ -180,7 +184,7 @@ PFTkEGAlgoEmulator::PFTkEGAlgoEmulator(const PFTkEGAlgoEmuConfig &config)
   if (cfg.algorithm == PFTkEGAlgoEmuConfig::Algo::compositeEE_v0 ||
       cfg.algorithm == PFTkEGAlgoEmuConfig::Algo::compositeEB_v0 ||
       cfg.algorithm == PFTkEGAlgoEmuConfig::Algo::compositeEE_v1 ||
-      cfg.algorithm == PFTkEGAlgoEmuConfig::Algo::compositeEB_v1 ) {
+      cfg.algorithm == PFTkEGAlgoEmuConfig::Algo::compositeEB_v1) {
 #ifdef CMSSW_GIT_HASH
     auto resolvedFileName = edm::FileInPath(cfg.compIDparams.conifer_model).fullPath();
 #else
@@ -333,7 +337,7 @@ void PFTkEGAlgoEmulator::link_emCalo2tk_composite_eb_ee(const PFRegionEmu &r,
         keep = (d_phi * d_phi) + (d_eta * d_eta) < 0.04;
       } else if (cfg.algorithm == PFTkEGAlgoEmuConfig::Algo::compositeEB_v0 ||
                  cfg.algorithm == PFTkEGAlgoEmuConfig::Algo::compositeEE_v1 ||
-                 cfg.algorithm == PFTkEGAlgoEmuConfig::Algo::compositeEB_v1 ) {
+                 cfg.algorithm == PFTkEGAlgoEmuConfig::Algo::compositeEB_v1) {
         keep = (((d_phi / dPhiMax) * (d_phi / dPhiMax)) + ((d_eta / dEtaMax) * (d_eta / dEtaMax))) < 1.;
       }
       if (keep) {
@@ -443,16 +447,16 @@ id_score_t PFTkEGAlgoEmulator::compute_composite_score_eb(CompositeCandidate &ca
 #endif
 }
 
-float scale(const float &x, const float &min_x, const int &bitshift, float inf = -1){
-  return inf + (x - min_x)/pow(2,bitshift);
+float scale(const float &x, const float &min_x, const int &bitshift, float inf = -1) {
+  return inf + (x - min_x) / pow(2, bitshift);
 }
 
 id_score_t PFTkEGAlgoEmulator::compute_composite_score_eb_v1(CompositeCandidate &cand,
-                                                          float sumTkPt,
-                                                          unsigned int nTkMatch,
-                                                          const std::vector<EmCaloObjEmu> &emcalo,
-                                                          const std::vector<TkObjEmu> &track,
-                                                          const PFTkEGAlgoEmuConfig::CompIDParameters &params) const {
+                                                             float sumTkPt,
+                                                             unsigned int nTkMatch,
+                                                             const std::vector<EmCaloObjEmu> &emcalo,
+                                                             const std::vector<TkObjEmu> &track,
+                                                             const PFTkEGAlgoEmuConfig::CompIDParameters &params) const {
 #ifdef CMSSW_GIT_HASH
   // NOTE: not yet ready for HLS testbench
   // Get the cluster/track objects that form the composite candidate
@@ -502,25 +506,23 @@ id_score_t PFTkEGAlgoEmulator::compute_composite_score_eb_v1(CompositeCandidate 
 
   // Run BDT inference
   std::vector<bdt_eb_v1_feature_t> inputs = {scaled_cl_pt,
-                                          scaled_cl_ss,
-                                          scaled_cl_relIso,
-                                          scaled_cl_staWP,
-                                          scaled_cl_looseTkWP,
-                                          scaled_tk_chi2RPhi,
-                                          scaled_tk_ptFrac,
-                                          scaled_cltk_ptRatio,
-                                          scaled_cltk_nTkMatch,
-                                          scaled_cltk_absDeta,
-                                          scaled_cltk_absDphi};
+                                             scaled_cl_ss,
+                                             scaled_cl_relIso,
+                                             scaled_cl_staWP,
+                                             scaled_cl_looseTkWP,
+                                             scaled_tk_chi2RPhi,
+                                             scaled_tk_ptFrac,
+                                             scaled_cltk_ptRatio,
+                                             scaled_cltk_nTkMatch,
+                                             scaled_cltk_absDeta,
+                                             scaled_cltk_absDphi};
   auto *composite_bdt_eb_ = static_cast<conifer::BDT<bdt_eb_v1_feature_t, bdt_eb_v1_score_t, false> *>(model_);
   std::vector<bdt_eb_v1_score_t> bdt_score = composite_bdt_eb_->decision_function(inputs);
-  return bdt_score[0]/8;  // normalize to [-1,1]
+  return bdt_score[0] / 8;  // normalize to [-1,1]
 #else
   return 0;
 #endif
 }
-
-
 
 id_score_t PFTkEGAlgoEmulator::compute_composite_score_ee(CompositeCandidate &cand,
                                                           float sumTkPt,
@@ -785,15 +787,15 @@ EGIsoEleObjEmu &PFTkEGAlgoEmulator::addEGIsoEleToPF(std::vector<EGIsoEleObjEmu> 
     //Set tight WP
     bool is_tight = false;
     //If wp is a simple wp
-    if (cfg.compIDparams.bdtScore_tight_wp->getWPtype()==l1ct::PFTkEGAlgoEmuConfig::WPtype::score_cut) {
+    if (cfg.compIDparams.bdtScore_tight_wp->getWPtype() == l1ct::PFTkEGAlgoEmuConfig::WPtype::score_cut) {
       is_tight = cfg.compIDparams.bdtScore_tight_wp->apply(bdtScore);
     }
     //If wp is a binned 1d wp
-    else if (cfg.compIDparams.bdtScore_tight_wp->getWPtype()==l1ct::PFTkEGAlgoEmuConfig::WPtype::binned_cut_1d) {
+    else if (cfg.compIDparams.bdtScore_tight_wp->getWPtype() == l1ct::PFTkEGAlgoEmuConfig::WPtype::binned_cut_1d) {
       //Which var is used for the binned cut
       std::string var_name = cfg.compIDparams.bdtScore_tight_wp->getBinnedVariableName();
       float binned_var;
-      if (var_name=="pt"){
+      if (var_name == "pt") {
         binned_var = egiso.floatPt();
       } else {
         throw std::runtime_error("Binned cut variable not recognized: " + var_name);
