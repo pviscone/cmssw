@@ -4,7 +4,6 @@
 #include "DataFormats/L1TParticleFlow/interface/layer1_emulator.h"
 #include "DataFormats/L1TParticleFlow/interface/egamma.h"
 #include "DataFormats/L1TParticleFlow/interface/pf.h"
-#include "FWCore/ParameterSet/interface/ParameterSetDescription.h"
 #include "L1Trigger/Phase2L1ParticleFlow/interface/common/inversion.h"
 
 // FIXME: back to the old way of including conifer.h
