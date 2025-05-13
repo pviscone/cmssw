@@ -65,7 +65,7 @@ void FlatRandomPtAndLxyGunProducer::produce(Event& e, const EventSetup& es) {
     double pz = pt * sinh(eta);
 
     double lxy = CLHEP::RandFlat::shoot(engine, lxyMin_, lxyMax_);
-    double theta_v = CLHEP::RandFlat::shoot(engine, -3.14, 3.14);
+    double theta_v = CLHEP::RandFlat::shoot(engine, -3.1415926, 3.1415926);
     double vx = lxy * cos(theta_v);
     double vy = lxy * sin(theta_v);
     
