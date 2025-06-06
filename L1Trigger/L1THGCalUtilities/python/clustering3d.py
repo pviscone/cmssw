@@ -1,5 +1,5 @@
 import FWCore.ParameterSet.Config as cms
-from L1Trigger.L1THGCal.hgcalBackEndLayer2Producer_cfi import distance_C3d_params, \
+from L1Trigger.L1THGCal.l1tHGCalBackEndLayer2Producer_cfi import distance_C3d_params, \
                                                               dbscan_C3d_params, \
                                                               histoMax_C3d_clustering_params, \
                                                               histoMax_C3d_seeding_params, \
@@ -18,7 +18,7 @@ from L1Trigger.L1THGCal.customHistoSeeding import set_histomax_seeding_params
 def create_distance(process, inputs,
                     distance=distance_C3d_params.dR_multicluster
                     ):
-    producer = process.hgcalBackEndLayer2Producer.clone(
+    producer = process.l1tHGCalBackEndLayer2Producer.clone(
             InputCluster = cms.InputTag(inputs)
             )
     producer.ProcessorParameters.C3d_parameters = distance_C3d_params.clone(
@@ -31,7 +31,7 @@ def create_dbscan(process, inputs,
                   distance=dbscan_C3d_params.dist_dbscan_multicluster,
                   min_points=dbscan_C3d_params.minN_dbscan_multicluster
                   ):
-    producer = process.hgcalBackEndLayer2Producer.clone(
+    producer = process.l1tHGCalBackEndLayer2Producer.clone(
             InputCluster = cms.InputTag(inputs)
             )
     producer.ProcessorParameters.C3d_parameters = dbscan_C3d_params.clone(
@@ -48,16 +48,19 @@ class CreateHistoMax(object):
             nBins_X2=histoMax_C3d_seeding_params.nBins_X2_histo_multicluster,
             binSumsHisto=histoMax_C3d_seeding_params.binSumsHisto,
             seed_threshold=histoMax_C3d_seeding_params.threshold_histo_multicluster,
+            seeds_norm_by_area=histoMax_C3d_seeding_params.seeds_norm_by_area,
             shape_threshold=histoMax_C3d_clustering_params.shape_threshold,
             shape_distance=histoMax_C3d_clustering_params.shape_distance,
             ):
         self.clustering_parameters = histoMax_C3d_clustering_params.clone()
-        self.seeding_parameters = histoMax_C3d_seeding_params.clone()
+        self.seeding_parameters = histoMax_C3d_seeding_params.clone(
+                seeds_norm_by_area=seeds_norm_by_area
+                )
         set_histomax_seeding_params(self.seeding_parameters, nBins_X1, nBins_X2, binSumsHisto, seed_threshold)
         set_histomax_clustering_params(self.clustering_parameters, distance, shape_threshold, shape_distance)
 
     def __call__(self, process, inputs):
-        producer = process.hgcalBackEndLayer2Producer.clone(
+        producer = process.l1tHGCalBackEndLayer2Producer.clone(
                 InputCluster = cms.InputTag(inputs)
                 )
         producer.ProcessorParameters.C3d_parameters.histoMax_C3d_clustering_parameters = self.clustering_parameters
@@ -72,18 +75,21 @@ class CreateHistoMaxVariableDr(object):
             nBins_X2=histoMax_C3d_seeding_params.nBins_X2_histo_multicluster,
             binSumsHisto=histoMax_C3d_seeding_params.binSumsHisto,
             seed_threshold=histoMax_C3d_seeding_params.threshold_histo_multicluster,
+            seeds_norm_by_area=histoMax_C3d_seeding_params.seeds_norm_by_area,
             shape_threshold=histoMaxVariableDR_C3d_params.shape_threshold,
             shape_distance=histoMaxVariableDR_C3d_params.shape_distance,
             ):
         self.clustering_parameters= histoMax_C3d_clustering_params.clone(
                 dR_multicluster_byLayer_coefficientA = distances
                 )
-        self.seeding_parameters = histoMax_C3d_seeding_params.clone()
+        self.seeding_parameters = histoMax_C3d_seeding_params.clone(
+                seeds_norm_by_area=seeds_norm_by_area
+                )
         set_histomax_seeding_params(self.seeding_parameters, nBins_X1, nBins_X2, binSumsHisto, seed_threshold)
         set_histomax_clustering_params(self.clustering_parameters, 0, shape_threshold, shape_distance)
 
     def __call__(self, process, inputs):
-        producer = process.hgcalBackEndLayer2Producer.clone(
+        producer = process.l1tHGCalBackEndLayer2Producer.clone(
                 InputCluster = cms.InputTag(inputs)
                 )
         producer.ProcessorParameters.C3d_parameters.histoMax_C3d_clustering_parameters = self.clustering_parameters
@@ -108,7 +114,7 @@ class CreateHistoMaxXYVariableDr(object):
         set_histomax_clustering_params(self.clustering_parameters, 0, shape_threshold, shape_distance)
 
     def __call__(self, process, inputs):
-        producer = process.hgcalBackEndLayer2Producer.clone(
+        producer = process.l1tHGCalBackEndLayer2Producer.clone(
                 InputCluster = cms.InputTag(inputs)
                 )
         producer.ProcessorParameters.C3d_parameters.histoMax_C3d_clustering_parameters = self.clustering_parameters
@@ -134,7 +140,7 @@ class CreateHistoInterpolatedMax1stOrder(object):
         set_histomax_clustering_params(self.clustering_parameters, distance, shape_threshold, shape_distance)
 
     def __call__(self, process, inputs):
-        producer = process.hgcalBackEndLayer2Producer.clone(
+        producer = process.l1tHGCalBackEndLayer2Producer.clone(
                 InputCluster = cms.InputTag(inputs)
                 )
         producer.ProcessorParameters.C3d_parameters.histoMax_C3d_seeding_parameters = self.seeding_parameters
@@ -160,7 +166,7 @@ class CreateHistoInterpolatedMax2ndOrder(object):
         set_histomax_clustering_params(self.clustering_parameters, distance, shape_threshold, shape_distance)
 
     def __call__(self, process, inputs):
-        producer = process.hgcalBackEndLayer2Producer.clone(
+        producer = process.l1tHGCalBackEndLayer2Producer.clone(
                 InputCluster = cms.InputTag(inputs)
                 )
         producer.ProcessorParameters.C3d_parameters.histoMax_C3d_seeding_parameters = self.seeding_parameters
@@ -184,7 +190,7 @@ class CreateHistoThreshold(object):
         set_histomax_clustering_params(self.clustering_parameters, distance, shape_threshold, shape_distance)
 
     def __call__(self, process, inputs):
-        producer = process.hgcalBackEndLayer2Producer.clone(
+        producer = process.l1tHGCalBackEndLayer2Producer.clone(
                 InputCluster = cms.InputTag(inputs)
                 )
         producer.ProcessorParameters.C3d_parameters.histoMax_C3d_seeding_parameters = self.seeding_parameters

@@ -1,6 +1,7 @@
 import FWCore.ParameterSet.Config as cms
+from Configuration.StandardSequences.Eras import eras
 
-process = cms.Process("DTVDriftWriter")
+process = cms.Process("DTVDriftWriter",eras.Run3)
 
 process.load("CalibMuon.DTCalibration.messageLoggerDebug_cff")
 process.MessageLogger.debugModules = cms.untracked.vstring('dtVDriftMeanTimerWriter')
@@ -8,7 +9,8 @@ process.MessageLogger.debugModules = cms.untracked.vstring('dtVDriftMeanTimerWri
 process.load("Configuration.StandardSequences.GeometryDB_cff")
 process.load("Configuration.StandardSequences.MagneticField_AutoFromDBCurrent_cff")
 process.load("Configuration.StandardSequences.FrontierConditions_GlobalTag_cff")
-process.GlobalTag.globaltag = ''
+from Configuration.AlCa.autoCond import autoCond
+process.GlobalTag.globaltag=autoCond['run3_data']
 
 process.load("CondCore.CondDB.CondDB_cfi")
 

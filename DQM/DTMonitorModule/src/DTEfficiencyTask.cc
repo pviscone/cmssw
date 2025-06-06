@@ -34,9 +34,10 @@ DTEfficiencyTask::DTEfficiencyTask(const ParameterSet& pset)
     : muonGeomToken_(esConsumes<edm::Transition::BeginRun>()), dtGeomToken_(esConsumes()) {
   debug = pset.getUntrackedParameter<bool>("debug", false);
   // the name of the 4D rec hits collection
-  recHits4DToken_ = consumes<DTRecSegment4DCollection>(edm::InputTag(pset.getParameter<string>("recHits4DLabel")));
+  recHits4DToken_ =
+      consumes<DTRecSegment4DCollection>(edm::InputTag(pset.getUntrackedParameter<string>("recHits4DLabel")));
   // the name of the rechits collection
-  recHitToken_ = consumes<DTRecHitCollection>(edm::InputTag(pset.getParameter<string>("recHitLabel")));
+  recHitToken_ = consumes<DTRecHitCollection>(edm::InputTag(pset.getUntrackedParameter<string>("recHitLabel")));
 
   parameters = pset;
 }
@@ -125,8 +126,8 @@ void DTEfficiencyTask::bookHistograms(DQMStore::IBooker& ibooker,
         histosPerL[layerId] = histos;
 
       }  // layer
-    }    // superlayer
-  }      // chambers
+    }  // superlayer
+  }  // chambers
 }
 
 void DTEfficiencyTask::beginLuminosityBlock(LuminosityBlock const& lumiSeg, EventSetup const& context) {
@@ -401,7 +402,7 @@ void DTEfficiencyTask::analyze(const edm::Event& event, const edm::EventSetup& s
       }
 
     }  // End of loop over the 4D segments inside a sigle chamber
-  }    // End of loop over all tha chamber with at least a 4D segment in the event
+  }  // End of loop over all tha chamber with at least a 4D segment in the event
 }
 
 // Fill a set of histograms for a given Layer

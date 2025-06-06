@@ -1,9 +1,10 @@
 import FWCore.ParameterSet.Config as cms
 
-from Configuration.Eras.Era_Phase2C17I13M9_cff import Phase2C17I13M9
+import Configuration.Geometry.defaultPhase2ConditionsEra_cff as _settings
+_PH2_GLOBAL_TAG, _PH2_ERA = _settings.get_era_and_conditions(_settings.DEFAULT_VERSION)
 from Configuration.ProcessModifiers.dd4hep_cff import dd4hep
 
-process = cms.Process("CompareGeometryTest",Phase2C17I13M9,dd4hep)
+process = cms.Process("CompareGeometryTest",_PH2_ERA,dd4hep)
 
 process.source = cms.Source("EmptySource")
 process.maxEvents = cms.untracked.PSet(
@@ -16,16 +17,20 @@ process.MessageLogger.cerr.INFO = cms.untracked.PSet(
     limit = cms.untracked.int32(0)
 )
 process.MessageLogger.cerr.DD4hep_TestMTDIdealGeometry = cms.untracked.PSet(
-    limit = cms.untracked.int32(-1)
+    # limit = cms.untracked.int32(-1)
+    limit = cms.untracked.int32(0)
 )
 process.MessageLogger.cerr.DD4hep_TestMTDNumbering = cms.untracked.PSet(
-    limit = cms.untracked.int32(-1)
+    # limit = cms.untracked.int32(-1)
+    limit = cms.untracked.int32(0)
 )
 process.MessageLogger.cerr.DD4hep_TestMTDPath = cms.untracked.PSet(
-    limit = cms.untracked.int32(-1)
+    # limit = cms.untracked.int32(-1)
+    limit = cms.untracked.int32(0)
 )
 process.MessageLogger.cerr.DD4hep_TestMTDPosition = cms.untracked.PSet(
-    limit = cms.untracked.int32(-1)
+    # limit = cms.untracked.int32(-1)
+    limit = cms.untracked.int32(0)
 )
 process.MessageLogger.files.mtdCommonDataDD4hep = cms.untracked.PSet(
     DEBUG = cms.untracked.PSet(
@@ -50,23 +55,16 @@ process.MessageLogger.files.mtdCommonDataDD4hep = cms.untracked.PSet(
     threshold = cms.untracked.string('INFO')
 )
 
-process.load('Configuration.Geometry.GeometryDD4hep_cff')
-process.DDDetectorESProducer.confGeomXMLFiles = cms.FileInPath("Geometry/CMSCommonData/data/dd4hep/cmsExtendedGeometry2026D88.xml")
-
-process.DDSpecParRegistryESProducer = cms.ESProducer("DDSpecParRegistryESProducer",
-                                                     appendToDataLabel = cms.string('')
-)
+process.load('Configuration.Geometry.GeometryDD4hepExtendedRun4Default_cff')
 
 process.testBTL = cms.EDAnalyzer("DD4hep_TestMTDIdealGeometry",
                                  DDDetector = cms.ESInputTag('',''),
-                                 ddTopNodeName = cms.untracked.string('BarrelTimingLayer'),
-                                 theLayout = cms.untracked.uint32(4)
+                                 ddTopNodeName = cms.untracked.string('BarrelTimingLayer')
                                 )
 
 process.testETL = cms.EDAnalyzer("DD4hep_TestMTDIdealGeometry",
                                  DDDetector = cms.ESInputTag('',''),
-                                 ddTopNodeName = cms.untracked.string('EndcapTimingLayer'),
-                                 theLayout = cms.untracked.uint32(4)
+                                 ddTopNodeName = cms.untracked.string('EndcapTimingLayer')
                                 )
 
 process.Timing = cms.Service("Timing")

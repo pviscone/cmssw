@@ -14,13 +14,13 @@ class OMTFConfiguration;
 class GoldenPatternWithStat : public GoldenPatternWithThresh {
 public:
   static const unsigned int STAT_BINS = 1;  //TODO change value if needed
-  typedef boost::multi_array<float, 4> StatArrayType;
+  typedef boost::multi_array<int, 4> StatArrayType;
 
   GoldenPatternWithStat(const Key& aKey, unsigned int nLayers, unsigned int nRefLayers, unsigned int nPdfAddrBits);
 
   GoldenPatternWithStat(const Key& aKey, const OMTFConfiguration* omtfConfig);
 
-  ~GoldenPatternWithStat() override{};
+  ~GoldenPatternWithStat() override {}
 
   virtual void updateStat(
       unsigned int iLayer, unsigned int iRefLayer, unsigned int iBin, unsigned int what, double value);

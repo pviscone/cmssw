@@ -7,6 +7,7 @@ import FWCore.ParameterSet.Config as cms
 #HLTsiStripClusters.SiStripRefGetter  = cms.InputTag("hltSiStripClusters")
 
 # SiStripCluster monitoring
+from RecoLocalTracker.SiPixelRecHits.SiPixelTemplateStoreESProducer_cfi import SiPixelTemplateStoreESProducer
 import DQM.SiStripMonitorCluster.SiStripMonitorCluster_cfi
 HLTSiStripMonitorCluster = DQM.SiStripMonitorCluster.SiStripMonitorCluster_cfi.SiStripMonitorCluster.clone(
     ClusterProducerStrip = "hltSiStripRawToClustersFacility",
@@ -15,6 +16,12 @@ HLTSiStripMonitorCluster = DQM.SiStripMonitorCluster.SiStripMonitorCluster_cfi.S
     ClusterHisto         = True,
     Mod_On               = False
 )
+
+from Configuration.Eras.Modifier_pp_on_PbPb_run3_cff import pp_on_PbPb_run3
+pp_on_PbPb_run3.toModify(HLTSiStripMonitorCluster,
+                         ClusterProducerStrip = "hltHITrackingSiStripRawToClustersFacilityFullZeroSuppression",
+                         ClusterProducerPix   = "hltSiPixelClustersAfterSplittingPPOnAA")
+
 HLTSiStripMonitorCluster.TH1TotalNumberOfClusters.subdetswitchon   = cms.bool(True)
 HLTSiStripMonitorCluster.TProfClustersApvCycle.subdetswitchon      = cms.bool(False)
 HLTSiStripMonitorCluster.TProfTotalNumberOfClusters.subdetswitchon = cms.bool(True)
@@ -25,29 +32,52 @@ HLTSiStripMonitorCluster.TH1StripNoise2ApvCycle.globalswitchon  = cms.bool(False
 HLTSiStripMonitorCluster.TH1StripNoise3ApvCycle.globalswitchon  = cms.bool(False)
 
 HLTSiStripMonitorCluster.BPTXfilter = cms.PSet(
-        andOr         = cms.bool( False ),
-            dbLabel       = cms.string("SiStripDQMTrigger"),
-            l1Algorithms = cms.vstring( 'L1Tech_BPTX_plus_AND_minus.v0', 'L1_ZeroBias' ),
-            andOrL1       = cms.bool( True ),
-            errorReplyL1  = cms.bool( True ),
-            l1BeforeMask  = cms.bool( True ) # specifies, if the L1 algorithm decision should be read as before (true) or after (false) masking is applied.
-        )
+    andOr         = cms.bool( False ),
+    dbLabel       = cms.string("SiStripDQMTrigger"),
+    l1Algorithms = cms.vstring( 'L1Tech_BPTX_plus_AND_minus.v0', 'L1_ZeroBias' ),
+    andOrL1       = cms.bool( True ),
+    errorReplyL1  = cms.bool( True ),
+    l1BeforeMask  = cms.bool( True ) # specifies, if the L1 algorithm decision should be read as before (true) or after (false) masking is applied.
+)
 HLTSiStripMonitorCluster.PixelDCSfilter = cms.PSet(
-        andOr         = cms.bool( False ),
-            dcsInputTag   = cms.InputTag( "scalersRawToDigi" ),
-            dcsRecordInputTag = cms.InputTag("onlineMetaDataDigis"),
-            dcsPartitions = cms.vint32 ( 28, 29),
-            andOrDcs      = cms.bool( False ),
-            errorReplyDcs = cms.bool( True ),
-        )
+    andOr         = cms.bool( False ),
+    dcsInputTag   = cms.InputTag( "scalersRawToDigi" ),
+    dcsRecordInputTag = cms.InputTag("onlineMetaDataDigis"),
+    dcsPartitions = cms.vint32 ( 28, 29),
+    andOrDcs      = cms.bool( False ),
+    errorReplyDcs = cms.bool( True ),
+)
 HLTSiStripMonitorCluster.StripDCSfilter = cms.PSet(
-        andOr         = cms.bool( False ),
-            dcsInputTag   = cms.InputTag( "scalersRawToDigi" ),
-            dcsRecordInputTag = cms.InputTag("onlineMetaDataDigis"),
-            dcsPartitions = cms.vint32 ( 24, 25, 26, 27 ),
-            andOrDcs      = cms.bool( False ),
-            errorReplyDcs = cms.bool( True ),
-        )
+    andOr         = cms.bool( False ),
+    dcsInputTag   = cms.InputTag( "scalersRawToDigi" ),
+    dcsRecordInputTag = cms.InputTag("onlineMetaDataDigis"),
+    dcsPartitions = cms.vint32 ( 24, 25, 26, 27 ),
+    andOrDcs      = cms.bool( False ),
+    errorReplyDcs = cms.bool( True ),
+)
+
+from Configuration.Eras.Modifier_stage2L1Trigger_cff import stage2L1Trigger
+stage2L1Trigger.toModify(HLTSiStripMonitorCluster, 
+                        BPTXfilter = dict(
+                             stage2 = cms.bool(True),
+                             l1tAlgBlkInputTag = cms.InputTag("gtStage2Digis"),
+                             l1tExtBlkInputTag = cms.InputTag("gtStage2Digis"),
+                             ReadPrescalesFromFile = cms.bool(False)
+                         ),
+                         PixelDCSfilter = dict(
+                             stage2 = cms.bool(True),
+                             l1tAlgBlkInputTag = cms.InputTag("gtStage2Digis"),
+                             l1tExtBlkInputTag = cms.InputTag("gtStage2Digis"),
+                             ReadPrescalesFromFile = cms.bool(False)
+                         ),
+                         StripDCSfilter = dict(
+                             stage2 = cms.bool(True),
+                             l1tAlgBlkInputTag = cms.InputTag("gtStage2Digis"),
+                             l1tExtBlkInputTag = cms.InputTag("gtStage2Digis"),
+                             ReadPrescalesFromFile = cms.bool(False)
+                         )
+                         )
+
 HLTSiStripMonitorCluster.TH2CStripVsCpixel = cms.PSet(
         Nbinsx = cms.int32(200),
         xmin   = cms.double(-0.5),
@@ -67,6 +97,7 @@ HLTSiStripMonitorCluster.TH1NClusStrip = cms.PSet(
         xmax = cms.double(99999.5),
         xmin = cms.double(-0.5)
     )
+
 hltESPPixelCPETemplateReco = cms.ESProducer( "PixelCPETemplateRecoESProducer",
   LoadTemplatesFromDB = cms.bool( True ),
   ComponentName = cms.string( "hltESPPixelCPETemplateReco" ),
@@ -143,6 +174,10 @@ hltTrackRefitterForSiStripMonitorTrack = TrackRefitter.clone(
     #TTRHBuilder             = 'hltESPTTRHBuilderAngleAndTemplate',
     TTRHBuilder             = 'hltESPTTRHBWithTrackAngle'
 )
+
+pp_on_PbPb_run3.toModify(hltTrackRefitterForSiStripMonitorTrack,
+                         src = 'hltMergedTracksPPOnAA')
+
 import DQM.SiStripMonitorTrack.SiStripMonitorTrack_cfi
 HLTSiStripMonitorTrack = DQM.SiStripMonitorTrack.SiStripMonitorTrack_cfi.SiStripMonitorTrack.clone(
     TrackProducer     = 'hltTrackRefitterForSiStripMonitorTrack',
@@ -153,6 +188,10 @@ HLTSiStripMonitorTrack = DQM.SiStripMonitorTrack.SiStripMonitorTrack_cfi.SiStrip
     TopFolderName     = 'HLT/SiStrip',
     Mod_On            = False
 )
+
+pp_on_PbPb_run3.toModify(HLTSiStripMonitorTrack,
+                         Cluster_src       = 'hltHITrackingSiStripRawToClustersFacilityFullZeroSuppression')
+
 sistripMonitorHLTsequence = cms.Sequence(
     HLTSiStripMonitorCluster
     * hltTrackRefitterForSiStripMonitorTrack

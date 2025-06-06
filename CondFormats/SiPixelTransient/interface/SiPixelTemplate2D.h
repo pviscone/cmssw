@@ -100,10 +100,24 @@ struct SiPixelTemplateHeader2D {  //!< template header structure
 };
 
 struct SiPixelTemplateStore2D {  //!< template storage structure
+
+  void resize(int ny, int nx) {
+    entry.resize(ny);
+    store.resize(nx * ny);
+    int off = 0;
+    for (int i = 0; i < ny; ++i) {
+      entry[i] = store.data() + off;
+      off += nx;
+    }
+    assert(nx * ny == off);
+  }
+
   SiPixelTemplateHeader2D head;  //!< Header information
 
-  //!< use 2d entry to store BPix and FPix entries [dynamically allocated]
-  std::vector<std::vector<SiPixelTemplateEntry2D>> entry;
+  //!< use 2d entry to store BPix and FPix entries [dynamically allocated
+  std::vector<SiPixelTemplateEntry2D*> entry;
+
+  std::vector<SiPixelTemplateEntry2D> store;
 };
 
 // ******************************************************************************************
@@ -239,7 +253,7 @@ public:
     } else {
       return 0.f;
     }
-  }                                           //!< Return lower bound of Qbin definition
+  }  //!< Return lower bound of Qbin definition
   float sizex() { return clslenx_; }          //!< return x size of template cluster
   float sizey() { return clsleny_; }          //!< return y size of template cluster
   float chi2ppix() { return chi2ppix_; }      //!< average chi^2 per struck pixel

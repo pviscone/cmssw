@@ -1,5 +1,5 @@
-<use name="CondFormats/SiPhase2TrackerObjects"/>
 <use name="L1Trigger/TrackTrigger"/>
+<use name="SimDataFormats/Associations"/>
 <export>
   <lib name="1"/>
 </export>

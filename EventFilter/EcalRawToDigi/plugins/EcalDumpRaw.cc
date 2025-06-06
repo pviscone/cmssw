@@ -49,8 +49,8 @@ const int EcalDumpRaw::ttId_[nTccTypes_][maxTpgsPerTcc_] = {
      0,  0,  0,  0,  0,  0, 0, 0, 0, 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0},
 
     //outer EE
-    {1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 11, 12, 13, 14, 15, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0, 0, 0, 0, 0}};
+    {1, 2, 3, 4, 5, 6, 7, 8, 0, 0, 0, 0, 0, 0, 0, 0, 9, 10, 11, 12, 13, 14, 15, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0, 0, 0, 0, 0}};
 
 using namespace std;
 
@@ -598,7 +598,7 @@ bool EcalDumpRaw::decode(const uint32_t* data, int iWord64, ostream& out) {
               << tpg_[iTcc_ - 1][0 + tpgOffset];
       }
     }  // else{
-       // if(d) out << "ERROR";
+    // if(d) out << "ERROR";
     //}
     ++iTccWord64_;
     if (iTccWord64_ >= (unsigned)tccBlockLen64_)

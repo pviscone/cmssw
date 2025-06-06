@@ -16,8 +16,6 @@
 #include "DataFormats/Math/interface/deltaR.h"
 #include "DataFormats/JetReco/interface/BasicJet.h"
 #include "DataFormats/Candidate/interface/CompositeCandidate.h"
-#include "CommonTools/CandUtils/interface/AddFourMomenta.h"
-#include "DataFormats/Candidate/interface/CandMatchMap.h"
 #include "DataFormats/HLTReco/interface/TriggerTypeDefs.h"
 #include "HLTrigger/HLTcore/interface/HLTFilter.h"
 #include "FWCore/ParameterSet/interface/ConfigurationDescriptions.h"
@@ -100,8 +98,8 @@ inline reco::CATopJetProperties CATopJetHelperUser::operator()(reco::Jet const& 
           properties.minMass = imw;
         }
       }  // end second loop over subjets
-    }    // end first loop over subjets
-  }      // endif 3 subjets
+    }  // end first loop over subjets
+  }  // endif 3 subjets
 
   if (properties.minMass == 999999)
     properties.minMass = -1;

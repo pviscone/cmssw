@@ -34,8 +34,8 @@ process.load("DQM.Integration.config.environment_cfi")
 process.dqmEnv.subSystemFolder = 'L1TEMU'
 process.dqmSaver.tag = 'L1TEMU'
 process.dqmSaver.runNumber = options.runNumber
-process.dqmSaverPB.tag = 'L1TEMU'
-process.dqmSaverPB.runNumber = options.runNumber
+# process.dqmSaverPB.tag = 'L1TEMU'
+# process.dqmSaverPB.runNumber = options.runNumber
 #
 # no references needed
 
@@ -45,7 +45,7 @@ process.load("DQM.Integration.config.FrontierCondition_GT_cfi")
 process.GlobalTag.RefreshEachRun = True
 # Condition for lxplus: change and possibly customise the GT
 #from Configuration.AlCa.GlobalTag import GlobalTag as gtCustomise
-#process.GlobalTag = gtCustomise(process.GlobalTag, 'auto:run2_data', '')
+#process.GlobalTag = gtCustomise(process.GlobalTag, 'auto:run3_data', '')
 
 #process.load("Configuration.StandardSequences.GeometryRecoDB_cff")
 
@@ -94,7 +94,7 @@ else:
 process.l1EmulatorMonitorClientPath = cms.Path(process.l1EmulatorMonitorClient)
 
 #
-process.l1EmulatorMonitorEndPath = cms.EndPath(process.dqmEnv*process.dqmSaver*process.dqmSaverPB)
+process.l1EmulatorMonitorEndPath = cms.EndPath(process.dqmEnv*process.dqmSaver)#*process.dqmSaverPB)
 
 #
 process.valCscTriggerPrimitiveDigis.gangedME1a = False
@@ -186,7 +186,7 @@ print("Running with run type = ", process.runType.getRunType())
 process.castorDigis.InputLabel = "rawDataCollector"
 process.csctfDigis.producer = "rawDataCollector"
 process.dttfDigis.DTTF_FED_Source = "rawDataCollector"
-process.ecalDigis.cpu.InputLabel = "rawDataCollector"
+process.ecalDigisCPU.InputLabel = "rawDataCollector"
 process.ecalPreshowerDigis.sourceTag = "rawDataCollector"
 process.gctDigis.inputLabel = "rawDataCollector"
 process.gtDigis.DaqGtInputTag = "rawDataCollector"
@@ -208,7 +208,7 @@ if (process.runType.getRunType() == process.runType.hi_run):
     process.castorDigis.InputLabel = "rawDataRepacker"
     process.csctfDigis.producer = "rawDataRepacker"
     process.dttfDigis.DTTF_FED_Source = "rawDataRepacker"
-    process.ecalDigis.cpu.InputLabel = "rawDataRepacker"
+    process.ecalDigisCPU.InputLabel = "rawDataRepacker"
     process.ecalPreshowerDigis.sourceTag = "rawDataRepacker"
     process.gctDigis.inputLabel = "rawDataRepacker"
     process.gtDigis.DaqGtInputTag = "rawDataRepacker"

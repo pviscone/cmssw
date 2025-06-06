@@ -12,9 +12,7 @@ class TICLLayerTileT {
 public:
   typedef T type;
 
-  void fill(double eta, double phi, unsigned int layerClusterId) {
-    tile_[globalBin(eta, phi)].push_back(layerClusterId);
-  }
+  void fill(float eta, float phi, unsigned int layerClusterId) { tile_[globalBin(eta, phi)].push_back(layerClusterId); }
 
   int etaBin(float eta) const {
     constexpr float etaRange = T::maxEta - T::minEta;
@@ -34,10 +32,21 @@ public:
   }
 
   std::array<int, 4> searchBoxEtaPhi(float etaMin, float etaMax, float phiMin, float phiMax) const {
+    // The tile only handles one endcap at a time and does not hold mixed eta
+    // values.
+    if (etaMin * etaMax < 0) {
+      return std::array<int, 4>({{0, 0, 0, 0}});
+    }
+    if (etaMax - etaMin < 0) {
+      return std::array<int, 4>({{0, 0, 0, 0}});
+    }
     int etaBinMin = etaBin(etaMin);
     int etaBinMax = etaBin(etaMax);
     int phiBinMin = phiBin(phiMin);
     int phiBinMax = phiBin(phiMax);
+    if (etaMin < 0) {
+      std::swap(etaBinMin, etaBinMax);
+    }
     // If the search window cross the phi-bin boundary, add T::nPhiBins to the
     // MAx value. This guarantees that the caller can perform a valid doule
     // loop on eta and phi. It is the caller responsibility to perform a module
@@ -51,7 +60,7 @@ public:
 
   int globalBin(int etaBin, int phiBin) const { return phiBin + etaBin * T::nPhiBins; }
 
-  int globalBin(double eta, double phi) const { return phiBin(phi) + etaBin(eta) * T::nPhiBins; }
+  int globalBin(float eta, float phi) const { return phiBin(phi) + etaBin(eta) * T::nPhiBins; }
 
   void clear() {
     auto nBins = T::nEtaBins * T::nPhiBins;
@@ -85,7 +94,7 @@ public:
   // numbering is not handled internally. It is the user's responsibility to
   // properly use and consistently access it here.
   const auto& operator[](int index) const { return tiles_[index]; }
-  void fill(int index, double eta, double phi, unsigned int objectId) { tiles_[index].fill(eta, phi, objectId); }
+  void fill(int index, float eta, float phi, unsigned int objectId) { tiles_[index].fill(eta, phi, objectId); }
 
 private:
   T tiles_;

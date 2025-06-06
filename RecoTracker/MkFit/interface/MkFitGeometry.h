@@ -25,11 +25,14 @@ public:
   explicit MkFitGeometry(const TrackerGeometry& geom,
                          const GeometricSearchTracker& tracker,
                          const TrackerTopology& ttopo,
-                         std::unique_ptr<mkfit::TrackerInfo> trackerInfo);
+                         std::unique_ptr<mkfit::TrackerInfo> trackerInfo,
+                         const mkfit::LayerNumberConverter& layNConv);
   ~MkFitGeometry();
 
   int mkFitLayerNumber(DetId detId) const;
   mkfit::LayerNumberConverter const& layerNumberConverter() const { return *lnc_; }
+  bool isPhase1() const;
+  bool isPhase2() const;
   mkfit::TrackerInfo const& trackerInfo() const { return *trackerInfo_; }
   const std::vector<const DetLayer*>& detLayers() const { return dets_; }
   unsigned int uniqueIdInLayer(int layer, unsigned int detId) const {

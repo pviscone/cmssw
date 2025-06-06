@@ -9,8 +9,8 @@ process.load('SimGeneral.HepPDTESSource.pythiapdt_cfi')
 process.load('FWCore.MessageService.MessageLogger_cfi')
 process.load('Configuration.EventContent.EventContent_cff')
 process.load('SimGeneral.MixingModule.mixNoPU_cfi')
-process.load('Configuration.Geometry.GeometryExtended2026D60Reco_cff')
-process.load('Configuration.Geometry.GeometryExtended2026D60_cff')
+process.load('Configuration.Geometry.GeometryExtendedRun4D60Reco_cff')
+process.load('Configuration.Geometry.GeometryExtendedRun4D60_cff')
 process.load('Configuration.StandardSequences.MagneticField_cff')
 process.load('Configuration.StandardSequences.Generator_cff')
 process.load('IOMC.EventVertexGenerators.VtxSmearedHLLHC14TeV_cfi')
@@ -68,10 +68,10 @@ process.FEVTDEBUGoutput = cms.OutputModule("PoolOutputModule",
     outputCommands = cms.untracked.vstring(
         'keep *_genParticles_*_*',
         'keep *_caloParticles_*_*',
-        'keep *_*hgcalBackEndLayer1Producer*_*_*',
-        'keep *_*hgcalBackEndLayer2Producer*_*_*',
-        'keep *_*hgcalTowerMapProducer*_*_*',
-        'keep *_*hgcalTowerProducer*_*_*'
+        'keep *_*l1tHGCalBackEndLayer1Producer*_*_*',
+        'keep *_*l1tHGCalBackEndLayer2Producer*_*_*',
+        'keep *_*l1tHGCalTowerMapProducer*_*_*',
+        'keep *_*l1tHGCalTowerProducer*_*_*'
     ),
 
     fileName = cms.untracked.string('file:/tmp/dalfonso/test.root')
@@ -133,14 +133,14 @@ process.load('L1Trigger.L1THGCal.hgcalTriggerPrimitives_cff')
 from L1Trigger.L1THGCal.customTriggerGeometry import custom_geometry_decentralized_V11
 process = custom_geometry_decentralized_V11(process)
 
-process.hgcaltriggergeomtester = cms.EDAnalyzer(
+process.L1THGCaltriggergeomtester = cms.EDAnalyzer(
     "HGCalTriggerGeomTesterV9Imp2"
     )
-process.test_step = cms.Path(process.hgcaltriggergeomtester)
+process.test_step = cms.Path(process.L1THGCaltriggergeomtester)
 
 
 ## to test the full TP
-process.hgcl1tpg_step = cms.Path(process.hgcalTriggerPrimitives)
+process.hgcl1tpg_step = cms.Path(process.L1THGCalTriggerPrimitives)
 
 # Schedule definition
 # test_step

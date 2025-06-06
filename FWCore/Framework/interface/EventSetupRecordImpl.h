@@ -1,6 +1,6 @@
+// -*- C++ -*-
 #ifndef FWCore_Framework_EventSetupRecordImpl_h
 #define FWCore_Framework_EventSetupRecordImpl_h
-// -*- C++ -*-
 //
 // Package:     Framework
 // Class  :     EventSetupRecordImpl
@@ -10,17 +10,17 @@
  Description: Base class for all Records in an EventSetup.  Holds data with the same lifetime.
 
  Usage:
-This class contains the Proxies that make up a given Record.  It
+This class contains the Resolvers that make up a given Record.  It
 is designed to be reused time after time, rather than it being
 destroyed and a new one created every time a new Record is
-required.  Proxies can only be added by the EventSetupRecordProvider class which
+required.  Resolvers can only be added by the EventSetupRecordProvider class which
 uses the 'add' function to do this.
 
-When the set of  Proxies for a Records changes, i.e. a
-DataProxyProvider is added of removed from the system, then the
-Proxies in a Record need to be changed as appropriate.
+When the set of  Resolvers for a Records changes, i.e. a
+ESProductResolverProvider is added of removed from the system, then the
+Resolvers in a Record need to be changed as appropriate.
 In this design it was decided the easiest way to achieve this was
-to erase all Proxies in a Record.
+to erase all Resolvers in a Record.
 
 It is important for the management of the Records that each Record
 know the ValidityInterval that represents the time over which its data is valid.
@@ -37,21 +37,15 @@ through the 'validityInterval' method.
 // user include files
 #include "FWCore/Framework/interface/FunctorESHandleExceptionFactory.h"
 #include "FWCore/Framework/interface/DataKey.h"
-#include "FWCore/Framework/interface/NoProxyException.h"
 #include "FWCore/Framework/interface/ValidityInterval.h"
 #include "FWCore/Framework/interface/EventSetupRecordKey.h"
 #include "FWCore/Concurrency/interface/WaitingTaskHolder.h"
 #include "FWCore/Utilities/interface/thread_safety_macros.h"
-#include "FWCore/ServiceRegistry/interface/ESParentContext.h"
 #include "FWCore/Utilities/interface/propagate_const.h"
-#include "FWCore/Utilities/interface/ESInputTag.h"
 #include "FWCore/Utilities/interface/ESIndices.h"
 
 // system include files
-#include <exception>
-#include <map>
 #include <memory>
-#include <utility>
 #include <vector>
 #include <atomic>
 #include <cassert>
@@ -65,14 +59,13 @@ namespace edm {
 
   class ActivityRegistry;
   class ESHandleExceptionFactory;
-  class ESInputTag;
   class EventSetupImpl;
   class ServiceToken;
   class ESParentContext;
 
   namespace eventsetup {
     struct ComponentDescription;
-    class DataProxy;
+    class ESProductResolver;
 
     class EventSetupRecordImpl {
       friend class EventSetupRecord;
@@ -88,10 +81,10 @@ namespace edm {
 
       ///prefetch the data to setup for subsequent calls to getImplementation
       void prefetchAsync(WaitingTaskHolder iTask,
-                         ESProxyIndex iProxyIndex,
+                         ESResolverIndex iResolverIndex,
                          EventSetupImpl const*,
                          ServiceToken const&,
-                         ESParentContext) const;
+                         ESParentContext) const noexcept;
 
       /**returns true only if someone has already requested data for this key
           and the data was retrieved
@@ -126,13 +119,13 @@ namespace edm {
       std::vector<ComponentDescription const*> componentsForRegisteredDataKeys() const;
 
       // The following member functions should only be used by EventSetupRecordProvider
-      bool add(DataKey const& iKey, DataProxy* iProxy);
-      void clearProxies();
+      bool add(DataKey const& iKey, ESProductResolver* iResolver);
+      void clearResolvers();
 
       ///Set the cache identifier and validity interval when starting a new IOV
-      ///In addition, also notify the DataProxy's a new IOV is starting.
-      ///(As a performance optimization, we only notify the DataProxy's if hasFinder
-      ///is true. At the current time, the CondDBESSource DataProxy's are the only
+      ///In addition, also notify the ESProductResolver's a new IOV is starting.
+      ///(As a performance optimization, we only notify the ESProductResolver's if hasFinder
+      ///is true. At the current time, the CondDBESSource ESProductResolver's are the only
       ///ones who need to know about this and they always have finders).
       void initializeForNewIOV(unsigned long long iCacheIdentifier, ValidityInterval const&, bool hasFinder);
 
@@ -145,9 +138,7 @@ namespace edm {
 
       void getESProducers(std::vector<ComponentDescription const*>& esproducers) const;
 
-      DataProxy const* find(DataKey const& aKey) const;
-
-      void validate(ComponentDescription const*, ESInputTag const&) const;
+      ESProductResolver const* find(DataKey const& aKey) const;
 
       ActivityRegistry const* activityRegistry() const noexcept { return activityRegistry_; }
 
@@ -156,73 +147,25 @@ namespace edm {
                                       ComponentDescription const*,
                                       DataKey const&) const;
 
-      void invalidateProxies();
-      void resetIfTransientInProxies();
+      void invalidateResolvers();
+      void resetIfTransientInResolvers();
 
     private:
-      void const* getFromProxy(DataKey const& iKey,
-                               ComponentDescription const*& iDesc,
-                               bool iTransientAccessOnly,
-                               ESParentContext const&,
-                               EventSetupImpl const* = nullptr) const;
-
-      void const* getFromProxy(ESProxyIndex iProxyIndex,
-                               bool iTransientAccessOnly,
-                               ComponentDescription const*& iDesc,
-                               DataKey const*& oGottenKey,
-                               ESParentContext const&,
-                               EventSetupImpl const* = nullptr) const;
-
-      void const* getFromProxyAfterPrefetch(ESProxyIndex iProxyIndex,
-                                            bool iTransientAccessOnly,
-                                            ComponentDescription const*& iDesc,
-                                            DataKey const*& oGottenKey) const;
+      void const* getFromResolverAfterPrefetch(ESResolverIndex iResolverIndex,
+                                               bool iTransientAccessOnly,
+                                               ComponentDescription const*& iDesc,
+                                               DataKey const*& oGottenKey) const;
 
       template <typename DataT>
       void getImplementation(DataT const*& iData,
-                             char const* iName,
-                             ComponentDescription const*& iDesc,
-                             bool iTransientAccessOnly,
-                             std::shared_ptr<ESHandleExceptionFactory>& whyFailedFactory,
-                             ESParentContext const& iParent,
-                             EventSetupImpl const* iEventSetupImpl) const {
-        DataKey dataKey(DataKey::makeTypeTag<DataT>(), iName, DataKey::kDoNotCopyMemory);
-
-        void const* pValue = this->getFromProxy(dataKey, iDesc, iTransientAccessOnly, iParent, iEventSetupImpl);
-        if (nullptr == pValue) {
-          whyFailedFactory = makeESHandleExceptionFactory([=] {
-            NoProxyException<DataT> ex(this->key(), dataKey);
-            return std::make_exception_ptr(ex);
-          });
-        }
-        iData = reinterpret_cast<DataT const*>(pValue);
-      }
-
-      template <typename DataT>
-      void getImplementation(DataT const*& iData,
-                             ESProxyIndex iProxyIndex,
+                             ESResolverIndex iResolverIndex,
                              bool iTransientAccessOnly,
                              ComponentDescription const*& oDesc,
-                             std::shared_ptr<ESHandleExceptionFactory>& whyFailedFactory,
-                             EventSetupImpl const* iEventSetupImpl) const {
+                             std::shared_ptr<ESHandleExceptionFactory>& whyFailedFactory) const {
         DataKey const* dataKey = nullptr;
-        if (iProxyIndex.value() == std::numeric_limits<int>::max()) {
-          whyFailedFactory = makeESHandleExceptionFactory([=] {
-            NoProxyException<DataT> ex(this->key(), {});
-            return std::make_exception_ptr(ex);
-          });
-          iData = nullptr;
-          return;
-        }
-        assert(iProxyIndex.value() > -1 and
-               iProxyIndex.value() < static_cast<ESProxyIndex::Value_t>(keysForProxies_.size()));
-        void const* pValue = this->getFromProxyAfterPrefetch(iProxyIndex, iTransientAccessOnly, oDesc, dataKey);
-        if (nullptr == pValue) {
-          whyFailedFactory = makeESHandleExceptionFactory([=] {
-            NoProxyException<DataT> ex(this->key(), *dataKey);
-            return std::make_exception_ptr(ex);
-          });
-        }
+        assert(iResolverIndex.value() > -1 and
+               iResolverIndex.value() < static_cast<ESResolverIndex::Value_t>(keysForResolvers_.size()));
+        void const* pValue = this->getFromResolverAfterPrefetch(iResolverIndex, iTransientAccessOnly, oDesc, dataKey);
         iData = reinterpret_cast<DataT const*>(pValue);
       }
 
@@ -238,8 +181,8 @@ namespace edm {
       CMS_THREAD_SAFE mutable ValidityInterval validity_;
 
       EventSetupRecordKey key_;
-      std::vector<DataKey> keysForProxies_;
-      std::vector<edm::propagate_const<DataProxy*>> proxies_;
+      std::vector<DataKey> keysForResolvers_;
+      std::vector<edm::propagate_const<ESProductResolver*>> resolvers_;
       ActivityRegistry const* activityRegistry_;
       unsigned long long cacheIdentifier_;
       unsigned int iovIndex_;

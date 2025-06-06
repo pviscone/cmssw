@@ -25,6 +25,8 @@ namespace mkfit {
 
     void reset() { m_pos = 0; }
 
+    int size() const { return m_pos; }
+
     void addNullInput() { m_idx[m_pos++] = 0; }
 
     void addInput(const D& item) {
@@ -92,6 +94,7 @@ namespace mkfit {
 
     template <typename TMerr, typename TMpar>
     void pack(TMerr& err, TMpar& par) {
+      assert(this->m_base);
       assert(this->m_pos > 0 && this->m_pos <= NN);
 
 #if defined(GATHER_INTRINSICS)

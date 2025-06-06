@@ -11,10 +11,6 @@
  */
 
 #include "DQM/DTMonitorModule/interface/DTDataIntegrityTask.h"
-#include "FWCore/Framework/interface/Frameworkfwd.h"
-#include "FWCore/Framework/interface/Event.h"
-#include "FWCore/ParameterSet/interface/ParameterSet.h"
-#include "DQMServices/Core/interface/DQMStore.h"
 #include "DQM/DTMonitorModule/interface/DTTimeEvolutionHisto.h"
 #include "FWCore/ServiceRegistry/interface/Service.h"
 #include "FWCore/MessageLogger/interface/MessageLogger.h"
@@ -30,15 +26,16 @@
 using namespace std;
 using namespace edm;
 
-DTDataIntegrityTask::DTDataIntegrityTask(const edm::ParameterSet& ps) : nevents(0) {
+DTDataIntegrityTask::DTDataIntegrityTask(const edm::ParameterSet& ps)
+    : nevents(0), FEDIDmin(FEDNumbering::MINDTUROSFEDID), FEDIDmax(FEDNumbering::MAXDTUROSFEDID) {
   LogTrace("DTRawToDigi|DTDQM|DTMonitorModule|DTDataIntegrityTask") << "[DTDataIntegrityTask]: Constructor" << endl;
 
-  fedToken = consumes<DTuROSFEDDataCollection>(ps.getParameter<InputTag>("dtFEDlabel"));
-  FEDIDmin = FEDNumbering::MINDTUROSFEDID;
-  FEDIDmax = FEDNumbering::MAXDTUROSFEDID;
+  fedToken = consumes<DTuROSFEDDataCollection>(ps.getUntrackedParameter<InputTag>("dtFEDlabel"));
 
+#ifdef EDM_ML_DEBUG
   neventsFED = 0;
   neventsuROS = 0;
+#endif
 
   fedIntegrityFolder = ps.getUntrackedParameter<string>("fedIntegrityFolder", "DT/FEDIntegrity");
   nLinksForFatal = ps.getUntrackedParameter<int>("nLinksForFatal", 15);  //per wheel
@@ -61,10 +58,12 @@ DTDataIntegrityTask::DTDataIntegrityTask(const edm::ParameterSet& ps) : nevents(
 }
 
 DTDataIntegrityTask::~DTDataIntegrityTask() {
+#ifdef EDM_ML_DEBUG
   LogTrace("DTRawToDigi|DTDQM|DTMonitorModule|DTDataIntegrityTask")
       << "[DTDataIntegrityTask]: Destructor. Analyzed " << neventsFED << " events" << endl;
   LogTrace("DTRawToDigi|DTDQM|DTMonitorModule|DTDataIntegrityTask")
       << "[DTDataIntegrityTask]: postEndJob called!" << endl;
+#endif
 }
 
 /*
@@ -316,7 +315,7 @@ void DTDataIntegrityTask::bookHistosROS(DQMStore::IBooker& ibooker, const int wh
   string linkUp_s = to_string(linkUp);
   string histoName = "W" + wheel_s + "_" + "Sector" + ros_s + "_" + histoType;
   string histoTitle = histoName + " (Channel " + linkDown_s + "-" + linkUp_s + " error summary)";
-  unsigned int keyHisto = (uROSError)*1000 + (wheel + 2) * 100 + (ros - 1);
+  unsigned int keyHisto = (uROSError) * 1000 + (wheel + 2) * 100 + (ros - 1);
   if (mode < 1)  // Online only
     urosHistos[keyHisto] = ibooker.book2D(histoName, histoTitle, 11, 0, 11, 25, 0, 25);
   else if (mode > 1)
@@ -413,7 +412,7 @@ void DTDataIntegrityTask::bookHistosROS(DQMStore::IBooker& ibooker, const int wh
   linkUp_s = to_string(linkUp);
   histoName = "W" + wheel_s + "_" + "Sector" + ros_s + "_" + histoType;
   histoTitle = histoName + " (Channel " + linkDown_s + "-" + linkUp_s + " error summary)";
-  keyHisto = (TDCError)*1000 + (wheel + 2) * 100 + (ros - 1);
+  keyHisto = (TDCError) * 1000 + (wheel + 2) * 100 + (ros - 1);
   urosHistos[keyHisto] = ibooker.book2D(histoName, histoTitle, 24, 0, 24, 25, 0, 25);
   histo = urosHistos[keyHisto];
   // TDC error bins
@@ -505,7 +504,7 @@ void DTDataIntegrityTask::bookHistosuROS(DQMStore::IBooker& ibooker, const int f
   string histoType = "uROSEventLength";
   string histoName = "FED" + fed_s + "_uROS" + uRos_s + "_" + "EventLength";
   string histoTitle = "Event Length (Bytes) FED " + fed_s + " uROS" + uRos_s;
-  unsigned int keyHisto = (uROSEventLength)*1000 + (fed - FEDIDmin) * 100 + (uRos - 1);
+  unsigned int keyHisto = (uROSEventLength) * 1000 + (fed - FEDIDmin) * 100 + (uRos - 1);
   urosHistos[keyHisto] = ibooker.book1D(histoName, histoTitle, 101, 0, 5000);
 
   histoType = "uROSAvgEventLengthvsLumi";
@@ -526,10 +525,12 @@ void DTDataIntegrityTask::bookHistosuROS(DQMStore::IBooker& ibooker, const int f
 }
 
 void DTDataIntegrityTask::processuROS(DTuROSROSData& data, int fed, int uRos) {
+#ifdef EDM_ML_DEBUG
   neventsuROS++;
 
   LogTrace("DTRawToDigi|DTDQM|DTMonitorModule|DTDataIntegrityTask")
       << "[DTDataIntegrityTask]: " << neventsuROS << " events analyzed by processuROS" << endl;
+#endif
 
   if (mode == 3)  // || mode == 1)
     return;       //Avoid duplication of Info in FEDIntegrity_EvF
@@ -565,10 +566,10 @@ void DTDataIntegrityTask::processuROS(DTuROSROSData& data, int fed, int uRos) {
           return;
         }
 
-        uROSError0 = urosHistos[(uROSError)*1000 + (wheel + 2) * 100 + (ros - 1)];  //links 0-23
-        uROSError1 = urosHistos[(uROSError)*1000 + (wheel + 2) * 100 + (ros)];      //links 24-47
-        uROSError2 = urosHistos[(uROSError)*1000 + (wheel + 2) * 100 + (ros + 1)];  //links 48-71
-        uROSErrorS4 = urosHistos[(uROSError)*1000 + (wheel + 2) * 100 + 3];
+        uROSError0 = urosHistos[(uROSError) * 1000 + (wheel + 2) * 100 + (ros - 1)];  //links 0-23
+        uROSError1 = urosHistos[(uROSError) * 1000 + (wheel + 2) * 100 + (ros)];      //links 24-47
+        uROSError2 = urosHistos[(uROSError) * 1000 + (wheel + 2) * 100 + (ros + 1)];  //links 48-71
+        uROSErrorS4 = urosHistos[(uROSError) * 1000 + (wheel + 2) * 100 + 3];
 
         if ((!uROSError2) || (!uROSError1) || (!uROSError0)) {
           LogError("DTRawToDigi|DTDQM|DTMonitorModule|DTDataIntegrityTask")
@@ -581,37 +582,32 @@ void DTDataIntegrityTask::processuROS(DTuROSROSData& data, int fed, int uRos) {
       for (unsigned int link = 0; link < 72; ++link) {
         for (unsigned int flag = 0; flag < 5; ++flag) {
           if ((data.getokxflag(link) >> flag) & 0x1) {  // Undefined Flag 1-4 64bits word for each MTP (12 channels)
-            int value = flag;
 
-            if (flag == 0)
-              value = 5;  //move it to the 5th bin
-
-            if (value > 0) {
-              if (link < 24) {
-                errorX[value - 1][ros - 1][wheel + 2] += 1;
-                if (mode != 1)
-                  uROSError0->Fill(value - 1, link);  //bins start at 0 despite labeling
-              } else if (link < 48) {
+            int value = flag != 0 ? flag : 5;  //if flag = 0 move it to the 5th bin
+            if (link < 24) {
+              errorX[value - 1][ros - 1][wheel + 2] += 1;
+              if (mode != 1)
+                uROSError0->Fill(value - 1, link);  //bins start at 0 despite labeling
+            } else if (link < 48) {
+              if ((link == 46 || link == 57) && ros == 10)
+                errorX[value - 1][sector4][wheel + 2] += 1;
+              else
+                errorX[value - 1][ros][wheel + 2] += 1;
+              if (mode != 1) {
                 if ((link == 46 || link == 57) && ros == 10)
-                  errorX[value - 1][sector4][wheel + 2] += 1;
+                  uROSErrorS4->Fill(value - 1, link - 24);
                 else
-                  errorX[value - 1][ros][wheel + 2] += 1;
-                if (mode != 1) {
-                  if ((link == 46 || link == 57) && ros == 10)
-                    uROSErrorS4->Fill(value - 1, link - 24);
-                  else
-                    uROSError1->Fill(value - 1, link - 24);
-                }
-              } else if (link < 72) {
-                errorX[value - 1][ros + 1][wheel + 2] += 1;
-                if (mode != 1)
-                  uROSError2->Fill(value - 1, link - 48);
+                  uROSError1->Fill(value - 1, link - 24);
               }
-            }  //value>0
-          }    //flag value
-        }      //loop on flags
-      }        //loop on links
-    }          //uROS>2
+            } else if (link < 72) {
+              errorX[value - 1][ros + 1][wheel + 2] += 1;
+              if (mode != 1)
+                uROSError2->Fill(value - 1, link - 48);
+            }
+          }  //flag value
+        }  //loop on flags
+      }  //loop on links
+    }  //uROS>2
 
     else {  //uRos<3  25th Channel slot
 
@@ -629,7 +625,7 @@ void DTDataIntegrityTask::processuROS(DTuROSROSData& data, int fed, int uRos) {
                 if (sector == 9)
                   sector = 10;
                 unsigned int keyHisto =
-                    (uROSError)*1000 + (wheel + 2) * 100 + abs(sector - 1);  //ros -1 = link in this case
+                    (uROSError) * 1000 + (wheel + 2) * 100 + abs(sector - 1);  //ros -1 = link in this case
                 uROSError0 = urosHistos[keyHisto];
                 if (!uROSError0) {
                   LogError("DTRawToDigi|DTDQM|DTMonitorModule|DTDataIntegrityTask")
@@ -642,9 +638,19 @@ void DTDataIntegrityTask::processuROS(DTuROSROSData& data, int fed, int uRos) {
                 uROSError0->Fill(value - 1, ch25);  //bins start at 0 despite labeling, this is the old SC
             }
           }  //flag values
-        }    //loop on flags
-      }      //loop on links
-    }        //else uRos<3
+        }  //loop on flags
+      }  //loop on links
+    }  //else uRos<3
+
+    if (mode != 1) {
+      // Global Errors for uROS
+      for (unsigned int flag = 4; flag < 16; ++flag) {
+        if ((data.getuserWord() >> flag) & 0x1) {
+          uROSSummary->Fill(flag - 4, uRos);
+          uROSStatus->Fill(flag - 4, uRos);  //duplicated info?
+        }
+      }
+    }
 
   }  //mode<=2
 
@@ -655,14 +661,6 @@ void DTDataIntegrityTask::processuROS(DTuROSROSData& data, int fed, int uRos) {
         if (errorX[bin][iros][wheel + 2] != 0) {
           ROSSummary->Fill(bin, iros + 1, errorX[bin][iros][wheel + 2]);  //bins start at 1
         }
-      }
-    }
-
-    // Global Errors for uROS
-    for (unsigned int flag = 4; flag < 16; ++flag) {
-      if ((data.getuserWord() >> flag) & 0x1) {
-        uROSSummary->Fill(flag - 4, uRos);
-        uROSStatus->Fill(flag - 4, uRos);  //duplicated info?
       }
     }
   }
@@ -731,30 +729,34 @@ void DTDataIntegrityTask::processuROS(DTuROSROSData& data, int fed, int uRos) {
 
     if (uRos < 3) {
       int sector = link + 1;
-      errorX[5][link][wheel + 2] += 1;
+      if (tdcError_ROSSummary == 5)
+        errorX[5][link][wheel + 2] += 1;
       if (mode != 1) {
         if (sector == 9)
           sector = 10;
         ROSSummary->Fill(tdcError_ROSSummary, sector - 1);  //link 0 = ROS 1
         int ch25 = 24;
         if (mode <= 2) {
-          urosHistos[(uROSError)*1000 + (wheel + 2) * 100 + (sector - 1)]->Fill(tdcError_ROSError, ch25);
+          urosHistos[(uROSError) * 1000 + (wheel + 2) * 100 + (sector - 1)]->Fill(tdcError_ROSError, ch25);
           if (mode < 1)
-            urosHistos[(TDCError)*1000 + (wheel + 2) * 100 + (sector - 1)]->Fill(tdcError_TDCHisto + 6 * tdc,
-                                                                                 ch25);  // ros-1=link in this case
-        }                                                                                //mode <= 2
-      }                                                                                  //mode!=1
-    }                                                                                    //uRos<3
-    else {                                                                               //uRos>2
+            urosHistos[(TDCError) * 1000 + (wheel + 2) * 100 + (sector - 1)]->Fill(tdcError_TDCHisto + 6 * tdc,
+                                                                                   ch25);  // ros-1=link in this case
+        }  //mode <= 2
+      }  //mode!=1
+    }  //uRos<3
+    else {  //uRos>2
       if (link < 24) {
-        errorX[5][ros - 1][wheel + 2] += 1;
+        if (tdcError_ROSSummary == 5)
+          errorX[5][ros - 1][wheel + 2] += 1;
         if (mode != 1)
           ROSSummary->Fill(tdcError_ROSSummary, ros);
       } else if (link < 48) {
-        if ((link == 46 || link == 57) && ros == 10)
-          errorX[5][sector4][wheel + 2] += 1;
-        else
-          errorX[5][ros][wheel + 2] += 1;
+        if (tdcError_ROSSummary == 5) {
+          if ((link == 46 || link == 57) && ros == 10)
+            errorX[5][sector4][wheel + 2] += 1;
+          else
+            errorX[5][ros][wheel + 2] += 1;
+        }
         if (mode != 1) {
           if ((link == 46 || link == 57) && ros == 10)
             ROSSummary->Fill(tdcError_ROSSummary, sector4);
@@ -762,7 +764,8 @@ void DTDataIntegrityTask::processuROS(DTuROSROSData& data, int fed, int uRos) {
             ROSSummary->Fill(tdcError_ROSSummary, ros + 1);
         }
       } else if (link < 72) {
-        errorX[5][ros + 1][wheel + 2] += 1;
+        if (tdcError_ROSSummary == 5)
+          errorX[5][ros + 1][wheel + 2] += 1;
         if (mode != 1)
           ROSSummary->Fill(tdcError_ROSSummary, ros + 2);
       }
@@ -780,16 +783,16 @@ void DTDataIntegrityTask::processuROS(DTuROSROSData& data, int fed, int uRos) {
 
         if (mode < 1) {
           if (link < 24)
-            urosHistos[(TDCError)*1000 + (wheel + 2) * 100 + (ros - 1)]->Fill(tdcError_TDCHisto + 6 * tdc, link);
+            urosHistos[(TDCError) * 1000 + (wheel + 2) * 100 + (ros - 1)]->Fill(tdcError_TDCHisto + 6 * tdc, link);
           else if (link < 48)
-            urosHistos[(TDCError)*1000 + (wheel + 2) * 100 + (ros)]->Fill(tdcError_TDCHisto + 6 * tdc, link - 24);
+            urosHistos[(TDCError) * 1000 + (wheel + 2) * 100 + (ros)]->Fill(tdcError_TDCHisto + 6 * tdc, link - 24);
           else if (link < 72)
-            urosHistos[(TDCError)*1000 + (wheel + 2) * 100 + (ros + 1)]->Fill(tdcError_TDCHisto + 6 * tdc, link - 48);
+            urosHistos[(TDCError) * 1000 + (wheel + 2) * 100 + (ros + 1)]->Fill(tdcError_TDCHisto + 6 * tdc, link - 48);
 
         }  //mode<1
-      }    //mode<=2 && mode != 1
-    }      //uROS>2
-  }        //loop on errors
+      }  //mode<=2 && mode != 1
+    }  //uROS>2
+  }  //loop on errors
 
   // 1D histograms for TTS values per uROS
   if (mode < 1) {
@@ -829,10 +832,12 @@ void DTDataIntegrityTask::processuROS(DTuROSROSData& data, int fed, int uRos) {
 }
 
 void DTDataIntegrityTask::processFED(DTuROSFEDData& data, int fed) {
+#ifdef EDM_ML_DEBUG
   neventsFED++;
   if (neventsFED % 1000 == 0)
     LogTrace("DTRawToDigi|DTDQM|DTMonitorModule|DTDataIntegrityTask")
         << "[DTDataIntegrityTask]: " << neventsFED << " events analyzed by processFED" << endl;
+#endif
 
   if (fed < FEDIDmin || fed > FEDIDmax)
     return;
@@ -936,14 +941,14 @@ std::string DTDataIntegrityTask::topFolder(bool isFEDIntegrity) const {
   return folder;
 }
 
-std::shared_ptr<dtdi::Void> DTDataIntegrityTask::globalBeginLuminosityBlock(const edm::LuminosityBlock& ls,
-                                                                            const edm::EventSetup& es) const {
-  nEventsLS = 0;
-  return std::shared_ptr<dtdi::Void>();
+std::shared_ptr<dtdi::LumiCache> DTDataIntegrityTask::globalBeginLuminosityBlock(const edm::LuminosityBlock& ls,
+                                                                                 const edm::EventSetup& es) const {
+  return std::make_shared<dtdi::LumiCache>();
 }
 
 void DTDataIntegrityTask::globalEndLuminosityBlock(const edm::LuminosityBlock& ls, const edm::EventSetup& es) {
   int lumiBlock = ls.id().luminosityBlock();
+  const auto nEventsLS = luminosityBlockCache(ls.index())->nEventsLS;
 
   map<string, map<int, DTTimeEvolutionHisto*> >::iterator fedIt = fedTimeHistos.begin();
   map<string, map<int, DTTimeEvolutionHisto*> >::iterator fedEnd = fedTimeHistos.end();
@@ -965,7 +970,7 @@ void DTDataIntegrityTask::globalEndLuminosityBlock(const edm::LuminosityBlock& l
 void DTDataIntegrityTask::analyze(const edm::Event& e, const edm::EventSetup& c) {
   nevents++;
   nEventMonitor->Fill(nevents);
-  nEventsLS++;
+  luminosityBlockCache(e.getLuminosityBlock().index())->nEventsLS++;
 
   //errorX[6][12][5] = {0};  //5th is notOK flag and 6th is TDC Fatal; ros; wheel
   fill(&errorX[0][0][0], &errorX[0][0][0] + 360, 0);
@@ -1041,8 +1046,3 @@ int DTDataIntegrityTask::theROS(int slot, int link) {
   int ros = (link / 24) + 3 * (slot % 6) - 2;
   return ros;
 }
-
-// Local Variables:
-// show-trailing-whitespace: t
-// truncate-lines: t
-// End:

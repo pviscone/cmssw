@@ -22,16 +22,15 @@
 class TauSpinnerFilter : public edm::stream::EDFilter<> {
 public:
   TauSpinnerFilter(const edm::ParameterSet&);
-  ~TauSpinnerFilter() override{};
+  ~TauSpinnerFilter() override {}
 
   bool filter(edm::Event& e, edm::EventSetup const& es) override;
   void setRandomEngine(CLHEP::HepRandomEngine* v) { fRandomEngine = v; }
 
 private:
-  edm::InputTag src_;
+  const edm::EDGetTokenT<double> WTToken_;
   CLHEP::HepRandomEngine* fRandomEngine;
   double ntaus_;
-  edm::EDGetTokenT<double> WTToken_;
 };
 
 #endif

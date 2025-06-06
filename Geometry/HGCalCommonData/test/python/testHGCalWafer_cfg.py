@@ -1,15 +1,41 @@
+###############################################################################
+# Way to use this:
+#   cmsRun testHGCalWafer_cfg.py geometry=D110
+#
+#   Options for geometry D95, D96, D98, D99, D100, D101, D102, D103, D104, D105,
+#                        D106, D107, D108, D109, D110, D111, D112, D113, D114,
+#                        D115, D116
+#
+###############################################################################
 import FWCore.ParameterSet.Config as cms
+import os, sys, imp, re
+import FWCore.ParameterSet.VarParsing as VarParsing
 
-process = cms.Process("PROD")
+####################################################################
+### SETUP OPTIONS
+options = VarParsing.VarParsing('standard')
+options.register('geometry',
+                 "D110",
+                  VarParsing.VarParsing.multiplicity.singleton,
+                  VarParsing.VarParsing.varType.string,
+                  "geometry of operations: D95, D96, D98, D99, D100, D101, D102, D103, D104, D105, D106, D107, D108, D109, D110, D111, D112, D113, D114, D115, D116")
+
+### get and parse the command line arguments
+options.parseArguments()
+
+print(options)
+
+####################################################################
+# Use the options
+from Configuration.Eras.Era_Phase2C17I13M9_cff import Phase2C17I13M9
+process = cms.Process('HGCalWafer',Phase2C17I13M9)
+
+geomFile = "Configuration.Geometry.GeometryExtendedRun4" + options.geometry + "_cff"
+
+print("Geometry file: ", geomFile)
+
 process.load("SimGeneral.HepPDTESSource.pdt_cfi")
-#process.load("Geometry.CMSCommonData.cmsExtendedGeometry2026D49XML_cfi")
-#process.load("Geometry.CMSCommonData.cmsExtendedGeometry2026D68XML_cfi")
-#process.load("Geometry.CMSCommonData.cmsExtendedGeometry2026D70XML_cfi")
-process.load("Geometry.HGCalCommonData.testHGCalV14XML_cfi")
-process.load("Geometry.HGCalCommonData.hgcalParametersInitialization_cfi")
-process.load("Geometry.HGCalCommonData.hgcalNumberingInitialization_cfi")
-process.load("Geometry.EcalCommonData.ecalSimulationParameters_cff")
-process.load("Geometry.HcalCommonData.hcalDDDSimConstants_cff")
+process.load(geomFile)
 process.load('FWCore.MessageService.MessageLogger_cfi')
 
 if hasattr(process,'MessageLogger'):

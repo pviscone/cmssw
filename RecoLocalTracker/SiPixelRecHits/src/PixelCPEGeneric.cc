@@ -1,7 +1,6 @@
 #include "RecoLocalTracker/SiPixelRecHits/interface/PixelCPEGeneric.h"
 
 #include "Geometry/CommonDetUnit/interface/PixelGeomDetUnit.h"
-#include "Geometry/TrackerGeometryBuilder/interface/RectangularPixelTopology.h"
 #include "DataFormats/DetId/interface/DetId.h"
 
 // Pixel templates contain the rec hit error parameterizaiton
@@ -54,8 +53,7 @@ PixelCPEGeneric::PixelCPEGeneric(edm::ParameterSet const& conf,
   IrradiationBiasCorrection_ = conf.getParameter<bool>("IrradiationBiasCorrection");
   DoCosmics_ = conf.getParameter<bool>("DoCosmics");
 
-  // Upgrade means phase 2
-  isPhase2_ = conf.getParameter<bool>("Upgrade");
+  isPhase2_ = conf.getParameter<bool>("isPhase2");
 
   // For cosmics force the use of simple errors
   if ((DoCosmics_))
@@ -254,7 +252,7 @@ LocalPoint PixelCPEGeneric::localPosition(DetParam const& theDetParam, ClusterPa
     cout << "\t >>> Generic:: processing X" << endl;
 #endif
 
-  float xPos = SiPixelUtils::generic_position_formula(
+  float xPos = siPixelUtils::generic_position_formula(
       theClusterParam.theCluster->sizeX(),
       q_f_X,
       q_l_X,
@@ -264,8 +262,8 @@ LocalPoint PixelCPEGeneric::localPosition(DetParam const& theDetParam, ClusterPa
       theDetParam.theThickness,
       theClusterParam.cotalpha,
       theDetParam.thePitchX,
-      theDetParam.theRecTopol->isItBigPixelInX(theClusterParam.theCluster->minPixelRow()),
-      theDetParam.theRecTopol->isItBigPixelInX(theClusterParam.theCluster->maxPixelRow()),
+      theDetParam.theTopol->pixelFractionInX(theClusterParam.theCluster->minPixelRow()),
+      theDetParam.theTopol->pixelFractionInX(theClusterParam.theCluster->maxPixelRow()),
       the_eff_charge_cut_lowX,
       the_eff_charge_cut_highX,
       the_size_cutX);  // cut for eff charge width &&&
@@ -278,7 +276,7 @@ LocalPoint PixelCPEGeneric::localPosition(DetParam const& theDetParam, ClusterPa
     cout << "\t >>> Generic:: processing Y" << endl;
 #endif
 
-  float yPos = SiPixelUtils::generic_position_formula(
+  float yPos = siPixelUtils::generic_position_formula(
       theClusterParam.theCluster->sizeY(),
       q_f_Y,
       q_l_Y,
@@ -288,8 +286,8 @@ LocalPoint PixelCPEGeneric::localPosition(DetParam const& theDetParam, ClusterPa
       theDetParam.theThickness,
       theClusterParam.cotbeta,
       theDetParam.thePitchY,
-      theDetParam.theRecTopol->isItBigPixelInY(theClusterParam.theCluster->minPixelCol()),
-      theDetParam.theRecTopol->isItBigPixelInY(theClusterParam.theCluster->maxPixelCol()),
+      theDetParam.theTopol->pixelFractionInY(theClusterParam.theCluster->minPixelCol()),
+      theDetParam.theTopol->pixelFractionInY(theClusterParam.theCluster->maxPixelCol()),
       the_eff_charge_cut_lowY,
       the_eff_charge_cut_highY,
       the_size_cutY);  // cut for eff charge width &&&
@@ -305,7 +303,7 @@ LocalPoint PixelCPEGeneric::localPosition(DetParam const& theDetParam, ClusterPa
       //cout << "Apply correction correction_dx1 = " << theClusterParam.dx1 << " to xPos = " << xPos;
       xPos = xPos - (0.5f * theDetParam.lorentzShiftInCmX);
       // Find if pixel is double (big).
-      bool bigInX = theDetParam.theRecTopol->isItBigPixelInX(theClusterParam.theCluster->maxPixelRow());
+      bool bigInX = theDetParam.theTopol->isItBigPixelInX(theClusterParam.theCluster->maxPixelRow());
       if (!bigInX)
         xPos -= theClusterParam.dx1;
       else
@@ -322,7 +320,7 @@ LocalPoint PixelCPEGeneric::localPosition(DetParam const& theDetParam, ClusterPa
       yPos = yPos - (0.5f * theDetParam.lorentzShiftInCmY);
 
       // Find if pixel is double (big).
-      bool bigInY = theDetParam.theRecTopol->isItBigPixelInY(theClusterParam.theCluster->maxPixelCol());
+      bool bigInY = theDetParam.theTopol->isItBigPixelInY(theClusterParam.theCluster->maxPixelCol());
       if (!bigInY)
         yPos -= theClusterParam.dy1;
       else
@@ -402,12 +400,12 @@ LocalError PixelCPEGeneric::localError(DetParam const& theDetParam, ClusterParam
     int n_bigy = 0;
 
     for (int irow = 0; irow < 7; ++irow) {
-      if (theDetParam.theRecTopol->isItBigPixelInX(irow + minPixelRow))
+      if (theDetParam.theTopol->isItBigPixelInX(irow + minPixelRow))
         ++n_bigx;
     }
 
     for (int icol = 0; icol < 21; ++icol) {
-      if (theDetParam.theRecTopol->isItBigPixelInY(icol + minPixelCol))
+      if (theDetParam.theTopol->isItBigPixelInY(icol + minPixelCol))
         ++n_bigy;
     }
 
@@ -450,6 +448,6 @@ void PixelCPEGeneric::fillPSetDescription(edm::ParameterSetDescription& desc) {
   desc.add<bool>("TruncatePixelCharge", true);
   desc.add<bool>("IrradiationBiasCorrection", false);
   desc.add<bool>("DoCosmics", false);
-  desc.add<bool>("Upgrade", false);
+  desc.add<bool>("isPhase2", false);
   desc.add<bool>("SmallPitch", false);
 }

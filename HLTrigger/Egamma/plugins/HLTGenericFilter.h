@@ -10,7 +10,6 @@
 #include "HLTrigger/HLTcore/interface/HLTFilter.h"
 
 #include "FWCore/Framework/interface/Frameworkfwd.h"
-#include "FWCore/Framework/interface/EDProducer.h"
 #include "FWCore/PluginManager/interface/ModuleDef.h"
 
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
@@ -57,6 +56,7 @@ private:
   std::vector<double> energyLowEdges_;  // lower bin edges for energy-dependent cuts
   bool lessThan_;                       // the cut is "<" or ">" ?
   bool useEt_;                          // use E or Et in relative isolation cuts
+  bool useAbs_;                         // use the standard abs of the variable (before any rho corr)
   std::vector<double> thrRegularEB_;    // threshold for regular cut (x < thr) - ECAL barrel
   std::vector<double> thrRegularEE_;    // threshold for regular cut (x < thr) - ECAL endcap
   std::vector<double> thrOverEEB_;      // threshold for x/E < thr cut (isolations) - ECAL barrel

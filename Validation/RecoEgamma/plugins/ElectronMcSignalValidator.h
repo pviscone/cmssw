@@ -30,10 +30,11 @@ public:
   void analyze(const edm::Event &e, const edm::EventSetup &c) override;
 
 private:
-  edm::EDGetTokenT<reco::GenParticleCollection> mcTruthCollection_;           // genParticles
-  edm::EDGetTokenT<reco::GsfElectronCollection> electronCollection_;          // gedGsfElectrons
-  edm::EDGetTokenT<reco::GsfElectronCollection> electronCollectionEndcaps_;   // gedGsfElectrons
-  edm::EDGetTokenT<reco::GsfElectronCoreCollection> electronCoreCollection_;  // gedGsfElectronCore
+  edm::EDGetTokenT<reco::GenParticleCollection> mcTruthCollection_;                  // genParticles
+  edm::EDGetTokenT<reco::GsfElectronCollection> electronCollection_;                 // gedGsfElectrons
+  edm::EDGetTokenT<reco::GsfElectronCollection> electronCollectionEndcaps_;          // gedGsfElectrons
+  edm::EDGetTokenT<reco::GsfElectronCoreCollection> electronCoreCollection_;         // gedGsfElectronCore
+  edm::EDGetTokenT<reco::GsfElectronCoreCollection> electronCoreCollectionEndcaps_;  // gedGsfElectronCore
   edm::EDGetTokenT<reco::GsfTrackCollection> electronTrackCollection_;
   edm::EDGetTokenT<reco::ElectronSeedCollection> electronSeedCollection_;
   edm::EDGetTokenT<reco::VertexCollection> offlineVerticesCollection_;
@@ -58,6 +59,7 @@ private:
 
   double maxPt_;
   double maxAbsEta_;
+  double maxAbsEtaExtended_;
   double deltaR2_;
   std::vector<int> matchingIDs_;
   std::vector<int> matchingMotherIDs_;
@@ -84,6 +86,10 @@ private:
   int eta2D_nbin;
   double eta_min;
   double eta_max;
+  int eta_nbin_extended;
+  int eta2D_nbin_extended;
+  double eta_min_extended;
+  double eta_max_extended;
   int deta_nbin;
   double deta_min;
   double deta_max;
@@ -147,19 +153,23 @@ private:
   MonitorElement *h1_recSeedNum;
   MonitorElement *h1_recOfflineVertices;
   MonitorElement *h2_scl_EoEtrueVsrecOfflineVertices;
+  MonitorElement *h2_scl_EoEtrueVsrecOfflineVertices_Extended;
   MonitorElement *h2_scl_EoEtrueVsrecOfflineVertices_barrel;
   MonitorElement *h2_scl_EoEtrueVsrecOfflineVertices_endcaps;
 
   MonitorElement *h1_mc_Eta;
+  MonitorElement *h1_mc_Eta_Extended;
   MonitorElement *h1_mc_AbsEta;
+  MonitorElement *h1_mc_AbsEta_Extended;
   MonitorElement *h1_mc_P;
   MonitorElement *h1_mc_Pt;
   MonitorElement *h1_mc_Phi;
   MonitorElement *h1_mc_Z;
   MonitorElement *h2_mc_PtEta;
 
-  MonitorElement *h1_mc_Eta_matched;
+  MonitorElement *h1_mc_Eta_Extended_matched;
   MonitorElement *h1_mc_AbsEta_matched;
+  MonitorElement *h1_mc_AbsEta_Extended_matched;
   MonitorElement *h1_mc_Pt_matched;
   MonitorElement *h1_mc_Phi_matched;
   MonitorElement *h1_mc_Z_matched;
@@ -220,6 +230,8 @@ private:
   MonitorElement *h2_ele_chargeVsPt;
   MonitorElement *h1_ele_vertexP;
   MonitorElement *h1_ele_vertexPt;
+  MonitorElement *h1_ele_vertexPt_EB;
+  MonitorElement *h1_ele_vertexPt_EE;
   MonitorElement *h1_ele_vertexPt_nocut;
   MonitorElement *h1_ele_Et;
   MonitorElement *h2_ele_vertexPtVsEta;
@@ -252,6 +264,7 @@ private:
   MonitorElement *h1_scl_EoEtrue_endcaps_deegap;
   MonitorElement *h1_scl_EoEtrue_endcaps_ringgap;
   MonitorElement *h1_scl_EoEtrue_barrel_new;
+  MonitorElement *h1_scl_EoEtrue_endcaps_new_Extended;
   MonitorElement *h1_scl_EoEtrue_endcaps_new;
   MonitorElement *h1_scl_EoEtrue_barrel_new_etagap;
   MonitorElement *h1_scl_EoEtrue_barrel_new_phigap;
@@ -278,6 +291,7 @@ private:
   MonitorElement *h1_scl_SigIEtaIEta_mAOD_barrel;
   MonitorElement *h1_scl_SigIEtaIEta_mAOD_endcaps;
   MonitorElement *h1_scl_full5x5_sigmaIetaIeta;
+  MonitorElement *h1_scl_full5x5_sigmaIetaIeta_Extended;
   MonitorElement *h1_scl_full5x5_sigmaIetaIeta_barrel;
   MonitorElement *h1_scl_full5x5_sigmaIetaIeta_endcaps;
   MonitorElement *h1_scl_E1x5;
@@ -290,6 +304,7 @@ private:
   MonitorElement *h1_scl_E5x5_barrel;
   MonitorElement *h1_scl_E5x5_endcaps;
   MonitorElement *h1_scl_bcl_EtotoEtrue;
+  MonitorElement *h1_scl_bcl_EtotoEtrue_Extended;
   MonitorElement *h1_scl_bcl_EtotoEtrue_barrel;
   MonitorElement *h1_scl_bcl_EtotoEtrue_endcaps;
 
@@ -300,7 +315,7 @@ private:
   MonitorElement *h1_ele_foundHits;
   MonitorElement *h1_ele_foundHits_barrel;
   MonitorElement *h1_ele_foundHits_endcaps;
-  MonitorElement *h2_ele_foundHitsVsEta;
+  MonitorElement *h2_ele_foundHitsVsEta_Extended;
   MonitorElement *h2_ele_foundHitsVsEta_mAOD;
   MonitorElement *h2_ele_foundHitsVsPhi;
   MonitorElement *h2_ele_foundHitsVsPt;
@@ -320,7 +335,7 @@ private:
   MonitorElement *h1_ele_PoPtrue;
   MonitorElement *h1_ele_PoPtrue_barrel;
   MonitorElement *h1_ele_PoPtrue_endcaps;
-  MonitorElement *h2_ele_PoPtrueVsEta;
+  MonitorElement *h2_ele_PoPtrueVsEta_Extended;
   MonitorElement *h2_ele_PoPtrueVsPhi;
   MonitorElement *h2_ele_PoPtrueVsPt;
   MonitorElement *h1_ele_PoPtrue_golden_barrel;
@@ -363,7 +378,7 @@ private:
   MonitorElement *h1_ele_EoP;
   MonitorElement *h1_ele_EoP_barrel;
   MonitorElement *h1_ele_EoP_endcaps;
-  MonitorElement *h2_ele_EoPVsEta;
+  MonitorElement *h2_ele_EoPVsEta_Extended;
   MonitorElement *h2_ele_EoPVsPhi;
   MonitorElement *h2_ele_EoPVsE;
   MonitorElement *h1_ele_EseedOP;
@@ -386,6 +401,7 @@ private:
   MonitorElement *h2_ele_EeleOPoutVsE;
 
   MonitorElement *h1_ele_dEtaSc_propVtx;
+  MonitorElement *h1_ele_dEtaSc_propVtx_Extended;
   MonitorElement *h1_ele_dEtaSc_propVtx_barrel;
   MonitorElement *h1_ele_dEtaSc_propVtx_endcaps;
   MonitorElement *h1_ele_dEtaSc_propVtx_mAOD;
@@ -395,6 +411,7 @@ private:
   MonitorElement *h2_ele_dEtaScVsPhi_propVtx;
   MonitorElement *h2_ele_dEtaScVsPt_propVtx;
   MonitorElement *h1_ele_dPhiSc_propVtx;
+  MonitorElement *h1_ele_dPhiSc_propVtx_Extended;
   MonitorElement *h1_ele_dPhiSc_propVtx_barrel;
   MonitorElement *h1_ele_dPhiSc_propVtx_endcaps;
   MonitorElement *h2_ele_dPhiScVsEta_propVtx;
@@ -453,6 +470,7 @@ private:
   MonitorElement *h1_ele_eta_shower;
 
   MonitorElement *h1_ele_HoE;
+  MonitorElement *h1_ele_HoE_Extended;
   MonitorElement *h1_ele_HoE_bc;
   MonitorElement *h1_ele_HoE_barrel;
   MonitorElement *h1_ele_HoE_endcaps;
@@ -467,6 +485,7 @@ private:
   MonitorElement *h1_ele_HoE_mAOD_endcaps;
 
   MonitorElement *h1_ele_fbrem;
+  MonitorElement *h1_ele_fbrem_Extended;
   MonitorElement *h1_ele_fbrem_barrel;
   MonitorElement *h1_ele_fbrem_endcaps;
   MonitorElement *h1_ele_fbrem_mAOD;
@@ -498,6 +517,7 @@ private:
   MonitorElement *h1_ele_mva_barrel_isolated;
   MonitorElement *h1_ele_mva_endcaps_isolated;
   MonitorElement *h1_ele_provenance;
+  MonitorElement *h1_ele_provenance_Extended;
   MonitorElement *h1_ele_provenance_barrel;
   MonitorElement *h1_ele_provenance_endcaps;
 
@@ -513,12 +533,15 @@ private:
   MonitorElement *h1_ele_photonIso_endcaps;
   // -- pflow over pT
   MonitorElement *h1_ele_chargedHadronRelativeIso;
+  MonitorElement *h1_ele_chargedHadronRelativeIso_Extended;
   MonitorElement *h1_ele_chargedHadronRelativeIso_barrel;
   MonitorElement *h1_ele_chargedHadronRelativeIso_endcaps;
   MonitorElement *h1_ele_neutralHadronRelativeIso;
+  MonitorElement *h1_ele_neutralHadronRelativeIso_Extended;
   MonitorElement *h1_ele_neutralHadronRelativeIso_barrel;
   MonitorElement *h1_ele_neutralHadronRelativeIso_endcaps;
   MonitorElement *h1_ele_photonRelativeIso;
+  MonitorElement *h1_ele_photonRelativeIso_Extended;
   MonitorElement *h1_ele_photonRelativeIso_barrel;
   MonitorElement *h1_ele_photonRelativeIso_endcaps;
   MonitorElement *h1_ele_chargedHadronRelativeIso_mAOD;
@@ -543,18 +566,6 @@ private:
   MonitorElement *h1_ele_hcalTowerSumEt_dr03_depth2;
   MonitorElement *h1_ele_hcalTowerSumEt_dr03_depth2_barrel;
   MonitorElement *h1_ele_hcalTowerSumEt_dr03_depth2_endcaps;
-  MonitorElement *h1_ele_tkSumPt_dr04;
-  MonitorElement *h1_ele_tkSumPt_dr04_barrel;
-  MonitorElement *h1_ele_tkSumPt_dr04_endcaps;
-  MonitorElement *h1_ele_ecalRecHitSumEt_dr04;
-  MonitorElement *h1_ele_ecalRecHitSumEt_dr04_barrel;
-  MonitorElement *h1_ele_ecalRecHitSumEt_dr04_endcaps;
-  MonitorElement *h1_ele_hcalTowerSumEt_dr04_depth1;
-  MonitorElement *h1_ele_hcalTowerSumEt_dr04_depth1_barrel;
-  MonitorElement *h1_ele_hcalTowerSumEt_dr04_depth1_endcaps;
-  MonitorElement *h1_ele_hcalTowerSumEt_dr04_depth2;
-  MonitorElement *h1_ele_hcalTowerSumEt_dr04_depth2_barrel;
-  MonitorElement *h1_ele_hcalTowerSumEt_dr04_depth2_endcaps;
 
   MonitorElement *h1_ele_hcalDepth1OverEcalBc;
   MonitorElement *h1_ele_hcalDepth1OverEcalBc_barrel;
@@ -569,12 +580,15 @@ private:
   MonitorElement *h1_ele_hcalTowerSumEtBc_dr03_depth2;
   MonitorElement *h1_ele_hcalTowerSumEtBc_dr03_depth2_barrel;
   MonitorElement *h1_ele_hcalTowerSumEtBc_dr03_depth2_endcaps;
-  MonitorElement *h1_ele_hcalTowerSumEtBc_dr04_depth1;
-  MonitorElement *h1_ele_hcalTowerSumEtBc_dr04_depth1_barrel;
-  MonitorElement *h1_ele_hcalTowerSumEtBc_dr04_depth1_endcaps;
-  MonitorElement *h1_ele_hcalTowerSumEtBc_dr04_depth2;
-  MonitorElement *h1_ele_hcalTowerSumEtBc_dr04_depth2_barrel;
-  MonitorElement *h1_ele_hcalTowerSumEtBc_dr04_depth2_endcaps;
+
+  MonitorElement *h1_ele_ecalPFClusterIso;
+  MonitorElement *h1_ele_hcalPFClusterIso;
+  MonitorElement *h1_ele_ecalPFClusterIso_Extended;
+  MonitorElement *h1_ele_hcalPFClusterIso_Extended;
+  MonitorElement *h1_ele_ecalPFClusterIso_barrel;
+  MonitorElement *h1_ele_hcalPFClusterIso_barrel;
+  MonitorElement *h1_ele_ecalPFClusterIso_endcaps;
+  MonitorElement *h1_ele_hcalPFClusterIso_endcaps;
 
   // conversions
   MonitorElement *h1_ele_convFlags;

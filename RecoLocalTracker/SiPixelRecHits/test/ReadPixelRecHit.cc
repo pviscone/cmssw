@@ -279,7 +279,6 @@ void ReadPixelRecHit::analyze(const edm::Event &e, const edm::EventSetup &es) {
   SiPixelRecHitCollection::const_iterator recHitIdIterator = (recHitColl.product())->begin();
   SiPixelRecHitCollection::const_iterator recHitIdIteratorEnd = (recHitColl.product())->end();
 
-  int numberOfDetUnits = 0;
   int numOfRecHits = 0;
 
   int numberOfDetUnits1 = 0;
@@ -326,9 +325,6 @@ void ReadPixelRecHit::analyze(const edm::Event &e, const edm::EventSetup &es) {
     //const BoundPlane& plane = theGeomDet->surface(); //for transf.  unused
     //double detThick = theGeomDet->specificSurface().bounds().thickness(); unused
 
-    //const RectangularPixelTopology * topol =
-    //dynamic_cast<const RectangularPixelTopology*>(&(theGeomDet->specificTopology()));
-
     const PixelTopology *topol = &(theGeomDet->specificTopology());
 
     //int cols = theGeomDet->specificTopology().ncolumns(); UNUSED
@@ -350,7 +346,6 @@ void ReadPixelRecHit::analyze(const edm::Event &e, const edm::EventSetup &es) {
 
     unsigned int layer = 0, disk = 0, ladder = 0, zindex = 0, blade = 0, panel = 0, side = 0;
     if (subid == 1) {  // Subdet it, pix barrel=1
-      ++numberOfDetUnits;
 
       PXBDetId pdetId = PXBDetId(detId);
       //unsigned int detTypeP=pdetId.det();   unused

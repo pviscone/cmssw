@@ -542,9 +542,9 @@ void SiPixelActionExecutor::fillSummary(DQMStore::IBooker &iBooker,
                       }
                     }
                   }
+                  if (notReset)
+                    (*isum)->Fill(ndet, me1->getEntries());
                 }
-                if (notReset)
-                  (*isum)->Fill(ndet, me1->getEntries());
               } else if ((sname.find("_charge_") != string::npos && sname.find("Track_") == string::npos &&
                           me->getName().find("Track_") == string::npos) ||
                          (sname.find("_charge_") != string::npos && sname.find("_OnTrack_") != string::npos &&
@@ -771,7 +771,7 @@ void SiPixelActionExecutor::fillFEDErrorSummary(DQMStore::IBooker &iBooker,
             temp = iGetter.get(fullpathname);
             temp->Reset();
           }  // If I don't reset this one, then I instead start adding error
-             // codes..
+          // codes..
         }
         sum_mes.push_back(temp);
       }
@@ -1245,14 +1245,14 @@ void SiPixelActionExecutor::fillGrandBarrelSummaryHistos(DQMStore::IBooker &iBoo
                     (*igm)->setBinContent(k + nbin_i, me->getBinContent(k));
               }
             }  // end var in igm (gsum_mes)
-          }    // end igm loop
-        }      // end var in im (contents)
-      }        // end of iv loop
-    }          // end of im loop
+          }  // end igm loop
+        }  // end var in im (contents)
+      }  // end of iv loop
+    }  // end of im loop
     iDir++;
     first_subdir = false;  // We are done processing the first directory, we
                            // don't add any new MEs in the future passes.
-  }                        // end of it loop (subdirs)
+  }  // end of it loop (subdirs)
   //  cout<<"...leaving
   //  SiPixelActionExecutor::fillGrandBarrelSummaryHistos!"<<endl;
 }
@@ -1273,7 +1273,6 @@ void SiPixelActionExecutor::fillGrandEndcapSummaryHistos(DQMStore::IBooker &iBoo
       (dir_name.find("Shell") == 0) || (dir_name.find("Layer") == 0) || (dir_name.find("Ladder") == 0))
     return;
   vector<string> subdirs = iGetter.getSubdirs();
-  int iDir = 0;
   int nbin = 0;
   int nbin_i = 0;
   int nbin_subdir = 0;
@@ -1568,10 +1567,9 @@ void SiPixelActionExecutor::fillGrandEndcapSummaryHistos(DQMStore::IBooker &iBoo
       }
     }
 
-    iDir++;
     first_subdir = false;  // We are done processing the first directory, we
                            // don't add any new MEs in the future passes.
-  }                        // end for it (subdirs)
+  }  // end for it (subdirs)
 }
 //=============================================================================================================
 //

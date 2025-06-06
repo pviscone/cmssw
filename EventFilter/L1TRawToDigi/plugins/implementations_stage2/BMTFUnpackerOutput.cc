@@ -67,7 +67,7 @@ namespace l1t {
 
           RegionalMuonCand muCand;
           RegionalMuonRawDigiTranslator::fillRegionalMuonCand(
-              muCand, raw_first, raw_secnd, processor, tftype::bmtf, isKalman, false);
+              muCand, raw_first, raw_secnd, processor, tftype::bmtf, isKalman, false, false);
 
           if (muCand.hwPt() == 0) {
             continue;
@@ -83,7 +83,7 @@ namespace l1t {
           res->push_back(ibx, muCand);
 
         }  //for iw
-      }    //for ibx
+      }  //for ibx
 
       return true;
     }  //unpack

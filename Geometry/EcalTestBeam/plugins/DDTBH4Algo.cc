@@ -12,7 +12,9 @@
 #include "DetectorDescription/Core/interface/DDCurrentNamespace.h"
 #include "DetectorDescription/Core/interface/DDSplit.h"
 #include "Geometry/EcalTestBeam/plugins/DDTBH4Algo.h"
-#include "CLHEP/Units/GlobalSystemOfUnits.h"
+#include <CLHEP/Units/SystemOfUnits.h>
+
+using CLHEP::deg;
 
 DDTBH4Algo::DDTBH4Algo()
     : m_idNameSpace(""),
@@ -51,7 +53,7 @@ DDTBH4Algo::DDTBH4Algo()
       m_vecFibZPiv()
 
 {
-  std::cout << "creating an instance if DDTBH4Algo" << std::endl;
+  edm::LogVerbatim("EcalGeom") << "creating an instance if DDTBH4Algo";
   LogDebug("EcalGeom") << "DDTBH4Algo test: Creating an instance";
 }
 

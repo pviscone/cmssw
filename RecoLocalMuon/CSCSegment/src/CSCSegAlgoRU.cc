@@ -231,18 +231,18 @@ std::vector<CSCSegment> CSCSegAlgoRU::buildSegments(const CSCChamber* aChamber,
                               merge_nr = k;
                             }
                           }  //if(common_used[k][iu-ib] == true)
-                        }    //for k
-                      }      //if
-                    }        //for proto_seg
-                  }          //for rec_hits
-                }            //else
-              }              //proto seg not empty
+                        }  //for k
+                      }  //if
+                    }  //for proto_seg
+                  }  //for rec_hits
+                }  //else
+              }  //proto seg not empty
             }
           }  // h1 & h2 close
           if (segok)
             break;
         }  // i2
-      }    // i1
+      }  // i1
 
       //add the reconstructed segments
       for (int j = 0; j < common_it + 1; j++) {
@@ -336,7 +336,7 @@ std::vector<CSCSegment> CSCSegAlgoRU::buildSegments(const CSCChamber* aChamber,
         }
         if (found_common)
           break;  //current seg has already been erased
-      }           //camber hits
+      }  //camber hits
       if (!found_common)
         ++it;
     }  //its a 3p seg
@@ -383,7 +383,7 @@ void CSCSegAlgoRU::tryAddingHitsToSegment(AlgoState& aState,
         increaseProtoSegment(aState, h, layer, aState.chi2D_iadd);
       }
     }  // h & seg close
-  }    // i
+  }  // i
 }
 
 bool CSCSegAlgoRU::areHitsCloseInR(const AlgoState& aState, const CSCRecHit2D* h1, const CSCRecHit2D* h2) const {
@@ -679,8 +679,6 @@ void CSCSegAlgoRU::baseline(AlgoState& aState, int n_seg_min) const {
   // Optimal point rejection method
   //-----------------------------------------------------
   float minSum = 1000;
-  int i1b = 0;
-  int i2b = 0;
   int iworst = -1;
   int bad_layer = -1;
   ChamberHitContainer::const_iterator rh_to_be_deleted_1;
@@ -688,13 +686,10 @@ void CSCSegAlgoRU::baseline(AlgoState& aState, int n_seg_min) const {
   if ((chi2_str) > aState.chi2_str_ * aState.chi2D_iadd) {  ///(nhits-2)
     for (ChamberHitContainer::const_iterator i1 = aState.proto_segment.begin(); i1 != aState.proto_segment.end();
          ++i1) {
-      ++i1b;
       const CSCRecHit2D* i1_1 = *i1;
       CSCDetId idRH1 = i1_1->cscDetId();
       int z1 = idRH1.layer();
-      i2b = i1b;
       for (ChamberHitContainer::const_iterator i2 = i1 + 1; i2 != aState.proto_segment.end(); ++i2) {
-        ++i2b;
         const CSCRecHit2D* i2_1 = *i2;
         CSCDetId idRH2 = i2_1->cscDetId();
         int z2 = idRH2.layer();
@@ -705,13 +700,11 @@ void CSCSegAlgoRU::baseline(AlgoState& aState, int n_seg_min) const {
           if (ir == i1 || ir == i2)
             continue;
           float dsum = 0;
-          int hit_nr = 0;
           const CSCRecHit2D* ir_1 = *ir;
           CSCDetId idRH = ir_1->cscDetId();
           int worst_layer = idRH.layer();
           for (ChamberHitContainer::const_iterator i = aState.proto_segment.begin(); i != aState.proto_segment.end();
                ++i) {
-            ++hit_nr;
             const CSCRecHit2D* i_1 = *i;
             if (i == i1 || i == i2 || i == ir)
               continue;
@@ -729,8 +722,8 @@ void CSCSegAlgoRU::baseline(AlgoState& aState, int n_seg_min) const {
             rh_to_be_deleted_1 = ir;
           }
         }  //ir
-      }    //i2
-    }      //i1
+      }  //i2
+    }  //i1
     fitX(aState, sp, se, bad_layer, -1, chi2_str);
   }  //if chi2prob<1.0e-4
 
@@ -740,17 +733,12 @@ void CSCSegAlgoRU::baseline(AlgoState& aState, int n_seg_min) const {
   if (iworst > -1 && (nhits - 1) > n_seg_min && (chi2_str) > aState.chi2_str_ * aState.chi2D_iadd) {  ///(nhits-3)
     iworst = -1;
     float minSum = 1000;
-    int i1b = 0;
-    int i2b = 0;
     for (ChamberHitContainer::const_iterator i1 = aState.proto_segment.begin(); i1 != aState.proto_segment.end();
          ++i1) {
-      ++i1b;
       const CSCRecHit2D* i1_1 = *i1;
       CSCDetId idRH1 = i1_1->cscDetId();
       int z1 = idRH1.layer();
-      i2b = i1b;
       for (ChamberHitContainer::const_iterator i2 = i1 + 1; i2 != aState.proto_segment.end(); ++i2) {
-        ++i2b;
         const CSCRecHit2D* i2_1 = *i2;
         CSCDetId idRH2 = i2_1->cscDetId();
         int z2 = idRH2.layer();
@@ -771,13 +759,11 @@ void CSCSegAlgoRU::baseline(AlgoState& aState, int n_seg_min) const {
             if (ir2 == i1 || ir2 == i2 || ir2 == ir)
               continue;
             float dsum = 0;
-            int hit_nr = 0;
             const CSCRecHit2D* ir2_1 = *ir2;
             CSCDetId idRH = ir2_1->cscDetId();
             int worst_layer2 = idRH.layer();
             for (ChamberHitContainer::const_iterator i = aState.proto_segment.begin(); i != aState.proto_segment.end();
                  ++i) {
-              ++hit_nr;
               const CSCRecHit2D* i_1 = *i;
               if (i == i1 || i == i2 || i == ir || i == ir2)
                 continue;
@@ -798,9 +784,9 @@ void CSCSegAlgoRU::baseline(AlgoState& aState, int n_seg_min) const {
               rh_to_be_deleted_2 = ir2;
             }
           }  //ir2
-        }    //ir
-      }      //i2
-    }        //i1
+        }  //ir
+      }  //i2
+    }  //i1
     fitX(aState, sp, se, bad_layer, bad_layer2, chi2_str);
   }  //if prob(n-1)<e-4
 

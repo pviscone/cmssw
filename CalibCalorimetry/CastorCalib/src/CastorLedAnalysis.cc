@@ -527,19 +527,17 @@ void CastorLedAnalysis::processLedEvent(const CastorDigiCollection& castor, cons
     evt_curr = m_nevtsample;
 
   // HF/Castor
-  try {
-    if (castor.empty())
-      throw(int) castor.size();
-    for (CastorDigiCollection::const_iterator j = castor.begin(); j != castor.end(); ++j) {
-      const CastorDataFrame digi = (const CastorDataFrame)(*j);
-      _meol = castorHists.LEDTRENDS.find(digi.id());
-      if (_meol == castorHists.LEDTRENDS.end()) {
-        SetupLEDHists(2, digi.id(), castorHists.LEDTRENDS);
-      }
-      LedCastorHists(digi.id(), digi, castorHists.LEDTRENDS, cond);
+  if (castor.empty()) {
+    edm::LogError("CastorLedAnalysis") << "Event with " << (int)castor.size() << "Castor Digis passed." << std::endl;
+    return;
+  }
+  for (CastorDigiCollection::const_iterator j = castor.begin(); j != castor.end(); ++j) {
+    const CastorDataFrame digi = (const CastorDataFrame)(*j);
+    _meol = castorHists.LEDTRENDS.find(digi.id());
+    if (_meol == castorHists.LEDTRENDS.end()) {
+      SetupLEDHists(2, digi.id(), castorHists.LEDTRENDS);
     }
-  } catch (int i) {
-    //    m_logFile << "Event with " << i<<" Castor Digis passed." << std::endl;
+    LedCastorHists(digi.id(), digi, castorHists.LEDTRENDS, cond);
   }
 
   // Call the function every m_nevtsample events
@@ -620,7 +618,7 @@ void CastorLedAnalysis::LedCastorHists(const HcalDetId& detid,
     if (adc < 0) {
       adc = 0;
     }  // to prevent negative adcs after ped subtraction, which should really only happen
-       // if you're using the wrong peds.
+    // if you're using the wrong peds.
     double fC = m_coder->charge(*m_shape, adc, capid);
     //ta = (fC - m_ped->getValue(capid));
     ta = fC;

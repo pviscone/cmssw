@@ -23,6 +23,7 @@
 #include "DataFormats/Provenance/interface/BranchKey.h"
 #include "DataFormats/Provenance/interface/ProductRegistry.h"
 #include "DataFormats/Provenance/interface/ThinnedAssociationsHelper.h"
+#include "FWCore/Framework/interface/ConstProductRegistry.h"
 #include "FWCore/Framework/interface/EventForOutput.h"
 #include "FWCore/Framework/interface/EventPrincipal.h"
 #include "FWCore/Framework/src/insertSelectedProcesses.h"
@@ -256,9 +257,18 @@ namespace edm {
 
     void OutputModuleCore::doEndJob() { endJob(); }
 
-    bool OutputModuleCore::needToRunSelection() const { return !wantAllEvents_; }
+    void OutputModuleCore::registerProductsAndCallbacks(OutputModuleCore const*, ProductRegistry* reg) {
+      if (callWhenNewProductsRegistered_) {
+        reg->callForEachBranch(callWhenNewProductsRegistered_);
 
-    std::vector<ProductResolverIndexAndSkipBit> OutputModuleCore::productsUsedBySelection() const {
+        Service<ConstProductRegistry> regService;
+        regService->watchProductAdditions(callWhenNewProductsRegistered_);
+      }
+    }
+
+    bool OutputModuleCore::needToRunSelection() const noexcept { return !wantAllEvents_; }
+
+    std::vector<ProductResolverIndexAndSkipBit> OutputModuleCore::productsUsedBySelection() const noexcept {
       std::vector<ProductResolverIndexAndSkipBit> returnValue;
       auto const& s = selectors_[0];
       auto const n = s.numberOfTokens();
@@ -288,9 +298,9 @@ namespace edm {
                                     ActivityRegistry* act,
                                     ModuleCallingContext const* mcc) {
       {
+        EventSignalsSentry sentry(act, mcc);
         EventForOutput e(info, moduleDescription_, mcc);
         e.setConsumer(this);
-        EventSignalsSentry sentry(act, mcc);
         write(e);
       }
       //remainingEvents_ is decremented by inheriting classes

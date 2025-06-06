@@ -2,8 +2,8 @@ import FWCore.ParameterSet.Config as cms
 
 process = cms.Process("L1DTTrigPhase2Prod")
 
-process.load('Configuration.Geometry.GeometryExtended2026D49Reco_cff')
-process.load('Configuration.Geometry.GeometryExtended2026D49_cff')
+process.load('Configuration.Geometry.GeometryExtendedRun4D49Reco_cff')
+process.load('Configuration.Geometry.GeometryExtendedRun4D49_cff')
 
 process.load("L1Trigger.DTTriggerPhase2.dtTriggerPhase2PrimitiveDigis_cfi")
 process.load("Configuration.StandardSequences.FrontierConditions_GlobalTag_cff")
@@ -21,7 +21,7 @@ process.load("L1Trigger.DTTriggerPhase2.dtTriggerPhase2PrimitiveDigis_cfi")
 
 process.dtTriggerPhase2PrimitiveDigis.dump = True
 process.dtTriggerPhase2PrimitiveDigis.debug = True
-# process.dtTriggerPhase2PrimitiveDigis.chi2Th = cms.untracked.double(0.16)
+# process.dtTriggerPhase2PrimitiveDigis.chi2Th = cms.double(0.16)
 
 #process.load("FWCore.MessageLogger.MessageLogger_cfi")
 #

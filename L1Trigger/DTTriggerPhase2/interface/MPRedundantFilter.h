@@ -26,7 +26,12 @@ public:
   void run(edm::Event& iEvent,
            const edm::EventSetup& iEventSetup,
            std::vector<cmsdt::metaPrimitive>& inMPath,
-           std::vector<cmsdt::metaPrimitive>& outMPath) override{};
+           std::vector<cmsdt::metaPrimitive>& outMPath) override {};
+  void run(edm::Event& iEvent,
+           const edm::EventSetup& iEventSetup,
+           std::vector<cmsdt::metaPrimitive>& inSLMPath,
+           std::vector<cmsdt::metaPrimitive>& inCorMPath,
+           std::vector<cmsdt::metaPrimitive>& outMPath) override {};
   void run(edm::Event& iEvent,
            const edm::EventSetup& iEventSetup,
            MuonPathPtrs& inMPath,
@@ -40,7 +45,7 @@ private:
   bool isInBuffer(MuonPathPtr& mpath);
 
   // Private attributes
-  bool debug_;
+  const bool debug_;
   unsigned int maxBufferSize_;
   std::deque<MuonPathPtr> buffer_;
 };

@@ -5,13 +5,14 @@
 <use name="Geometry/TrackerGeometryBuilder"/>
 <use name="CalibTracker/SiPixelESProducers"/>
 <use name="CalibTracker/Records"/>
-<library file="*.cc" name="testCalibTrackerSiPixelESProducers">
+
+<library file="*Pixel*.cc" name="testCalibTrackerSiPixelESProducers">
   <flags EDM_PLUGIN="1"/>
 </library>
 
-<environment>
-  <bin file="testSiPixelFakeLorentzAngleESSource.cpp">
-    <flags TEST_RUNNER_ARGS="/bin/bash CalibTracker/SiPixelESProducers/test testSiPixelFakeLorentzAngleESSource.sh"/>
-    <use name="FWCore/Utilities"/>
-  </bin>
-</environment>
+<test name="testSiPixelFakeLorentzAngleESSource" command="testSiPixelFakeLorentzAngleESSource.sh"/>
+
+<bin file="test_catch2_*.cc" name="testSiPixelESSources">
+  <use name="FWCore/TestProcessor"/>
+  <use name="catch2"/>
+</bin>

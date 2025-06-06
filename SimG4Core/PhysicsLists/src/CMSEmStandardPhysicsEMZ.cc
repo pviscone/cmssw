@@ -1,7 +1,7 @@
 #include "SimG4Core/PhysicsLists/interface/CMSEmStandardPhysicsEMZ.h"
 #include "FWCore/MessageLogger/interface/MessageLogger.h"
 
-#include "G4SystemOfUnits.hh"
+#include <CLHEP/Units/SystemOfUnits.h>
 #include "G4ParticleDefinition.hh"
 #include "G4LossTableManager.hh"
 #include "G4EmParameters.hh"
@@ -58,10 +58,12 @@
 #include "G4Region.hh"
 #include "G4GammaGeneralProcess.hh"
 
-#include "G4SystemOfUnits.hh"
+#include <CLHEP/Units/SystemOfUnits.h>
 
-CMSEmStandardPhysicsEMZ::CMSEmStandardPhysicsEMZ(G4int ver) : G4VPhysicsConstructor("CMSEmStandard_emz") {
+CMSEmStandardPhysicsEMZ::CMSEmStandardPhysicsEMZ(G4int ver, const edm::ParameterSet& p)
+    : G4VPhysicsConstructor("CMSEmStandard_emz") {
   SetVerboseLevel(ver);
+  // EM parameters specific for this EM physics configuration
   G4EmParameters* param = G4EmParameters::Instance();
   param->SetDefaults();
   param->SetVerbose(ver);
@@ -81,10 +83,11 @@ CMSEmStandardPhysicsEMZ::CMSEmStandardPhysicsEMZ(G4int ver) : G4VPhysicsConstruc
   param->SetFluo(true);
   param->SetUseICRU90Data(true);
   param->SetMaxNIELEnergy(1 * CLHEP::MeV);
+  double tcut = p.getParameter<double>("G4TrackingCut") * CLHEP::MeV;
+  param->SetLowestElectronEnergy(tcut);
+  param->SetLowestMuHadEnergy(tcut);
   SetPhysicsType(bElectromagnetic);
 }
-
-CMSEmStandardPhysicsEMZ::~CMSEmStandardPhysicsEMZ() {}
 
 void CMSEmStandardPhysicsEMZ::ConstructParticle() {
   // minimal set of particles for EM physics

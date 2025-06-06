@@ -489,23 +489,21 @@ void TestWithTracks::analyze(const edm::Event &e, const edm::EventSetup &es) {
 
   int numOfClusPerTrk1 = 0;
   int numOfClustersPerLay1 = 0;
-  int numOfPixelsPerLay1 = 0;
+  //int numOfPixelsPerLay1 = 0;
 
   int numOfClusPerTrk2 = 0;
   int numOfClustersPerLay2 = 0;
-  int numOfPixelsPerLay2 = 0;
+  //int numOfPixelsPerLay2 = 0;
 
   int numOfClusPerTrk3 = 0;
   int numOfClustersPerLay3 = 0;
-  int numOfPixelsPerLay3 = 0;
+  //int numOfPixelsPerLay3 = 0;
 
   int numOfClusPerTrk4 = 0;
-  int numOfClustersPerLay4 = 0;
-  int numOfPixelsPerLay4 = 0;
+  //int numOfPixelsPerLay4 = 0;
 
   int numOfClusPerTrk5 = 0;
-  int numOfClustersPerLay5 = 0;
-  int numOfPixelsPerLay5 = 0;
+  //int numOfPixelsPerLay5 = 0;
 
   int numOfClustersPerDisk1 = 0;
   int numOfClustersPerDisk2 = 0;
@@ -567,7 +565,7 @@ void TestWithTracks::analyze(const edm::Event &e, const edm::EventSetup &es) {
       if (t1flag > 0 && i < 64)
         hl1t->Fill(float(i));
     }  // for loop
-  }    // if l1a
+  }  // if l1a
 #endif
 
 #ifdef HLT
@@ -599,7 +597,7 @@ void TestWithTracks::analyze(const edm::Event &e, const edm::EventSetup &es) {
       }  // if hlt
 
     }  // loop
-  }    // if valid
+  }  // if valid
 #endif
 
   // Get event setup
@@ -645,7 +643,7 @@ void TestWithTracks::analyze(const edm::Event &e, const edm::EventSetup &es) {
         pvzVector.push_back(pvz);
         //if(PRINT) edm::LogPrint("TestWithTracks")<<"PV "<<pvsTrue<<" "<<pvz<<endl;
       }  //pvr
-    }    // pvz
+    }  // pvz
 
     //if(pvsTrue<1) continue; // skip events with no PV
 
@@ -1004,7 +1002,7 @@ void TestWithTracks::analyze(const edm::Event &e, const edm::EventSetup &es) {
 
           numOfClusPerTrk1++;
           numOfClustersPerLay1++;
-          numOfPixelsPerLay1 += size;
+          //numOfPixelsPerLay1 += size;
 
         } else if (layer == 2) {
           hDetMap2->Fill(float(zindex), float(ladder));
@@ -1043,7 +1041,7 @@ void TestWithTracks::analyze(const edm::Event &e, const edm::EventSetup &es) {
 
           numOfClusPerTrk2++;
           numOfClustersPerLay2++;
-          numOfPixelsPerLay2 += size;
+          //numOfPixelsPerLay2 += size;
 
         } else if (layer == 3) {
           hDetMap3->Fill(float(zindex), float(ladder));
@@ -1081,12 +1079,11 @@ void TestWithTracks::analyze(const edm::Event &e, const edm::EventSetup &es) {
 
           numOfClusPerTrk3++;
           numOfClustersPerLay3++;
-          numOfPixelsPerLay3 += size;
+          //numOfPixelsPerLay3 += size;
 
         } else if (disk == 1) {
           numOfClusPerTrk4++;
-          numOfClustersPerLay4++;
-          numOfPixelsPerLay4 += size;
+          //numOfPixelsPerLay4 += size;
 
           hcharge4->Fill(charge);
           if (pt > CLU_SIZE_PT_CUT) {
@@ -1102,8 +1099,7 @@ void TestWithTracks::analyze(const edm::Event &e, const edm::EventSetup &es) {
 
         } else if (disk == 2) {
           numOfClusPerTrk5++;
-          numOfClustersPerLay5++;
-          numOfPixelsPerLay5 += size;
+          //numOfPixelsPerLay5 += size;
 
           hcharge5->Fill(charge);
           if (pt > CLU_SIZE_PT_CUT) {
@@ -1365,7 +1361,7 @@ void TestWithTracks::analyze(const edm::Event &e, const edm::EventSetup &es) {
 
           //clust_.normalized_charge = clust_.charge*sqrt(1.0/(1.0/pow(tan(clust_.clust_alpha),2)+1.0/pow(tan(clust_.clust_beta),2)+1.0));
         }  // valid cluster
-      }    // valid peristant hit
+      }  // valid peristant hit
 
     }  // loop over trajectory meas.
 

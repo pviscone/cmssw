@@ -41,7 +41,7 @@
 #include "Geometry/CSCGeometry/interface/CSCGeometry.h"
 #include "Geometry/GEMGeometry/interface/GEMGeometry.h"
 #include "Geometry/Records/interface/TrackerTopologyRcd.h"
-#include "Geometry/CommonTopologies/interface/GeometryAligner.h"
+#include "Geometry/GeometryAligner/interface/GeometryAligner.h"
 #include "CondFormats/GeometryObjects/interface/PTrackerParameters.h"
 #include "Geometry/Records/interface/PTrackerParametersRcd.h"
 #include "Geometry/Records/interface/PTrackerAdditionalParametersPerDetRcd.h"
@@ -102,6 +102,7 @@ private:
   const edm::ESGetToken<AlignmentErrorsExtended, CSCAlignmentErrorExtendedRcd> esTokenCSCAPE_;
   const edm::ESGetToken<Alignments, GEMAlignmentRcd> esTokenGEMAl_;
   const edm::ESGetToken<AlignmentErrorsExtended, GEMAlignmentErrorExtendedRcd> esTokenGEMAPE_;
+  const edm::EDGetTokenT<TrajTrackAssociationCollection> trajTrackToken_;
   bool m_firstEvent;
 };
 
@@ -134,7 +135,8 @@ AlignmentMonitorAsAnalyzer::AlignmentMonitorAsAnalyzer(const edm::ParameterSet& 
       esTokenCSCAl_(esConsumes()),
       esTokenCSCAPE_(esConsumes()),
       esTokenGEMAl_(esConsumes()),
-      esTokenGEMAPE_(esConsumes()) {
+      esTokenGEMAPE_(esConsumes()),
+      trajTrackToken_(consumes<TrajTrackAssociationCollection>(m_tjTag)) {
   edm::ConsumesCollector consumeCollector = consumesCollector();
   std::vector<std::string> monitors = iConfig.getUntrackedParameter<std::vector<std::string>>("monitors");
 
@@ -213,8 +215,7 @@ void AlignmentMonitorAsAnalyzer::analyze(const edm::Event& iEvent, const edm::Ev
   }
 
   // Retrieve trajectories and tracks from the event
-  edm::Handle<TrajTrackAssociationCollection> trajTracksMap;
-  iEvent.getByLabel(m_tjTag, trajTracksMap);
+  const edm::Handle<TrajTrackAssociationCollection>& trajTracksMap = iEvent.getHandle(trajTrackToken_);
 
   // Form pairs of trajectories and tracks
   ConstTrajTrackPairCollection trajTracks;

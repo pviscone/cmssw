@@ -16,11 +16,16 @@
 #include <string>
 #include <memory>
 
-#include "onnxruntime/core/session/onnxruntime_cxx_api.h"
+#include "onnxruntime/onnxruntime_cxx_api.h"
 
 namespace cms::Ort {
 
   typedef std::vector<std::vector<float>> FloatArrays;
+
+  enum class Backend {
+    cpu,
+    cuda,
+  };
 
   class ONNXRuntime {
   public:
@@ -28,6 +33,8 @@ namespace cms::Ort {
     ONNXRuntime(const ONNXRuntime&) = delete;
     ONNXRuntime& operator=(const ONNXRuntime&) = delete;
     ~ONNXRuntime();
+
+    static ::Ort::SessionOptions defaultSessionOptions(Backend backend = Backend::cpu);
 
     // Run inference and get outputs
     // input_names: list of the names of the input nodes.

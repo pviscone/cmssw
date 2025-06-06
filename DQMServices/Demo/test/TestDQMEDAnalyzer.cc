@@ -13,7 +13,7 @@ public:
     this->folder = folder;
   }
 
-  BookerFiller(){};
+  BookerFiller() {}
 
   void bookall(BOOKERLIKE& ibooker) {
     mes_1D.clear();
@@ -28,11 +28,13 @@ public:
       mes_1D.push_back(ibooker.bookInt("int" + num));
       mes_1D.push_back(ibooker.book1D("th1f" + num, "1D Float Histogram " + num, 101, -0.5, 100.5));
       mes_1D.push_back(ibooker.book1S("th1s" + num, "1D Short Histogram " + num, 101, -0.5, 100.5));
+      mes_1D.push_back(ibooker.book1I("th1i" + num, "1D Integer Histogram " + num, 101, -0.5, 100.5));
       mes_1D.push_back(ibooker.book1DD("th1d" + num, "1D Double Histogram " + num, 101, -0.5, 100.5));
 
       mes_2D.push_back(ibooker.book2D("th2f" + num, "2D Float Histogram " + num, 101, -0.5, 100.5, 11, -0.5, 10.5));
       mes_2D.push_back(ibooker.book2S("th2s" + num, "2D Short Histogram " + num, 101, -0.5, 100.5, 11, -0.5, 10.5));
       mes_2D.push_back(ibooker.book2DD("th2d" + num, "2D Double Histogram " + num, 101, -0.5, 100.5, 11, -0.5, 10.5));
+      mes_2D.push_back(ibooker.book2I("th2i" + num, "2D Integer Histogram " + num, 101, -0.5, 100.5, 11, -0.5, 10.5));
       mes_2D.push_back(
           ibooker.bookProfile("tprofile" + num, "1D Profile Histogram " + num, 101, -0.5, 100.5, 11, -0.5, 10.5));
 
@@ -49,11 +51,13 @@ public:
         mes_1D.push_back(ibooker.bookInt("int" + num));
         mes_1D.push_back(ibooker.book1D("th1f" + num, "1D Float Histogram " + num, 101, -0.5, 100.5));
         mes_1D.push_back(ibooker.book1S("th1s" + num, "1D Short Histogram " + num, 101, -0.5, 100.5));
+        mes_1D.push_back(ibooker.book1I("th1i" + num, "1D Integer Histogram " + num, 101, -0.5, 100.5));
         mes_1D.push_back(ibooker.book1DD("th1d" + num, "1D Double Histogram " + num, 101, -0.5, 100.5));
 
         mes_2D.push_back(ibooker.book2D("th2f" + num, "2D Float Histogram " + num, 101, -0.5, 100.5, 11, -0.5, 10.5));
         mes_2D.push_back(ibooker.book2S("th2s" + num, "2D Short Histogram " + num, 101, -0.5, 100.5, 11, -0.5, 10.5));
         mes_2D.push_back(ibooker.book2DD("th2d" + num, "2D Double Histogram " + num, 101, -0.5, 100.5, 11, -0.5, 10.5));
+        mes_2D.push_back(ibooker.book2I("th2i" + num, "2D Integer Histogram " + num, 101, -0.5, 100.5, 11, -0.5, 10.5));
         mes_2D.push_back(
             ibooker.bookProfile("tprofile" + num, "1D Profile Histogram " + num, 101, -0.5, 100.5, 11, -0.5, 10.5));
 
@@ -91,7 +95,7 @@ public:
       : mymes_(iConfig.getParameter<std::string>("folder"), iConfig.getParameter<int>("howmany")),
         myvalue_(iConfig.getParameter<double>("value")) {}
 
-  ~TestDQMEDAnalyzer() override{};
+  ~TestDQMEDAnalyzer() override {}
 
   static void fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
     edm::ParameterSetDescription desc;
@@ -122,7 +126,7 @@ public:
       : mymes_(iConfig.getParameter<std::string>("folder"), iConfig.getParameter<int>("howmany")),
         myvalue_(iConfig.getParameter<double>("value")) {}
 
-  ~TestDQMOneEDAnalyzer() override{};
+  ~TestDQMOneEDAnalyzer() override {}
 
   static void fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
     edm::ParameterSetDescription desc;
@@ -152,7 +156,7 @@ public:
       : mymes_(iConfig.getParameter<std::string>("folder"), iConfig.getParameter<int>("howmany")),
         myvalue_(iConfig.getParameter<double>("value")) {}
 
-  ~TestDQMOneFillRunEDAnalyzer() override{};
+  ~TestDQMOneFillRunEDAnalyzer() override {}
 
   static void fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
     edm::ParameterSetDescription desc;
@@ -181,7 +185,7 @@ public:
       : mymes_(iConfig.getParameter<std::string>("folder"), iConfig.getParameter<int>("howmany")),
         myvalue_(iConfig.getParameter<double>("value")) {}
 
-  ~TestDQMOneLumiEDAnalyzer() override{};
+  ~TestDQMOneLumiEDAnalyzer() override {}
 
   static void fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
     edm::ParameterSetDescription desc;
@@ -211,7 +215,7 @@ public:
       : mymes_(iConfig.getParameter<std::string>("folder"), iConfig.getParameter<int>("howmany")),
         myvalue_(iConfig.getParameter<double>("value")) {}
 
-  ~TestDQMOneLumiFillLumiEDAnalyzer() override{};
+  ~TestDQMOneLumiFillLumiEDAnalyzer() override {}
 
   static void fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
     edm::ParameterSetDescription desc;
@@ -245,7 +249,7 @@ public:
       : folder_(iConfig.getParameter<std::string>("folder")),
         howmany_(iConfig.getParameter<int>("howmany")),
         myvalue_(iConfig.getParameter<double>("value")) {}
-  ~TestDQMGlobalEDAnalyzer() override{};
+  ~TestDQMGlobalEDAnalyzer() override {}
 
   static void fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
     edm::ParameterSetDescription desc;
@@ -282,7 +286,7 @@ public:
       : folder_(iConfig.getParameter<std::string>("folder")),
         howmany_(iConfig.getParameter<int>("howmany")),
         myvalue_(iConfig.getParameter<double>("value")) {}
-  ~TestDQMGlobalRunSummaryEDAnalyzer() override{};
+  ~TestDQMGlobalRunSummaryEDAnalyzer() override {}
 
   static void fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
     edm::ParameterSetDescription desc;
@@ -328,17 +332,19 @@ private:
 };
 DEFINE_FWK_MODULE(TestDQMGlobalRunSummaryEDAnalyzer);
 
-#include "FWCore/Framework/interface/EDAnalyzer.h"
-class TestLegacyEDAnalyzer : public edm::EDAnalyzer {
+#include "FWCore/Framework/interface/one/EDAnalyzer.h"
+class TestLegacyEDAnalyzer : public edm::one::EDAnalyzer<edm::one::SharedResources, edm::one::WatchRuns> {
 public:
   typedef dqm::legacy::DQMStore DQMStore;
   typedef dqm::legacy::MonitorElement MonitorElement;
 
   explicit TestLegacyEDAnalyzer(const edm::ParameterSet& iConfig)
       : mymes_(iConfig.getParameter<std::string>("folder"), iConfig.getParameter<int>("howmany")),
-        myvalue_(iConfig.getParameter<double>("value")) {}
+        myvalue_(iConfig.getParameter<double>("value")) {
+    usesResource("DQMStore");
+  }
 
-  ~TestLegacyEDAnalyzer() override{};
+  ~TestLegacyEDAnalyzer() override {}
 
   static void fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
     edm::ParameterSetDescription desc;
@@ -353,6 +359,7 @@ private:
     edm::Service<DQMStore> store;
     mymes_.bookall(*store);
   }
+  void endRun(edm::Run const&, edm::EventSetup const&) override {}
 
   void analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) override {
     mymes_.fillall(iEvent.luminosityBlock(), iEvent.run(), myvalue_);
@@ -363,16 +370,18 @@ private:
 };
 DEFINE_FWK_MODULE(TestLegacyEDAnalyzer);
 
-class TestLegacyFillRunEDAnalyzer : public edm::EDAnalyzer {
+class TestLegacyFillRunEDAnalyzer : public edm::one::EDAnalyzer<edm::one::SharedResources, edm::one::WatchRuns> {
 public:
   typedef dqm::legacy::DQMStore DQMStore;
   typedef dqm::legacy::MonitorElement MonitorElement;
 
   explicit TestLegacyFillRunEDAnalyzer(const edm::ParameterSet& iConfig)
       : mymes_(iConfig.getParameter<std::string>("folder"), iConfig.getParameter<int>("howmany")),
-        myvalue_(iConfig.getParameter<double>("value")) {}
+        myvalue_(iConfig.getParameter<double>("value")) {
+    usesResource("DQMStore");
+  }
 
-  ~TestLegacyFillRunEDAnalyzer() override{};
+  ~TestLegacyFillRunEDAnalyzer() override {}
 
   static void fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
     edm::ParameterSetDescription desc;
@@ -388,6 +397,7 @@ private:
     mymes_.bookall(*store);
     mymes_.fillall(0, run.run(), myvalue_);
   }
+  void endRun(edm::Run const&, edm::EventSetup const&) override {}
 
   void analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) override {}
 
@@ -396,16 +406,19 @@ private:
 };
 DEFINE_FWK_MODULE(TestLegacyFillRunEDAnalyzer);
 
-class TestLegacyFillLumiEDAnalyzer : public edm::EDAnalyzer {
+class TestLegacyFillLumiEDAnalyzer
+    : public edm::one::EDAnalyzer<edm::one::SharedResources, edm::one::WatchRuns, edm::one::WatchLuminosityBlocks> {
 public:
   typedef dqm::legacy::DQMStore DQMStore;
   typedef dqm::legacy::MonitorElement MonitorElement;
 
   explicit TestLegacyFillLumiEDAnalyzer(const edm::ParameterSet& iConfig)
       : mymes_(iConfig.getParameter<std::string>("folder"), iConfig.getParameter<int>("howmany")),
-        myvalue_(iConfig.getParameter<double>("value")) {}
+        myvalue_(iConfig.getParameter<double>("value")) {
+    usesResource("DQMStore");
+  }
 
-  ~TestLegacyFillLumiEDAnalyzer() override{};
+  ~TestLegacyFillLumiEDAnalyzer() override {}
 
   static void fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
     edm::ParameterSetDescription desc;
@@ -420,10 +433,12 @@ private:
     edm::Service<DQMStore> store;
     mymes_.bookall(*store);
   }
+  void endRun(edm::Run const&, edm::EventSetup const&) override {}
 
   void beginLuminosityBlock(edm::LuminosityBlock const& lumi, edm::EventSetup const&) override {
     mymes_.fillall(lumi.luminosityBlock(), lumi.run(), myvalue_);
   }
+  void endLuminosityBlock(edm::LuminosityBlock const& lumi, edm::EventSetup const&) override {}
 
   void analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) override {}
 

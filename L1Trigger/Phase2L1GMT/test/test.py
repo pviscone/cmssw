@@ -15,7 +15,7 @@ process.load('SimGeneral.HepPDTESSource.pythiapdt_cfi')
 process.load('FWCore.MessageService.MessageLogger_cfi')
 process.load('Configuration.EventContent.EventContent_cff')
 process.load('SimGeneral.MixingModule.mixNoPU_cfi')
-process.load('Configuration.Geometry.GeometryExtended2026D49Reco_cff')
+process.load('Configuration.Geometry.GeometryExtendedRun4D49Reco_cff')
 process.load('Configuration.StandardSequences.MagneticField_cff')
 process.load('Configuration.StandardSequences.L1TrackTrigger_cff') # Needed for MuonTPS
 process.load('Configuration.StandardSequences.EndOfProcess_cff')
@@ -78,10 +78,9 @@ process.source = cms.Source("PoolSource",
 )
 
 process.options = cms.untracked.PSet(
-    FailPath = cms.untracked.vstring(),
     IgnoreCompletely = cms.untracked.vstring(),
     Rethrow = cms.untracked.vstring(),
-    SkipEvent = cms.untracked.vstring(),
+    TryToContinue = cms.untracked.vstring(),
     allowUnscheduled = cms.obsolete.untracked.bool,
     canDeleteEarly = cms.untracked.vstring(),
     emptyRunLumiMode = cms.obsolete.untracked.string,
@@ -126,7 +125,7 @@ process.out = cms.OutputModule("PoolOutputModule",
         "keep *_simEmtfDigis_*_*",
         "keep *_simOmtfDigis_*_*",
         "keep *_genParticles_*_*",
-        "keep *_TTTracksFromTrackletEmulation_Level1TTTracks_*"
+        "keep *_l1tTTTracksFromTrackletEmulation_Level1TTTracks_*"
     )
 )
 
@@ -203,7 +202,7 @@ process.stubs = cms.EDProducer("Phase2L1TGMTStubProducer",
 
 
 process.prod = cms.EDProducer('Phase2L1TGMTProducer',
-                              srcTracks = cms.InputTag("TTTracksFromTrackletEmulation:Level1TTTracks"),
+                              srcTracks = cms.InputTag("l1tTTTracksFromTrackletEmulation:Level1TTTracks"),
                               srcStubs  = cms.InputTag('stubs'),
                               srcBMTF   = cms.InputTag('simBmtfDigis','BMTF'),
                               srcEMTF   = cms.InputTag('simEmtfDigis','EMTF'),

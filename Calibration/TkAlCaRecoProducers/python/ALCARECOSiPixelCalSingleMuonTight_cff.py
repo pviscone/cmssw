@@ -7,8 +7,7 @@ from HLTrigger.HLTfilters.hltHighLevel_cfi import *
 ALCARECOSiPixelCalSingleMuonTightHLTFilter = hltHighLevel.clone()
 ALCARECOSiPixelCalSingleMuonTightHLTFilter.andOr = True ## choose logical OR between Triggerbits
 ALCARECOSiPixelCalSingleMuonTightHLTFilter.throw = False ## dont throw on unknown path names
-ALCARECOSiPixelCalSingleMuonTightHLTFilter.HLTPaths = ["HLT_*"]
-#ALCARECOSiPixelCalSingleMuonTightHLTFilter.eventSetupPathsKey = 'SiPixelCalSingleMuonTight'  ## FIXME: to be changed once trigger bit is updated
+ALCARECOSiPixelCalSingleMuonTightHLTFilter.eventSetupPathsKey = 'SiPixelCalSingleMuon' # share the same trigger bit with the loose one
 
 ##################################################################
 # Filter on the DCS partitions
@@ -25,11 +24,7 @@ ALCARECOSiPixelCalSingleMuonTightDCSFilter = DPGAnalysis.Skims.skim_detstatus_cf
 ##################################################################
 # Isolated muons Track selector
 ##################################################################
-import Alignment.CommonAlignmentProducer.TkAlMuonSelectors_cfi
-ALCARECOSiPixelCalSingleMuonTightGoodMuons = Alignment.CommonAlignmentProducer.TkAlMuonSelectors_cfi.TkAlGoodIdMuonSelector.clone()
-ALCARECOSiPixelCalSingleMuonTightRelCombIsoMuons = Alignment.CommonAlignmentProducer.TkAlMuonSelectors_cfi.TkAlRelCombIsoMuonSelector.clone(
-    src = 'ALCARECOSiPixelCalSingleMuonTightGoodMuons'
-)
+from Alignment.CommonAlignmentProducer.TkAlMuonSelectors_cfi import *
 
 ##################################################################
 # Basic Track selection
@@ -47,7 +42,7 @@ ALCARECOSiPixelCalSingleMuonTight = Alignment.CommonAlignmentProducer.AlignmentT
 ##################################################################
 # Muon selection
 ##################################################################
-ALCARECOSiPixelCalSingleMuonTight.GlobalSelector.muonSource = 'ALCARECOSiPixelCalSingleMuonTightRelCombIsoMuons'
+ALCARECOSiPixelCalSingleMuonTight.GlobalSelector.muonSource = 'TkAlRelCombIsoMuonSelector'
 # Isolation is shifted to the muon preselection, and then applied intrinsically if applyGlobalMuonFilter = True
 ALCARECOSiPixelCalSingleMuonTight.GlobalSelector.applyIsolationtest = False
 ALCARECOSiPixelCalSingleMuonTight.GlobalSelector.minJetDeltaR = 0.1
@@ -92,8 +87,12 @@ trackDistances = TrackDistanceValueMap.TrackDistanceValueMapProducer.clone(muonT
 seqALCARECOSiPixelCalSingleMuonTight = cms.Sequence(offlineBeamSpot+
                                                     ALCARECOSiPixelCalSingleMuonTightHLTFilter+
                                                     ALCARECOSiPixelCalSingleMuonTightDCSFilter+
-                                                    ALCARECOSiPixelCalSingleMuonTightGoodMuons+
-                                                    ALCARECOSiPixelCalSingleMuonTightRelCombIsoMuons+
+                                                    seqALCARECOTkAlRelCombIsoMuons+
                                                     ALCARECOSiPixelCalSingleMuonTight+
                                                     trackDistances +
                                                     ALCARECOSiPixelCalSingleMuonTightOffTrackClusters)
+## customizations for the pp_on_AA eras
+from Configuration.ProcessModifiers.pp_on_AA_cff import pp_on_AA
+pp_on_AA.toModify(ALCARECOSiPixelCalSingleMuonTightHLTFilter,
+                  eventSetupPathsKey='SiPixelCalSingleMuonHI'
+)

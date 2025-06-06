@@ -18,10 +18,11 @@
 #include <algorithm>
 #include "TMath.h"
 #include <bitset>
+#include <atomic>
 
 // common includes
 #include "FWCore/Framework/interface/Frameworkfwd.h"
-#include "FWCore/Framework/interface/EDProducer.h"
+#include "FWCore/Framework/interface/global/EDProducer.h"
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/MakerMacros.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
@@ -36,25 +37,23 @@
 #include "CLHEP/Random/RandomEngine.h"
 #include "CLHEP/Random/RandGaussQ.h"
 
-class L1DummyProducer : public edm::EDProducer {
+class L1DummyProducer : public edm::global::EDProducer<> {
 public:
   explicit L1DummyProducer(const edm::ParameterSet&);
   ~L1DummyProducer() override;
 
 private:
-  void beginJob(void) override{};
   //virtual void beginRun(edm::Run&, const edm::EventSetup&);
-  void produce(edm::Event&, const edm::EventSetup&) override;
-  void endJob() override{};
+  void produce(edm::StreamID, edm::Event&, const edm::EventSetup&) const override;
 
 public:
   template <class T>
-  void SimpleDigi(CLHEP::HepRandomEngine*, std::unique_ptr<T>& data, int type = 0);
+  void SimpleDigi(int nevt, CLHEP::HepRandomEngine*, std::unique_ptr<T>& data, int type = 0) const;
 
 private:
   int verbose_;
-  int verbose() { return verbose_; }
-  int nevt_;
+  int verbose() const { return verbose_; }
+  mutable std::atomic<int> nevt_;
 
   bool m_doSys[dedefs::DEnsys];
   std::string instName[dedefs::DEnsys][5];
@@ -64,14 +63,15 @@ private:
 };
 
 template <class T>
-void L1DummyProducer::SimpleDigi(CLHEP::HepRandomEngine*, std::unique_ptr<T>& data, int type) {
+void L1DummyProducer::SimpleDigi(int, CLHEP::HepRandomEngine*, std::unique_ptr<T>& data, int type) const {
   /*collections generated in specializations below*/
 }
 
 template <>
-inline void L1DummyProducer::SimpleDigi(CLHEP::HepRandomEngine* engine,
+inline void L1DummyProducer::SimpleDigi(int,
+                                        CLHEP::HepRandomEngine* engine,
                                         std::unique_ptr<EcalTrigPrimDigiCollection>& data,
-                                        int type) {
+                                        int type) const {
   if (verbose())
     std::cout << "L1DummyProducer::SimpleDigi<EcalTrigPrimDigiCollection>....\n" << std::flush;
   int side = (engine->flat() > 0.5) ? -1 : 1;
@@ -93,9 +93,10 @@ inline void L1DummyProducer::SimpleDigi(CLHEP::HepRandomEngine* engine,
 }
 
 template <>
-inline void L1DummyProducer::SimpleDigi(CLHEP::HepRandomEngine* engine,
+inline void L1DummyProducer::SimpleDigi(int,
+                                        CLHEP::HepRandomEngine* engine,
                                         std::unique_ptr<HcalTrigPrimDigiCollection>& data,
-                                        int type) {
+                                        int type) const {
   if (verbose())
     std::cout << "L1DummyProducer::SimpleDigi<HcalTrigPrimDigiCollection>....\n" << std::flush;
   int side = (engine->flat() > 0.5) ? -1 : 1;
@@ -115,9 +116,10 @@ inline void L1DummyProducer::SimpleDigi(CLHEP::HepRandomEngine* engine,
 }
 
 template <>
-inline void L1DummyProducer::SimpleDigi(CLHEP::HepRandomEngine* engine,
+inline void L1DummyProducer::SimpleDigi(int nevt,
+                                        CLHEP::HepRandomEngine* engine,
                                         std::unique_ptr<L1CaloEmCollection>& data,
-                                        int type) {
+                                        int type) const {
   if (verbose())
     std::cout << "L1DummyProducer::SimpleDigi<L1CaloEmCollection>....\n" << std::flush;
   int energy = (int)(EBase_ + ESigm_ * CLHEP::RandGaussQ::shoot(engine));
@@ -127,7 +129,7 @@ inline void L1DummyProducer::SimpleDigi(CLHEP::HepRandomEngine* engine,
   unsigned crate = (unsigned)(18 * engine->flat());
   bool iso = (engine->flat() > 0.4);
   uint16_t index = (unsigned)(4 * engine->flat());
-  int16_t bx = nevt_;
+  int16_t bx = nevt;
   L1CaloEmCand cand(rank, region, card, crate, iso, index, bx);
   data->push_back(cand);
   //L1CaloEmCand(unsigned rank, unsigned region, unsigned card, unsigned crate, bool iso, uint16_t index, int16_t bx);
@@ -136,9 +138,10 @@ inline void L1DummyProducer::SimpleDigi(CLHEP::HepRandomEngine* engine,
 }
 
 template <>
-inline void L1DummyProducer::SimpleDigi(CLHEP::HepRandomEngine* engine,
+inline void L1DummyProducer::SimpleDigi(int,
+                                        CLHEP::HepRandomEngine* engine,
                                         std::unique_ptr<L1CaloRegionCollection>& data,
-                                        int type) {
+                                        int type) const {
   if (verbose())
     std::cout << "L1DummyProducer::SimpleDigi<L1CaloRegionCollection>....\n" << std::flush;
   int energy = (int)(EBase_ + ESigm_ * CLHEP::RandGaussQ::shoot(engine));
@@ -158,9 +161,10 @@ inline void L1DummyProducer::SimpleDigi(CLHEP::HepRandomEngine* engine,
 }
 
 template <>
-inline void L1DummyProducer::SimpleDigi(CLHEP::HepRandomEngine* engine,
+inline void L1DummyProducer::SimpleDigi(int,
+                                        CLHEP::HepRandomEngine* engine,
                                         std::unique_ptr<L1GctEmCandCollection>& data,
-                                        int type) {
+                                        int type) const {
   if (verbose())
     std::cout << "L1DummyProducer::SimpleDigi<L1GctEmCandCollection>....\n" << std::flush;
   bool iso;        //= type==0;
@@ -191,9 +195,10 @@ inline void L1DummyProducer::SimpleDigi(CLHEP::HepRandomEngine* engine,
 }
 
 template <>
-inline void L1DummyProducer::SimpleDigi(CLHEP::HepRandomEngine* engine,
+inline void L1DummyProducer::SimpleDigi(int,
+                                        CLHEP::HepRandomEngine* engine,
                                         std::unique_ptr<L1GctJetCandCollection>& data,
-                                        int type) {
+                                        int type) const {
   if (verbose())
     std::cout << "L1DummyProducer::SimpleDigi<L1GctJetCandCollection>....\n" << std::flush;
   bool isFor, isTau;
@@ -230,9 +235,10 @@ inline void L1DummyProducer::SimpleDigi(CLHEP::HepRandomEngine* engine,
 }
 
 template <>
-inline void L1DummyProducer::SimpleDigi(CLHEP::HepRandomEngine* engine,
+inline void L1DummyProducer::SimpleDigi(int,
+                                        CLHEP::HepRandomEngine* engine,
                                         std::unique_ptr<L1MuRegionalCandCollection>& data,
-                                        int type) {
+                                        int type) const {
   if (verbose())
     std::cout << "L1DummyProducer::SimpleDigi<L1MuRegionalCandCollection>....\n" << std::flush;
   //typedef std::vector<L1MuRegionalCand>     L1MuRegionalCandCollection;
@@ -266,15 +272,16 @@ inline void L1DummyProducer::SimpleDigi(CLHEP::HepRandomEngine* engine,
 }
 
 template <>
-inline void L1DummyProducer::SimpleDigi(CLHEP::HepRandomEngine* engine,
+inline void L1DummyProducer::SimpleDigi(int nevt,
+                                        CLHEP::HepRandomEngine* engine,
                                         std::unique_ptr<L1MuDTTrackContainer>& data,
-                                        int type) {
+                                        int type) const {
   assert(type == 0);
   int type_idx = type;  //choose data type: 0 DT, 1 bRPC, 2 CSC, 3 fRPC
   if (verbose())
     std::cout << "L1DummyProducer::SimpleDigi<L1MuDTTrackContainer>....\n" << std::flush;
   std::unique_ptr<L1MuRegionalCandCollection> tracks(new L1MuRegionalCandCollection());
-  SimpleDigi(engine, tracks, type_idx);
+  SimpleDigi(nevt, engine, tracks, type_idx);
   typedef std::vector<L1MuDTTrackCand> L1MuDTTrackCandCollection;
   std::unique_ptr<L1MuDTTrackCandCollection> tracksd(new L1MuDTTrackCandCollection());
   for (L1MuRegionalCandCollection::const_iterator it = tracks->begin(); it != tracks->end(); it++) {
@@ -292,9 +299,10 @@ inline void L1DummyProducer::SimpleDigi(CLHEP::HepRandomEngine* engine,
 }
 
 template <>
-inline void L1DummyProducer::SimpleDigi(CLHEP::HepRandomEngine* engine,
+inline void L1DummyProducer::SimpleDigi(int,
+                                        CLHEP::HepRandomEngine* engine,
                                         std::unique_ptr<L1MuDTChambPhContainer>& data,
-                                        int type) {
+                                        int type) const {
   if (verbose())
     std::cout << "L1DummyProducer::SimpleDigi<L1MuDTChambPhContainer>....\n" << std::flush;
   typedef std::vector<L1MuDTChambPhDigi> Phi_Container;
@@ -302,19 +310,16 @@ inline void L1DummyProducer::SimpleDigi(CLHEP::HepRandomEngine* engine,
   Phi_Container tracks(ntrk);
   int ubx, uwh, usc, ust, uphr, uphb, uqua, utag, ucnt;
   for (int i = 0; i < ntrk; i++) {
-    ubx = 0;   //bxNum()  - bx
-    uwh = 0;   //whNum()  - wheel
-    usc = 0;   //scNum()  - sector
-    ust = 0;   //stNum()  - station
-    uphr = 0;  //phi()    - radialAngle
-    uphb = 0;  //phiB()   - bendingAngle
-    uqua = 0;  //code()   - qualityCode
-    utag = 0;  //Ts2Tag() - Ts2TagCode
-    ucnt = 0;  //BxCnt()  - BxCntCode
-    uwh = (int)(-2 + 5 * engine->flat());
-    usc = (int)(12 * engine->flat());
-    ust = (int)(1. + 4 * engine->flat());
-    uqua = (int)(8 * engine->flat());
+    ubx = 0;                               //bxNum()  - bx
+    uwh = (int)(-2 + 5 * engine->flat());  //whNum()  - wheel
+    usc = (int)(12 * engine->flat());      //scNum()  - sector
+    ust = (int)(1. + 4 * engine->flat());  //stNum()  - station
+    uphr = 0;                              //phi()    - radialAngle
+    uphb = 0;                              //phiB()   - bendingAngle
+    uqua = (int)(8 * engine->flat());      //code()   - qualityCode
+    utag = 0;                              //Ts2Tag() - Ts2TagCode
+    ucnt = 0;                              //BxCnt()  - BxCntCode
+
     L1MuDTChambPhDigi cand(ubx, uwh, usc, ust, uphr, uphb, uqua, utag, ucnt);
     tracks.push_back(cand);
   }
@@ -326,9 +331,10 @@ inline void L1DummyProducer::SimpleDigi(CLHEP::HepRandomEngine* engine,
 }
 
 template <>
-inline void L1DummyProducer::SimpleDigi(CLHEP::HepRandomEngine* engine,
+inline void L1DummyProducer::SimpleDigi(int,
+                                        CLHEP::HepRandomEngine* engine,
                                         std::unique_ptr<L1MuDTChambThContainer>& data,
-                                        int type) {
+                                        int type) const {
   if (verbose())
     std::cout << "L1DummyProducer::SimpleDigi<L1MuDTChambThContainer>....\n" << std::flush;
   typedef std::vector<L1MuDTChambThDigi> The_Container;
@@ -356,13 +362,14 @@ inline void L1DummyProducer::SimpleDigi(CLHEP::HepRandomEngine* engine,
 }
 
 template <>
-inline void L1DummyProducer::SimpleDigi(CLHEP::HepRandomEngine* engine,
+inline void L1DummyProducer::SimpleDigi(int nevt,
+                                        CLHEP::HepRandomEngine* engine,
                                         std::unique_ptr<L1MuGMTCandCollection>& data,
-                                        int type) {
+                                        int type) const {
   if (verbose())
     std::cout << "L1DummyProducer::SimpleDigi<L1MuGMTCandCollection>....\n" << std::flush;
   //typedef std::vector<L1MuGMTCand>          L1MuGMTCandCollection;
-  L1MuGMTCand cand(0, nevt_);
+  L1MuGMTCand cand(0, nevt);
   //cand.setPhiPacked();//8bits
   //cand.setPtPacked ();//5bits
   //cand.setQuality  ();//3bits
@@ -370,7 +377,7 @@ inline void L1DummyProducer::SimpleDigi(CLHEP::HepRandomEngine* engine,
   //cand.setIsolation();//1bit
   //cand.setMIP      ();//1bit
   //cand.setChargePacked();//0:+, 1:-, 2:undef, 3:sync
-  //cand.setBx       (nevt_);
+  //cand.setBx       (nevt);
   //set physical values
   double eng = EBase_ + ESigm_ * CLHEP::RandGaussQ::shoot(engine);
   double phi = 2 * TMath::Pi() * engine->flat();
@@ -395,13 +402,14 @@ inline void L1DummyProducer::SimpleDigi(CLHEP::HepRandomEngine* engine,
 }
 
 template <>
-inline void L1DummyProducer::SimpleDigi(CLHEP::HepRandomEngine* engine,
+inline void L1DummyProducer::SimpleDigi(int nevt,
+                                        CLHEP::HepRandomEngine* engine,
                                         std::unique_ptr<L1MuGMTReadoutCollection>& data,
-                                        int type) {
+                                        int type) const {
   if (verbose())
     std::cout << "L1DummyProducer::SimpleDigi<L1MuGMTReadoutCollection>....\n" << std::flush;
   L1MuGMTReadoutRecord rec(0);
-  int bxn = nevt_;
+  int bxn = nevt;
   rec.setBxNr(bxn);
   rec.setEvNr(bxn);
   rec.setBxInEvent(0);
@@ -409,10 +417,10 @@ inline void L1DummyProducer::SimpleDigi(CLHEP::HepRandomEngine* engine,
   std::unique_ptr<L1MuRegionalCandCollection> trks_rpcb(new L1MuRegionalCandCollection);
   std::unique_ptr<L1MuRegionalCandCollection> trks_csc(new L1MuRegionalCandCollection);
   std::unique_ptr<L1MuRegionalCandCollection> trks_rpcf(new L1MuRegionalCandCollection);
-  SimpleDigi(engine, trks_dttf, 0);
-  SimpleDigi(engine, trks_rpcb, 1);
-  SimpleDigi(engine, trks_csc, 2);
-  SimpleDigi(engine, trks_rpcf, 3);
+  SimpleDigi(nevt, engine, trks_dttf, 0);
+  SimpleDigi(nevt, engine, trks_rpcb, 1);
+  SimpleDigi(nevt, engine, trks_csc, 2);
+  SimpleDigi(nevt, engine, trks_rpcf, 3);
   for (int i = 0; i < 4; i++) {
     rec.setInputCand(i, trks_dttf->at(i));       //dt  : 0..3
     rec.setInputCand(i + 4, trks_rpcb->at(i));   //rpcb: 4..7
@@ -444,7 +452,10 @@ inline void L1DummyProducer::SimpleDigi(CLHEP::HepRandomEngine* engine,
 }
 
 template <>
-inline void L1DummyProducer::SimpleDigi(CLHEP::HepRandomEngine*, std::unique_ptr<LTCDigiCollection>& data, int type) {
+inline void L1DummyProducer::SimpleDigi(int,
+                                        CLHEP::HepRandomEngine*,
+                                        std::unique_ptr<LTCDigiCollection>& data,
+                                        int type) const {
   if (verbose())
     std::cout << "L1DummyProducer::SimpleDigi<LTCDigiCollection>....\n" << std::flush;
   //LTCs are FED id 816-823
@@ -478,9 +489,10 @@ inline void L1DummyProducer::SimpleDigi(CLHEP::HepRandomEngine*, std::unique_ptr
 }
 
 template <>
-inline void L1DummyProducer::SimpleDigi(CLHEP::HepRandomEngine* engine,
+inline void L1DummyProducer::SimpleDigi(int,
+                                        CLHEP::HepRandomEngine* engine,
                                         std::unique_ptr<CSCCorrelatedLCTDigiCollection>& data,
-                                        int type) {
+                                        int type) const {
   if (verbose())
     std::cout << "L1DummyProducer::SimpleDigi<CSCCorrelatedLCTDigiCollection>....\n" << std::flush;
   //typedef MuonDigiCollection<CSCDetId,CSCCorrelatedLCTDigi> CSCCorrelatedLCTDigiCollection;
@@ -489,8 +501,9 @@ inline void L1DummyProducer::SimpleDigi(CLHEP::HepRandomEngine* engine,
   //tbd: set non-trivial random values
   dg.clear();  // set contents to zero
   //CSCDetId( int iendcap, int istation, int iring, int ichamber, int ilayer = 0 );
-  enum eMinNum { MIN_ENDCAP = 1, MIN_STATION = 1, MIN_RING = 1, MIN_CHAMBER = 1, MIN_LAYER = 1 };
-  enum eMaxNum { MAX_ENDCAP = 2, MAX_STATION = 4, MAX_RING = 4, MAX_CHAMBER = 36, MAX_LAYER = 6 };
+  static constexpr int MIN_ENDCAP = 1, MIN_STATION = 1, MIN_RING = 1, MIN_CHAMBER = 1, MIN_LAYER = 1;
+  static constexpr int MAX_ENDCAP = 2, MAX_STATION = 4, MAX_RING = 4, MAX_CHAMBER = 36, MAX_LAYER = 6;
+
   float rnd = engine->flat();
   int ec = (int)(MIN_ENDCAP + (MAX_ENDCAP - MIN_ENDCAP) * rnd + 1);
   int st = (int)(MIN_STATION + (MAX_STATION - MIN_STATION) * rnd + 1);
@@ -506,16 +519,17 @@ inline void L1DummyProducer::SimpleDigi(CLHEP::HepRandomEngine* engine,
 }
 
 template <>
-inline void L1DummyProducer::SimpleDigi(CLHEP::HepRandomEngine* engine,
+inline void L1DummyProducer::SimpleDigi(int nevt,
+                                        CLHEP::HepRandomEngine* engine,
                                         std::unique_ptr<L1CSCTrackCollection>& data,
-                                        int type) {
+                                        int type) const {
   if (verbose())
     std::cout << "L1DummyProducer::SimpleDigi<L1CSCTrackCollection>...\n" << std::flush;
   std::unique_ptr<CSCCorrelatedLCTDigiCollection> dgcoll(new CSCCorrelatedLCTDigiCollection);
-  SimpleDigi(engine, dgcoll, 0);
+  SimpleDigi(nevt, engine, dgcoll, 0);
   csc::L1Track l1trk = csc::L1Track();
   std::unique_ptr<L1MuRegionalCandCollection> regcoll(new L1MuRegionalCandCollection);
-  SimpleDigi(engine, regcoll, 2);
+  SimpleDigi(nevt, engine, regcoll, 2);
   L1MuRegionalCand regcand = *(regcoll->begin());
   l1trk.setDataWord(regcand.getDataWord());
   l1trk.setBx(regcand.bx());

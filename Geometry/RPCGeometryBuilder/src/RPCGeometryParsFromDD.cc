@@ -16,7 +16,7 @@
 #include "Geometry/MuonNumbering/interface/MuonBaseNumber.h"
 #include "Geometry/MuonNumbering/interface/RPCNumberingScheme.h"
 #include "DataFormats/GeometryVector/interface/Basic3DVector.h"
-#include "CLHEP/Units/GlobalSystemOfUnits.h"
+#include <CLHEP/Units/SystemOfUnits.h>
 #include <iostream>
 #include <algorithm>
 #include <DetectorDescription/DDCMS/interface/DDFilteredView.h>
@@ -80,7 +80,7 @@ void RPCGeometryParsFromDD::buildGeometry(DDFilteredView& fview,
       }
     }
     if (nStrips == 0)
-      std::cout << "No strip found!!" << std::endl;
+      edm::LogVerbatim("RPCGeometryParsFromDD") << "No strip found!!";
 
     const std::vector<double> dpar = fview.logicalPart().solid().parameters();
 

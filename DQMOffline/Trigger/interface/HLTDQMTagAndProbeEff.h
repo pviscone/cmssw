@@ -58,7 +58,6 @@ namespace {
 template <typename TagType, typename TagCollType, typename ProbeType = TagType, typename ProbeCollType = TagCollType>
 class HLTDQMTagAndProbeEff {
 public:
-  typedef dqm::legacy::MonitorElement MonitorElement;
   typedef dqm::legacy::DQMStore DQMStore;
 
   explicit HLTDQMTagAndProbeEff(const edm::ParameterSet& pset, edm::ConsumesCollector&& cc);
@@ -251,8 +250,8 @@ void HLTDQMTagAndProbeEff<TagType, TagCollType, ProbeType, ProbeCollType>::fill(
           filterHist.fillHists(*tagRef, *probeRef, event, setup, *trigEvtHandle);
         }
       }  //end of t&p pair cuts
-    }    //end of probe loop
-  }      //end of tag loop
+    }  //end of probe loop
+  }  //end of tag loop
 }
 
 //yo dawg, I heard you like templates...

@@ -823,8 +823,8 @@ MuonAssociatorByHitsHelper::IndexAssociation MuonAssociatorByHitsHelper::associa
           }
         }
       }  // loop over TrackingParticle's
-    }    // if(n_matching_simhits != 0)
-  }      // loop over reco Tracks
+    }  // if(n_matching_simhits != 0)
+  }  // loop over reco Tracks
 
   if (!any_trackingParticle_matched) {
     edm::LogVerbatim("MuonAssociatorByHitsHelper")
@@ -1296,11 +1296,8 @@ void MuonAssociatorByHitsHelper::getMatchedIds(MapOfMatchedIds &tracker_matchedI
 
             SimTrackIds.clear();
             std::vector<SimHitIdpr> i_SimTrackIds;
-            int i_compHit = 0;
 
             for (auto const &ithit : componentHits) {
-              i_compHit++;
-
               const GEMRecHit *gemrechitseg = dynamic_cast<const GEMRecHit *>(ithit);
 
               i_SimTrackIds.clear();

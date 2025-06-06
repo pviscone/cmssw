@@ -1,4 +1,3 @@
-
 /*
 ________________________________________________________________________
 
@@ -22,13 +21,14 @@ ________________________________________________________________________
 #include "FWCore/Framework/interface/EventSetup.h"
 #include "FWCore/Framework/interface/ESHandle.h"
 
-#include "CLHEP/Random/RandGaussQ.h"
-#include "CLHEP/Units/GlobalSystemOfUnits.h"
-#include "CLHEP/Units/GlobalPhysicalConstants.h"
-//#include "CLHEP/Vector/ThreeVector.h"
+#include <CLHEP/Random/RandGaussQ.h>
+#include <CLHEP/Units/SystemOfUnits.h>
+#include <CLHEP/Units/GlobalPhysicalConstants.h>
 #include "HepMC/SimpleVector.h"
 
-#include <iostream>
+using CLHEP::cm;
+using CLHEP::ns;
+using CLHEP::radian;
 
 BetafuncEvtVtxGenerator::BetafuncEvtVtxGenerator(const edm::ParameterSet& p) : BaseEvtVtxGenerator(p), boost_(4, 4) {
   readDB_ = p.getParameter<bool>("readDB");
@@ -39,7 +39,7 @@ BetafuncEvtVtxGenerator::BetafuncEvtVtxGenerator(const edm::ParameterSet& p) : B
     fSigmaZ = p.getParameter<double>("SigmaZ") * cm;
     fbetastar = p.getParameter<double>("BetaStar") * cm;
     femittance = p.getParameter<double>("Emittance") * cm;              // this is not the normalized emittance
-    fTimeOffset = p.getParameter<double>("TimeOffset") * ns * c_light;  // HepMC time units are mm
+    fTimeOffset = p.getParameter<double>("TimeOffset") * ns * c_light;  // HepMC distance units are in mm
 
     setBoost(p.getParameter<double>("Alpha") * radian, p.getParameter<double>("Phi") * radian);
     if (fSigmaZ <= 0) {
@@ -48,11 +48,11 @@ BetafuncEvtVtxGenerator::BetafuncEvtVtxGenerator(const edm::ParameterSet& p) : B
     }
   }
   if (readDB_) {
+    // NOTE: this is currently watching LS transitions, while it should watch Run transitions,
+    // even though in reality there is no Run Dependent MC (yet) in CMS
     beamToken_ = esConsumes<SimBeamSpotObjects, SimBeamSpotObjectsRcd, edm::Transition::BeginLuminosityBlock>();
   }
 }
-
-BetafuncEvtVtxGenerator::~BetafuncEvtVtxGenerator() {}
 
 void BetafuncEvtVtxGenerator::beginLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const& iEventSetup) {
   update(iEventSetup);
@@ -61,16 +61,14 @@ void BetafuncEvtVtxGenerator::beginLuminosityBlock(edm::LuminosityBlock const&, 
 void BetafuncEvtVtxGenerator::update(const edm::EventSetup& iEventSetup) {
   if (readDB_ && parameterWatcher_.check(iEventSetup)) {
     edm::ESHandle<SimBeamSpotObjects> beamhandle = iEventSetup.getHandle(beamToken_);
-
-    fX0 = beamhandle->fX0;
-    fY0 = beamhandle->fY0;
-    fZ0 = beamhandle->fZ0;
-    //    falpha=beamhandle->fAlpha;
-    fSigmaZ = beamhandle->fSigmaZ;
-    fTimeOffset = beamhandle->fTimeOffset;
-    fbetastar = beamhandle->fbetastar;
-    femittance = beamhandle->femittance;
-    setBoost(beamhandle->fAlpha, beamhandle->fPhi);
+    fX0 = beamhandle->x() * cm;
+    fY0 = beamhandle->y() * cm;
+    fZ0 = beamhandle->z() * cm;
+    fSigmaZ = beamhandle->sigmaZ() * cm;
+    fTimeOffset = beamhandle->timeOffset() * ns * c_light;  // HepMC distance units are in mm
+    fbetastar = beamhandle->betaStar() * cm;
+    femittance = beamhandle->emittance() * cm;
+    setBoost(beamhandle->alpha() * radian, beamhandle->phi() * radian);
   }
 }
 
@@ -143,3 +141,19 @@ void BetafuncEvtVtxGenerator::sigmaZ(double s) {
 }
 
 TMatrixD const* BetafuncEvtVtxGenerator::GetInvLorentzBoost() const { return &boost_; }
+
+void BetafuncEvtVtxGenerator::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
+  edm::ParameterSetDescription desc;
+  desc.add<double>("X0", 0.0)->setComment("in cm");
+  desc.add<double>("Y0", 0.0)->setComment("in cm");
+  desc.add<double>("Z0", 0.0)->setComment("in cm");
+  desc.add<double>("SigmaZ", 0.0)->setComment("in cm");
+  desc.add<double>("BetaStar", 0.0)->setComment("in cm");
+  desc.add<double>("Emittance", 0.0)->setComment("in cm");
+  desc.add<double>("Alpha", 0.0)->setComment("in radians");
+  desc.add<double>("Phi", 0.0)->setComment("in radians");
+  desc.add<double>("TimeOffset", 0.0)->setComment("in ns");
+  desc.add<edm::InputTag>("src");
+  desc.add<bool>("readDB");
+  descriptions.add("BetafuncEvtVtxGenerator", desc);
+}

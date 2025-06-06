@@ -37,6 +37,7 @@ HLTDeDxFilter::HLTDeDxFilter(const edm::ParameterSet& iConfig) : HLTFilter(iConf
   minDEDx_ = iConfig.getParameter<double>("minDEDx");
   minPT_ = iConfig.getParameter<double>("minPT");
   minNOM_ = iConfig.getParameter<double>("minNOM");
+  minETA_ = iConfig.getParameter<double>("minETA");
   maxETA_ = iConfig.getParameter<double>("maxETA");
   minNumValidHits_ = iConfig.getParameter<double>("minNumValidHits");
   maxNHitMissIn_ = iConfig.getParameter<double>("maxNHitMissIn");
@@ -68,6 +69,7 @@ void HLTDeDxFilter::fillDescriptions(edm::ConfigurationDescriptions& description
   desc.add<double>("minDEDx", 0.0);
   desc.add<double>("minPT", 0.0);
   desc.add<double>("minNOM", 0.0);
+  desc.add<double>("minETA", 0.0);
   desc.add<double>("maxETA", 5.5);
   desc.add<double>("minNumValidHits", 0);
   desc.add<double>("maxNHitMissIn", 99);
@@ -114,7 +116,6 @@ bool HLTDeDxFilter::hltFilter(edm::Event& iEvent,
     iEvent.getByToken(caloTowersToken_, caloTowersHandle);
 
   bool accept = false;
-  int NTracks = 0;
 
   // early return
   if (trackCollection.empty())
@@ -129,9 +130,8 @@ bool HLTDeDxFilter::hltFilter(edm::Event& iEvent,
   }
   for (unsigned int i = 0; i < trackCollection.size(); i++) {
     reco::TrackRef track = reco::TrackRef(trackCollectionHandle, i);
-    if (pt[i] > minPT_ && fabs(eta[i]) < maxETA_ && dEdxTrack[track].numberOfMeasurements() > minNOM_ &&
-        dEdxTrack[track].dEdx() > minDEDx_) {
-      NTracks++;
+    if (pt[i] > minPT_ && std::abs(eta[i]) >= minETA_ && std::abs(eta[i]) < maxETA_ &&
+        dEdxTrack[track].numberOfMeasurements() > minNOM_ && dEdxTrack[track].dEdx() > minDEDx_) {
       if (track->numberOfValidHits() < minNumValidHits_)
         continue;
       if (track->hitPattern().trackerLayersWithoutMeasurement(reco::HitPattern::MISSING_INNER_HITS) > maxNHitMissIn_)
@@ -194,10 +194,9 @@ bool HLTDeDxFilter::hltFilter(edm::Event& iEvent,
 
   // put filter object into the Event
   if (saveTags()) {
-    edm::OrphanHandle<RecoChargedCandidateCollection> chargedCandidatesHandle =
-        iEvent.put(std::move(chargedCandidates));
-    for (int i = 0; i < NTracks; i++) {
-      filterproduct.addObject(TriggerMuon, RecoChargedCandidateRef(chargedCandidatesHandle, i));
+    auto const chargedCandidatesHandle = iEvent.put(std::move(chargedCandidates));
+    for (unsigned int i = 0; i < chargedCandidatesHandle->size(); ++i) {
+      filterproduct.addObject(trigger::TriggerMuon, reco::RecoChargedCandidateRef(chargedCandidatesHandle, i));
     }
   }
 

@@ -13,6 +13,7 @@
 #include "FWCore/ParameterSet/interface/ParameterSetDescription.h"
 #include "FWCore/ParameterSet/interface/ConfigurationDescriptions.h"
 #include "Geometry/CaloTopology/interface/HcalTopology.h"
+#include "Geometry/ForwardGeometry/interface/ZdcTopology.h"
 #include "CondFormats/HcalObjects/interface/AllObjects.h"
 #include "CalibCalorimetry/HcalAlgos/interface/HBHERecalibration.h"
 #include "CondFormats/DataRecord/interface/HcalTPParametersRcd.h"
@@ -27,6 +28,7 @@ class HcalPedestalsRcd;
 class HcalPedestalWidthsRcd;
 class HcalGainsRcd;
 class HcalGainWidthsRcd;
+class HcalPFCutsRcd;
 class HcalQIEDataRcd;
 class HcalQIETypesRcd;
 class HcalChannelQualityRcd;
@@ -67,15 +69,20 @@ protected:
 
   std::unique_ptr<HcalPedestals> producePedestals_(const HcalPedestalsRcd& rcd,
                                                    const edm::ESGetToken<HcalTopology, HcalRecNumberingRecord>&,
+                                                   const edm::ESGetToken<ZdcTopology, HcalRecNumberingRecord>&,
                                                    bool eff);
   std::unique_ptr<HcalPedestalWidths> producePedestalWidths_(
-      const HcalPedestalWidthsRcd& rcd, const edm::ESGetToken<HcalTopology, HcalRecNumberingRecord>&, bool eff);
+      const HcalPedestalWidthsRcd& rcd,
+      const edm::ESGetToken<HcalTopology, HcalRecNumberingRecord>&,
+      const edm::ESGetToken<ZdcTopology, HcalRecNumberingRecord>&,
+      bool eff);
   std::unique_ptr<HcalPedestals> producePedestals(const HcalPedestalsRcd& rcd);
   std::unique_ptr<HcalPedestalWidths> producePedestalWidths(const HcalPedestalWidthsRcd& rcd);
   std::unique_ptr<HcalPedestals> produceEffectivePedestals(const HcalPedestalsRcd& rcd);
   std::unique_ptr<HcalPedestalWidths> produceEffectivePedestalWidths(const HcalPedestalWidthsRcd& rcd);
   std::unique_ptr<HcalGains> produceGains(const HcalGainsRcd& rcd);
   std::unique_ptr<HcalGainWidths> produceGainWidths(const HcalGainWidthsRcd& rcd);
+  std::unique_ptr<HcalPFCuts> producePFCuts(const HcalPFCutsRcd& rcd);
   std::unique_ptr<HcalQIEData> produceQIEData(const HcalQIEDataRcd& rcd);
   std::unique_ptr<HcalQIETypes> produceQIETypes(const HcalQIETypesRcd& rcd);
   std::unique_ptr<HcalChannelQuality> produceChannelQuality(const HcalChannelQualityRcd& rcd);
@@ -116,6 +123,7 @@ private:
     kEffectivePedestalWidths,
     kGains,
     kGainWidths,
+    kPFCuts,
     kQIEData,
     kQIETypes,
     kChannelQuality,
@@ -144,6 +152,7 @@ private:
   std::unique_ptr<HBHERecalibration> he_recalibration;
   std::unique_ptr<HFRecalibration> hf_recalibration;
   std::unordered_map<int, edm::ESGetToken<HcalTopology, HcalRecNumberingRecord>> topoTokens_;
+  std::unordered_map<int, edm::ESGetToken<ZdcTopology, HcalRecNumberingRecord>> zdcTopoTokens_;
   edm::ESGetToken<HBHEDarkening, HBHEDarkeningRecord> heDarkeningToken_;
   edm::ESGetToken<HBHEDarkening, HBHEDarkeningRecord> hbDarkeningToken_;
   bool switchGainWidthsForTrigPrims;

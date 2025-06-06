@@ -178,9 +178,6 @@ namespace edm {
     bool getByLabel(std::string const& label, std::string const& productInstanceName, Handle<PROD>& result) const;
 
     template <typename PROD>
-    void getManyByType(std::vector<Handle<PROD>>& results) const;
-
-    template <typename PROD>
     bool getByToken(EDGetToken token, Handle<PROD>& result) const;
 
     template <typename PROD>
@@ -279,6 +276,7 @@ namespace edm {
     BasicHandle getByLabelImpl(std::type_info const& iWrapperType,
                                std::type_info const& iProductType,
                                InputTag const& iTag) const override;
+    BasicHandle getByTokenImpl(std::type_info const& iProductType, EDGetToken iToken) const override;
 
     //override used by EventBase class
     BasicHandle getImpl(std::type_info const& iProductType, ProductID const& pid) const override;
@@ -376,8 +374,7 @@ namespace edm {
   OrphanHandle<PROD> Event::putImpl(EDPutToken::value_type index, std::unique_ptr<PROD> product) {
     // The following will call post_insert if T has such a function,
     // and do nothing if T has no such function.
-    std::conditional_t<detail::has_postinsert<PROD>::value, DoPostInsert<PROD>, DoNotPostInsert<PROD>> maybe_inserter;
-    maybe_inserter(product.get());
+    detail::do_post_insert_if_available(*product.get());
 
     assert(index < putProducts().size());
 
@@ -458,8 +455,7 @@ namespace edm {
 
     // The following will call post_insert if T has such a function,
     // and do nothing if T has no such function.
-    std::conditional_t<detail::has_postinsert<PROD>::value, DoPostInsert<PROD>, DoNotPostInsert<PROD>> maybe_inserter;
-    maybe_inserter(&(wp->bareProduct()));
+    detail::do_post_insert_if_available(wp->bareProduct());
 
     PROD const* prod = wp->product();
 
@@ -524,15 +520,6 @@ namespace edm {
   template <typename PROD>
   bool Event::getByLabel(std::string const& label, Handle<PROD>& result) const {
     return getByLabel(label, emptyString_, result);
-  }
-
-  template <typename PROD>
-  void Event::getManyByType(std::vector<Handle<PROD>>& results) const {
-    provRecorder_.getManyByType(results, moduleCallingContext_);
-    for (typename std::vector<Handle<PROD>>::const_iterator it = results.begin(), itEnd = results.end(); it != itEnd;
-         ++it) {
-      addToGotBranchIDs(*it->provenance());
-    }
   }
 
   template <typename PROD>

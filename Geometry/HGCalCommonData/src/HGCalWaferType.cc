@@ -31,7 +31,33 @@ HGCalWaferType::HGCalWaferType(const std::vector<double>& rad100,
 #endif
 }
 
-HGCalWaferType::~HGCalWaferType() {}
+int HGCalWaferType::getCassette(int index, const HGCalParameters::waferInfo_map& wafers) {
+  auto itr = wafers.find(index);
+  return ((itr == wafers.end()) ? -1 : ((itr->second).cassette));
+}
+
+int HGCalWaferType::getOrient(int index, const HGCalParameters::waferInfo_map& wafers) {
+  auto itr = wafers.find(index);
+  return ((itr == wafers.end()) ? -1 : ((itr->second).orient));
+}
+
+int HGCalWaferType::getPartial(int index, const HGCalParameters::waferInfo_map& wafers) {
+  auto itr = wafers.find(index);
+  return ((itr == wafers.end()) ? -1 : ((itr->second).part));
+}
+
+int HGCalWaferType::getType(int index, const HGCalParameters::waferInfo_map& wafers) {
+  auto itr = wafers.find(index);
+  return ((itr == wafers.end()) ? -1 : ((itr->second).type));
+}
+
+int HGCalWaferType::getType(int index, const std::vector<int>& indices, const std::vector<int>& properties) {
+  auto itr = std::find(std::begin(indices), std::end(indices), index);
+  int type = (itr == std::end(indices))
+                 ? -1
+                 : HGCalProperty::waferThick(properties[static_cast<unsigned int>(itr - std::begin(indices))]);
+  return type;
+}
 
 int HGCalWaferType::getType(double xpos, double ypos, double zpos) {
   std::vector<double> xc(HGCalParameters::k_CornerSize, 0);
@@ -61,20 +87,20 @@ int HGCalWaferType::getType(double xpos, double ypos, double zpos) {
   double fracArea(0);
   if (choice_ == 1) {
     if (fine.size() >= cutValue_)
-      type = HGCSiliconDetId::HGCalFine;
+      type = HGCSiliconDetId::HGCalHD120;
     else if (coarse.size() >= cutValue_)
-      type = HGCSiliconDetId::HGCalCoarseThin;
+      type = HGCSiliconDetId::HGCalLD200;
     else
-      type = HGCSiliconDetId::HGCalCoarseThick;
+      type = HGCSiliconDetId::HGCalLD300;
   } else {
     if (fine.size() >= 4)
-      type = HGCSiliconDetId::HGCalFine;
+      type = HGCSiliconDetId::HGCalHD120;
     else if (coarse.size() >= 4 && fine.size() <= 1)
-      type = HGCSiliconDetId::HGCalCoarseThin;
+      type = HGCSiliconDetId::HGCalLD200;
     else if (coarse.size() < 2 && fine.empty())
-      type = HGCSiliconDetId::HGCalCoarseThick;
+      type = HGCSiliconDetId::HGCalLD300;
     else if (!fine.empty())
-      type = -1;
+      type = HGCSiliconDetId::HGCalHD200;
     if (type <= -1) {
       unsigned int kmax = (type == -1) ? fine.size() : coarse.size();
       std::vector<double> xcn, ycn;
@@ -102,19 +128,6 @@ int HGCalWaferType::getType(double xpos, double ypos, double zpos) {
                                 << coarse.size() << ":" << fracArea << ":" << type;
 #endif
   return type;
-}
-
-int HGCalWaferType::getType(int index, const std::vector<int>& indices, const std::vector<int>& properties) {
-  auto itr = std::find(std::begin(indices), std::end(indices), index);
-  int type = (itr == std::end(indices))
-                 ? -1
-                 : HGCalProperty::waferThick(properties[static_cast<unsigned int>(itr - std::begin(indices))]);
-  return type;
-}
-
-int HGCalWaferType::getType(int index, const HGCalParameters::waferInfo_map& wafers) {
-  auto itr = wafers.find(index);
-  return ((itr == wafers.end()) ? -1 : ((itr->second).type));
 }
 
 std::pair<double, double> HGCalWaferType::rLimits(double zpos) {

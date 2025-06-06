@@ -2,7 +2,7 @@ import FWCore.ParameterSet.Config as cms
 from Configuration.Eras.Modifier_tracker_apv_vfp30_2016_cff import tracker_apv_vfp30_2016 as _tracker_apv_vfp30_2016
 from Configuration.Eras.Modifier_fastSim_cff import fastSim
 
-#for dnn classifier
+# for dnn classifier
 from Configuration.ProcessModifiers.trackdnn_cff import trackdnn
 from RecoTracker.IterativeTracking.dnnQualityCuts import qualityCutDictionary
 
@@ -36,8 +36,8 @@ initialStepTrackingRegions = _globalTrackingRegionFromBeamSpot.clone(RegionPSet 
 ))
 from Configuration.Eras.Modifier_trackingPhase2PU140_cff import trackingPhase2PU140
 trackingPhase1.toModify(initialStepTrackingRegions, RegionPSet = dict(ptMin = 0.5))
-from Configuration.Eras.Modifier_highBetaStar_2018_cff import highBetaStar_2018
-highBetaStar_2018.toModify(initialStepTrackingRegions,RegionPSet = dict(
+from Configuration.Eras.Modifier_highBetaStar_cff import highBetaStar
+highBetaStar.toModify(initialStepTrackingRegions,RegionPSet = dict(
      ptMin        = 0.05,
      originRadius = 0.2
 ))
@@ -51,19 +51,19 @@ initialStepHitDoublets = _hitPairEDProducer.clone(
     maxElement      = 50000000,
     produceIntermediateHitDoublets = True,
 )
-from RecoPixelVertexing.PixelTriplets.pixelTripletHLTEDProducer_cfi import pixelTripletHLTEDProducer as _pixelTripletHLTEDProducer
-from RecoPixelVertexing.PixelLowPtUtilities.ClusterShapeHitFilterESProducer_cfi import *
-import RecoPixelVertexing.PixelLowPtUtilities.LowPtClusterShapeSeedComparitor_cfi
+from RecoTracker.PixelSeeding.pixelTripletHLTEDProducer_cfi import pixelTripletHLTEDProducer as _pixelTripletHLTEDProducer
+from RecoTracker.PixelLowPtUtilities.ClusterShapeHitFilterESProducer_cfi import *
+import RecoTracker.PixelLowPtUtilities.LowPtClusterShapeSeedComparitor_cfi
 initialStepHitTriplets = _pixelTripletHLTEDProducer.clone(
     doublets              = 'initialStepHitDoublets',
     produceSeedingHitSets = True,
-    SeedComparitorPSet = RecoPixelVertexing.PixelLowPtUtilities.LowPtClusterShapeSeedComparitor_cfi.LowPtClusterShapeSeedComparitor.clone()
+    SeedComparitorPSet = RecoTracker.PixelLowPtUtilities.LowPtClusterShapeSeedComparitor_cfi.LowPtClusterShapeSeedComparitor.clone()
 )
 from RecoTracker.TkSeedGenerator.seedCreatorFromRegionConsecutiveHitsEDProducer_cff import seedCreatorFromRegionConsecutiveHitsEDProducer as _seedCreatorFromRegionConsecutiveHitsEDProducer
 initialStepSeeds = _seedCreatorFromRegionConsecutiveHitsEDProducer.clone(
     seedingHitSets = 'initialStepHitTriplets',
 )
-from RecoPixelVertexing.PixelTriplets.caHitQuadrupletEDProducer_cfi import caHitQuadrupletEDProducer as _caHitQuadrupletEDProducer
+from RecoTracker.PixelSeeding.caHitQuadrupletEDProducer_cfi import caHitQuadrupletEDProducer as _caHitQuadrupletEDProducer
 _initialStepCAHitQuadruplets = _caHitQuadrupletEDProducer.clone(
     doublets = 'initialStepHitDoublets',
     extraHitRPhitolerance = initialStepHitTriplets.extraHitRPhitolerance,
@@ -78,7 +78,7 @@ _initialStepCAHitQuadruplets = _caHitQuadrupletEDProducer.clone(
     CAThetaCut           = 0.0012,
     CAPhiCut             = 0.2,
 )
-highBetaStar_2018.toModify(_initialStepCAHitQuadruplets,
+highBetaStar.toModify(_initialStepCAHitQuadruplets,
     CAThetaCut = 0.0024,
     CAPhiCut   = 0.4
 )
@@ -154,7 +154,7 @@ _tracker_apv_vfp30_2016.toModify(initialStepTrajectoryFilterBase, maxCCCLostHits
 from Configuration.Eras.Modifier_pp_on_XeXe_2017_cff import pp_on_XeXe_2017
 from Configuration.ProcessModifiers.pp_on_AA_cff import pp_on_AA
 (pp_on_XeXe_2017 | pp_on_AA).toModify(initialStepTrajectoryFilterBase, minPt=0.6)
-highBetaStar_2018.toModify(initialStepTrajectoryFilterBase, minPt = 0.05)
+highBetaStar.toModify(initialStepTrajectoryFilterBase, minPt = 0.05)
 
 initialStepTrajectoryFilterInOut = initialStepTrajectoryFilterBase.clone(
     minimumNumberOfHits = 4,
@@ -166,8 +166,8 @@ from Configuration.Eras.Modifier_trackingLowPU_cff import trackingLowPU
 trackingLowPU.toReplaceWith(initialStepTrajectoryFilterBase, _initialStepTrajectoryFilterBase)
 trackingPhase2PU140.toReplaceWith(initialStepTrajectoryFilterBase, _initialStepTrajectoryFilterBase)
 
-import RecoPixelVertexing.PixelLowPtUtilities.StripSubClusterShapeTrajectoryFilter_cfi
-initialStepTrajectoryFilterShape = RecoPixelVertexing.PixelLowPtUtilities.StripSubClusterShapeTrajectoryFilter_cfi.StripSubClusterShapeTrajectoryFilterTIX12.clone()
+import RecoTracker.PixelLowPtUtilities.StripSubClusterShapeTrajectoryFilter_cfi
+initialStepTrajectoryFilterShape = RecoTracker.PixelLowPtUtilities.StripSubClusterShapeTrajectoryFilter_cfi.StripSubClusterShapeTrajectoryFilterTIX12.clone()
 initialStepTrajectoryFilter = cms.PSet(
     ComponentType = cms.string('CompositeTrajectoryFilter'),
     filters = cms.VPSet(
@@ -197,7 +197,7 @@ trackingPhase2PU140.toModify(initialStepChi2Est,
 
 
 import RecoTracker.CkfPattern.GroupedCkfTrajectoryBuilder_cfi
-initialStepTrajectoryBuilder = RecoTracker.CkfPattern.GroupedCkfTrajectoryBuilder_cfi.GroupedCkfTrajectoryBuilder.clone(
+initialStepTrajectoryBuilder = RecoTracker.CkfPattern.GroupedCkfTrajectoryBuilder_cfi.GroupedCkfTrajectoryBuilderIterativeDefault.clone(
     trajectoryFilter = dict(refToPSet_ = 'initialStepTrajectoryFilter'),
     alwaysUseInvalidHits = True,
     maxCand = 3,
@@ -219,7 +219,7 @@ trackingPhase2PU140.toModify(initialStepTrajectoryBuilder,
 
 import RecoTracker.CkfPattern.CkfTrackCandidates_cfi
 # Give handle for CKF for HI
-_initialStepTrackCandidatesCkf = RecoTracker.CkfPattern.CkfTrackCandidates_cfi.ckfTrackCandidates.clone(
+_initialStepTrackCandidatesCkf = RecoTracker.CkfPattern.CkfTrackCandidates_cfi.ckfTrackCandidatesIterativeDefault.clone(
     src = 'initialStepSeeds',
     ### these two parameters are relevant only for the CachingSeedCleanerBySharedInput
     numHitsForSeedCleaner = 50,
@@ -234,12 +234,14 @@ from Configuration.ProcessModifiers.trackingMkFitInitialStep_cff import tracking
 from RecoTracker.MkFit.mkFitGeometryESProducer_cfi import mkFitGeometryESProducer
 import RecoTracker.MkFit.mkFitSiPixelHitConverter_cfi as mkFitSiPixelHitConverter_cfi
 import RecoTracker.MkFit.mkFitSiStripHitConverter_cfi as mkFitSiStripHitConverter_cfi
+import RecoTracker.MkFit.mkFitPhase2HitConverter_cfi as mkFitPhase2HitConverter_cfi
 import RecoTracker.MkFit.mkFitEventOfHitsProducer_cfi as mkFitEventOfHitsProducer_cfi
 import RecoTracker.MkFit.mkFitSeedConverter_cfi as mkFitSeedConverter_cfi
 import RecoTracker.MkFit.mkFitIterationConfigESProducer_cfi as mkFitIterationConfigESProducer_cfi
 import RecoTracker.MkFit.mkFitProducer_cfi as mkFitProducer_cfi
 import RecoTracker.MkFit.mkFitOutputConverter_cfi as mkFitOutputConverter_cfi
 mkFitSiPixelHits = mkFitSiPixelHitConverter_cfi.mkFitSiPixelHitConverter.clone() # TODO: figure out better place for this module?
+mkFitSiPhase2Hits = mkFitPhase2HitConverter_cfi.mkFitPhase2HitConverter.clone()
 mkFitEventOfHits = mkFitEventOfHitsProducer_cfi.mkFitEventOfHitsProducer.clone() # TODO: figure out better place for this module?
 initialStepTrackCandidatesMkFitSeeds = mkFitSeedConverter_cfi.mkFitSeedConverter.clone(
     seeds = 'initialStepSeeds',
@@ -257,6 +259,7 @@ trackingMkFitInitialStep.toReplaceWith(initialStepTrackCandidates, mkFitOutputCo
     mkFitSeeds = 'initialStepTrackCandidatesMkFitSeeds',
     tracks = 'initialStepTrackCandidatesMkFit',
 ))
+(pp_on_XeXe_2017 | pp_on_AA).toModify(initialStepTrackCandidatesMkFitConfig, minPt=0.6)
 
 import FastSimulation.Tracking.TrackCandidateProducer_cfi
 fastSim.toReplaceWith(initialStepTrackCandidates,
@@ -267,8 +270,8 @@ fastSim.toReplaceWith(initialStepTrackCandidates,
 
 
 # fitting
-import RecoTracker.TrackProducer.TrackProducer_cfi
-initialStepTracks = RecoTracker.TrackProducer.TrackProducer_cfi.TrackProducer.clone(
+import RecoTracker.TrackProducer.TrackProducerIterativeDefault_cfi
+initialStepTracks = RecoTracker.TrackProducer.TrackProducerIterativeDefault_cfi.TrackProducerIterativeDefault.clone(
     src           = 'initialStepTrackCandidates',
     AlgorithmName = 'initialStep',
     Fitter        = 'FlexibleKFFittingSmoother'
@@ -284,7 +287,12 @@ firstStepPrimaryVerticesUnsorted = _offlinePrimaryVertices.clone(
     TrackLabel = 'initialStepTracks',
     vertexCollections = [_offlinePrimaryVertices.vertexCollections[0].clone()]
 )
-(pp_on_XeXe_2017 | pp_on_AA).toModify(firstStepPrimaryVerticesUnsorted, TkFilterParameters = dict(trackQuality = 'any'))
+(pp_on_XeXe_2017 | pp_on_AA).toModify(firstStepPrimaryVerticesUnsorted,
+    TkFilterParameters = dict(
+        trackQuality = 'any',
+        maxNumTracksThreshold = 2**31-1
+    ) 
+)
 
 # we need a replacment for the firstStepPrimaryVerticesUnsorted
 # that includes tracker information of signal and pile up
@@ -337,6 +345,10 @@ trackingPhase1.toReplaceWith(initialStep, initialStepClassifier1.clone(
      mva         = dict(GBRForestLabel = 'MVASelectorInitialStep_Phase1'),
      qualityCuts = [-0.95,-0.85,-0.75]
 ))
+pp_on_AA.toModify(initialStep, 
+        mva         = dict(GBRForestLabel = 'HIMVASelectorInitialStep_Phase1'),
+        qualityCuts = [-0.9, -0.5, 0.2],
+)
 
 from RecoTracker.FinalTrackSelectors.trackTfClassifier_cfi import *
 from RecoTracker.FinalTrackSelectors.trackSelectionTf_cfi import *
@@ -348,11 +360,7 @@ trackdnn.toReplaceWith(initialStep, trackTfClassifier.clone(
 
 (trackdnn & fastSim).toModify(initialStep,vertices = 'firstStepPrimaryVerticesBeforeMixing')
 
-
-pp_on_AA.toModify(initialStep, 
-        mva         = dict(GBRForestLabel = 'HIMVASelectorInitialStep_Phase1'),
-        qualityCuts = [-0.9, -0.5, 0.2],
-)
+(pp_on_AA & trackdnn).toModify(initialStep, qualityCuts = [0.35, 0.69, 0.88] )
 
 # For LowPU and Phase2PU140
 import RecoTracker.FinalTrackSelectors.multiTrackSelector_cfi
@@ -438,10 +446,14 @@ InitialStepTask = cms.Task(initialStepSeedLayers,
                            initialStep,caloJetsForTrkTask)
 InitialStep = cms.Sequence(InitialStepTask)
 
+from RecoLocalTracker.Phase2TrackerRecHits.Phase2TrackerRecHits_cfi import siPhase2RecHits
 from Configuration.ProcessModifiers.trackingMkFitCommon_cff import trackingMkFitCommon
 _InitialStepTask_trackingMkFitCommon = InitialStepTask.copy()
+_InitialStepTask_trackingMkFitCommon_Phase2 = InitialStepTask.copy()
 _InitialStepTask_trackingMkFitCommon.add(mkFitSiPixelHits, mkFitEventOfHits, mkFitGeometryESProducer)
-trackingMkFitCommon.toReplaceWith(InitialStepTask, _InitialStepTask_trackingMkFitCommon)
+_InitialStepTask_trackingMkFitCommon_Phase2.add(siPhase2RecHits, mkFitSiPixelHits, mkFitSiPhase2Hits, mkFitEventOfHits, mkFitGeometryESProducer)
+(trackingMkFitCommon & (~trackingPhase2PU140)).toReplaceWith(InitialStepTask, _InitialStepTask_trackingMkFitCommon)
+(trackingMkFitCommon & trackingPhase2PU140).toReplaceWith(InitialStepTask, _InitialStepTask_trackingMkFitCommon_Phase2)
 
 _InitialStepTask_trackingMkFit = InitialStepTask.copy()
 _InitialStepTask_trackingMkFit.add(initialStepTrackCandidatesMkFitSeeds, initialStepTrackCandidatesMkFit, initialStepTrackCandidatesMkFitConfig)
@@ -459,6 +471,10 @@ _InitialStepTask_trackingPhase2 = InitialStepTask.copyAndExclude([initialStepCla
 _InitialStepTask_trackingPhase2.replace(initialStepHitTriplets, initialStepHitQuadruplets)
 _InitialStepTask_trackingPhase2.replace(initialStep, initialStepSelector)
 trackingPhase2PU140.toReplaceWith(InitialStepTask, _InitialStepTask_trackingPhase2)
+(trackingMkFitCommon & trackingPhase2PU140).toModify(mkFitEventOfHits, stripHits=cms.InputTag('mkFitSiPhase2Hits'), useStripStripQualityDB=cms.bool(False))
+(trackingMkFitInitialStep & trackingPhase2PU140).toModify(initialStepTrackCandidatesMkFit, stripHits=cms.InputTag('mkFitSiPhase2Hits'))
+(trackingMkFitInitialStep & trackingPhase2PU140).toModify(initialStepTrackCandidates, mkFitStripHits=cms.InputTag('mkFitSiPhase2Hits'))
+(trackingMkFitInitialStep & trackingPhase2PU140).toModify(initialStepTrackCandidatesMkFitConfig, config='RecoTracker/MkFit/data/mkfit-phase2-initialStep.json')
 
 from Configuration.Eras.Modifier_fastSim_cff import fastSim
 _InitialStepTask_fastSim = cms.Task(initialStepTrackingRegions

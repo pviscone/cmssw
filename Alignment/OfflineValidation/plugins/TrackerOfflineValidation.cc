@@ -79,6 +79,7 @@ public:
   typedef dqm::legacy::DQMStore DQMStore;
   explicit TrackerOfflineValidation(const edm::ParameterSet&);
   ~TrackerOfflineValidation() override;
+  static void fillDescriptions(edm::ConfigurationDescriptions& descriptions);
 
   enum HistogramType {
     XResidual,
@@ -127,6 +128,8 @@ private:
 
     TH1* LocalX;
     TH1* LocalY;
+
+    unsigned int EntriesInt;
   };
 
   // container struct to organize collection of histograms during endJob
@@ -372,7 +375,7 @@ private:
 
   unsigned long long nTracks_;
   const unsigned long long maxTracks_;
-
+  const unsigned int maxEntriesPerModuleForDmr_;
   TrackerValidationVariables avalidator_;
 };
 
@@ -488,8 +491,55 @@ TrackerOfflineValidation::TrackerOfflineValidation(const edm::ParameterSet& iCon
       chargeCut_(parSet_.getParameter<int>("chargeCut")),
       nTracks_(0),
       maxTracks_(parSet_.getParameter<unsigned long long>("maxTracks")),
+      maxEntriesPerModuleForDmr_(parSet_.getParameter<unsigned int>("maxEntriesPerModuleForDmr")),
       avalidator_(iConfig, consumesCollector()) {
   usesResource(TFileService::kSharedResource);
+}
+
+void TrackerOfflineValidation::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
+  edm::ParameterSetDescription desc;
+  desc.setComment("Validates alignment payloads by evaluating unbiased track-hit resisuals");
+  TrackerValidationVariables::fillPSetDescription(desc);
+  desc.addUntracked<int>("compressionSettings", -1);
+  desc.add<bool>("localCoorHistosOn", false);
+  desc.add<bool>("moduleLevelHistsTransient", false);
+  desc.add<bool>("moduleLevelProfiles", false);
+  desc.add<bool>("stripYResiduals", false);
+  desc.add<bool>("useFwhm", true);
+  desc.add<bool>("useFit", false);
+  desc.add<bool>("useOverflowForRMS", false);
+  desc.add<bool>("useInDqmMode", false);
+  desc.add<std::string>("moduleDirectoryInOutput", {});
+  desc.add<int>("chargeCut", 0);
+  desc.add<unsigned long long>("maxTracks", 0);
+  desc.add<unsigned int>("maxEntriesPerModuleForDmr", 0);
+
+  // fill in the residuals details
+  std::vector<std::string> listOfResidualsPSets = {"TH1XResPixelModules",
+                                                   "TH1XResStripModules",
+                                                   "TH1NormXResPixelModules",
+                                                   "TH1NormXResStripModules",
+                                                   "TH1XprimeResPixelModules",
+                                                   "TH1XprimeResStripModules",
+                                                   "TH1NormXprimeResPixelModules",
+                                                   "TH1NormXprimeResStripModules",
+                                                   "TH1YResPixelModules",
+                                                   "TH1YResStripModules",
+                                                   "TH1NormYResPixelModules",
+                                                   "TH1NormYResStripModules",
+                                                   "TProfileXResPixelModules",
+                                                   "TProfileXResStripModules",
+                                                   "TProfileYResPixelModules",
+                                                   "TProfileYResStripModules"};
+
+  for (const auto& myPSetName : listOfResidualsPSets) {
+    edm::ParameterSetDescription myPSet;
+    myPSet.add<int>("Nbinx", 100);
+    myPSet.add<double>("xmin", -5.f);
+    myPSet.add<double>("xmax", 5.f);
+    desc.add<edm::ParameterSetDescription>(myPSetName, myPSet);
+  }
+  descriptions.addWithDefaultLabel(desc);
 }
 
 TrackerOfflineValidation::~TrackerOfflineValidation() {
@@ -1279,6 +1329,9 @@ void TrackerOfflineValidation::analyze(const edm::Event& iEvent, const edm::Even
 
         if (moduleLevelProfiles_ && itH->inside) {
           float tgalpha = tan(itH->localAlpha);
+          histStruct.EntriesInt = histStruct.LocalX->GetEntries();
+          if (maxEntriesPerModuleForDmr_ > 0 && histStruct.EntriesInt >= maxEntriesPerModuleForDmr_)
+            continue;
           if (fabs(tgalpha) != 0) {
             histStruct.LocalX->Fill(itH->localXnorm, tgalpha * tgalpha);
             histStruct.LocalY->Fill(itH->localYnorm, tgalpha * tgalpha);
@@ -1348,7 +1401,7 @@ void TrackerOfflineValidation::analyze(const edm::Event& iEvent, const edm::Even
       }
 
     }  // finish loop over hit quantities
-  }    // finish loop over track quantities
+  }  // finish loop over track quantities
 
   if (useOverflowForRMS_)
     TH1::StatOverflows(kFALSE);

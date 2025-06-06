@@ -21,7 +21,7 @@ TrigCodes::TrigBitSet trigTools::getFiltersPassed(const std::vector<std::pair<st
         evtTrigs |= filterCode;  //filter was passed
       }
     }  //end check if filter is present
-  }    //end loop over all filters
+  }  //end loop over all filters
 
   return evtTrigs;
 }
@@ -55,7 +55,7 @@ std::vector<int> trigTools::getMinNrObjsRequiredByFilter(const std::vector<std::
     return retVal;
   }
   for (auto& psetIt : *psetRegistry) {  //loop over every pset for every module ever run
-    const std::map<std::string, edm::Entry>& mapOfPara =
+    const auto& mapOfPara =
         psetIt.second.tbl();  //contains the parameter name and value for all the parameters of the pset
     const auto itToModLabel = mapOfPara.find(mag0);
     if (itToModLabel != mapOfPara.end()) {
@@ -215,7 +215,7 @@ void trigTools::getActiveFilters(const HLTConfigProvider& hltConfig,
         }
       }
     }  //end hlt path check
-  }    //end path loop over
+  }  //end path loop over
   /*for(size_t i=0;i<activeEle2LegFilters.size();i++){
     std::cout<<"Leg1: "<<activeEle2LegFilters[i].substr(0,activeEle2LegFilters[i].find("::"))<<std::endl;
     std::cout<<"Leg2: "<<activeEle2LegFilters[i].substr(activeEle2LegFilters[i].find("::")+2)<<std::endl<<std::endl;
@@ -310,7 +310,7 @@ void trigTools::translateFiltersToPathNames(const HLTConfigProvider& hltConfig,
           filtersAndPaths.push_back(std::make_pair(pathFilters.back(), pathName));
       }
     }  //end hlt path check
-  }    //end path loop over
+  }  //end path loop over
 
   std::sort(filtersAndPaths.begin(), filtersAndPaths.end(), StringPairCompare());
 

@@ -10,7 +10,6 @@ from RecoHGCal.TICL.filteredLayerClustersProducer_cfi import filteredLayerCluste
 filteredLayerClustersTrk = _filteredLayerClustersProducer.clone(
     clusterFilter = "ClusterFilterByAlgoAndSize",
     min_cluster_size = 3, # inclusive
-    algo_number = 8,
     LayerClustersInputMask = 'ticlTrackstersEM',
     iteration_label = "Trk"
 )
@@ -36,17 +35,20 @@ ticlTrackstersTrk = _trackstersProducer.clone(
     itername = "Trk"
 )
 
+from Configuration.ProcessModifiers.ticl_v5_cff import ticl_v5
+ticl_v5.toModify(ticlTrackstersTrk.pluginPatternRecognitionByCA, computeLocalTime = cms.bool(True))
+
 ticlTrkStepTask = cms.Task(ticlSeedingTrk
     ,filteredLayerClustersTrk
     ,ticlTrackstersTrk)
-    
+
 # HFNOSE CLUSTER FILTERING/MASKING
 
 filteredLayerClustersHFNoseTrk = filteredLayerClustersTrk.clone(
     LayerClusters = 'hgcalLayerClustersHFNose',
     LayerClustersInputMask = 'ticlTrackstersHFNoseEM',
     min_cluster_size = 2, # inclusive
-    algo_number = 9,
+    algo_number = [9], # reco::CaloCluster::hfnose
     iteration_label = "Trkn"
 )
 
@@ -70,6 +72,8 @@ ticlTrackstersHFNoseTrk = ticlTrackstersTrk.clone(
     ),
     itername = "Trkn"
 )
+
+ticl_v5.toModify(ticlTrackstersHFNoseTrk.pluginPatternRecognitionByCA, computeLocalTime = cms.bool(True))
 
 ticlHFNoseTrkStepTask = cms.Task(ticlSeedingTrkHFNose
     ,filteredLayerClustersHFNoseTrk

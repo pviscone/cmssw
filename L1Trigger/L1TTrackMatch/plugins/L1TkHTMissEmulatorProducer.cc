@@ -6,6 +6,8 @@
 
 // Original Author:  Hardik Routray
 //         Created:  Mon, 11 Oct 2021
+// Update: George Karathanasis, CU Boulder
+//         2/4/2024
 
 // system include files
 #include <memory>
@@ -126,11 +128,10 @@ void L1TkHTMissEmulatorProducer::produce(edm::Event& iEvent, const edm::EventSet
 
   l1tmhtemu::Et_t sumPx = 0;
   l1tmhtemu::Et_t sumPy = 0;
-  l1tmhtemu::Et_t HT = 0;
+  l1tmhtemu::MHT_t HT = 0;
 
   // loop over jets
   int jetn = 0;
-  int jetnpasscuts = 0;
 
   for (jetIter = L1TkJetsHandle->begin(); jetIter != L1TkJetsHandle->end(); ++jetIter) {
     // floats used for debugging
@@ -138,6 +139,8 @@ void L1TkHTMissEmulatorProducer::produce(edm::Event& iEvent, const edm::EventSet
     float tmp_jet_py_ = jetIter->pt() * sin(jetIter->glbphi());
     //float tmp_jet_et_ = jetIter->pt();  // FIXME Get Et from the emulated jets
     float tmp_jet_pt_ = jetIter->pt();
+
+    bool tmp_jet_isDisplaced_ = jetIter->dispflag();
 
     l1tmhtemu::pt_t tmp_jet_pt =
         l1tmhtemu::digitizeSignedValue<l1tmhtemu::pt_t>(jetIter->pt(), l1tmhtemu::kInternalPtWidth, l1tmhtemu::kStepPt);
@@ -205,8 +208,8 @@ void L1TkHTMissEmulatorProducer::produce(edm::Event& iEvent, const edm::EventSet
       continue;
     if (tmp_jet_nt < minNtracksHighPt_ && tmp_jet_pt > 400)
       continue;
-
-    jetnpasscuts++;
+    if (displaced_ && !tmp_jet_isDisplaced_)
+      continue;
 
     if (debug_) {
       sumPx_ += tmp_jet_px_;
@@ -249,13 +252,14 @@ void L1TkHTMissEmulatorProducer::produce(edm::Event& iEvent, const edm::EventSet
         << "\n"
         << "====MHT AP_INTS TO FLOATS====\n"
         << "sumPx: " << (float)sumPx * l1tmhtemu::kStepPt * l1tmhtemu::kStepPhi
-        << "| sumPy: " << (float)sumPy * l1tmhtemu::kStepPt * l1tmhtemu::kStepPhi
-        << "| ET: " << (float)EtMiss.Et * l1tmhtemu::kStepMHT << "| HT: " << (float)HT * l1tmhtemu::kStepPt
-        << "| PHI: " << (float)phi * l1tmhtemu::kStepMHTPhi - M_PI << "\n"
+        << "| sumPy: " << (float)sumPy * l1tmhtemu::kStepPt * l1tmhtemu::kStepPhi << "| ET: " << EtMiss.Et.to_double()
+        << "| HT: " << (float)HT * l1tmhtemu::kStepPt << "| PHI: " << (float)phi * l1tmhtemu::kStepMHTPhi - M_PI << "\n"
         << "-------------------------------------------------------------------------\n";
   }
+  //rescale HT to correct output range
+  HT = HT / (int)(1 / l1tmhtemu::kStepPt);
 
-  EtSum L1HTSum(missingEt, EtSum::EtSumType::kMissingHt, (int)HT, 0, (int)phi, (int)jetn);
+  EtSum L1HTSum(missingEt, EtSum::EtSumType::kMissingHt, (int)HT.range(), 0, (int)phi, (int)jetn);
 
   MHTCollection->push_back(L1HTSum);
   iEvent.put(std::move(MHTCollection), L1MHTCollectionName_);

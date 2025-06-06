@@ -12,16 +12,20 @@
 #include "DataFormats/FEDRawData/interface/FEDRawDataCollection.h"
 #include "EventFilter/SiStripRawToDigi/interface/SiStripFEDBuffer.h"
 #include "DataFormats/SiStripCommon/interface/SiStripConstants.h"
+#include "DataFormats/SiStripDetId/interface/SiStripDetId.h"
 
 #include "CalibFormats/SiStripObjects/interface/SiStripDetCabling.h"
 
 #include "FWCore/Framework/interface/stream/EDProducer.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
+#include "FWCore/ParameterSet/interface/ParameterSetDescription.h"
+#include "FWCore/ParameterSet/interface/ConfigurationDescriptions.h"
 #include "FWCore/Utilities/interface/InputTag.h"
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/EventSetup.h"
 #include "FWCore/Framework/interface/ESHandle.h"
 #include "FWCore/Utilities/interface/Likely.h"
+#include "FWCore/Utilities/interface/thread_safety_macros.h"
 
 #include "FWCore/MessageLogger/interface/MessageLogger.h"
 #include <sstream>
@@ -107,11 +111,11 @@ namespace {
 
     ~ClusterFiller() override { printStat(); }
 
-    void fill(StripClusterizerAlgorithm::output_t::TSFastFiller& record) override;
+    void fill(StripClusterizerAlgorithm::output_t::TSFastFiller& record) const override;
 
   private:
-    std::unique_ptr<sistrip::FEDBuffer> buffers[1024];
-    std::atomic<sistrip::FEDBuffer*> done[1024];
+    CMS_THREAD_GUARD(done) mutable std::unique_ptr<sistrip::FEDBuffer> buffers[1024];
+    mutable std::atomic<sistrip::FEDBuffer*> done[1024];
 
     const FEDRawDataCollection& rawColl;
 
@@ -173,9 +177,8 @@ public:
                                                               conf.getParameter<edm::ParameterSet>("Clusterizer"))),
         rawAlgos_(SiStripRawProcessingFactory::create(conf.getParameter<edm::ParameterSet>("Algorithms"),
                                                       consumesCollector())),
-        doAPVEmulatorCheck_(conf.existsAs<bool>("DoAPVEmulatorCheck") ? conf.getParameter<bool>("DoAPVEmulatorCheck")
-                                                                      : true),
-        legacy_(conf.existsAs<bool>("LegacyUnpacker") ? conf.getParameter<bool>("LegacyUnpacker") : false),
+        doAPVEmulatorCheck_(conf.getParameter<bool>("DoAPVEmulatorCheck")),
+        legacy_(conf.getParameter<bool>("LegacyUnpacker")),
         hybridZeroSuppressed_(conf.getParameter<bool>("HybridZeroSuppressed")) {
     productToken_ = consumes<FEDRawDataCollection>(conf.getParameter<edm::InputTag>("ProductLabel"));
     produces<edmNew::DetSetVector<SiStripCluster> >();
@@ -211,6 +214,8 @@ public:
     ev.put(std::move(output));
   }
 
+  static void fillDescriptions(edm::ConfigurationDescriptions& descriptions);
+
 private:
   void initialize(const edm::EventSetup& es);
 
@@ -231,6 +236,27 @@ private:
   bool hybridZeroSuppressed_;
 };
 
+void SiStripClusterizerFromRaw::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
+  edm::ParameterSetDescription desc;
+
+  desc.add("ProductLabel", edm::InputTag("rawDataCollector"));
+  desc.add<std::string>("ConditionsLabel", "");
+  desc.add("onDemand", true);
+  desc.add("DoAPVEmulatorCheck", true);
+  desc.add("LegacyUnpacker", false);
+  desc.add("HybridZeroSuppressed", false);
+
+  edm::ParameterSetDescription clusterizer;
+  StripClusterizerAlgorithmFactory::fillDescriptions(clusterizer);
+  desc.add("Clusterizer", clusterizer);
+
+  edm::ParameterSetDescription algorithms;
+  SiStripRawProcessingFactory::fillDescriptions(algorithms);
+  desc.add("Algorithms", algorithms);
+
+  descriptions.addWithDefaultLabel(desc);
+}
+
 #include "FWCore/Framework/interface/MakerMacros.h"
 DEFINE_FWK_MODULE(SiStripClusterizerFromRaw);
 
@@ -250,7 +276,6 @@ void SiStripClusterizerFromRaw::run(const FEDRawDataCollection& rawColl, edmNew:
 
     if (record.empty())
       record.abort();
-
   }  // end loop over dets
 }
 
@@ -301,7 +326,7 @@ namespace {
   };
 }  // namespace
 
-void ClusterFiller::fill(StripClusterizerAlgorithm::output_t::TSFastFiller& record) {
+void ClusterFiller::fill(StripClusterizerAlgorithm::output_t::TSFastFiller& record) const {
   try {  // edmNew::CapacityExaustedException
     incReady();
 
@@ -383,7 +408,9 @@ void ClusterFiller::fill(StripClusterizerAlgorithm::output_t::TSFastFiller& reco
               buffer->channel(fedCh), std::back_inserter(unpDigis), ipair * 256, isNonLite, mode, legacy_, lmode, pCode);
           if (fedchannelunpacker::StatusCode::SUCCESS == st_ch) {
             edm::DetSet<SiStripDigi> suppDigis{id};
-            rawAlgos.suppressHybridData(unpDigis, suppDigis, ipair * 2);
+            unsigned int detId = suppDigis.id;
+            uint16_t maxNStrips = SiStripDetId(detId).numberOfAPVs() * 128;
+            rawAlgos.suppressHybridData(maxNStrips, unpDigis, suppDigis, ipair * 2);
             std::copy(std::begin(suppDigis), std::end(suppDigis), perStripAdder);
           }
         }

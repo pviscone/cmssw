@@ -10,6 +10,7 @@
 #include "FWCore/Framework/interface/one/EDAnalyzer.h"
 #include "FWCore/Utilities/interface/InputTag.h"
 #include "CalibMuon/DTCalibration/interface/DTSegmentSelector.h"
+#include "DataFormats/DTRecHit/interface/DTRecSegment4DCollection.h"
 #include "Geometry/Records/interface/MuonGeometryRecord.h"
 #include "CondFormats/DataRecord/interface/DTTtrigRcd.h"
 #include "Geometry/DTGeometry/interface/DTGeometry.h"
@@ -36,7 +37,7 @@ public:
 
   void beginRun(const edm::Run& run, const edm::EventSetup& setup) override;
   void analyze(const edm::Event& event, const edm::EventSetup& eventSetup) override;
-  void endRun(const edm::Run& run, const edm::EventSetup& setup) override{};
+  void endRun(const edm::Run& run, const edm::EventSetup& setup) override {}
   void endJob() override;
 
 private:
@@ -45,9 +46,9 @@ private:
 
   DTSegmentSelector* select_;
 
-  edm::InputTag theRecHits4DLabel_;
-  bool doTTrigCorrection_;
-  std::string theCalibChamber_;
+  const edm::EDGetTokenT<DTRecSegment4DCollection> theRecHits4DToken_;
+  const bool doTTrigCorrection_;
+  const std::string theCalibChamber_;
 
   TFile* rootFile_;
   const DTTtrig* tTrigMap_;

@@ -1,40 +1,35 @@
+#include "DQMStreamerReader.h"
+
 #include "FWCore/MessageLogger/interface/MessageLogger.h"
-#include "FWCore/Utilities/interface/Exception.h"
-#include "FWCore/Utilities/interface/EDMException.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 #include "FWCore/ParameterSet/interface/ConfigurationDescriptions.h"
 #include "FWCore/ParameterSet/interface/ParameterSetDescription.h"
 #include "FWCore/Sources/interface/EventSkipperByID.h"
-#include "FWCore/Utilities/interface/UnixSignalHandlers.h"
-
+#include "FWCore/Utilities/interface/Exception.h"
 #include "FWCore/Utilities/interface/RegexMatch.h"
-#include "DQMStreamerReader.h"
+#include "FWCore/Utilities/interface/UnixSignalHandlers.h"
+#include "IOPool/Streamer/interface/DumpTools.h"
 
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
-#include <memory>
 #include <queue>
 #include <algorithm>
 #include <cctype>
 
-#include <IOPool/Streamer/interface/DumpTools.h>
-
 namespace dqmservices {
+  using namespace edm::streamer;
 
   DQMStreamerReader::DQMStreamerReader(edm::ParameterSet const& pset, edm::InputSourceDescription const& desc)
-      : StreamerInputSource(pset, desc), fiterator_(pset) {
-    runNumber_ = pset.getUntrackedParameter<unsigned int>("runNumber");
-    runInputDir_ = pset.getUntrackedParameter<std::string>("runInputDir");
-    hltSel_ = pset.getUntrackedParameter<std::vector<std::string> >("SelectEvents");
-
-    minEventsPerLs_ = pset.getUntrackedParameter<int>("minEventsPerLumi");
-    flagSkipFirstLumis_ = pset.getUntrackedParameter<bool>("skipFirstLumis");
-    flagEndOfRunKills_ = pset.getUntrackedParameter<bool>("endOfRunKills");
-    flagDeleteDatFiles_ = pset.getUntrackedParameter<bool>("deleteDatFiles");
-
-    triggerSel();
-
+      : StreamerInputSource(pset, desc),
+        fiterator_(pset),
+        minEventsPerLs_(pset.getUntrackedParameter<int>("minEventsPerLumi")),
+        flagSkipFirstLumis_(pset.getUntrackedParameter<bool>("skipFirstLumis")),
+        flagEndOfRunKills_(pset.getUntrackedParameter<bool>("endOfRunKills")),
+        flagDeleteDatFiles_(pset.getUntrackedParameter<bool>("deleteDatFiles")),
+        hltSel_(pset.getUntrackedParameter<std::vector<std::string>>("SelectEvents")),
+        unitTest_(pset.getUntrackedParameter<bool>("unitTest", false)) {
+    setAcceptAllEvt();
     reset_();
   }
 
@@ -88,35 +83,41 @@ namespace dqmservices {
     fiterator_.logFileAction("DQMStreamerReader initialised.");
   }
 
+  void DQMStreamerReader::setupMetaData(edm::streamer::InitMsgView const& msg, bool subsequent) {
+    deserializeAndMergeWithRegistry(msg, subsequent);
+    auto event = getEventMsg();
+    //file might be empty
+    if (not event)
+      return;
+    assert(event->isEventMetaData());
+    deserializeEventMetaData(*event);
+    updateEventMetaData();
+  }
   void DQMStreamerReader::openFileImp_(const DQMFileIterator::LumiEntry& entry) {
     processedEventPerLs_ = 0;
-    edm::ParameterSet pset;
 
     std::string path = entry.get_data_path();
 
     file_.lumi_ = entry;
-    file_.streamFile_ = std::make_unique<edm::StreamerInputFile>(path);
+    file_.streamFile_ = std::make_unique<StreamerInputFile>(path);
 
     InitMsgView const* header = getHeaderMsg();
     if (isFirstFile_) {
-      deserializeAndMergeWithRegistry(*header, false);
+      setupMetaData(*header, false);
     }
 
     // dump the list of HLT trigger name from the header
     //  dumpInitHeader(header);
 
-    // if specific trigger selection is requested, check if the requested triggers
-    // match with trigger paths in the header file
+    // if specific trigger selection is requested, check if the requested triggers match with trigger paths in the header file
     if (!acceptAllEvt_) {
-      Strings tnames;
+      std::vector<std::string> tnames;
       header->hltTriggerNames(tnames);
 
-      pset.addParameter<Strings>("SelectEvents", hltSel_);
-      eventSelector_.reset(new TriggerSelector(pset, tnames));
+      triggerSelector_.reset(new TriggerSelector(hltSel_, tnames));
 
-      // check if any trigger path name requested matches with trigger name in the
-      // header file
-      matchTriggerSel(tnames);
+      // check if any trigger path name requested matches with trigger name in the header file
+      setMatchTriggerSel(tnames);
     }
 
     // our initialization
@@ -146,9 +147,14 @@ namespace dqmservices {
       return;
     }
 
+    if (artificialFileBoundary_) {
+      updateEventMetaData();
+      artificialFileBoundary_ = false;
+      return;
+    }
     //Get header/init from reader
     InitMsgView const* header = getHeaderMsg();
-    deserializeAndMergeWithRegistry(*header, true);
+    setupMetaData(*header, true);
   }
 
   bool DQMStreamerReader::openNextFileImp_() {
@@ -162,6 +168,12 @@ namespace dqmservices {
         openFileImp_(currentLumi);
         return true;
       } catch (const cms::Exception& e) {
+        if (unitTest_) {
+          throw edm::Exception(edm::errors::FileReadError, "DQMStreamerReader::openNextFileInp")
+              << std::string("Can't deserialize registry data (in open file): ") + e.what()
+              << "\n error: data file corrupted";
+        }
+
         fiterator_.logFileAction(std::string("Can't deserialize registry data (in open file): ") + e.what(), p);
         fiterator_.logLumiState(currentLumi, "error: data file corrupted");
 
@@ -190,11 +202,11 @@ namespace dqmservices {
 
   EventMsgView const* DQMStreamerReader::getEventMsg() {
     auto next = file_.streamFile_->next();
-    if (edm::StreamerInputFile::Next::kFile == next) {
+    if (StreamerInputFile::Next::kFile == next) {
       return nullptr;
     }
 
-    if (edm::StreamerInputFile::Next::kStop == next) {
+    if (StreamerInputFile::Next::kStop == next) {
       return nullptr;
     }
 
@@ -296,6 +308,25 @@ namespace dqmservices {
           // this means end of file, so close the file
           closeFileImp_("eof");
         } else {
+          //NOTE: at this point need to see if meta data checksum changed. If it did
+          // we need to issue a 'new File' transition
+          if (eview->isEventMetaData()) {
+            auto lastEventMetaData = presentEventMetaDataChecksum();
+            if (eventMetaDataChecksum(*eview) != lastEventMetaData) {
+              deserializeEventMetaData(*eview);
+              artificialFileBoundary_ = true;
+              return nullptr;
+            } else {
+              //skipping
+              eview = getEventMsg();
+              assert((eview == nullptr) or (not eview->isEventMetaData()));
+              if (eview == nullptr) {
+                closeFileImp_("eof");
+                continue;
+              }
+            }
+          }
+
           if (!acceptEvent(eview)) {
             continue;
           } else {
@@ -314,7 +345,7 @@ namespace dqmservices {
     try {
       EventMsgView const* eview = prepareNextEvent();
       if (eview == nullptr) {
-        if (file_.streamFile_ and file_.streamFile_->newHeader()) {
+        if (artificialFileBoundary_ or (file_.streamFile_ and file_.streamFile_->newHeader())) {
           return Next::kFile;
         }
         return Next::kStop;
@@ -339,16 +370,15 @@ namespace dqmservices {
  * If hlt trigger selection is '*', return a boolean variable to accept all
  * events
  */
-  bool DQMStreamerReader::triggerSel() {
+  bool DQMStreamerReader::setAcceptAllEvt() {
     acceptAllEvt_ = false;
-    for (Strings::const_iterator i(hltSel_.begin()), end(hltSel_.end()); i != end; ++i) {
-      std::string hltPath(*i);
-      hltPath.erase(
-          std::remove_if(
-              hltPath.begin(), hltPath.end(), [](char c) { return std::isspace(static_cast<unsigned char>(c)); }),
-          hltPath.end());
-      if (hltPath == "*")
+    for (auto hltPath : hltSel_) {
+      hltPath.erase(std::remove_if(hltPath.begin(), hltPath.end(), [](unsigned char c) { return std::isspace(c); }),
+                    hltPath.end());
+      if (hltPath == "*") {
         acceptAllEvt_ = true;
+        break;
+      }
     }
     return acceptAllEvt_;
   }
@@ -356,22 +386,20 @@ namespace dqmservices {
   /**
  * Check if hlt selection matches any trigger name taken from the header file
  */
-  bool DQMStreamerReader::matchTriggerSel(Strings const& tnames) {
+  bool DQMStreamerReader::setMatchTriggerSel(std::vector<std::string> const& tnames) {
     matchTriggerSel_ = false;
-    for (Strings::const_iterator i(hltSel_.begin()), end(hltSel_.end()); i != end; ++i) {
-      std::string hltPath(*i);
-      hltPath.erase(
-          std::remove_if(
-              hltPath.begin(), hltPath.end(), [](char c) { return std::isspace(static_cast<unsigned char>(c)); }),
-          hltPath.end());
-      std::vector<Strings::const_iterator> matches = edm::regexMatch(tnames, hltPath);
-      if (!matches.empty()) {
+    for (auto hltPath : hltSel_) {
+      hltPath.erase(std::remove_if(hltPath.begin(), hltPath.end(), [](unsigned char c) { return std::isspace(c); }),
+                    hltPath.end());
+      auto const matches = edm::regexMatch(tnames, hltPath);
+      if (not matches.empty()) {
         matchTriggerSel_ = true;
+        break;
       }
     }
 
-    if (!matchTriggerSel_) {
-      edm::LogWarning("Trigger selection does not match any trigger path!!!") << std::endl;
+    if (not matchTriggerSel_) {
+      edm::LogWarning("DQMStreamerReader") << "Trigger selection does not match any trigger path!!!";
     }
 
     return matchTriggerSel_;
@@ -393,11 +421,7 @@ namespace dqmservices {
     }
     evtmsg->hltTriggerBits(&hltTriggerBits_[0]);
 
-    if (eventSelector_->wantAll() || eventSelector_->acceptEvent(&hltTriggerBits_[0], evtmsg->hltCount())) {
-      return true;
-    } else {
-      return false;
-    }
+    return (triggerSelector_->wantAll() || triggerSelector_->acceptEvent(&hltTriggerBits_[0], evtmsg->hltCount()));
   }
 
   void DQMStreamerReader::skip(int toSkip) {
@@ -420,7 +444,7 @@ namespace dqmservices {
     edm::ParameterSetDescription desc;
     desc.setComment("Reads events from streamer files.");
 
-    desc.addUntracked<std::vector<std::string> >("SelectEvents")->setComment("HLT path to select events ");
+    desc.addUntracked<std::vector<std::string>>("SelectEvents")->setComment("HLT path to select events");
 
     desc.addUntracked<int>("minEventsPerLumi", 1)
         ->setComment(
@@ -446,6 +470,9 @@ namespace dqmservices {
             "Kill the processing as soon as the end-of-run file appears, even if "
             "there are/will be unprocessed lumisections.");
 
+    desc.addUntracked<bool>("unitTest", false)
+        ->setComment("Kill the processing if the input data cannot be deserialized");
+
     // desc.addUntracked<unsigned int>("skipEvents", 0U)
     //    ->setComment("Skip the first 'skipEvents' events that otherwise would "
     //                 "have been processed.");
@@ -455,7 +482,7 @@ namespace dqmservices {
     desc.addUntracked<bool>("inputFileTransitionsEachEvent", false);
 
     DQMFileIterator::fillDescription(desc);
-    edm::StreamerInputSource::fillDescription(desc);
+    StreamerInputSource::fillDescription(desc);
     edm::EventSkipperByID::fillDescription(desc);
 
     descriptions.add("source", desc);

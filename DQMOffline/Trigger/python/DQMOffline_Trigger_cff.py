@@ -4,17 +4,17 @@ import FWCore.ParameterSet.Config as cms
 from DQM.HLTEvF.HLTObjectsMonitor_cfi import *
 
 # monitoring of efficiencies of HLT paths and filters
-from DQMOffline.Trigger.hltFiltersDQMonitor_cfi import *
-hltFiltersDQM = hltFiltersDQMonitor.clone(
-  folderName = 'HLT/Filters',
-  efficPlotNamePrefix = 'effic_',
-  triggerResults = 'TriggerResults::HLT',
-  triggerSummaryAOD = 'hltTriggerSummaryAOD::HLT',
-  triggerSummaryRAW = 'hltTriggerSummaryRAW::HLT',
+from DQMOffline.Trigger.dqmHLTFiltersDQMonitor_cfi import dqmHLTFiltersDQMonitor as _dqmHLTFiltersDQMonitor
+dqmHLTFiltersDQMonitor = _dqmHLTFiltersDQMonitor.clone(
+    folderName = 'HLT/Filters',
+    efficPlotNamePrefix = 'effic_',
+    triggerResults = 'TriggerResults::HLT',
+    triggerEvent = 'hltTriggerSummaryAOD::HLT',
+    triggerEventWithRefs = 'hltTriggerSummaryRAW::HLT'
 )
 
 # Lumi
-from DQMOffline.Trigger.DQMOffline_LumiMontiroring_cff import *
+from DQMOffline.Trigger.DQMOffline_LumiMonitoring_cff import *
 
 # Egamma
 from DQMOffline.Trigger.EgHLTOfflineSource_cff import *
@@ -34,6 +34,13 @@ from DQMOffline.Trigger.JetMETPromptMonitor_cff import *
 from DQMOffline.Trigger.BTVHLTOfflineSource_cfi import *
 from DQMOffline.Trigger.BTaggingMonitoring_cff import *
 
+#BTag and Probe monitoring
+from DQMOffline.Trigger.BTagAndProbeMonitor_cfi import *
+from DQMOffline.Trigger.BTagAndProbeMonitoring_cff import *
+
+# ParticleNet jet flavor tagging monitoring
+from DQMOffline.Trigger.ParticleNetJetTagMonitoring_cff import *
+
 # vertexing
 from DQMOffline.Trigger.PrimaryVertexMonitoring_cff import *
 
@@ -41,7 +48,6 @@ from DQMOffline.Trigger.PrimaryVertexMonitoring_cff import *
 from DQMOffline.Trigger.TrackingMonitoring_cff import *
 from DQMOffline.Trigger.TrackingMonitoringPA_cff import*
 from DQMOffline.Trigger.TrackToTrackMonitoring_cff import *
-
 
 # hcal
 from DQMOffline.Trigger.HCALMonitoring_cff import *
@@ -51,6 +57,9 @@ from DQMOffline.Trigger.SiStrip_OfflineMonitoring_cff import *
 
 # pixel
 from DQMOffline.Trigger.SiPixel_OfflineMonitoring_cff import *
+
+# phase2 tracker
+from DQMOffline.Trigger.SiTrackerPhase2_OfflineMonitoring_cff import *
 
 # B2G
 from DQMOffline.Trigger.B2GMonitoring_cff import *
@@ -97,12 +106,13 @@ from DQMOffline.Trigger.HLTInclusiveVBFSource_cfi import *
 
 import DQMServices.Components.DQMEnvironment_cfi
 dqmEnvHLT = DQMServices.Components.DQMEnvironment_cfi.dqmEnv.clone(
-    subSystemFolder = 'HLT'
-)
+    subSystemFolder = 'HLT',
+    showHLTGlobalTag = True)
+
 from DQMServices.Core.DQMEDAnalyzer import DQMEDAnalyzer
 dqmInfoHLTMon = DQMEDAnalyzer('DQMEventInfo',
-    subSystemFolder = cms.untracked.string('HLT')
-)
+                              subSystemFolder = cms.untracked.string('HLT'),
+                              showHLTGlobalTag =  cms.untracked.bool(True))
 ###################################################################################################
 #### SEQUENCES TO BE RUN depending on the input DATAFORMAT
 ## on MiniAOD
@@ -114,7 +124,7 @@ offlineHLTSourceOnMiniAOD = cms.Sequence(
 ## ADD here sequences/modules which rely ONLY on collections stored in the AOD format
 offlineHLTSourceOnAOD = cms.Sequence(
       dqmEnvHLT
-    * hltFiltersDQM
+    * dqmHLTFiltersDQMonitor
     * lumiMonitorHLTsequence
     * muonFullOfflineDQM
     * HLTTauDQMOffline
@@ -138,7 +148,7 @@ offlineHLTSourceOnAOD = cms.Sequence(
 
 ## w/ the RECO step on-the-fly (to be added to offlineHLTSourceOnAOD which should run anyhow)
 offlineHLTSourceWithRECO = cms.Sequence(
-      hltFiltersDQM
+      dqmHLTFiltersDQMonitor
     * egHLTOffDQMSource       ## NEEDED in VALIDATION, not really in MONITORING
     * egHLTOffDQMSource_HEP17 ## NEEDED in VALIDATION, not really in MONITORING
     * jetMETHLTOfflineAnalyzer
@@ -187,13 +197,28 @@ offlineHLTSource4HLTMonitorPD = cms.Sequence(
     sistripMonitorHLTsequence *       # strip
     sipixelMonitorHLTsequence *       # pixel
     BTVHLTOfflineSource *             # BTV
-    bTagHLTTrackMonitoringSequence *  # BTV relative track efficeicies
+    bTagHLTTrackMonitoringSequence *  # BTV relative track efficiencies
     trackingMonitorHLT *              # tracking
+    BTagAndProbeHLT *                 # BTag and Probe
     trackingMonitorHLTDisplacedJet*   # EXO : DisplacedJet Tracking 
     egmTrackingMonitorHLT *           # EGM tracking
     hltToOfflineTrackValidatorSequence *  # Relative Online to Offline performace
-    vertexingMonitorHLT               # vertexing
+    vertexingMonitorHLT *             # vertexing
+    particleNetMonitoringHLT          # HIG: monitoring of HLT PNET taggers (incl. comparisons to Offline PNET)
 )
+
+_offlineHLTSource4HLTMonitorPDPh2 = cms.Sequence(
+    dqmInfoHLTMon *
+    HLTtrackerphase2DQMSource *           # phase-2 IT and OT clusters
+    trackingMonitorHLT *                  # tracking
+    egmTrackingMonitorHLT *               # EGM tracking
+    hltToOfflineTrackValidatorSequence *  # Relative Online to Offline performace
+    vertexingMonitorHLT                   # vertexing
+)
+
+# remove Strip HLT monitoring in the phase-2 sequence
+from Configuration.Eras.Modifier_phase2_tracker_cff import phase2_tracker
+phase2_tracker.toReplaceWith(offlineHLTSource4HLTMonitorPD,_offlineHLTSource4HLTMonitorPDPh2)
 
 # sequences run @tier0 on HLTMonitor PD
 OfflineHLTMonitoring = cms.Sequence(

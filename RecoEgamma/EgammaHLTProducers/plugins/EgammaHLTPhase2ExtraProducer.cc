@@ -22,7 +22,7 @@
 #include "SimDataFormats/Associations/interface/L1TrackTruthPair.h"
 #include "SimDataFormats/TrackingAnalysis/interface/TrackingParticle.h"
 #include "SimDataFormats/TrackingAnalysis/interface/TrackingParticleFwd.h"
-#include "SimTracker/TrackTriggerAssociation/interface/TTTrackAssociationMap.h"
+#include "SimDataFormats/Associations/interface/TTTrackAssociationMap.h"
 
 #include "Geometry/CaloGeometry/interface/CaloGeometry.h"
 #include "Geometry/CaloGeometry/interface/CaloSubdetectorGeometry.h"
@@ -193,7 +193,7 @@ EgammaHLTPhase2ExtraProducer::EgammaHLTPhase2ExtraProducer(const edm::ParameterS
 void EgammaHLTPhase2ExtraProducer::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
   edm::ParameterSetDescription desc;
   desc.add<edm::InputTag>("egTrigObjs", edm::InputTag("hltEgammaHLTExtra"));
-  desc.add<edm::InputTag>("l1Trks", edm::InputTag("TTTracksFromTrackletEmulation", "Level1TTTracks"));
+  desc.add<edm::InputTag>("l1Trks", edm::InputTag("l1tTTTracksFromTrackletEmulation", "Level1TTTracks"));
   desc.add<edm::InputTag>("trkParts", edm::InputTag("mix", "MergedTrackTruth"));
   desc.add<edm::InputTag>("l1TrkToTrkPartMap", edm::InputTag("TTTrackAssociatorFromPixelDigis", "Level1TTTracks"));
   desc.add<edm::InputTag>("hgcalLayerClusters", edm::InputTag("hgcalLayerClusters"));

@@ -58,6 +58,7 @@ BeamMonitorBx::BeamMonitorBx(const ParameterSet& ps) : countBx_(0), countEvt_(0)
   fitNLumi_ = parameters_.getUntrackedParameter<int>("fitEveryNLumi", -1);
   resetFitNLumi_ = parameters_.getUntrackedParameter<int>("resetEveryNLumi", -1);
 
+  usesResource("DQMStore");
   dbe_ = Service<DQMStore>().operator->();
 
   if (!monitorName_.empty())
@@ -311,7 +312,7 @@ void BeamMonitorBx::BookTrendHistos(
         }
       }
     }  //End of variable loop
-  }    // End of type loop (lumi, time)
+  }  // End of type loop (lumi, time)
 
   // num of PVs(#Bx) per LS
   dbe_->cd(monitorName_ + subDir_ + "/All_nPVs");

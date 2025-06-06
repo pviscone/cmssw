@@ -5,6 +5,7 @@
 #include <iostream>
 #include <string>
 #include <thread>
+#include <chrono>
 
 #include "FWCore/TestProcessor/interface/TestProcessor.h"
 #include "DataFormats/TestObjects/interface/ToyProducts.h"
@@ -66,9 +67,8 @@ int main(int argc, char* argv[]) {
   boost::program_options::options_description desc(descString);
 
   desc.add_options()(kHelpCommandOpt, "produce help message")(
-      kMemoryNameCommandOpt,
-      boost::program_options::value<std::string>(),
-      "memory name")(kUniqueIDCommandOpt, boost::program_options::value<std::string>(), "unique id");
+      kMemoryNameCommandOpt, boost::program_options::value<std::string>(), "memory name")(
+      kUniqueIDCommandOpt, boost::program_options::value<std::string>(), "unique id");
 
   boost::program_options::positional_options_description p;
   p.add(kMemoryNameOpt, 1);
@@ -185,7 +185,7 @@ int main(int argc, char* argv[]) {
 
             serializer.serialize(value);
             std::cerr << uniqueID << " process: " << value.size() << " " << counter << std::endl;
-            //usleep(10000000);
+            //std::this_thread::sleep_for(std::chrono::microseconds(10000000));
             break;
           }
           case edm::Transition::EndLuminosityBlock: {

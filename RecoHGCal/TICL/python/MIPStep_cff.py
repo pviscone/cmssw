@@ -8,7 +8,6 @@ from RecoHGCal.TICL.filteredLayerClustersProducer_cfi import filteredLayerCluste
 
 filteredLayerClustersMIP = _filteredLayerClustersProducer.clone(
     clusterFilter = "ClusterFilterBySize",
-    algo_number = 8,
     max_cluster_size = 2, # inclusive
     iteration_label = "MIP"
 )
@@ -30,6 +29,9 @@ ticlTrackstersMIP = _trackstersProducer.clone(
     itername = "MIP"
 )
 
+from Configuration.ProcessModifiers.ticl_v5_cff import ticl_v5
+ticl_v5.toModify(ticlTrackstersMIP.pluginPatternRecognitionByCA, computeLocalTime = cms.bool(True))
+
 ticlMIPStepTask = cms.Task(ticlSeedingGlobal
     ,filteredLayerClustersMIP
     ,ticlTrackstersMIP)
@@ -38,7 +40,7 @@ filteredLayerClustersHFNoseMIP = filteredLayerClustersMIP.clone(
     LayerClusters = 'hgcalLayerClustersHFNose',
     LayerClustersInputMask = "hgcalLayerClustersHFNose:InitialLayerClustersMask",
     iteration_label = "MIPn",
-    algo_number = 9
+    algo_number = [9] # reco::CaloCluster::hfnose
 )
 
 ticlTrackstersHFNoseMIP = ticlTrackstersMIP.clone(
@@ -51,6 +53,8 @@ ticlTrackstersHFNoseMIP = ticlTrackstersMIP.clone(
     time_layerclusters = "hgcalLayerClustersHFNose:timeLayerCluster",
     pluginPatternRecognitionByCA = dict(min_layers_per_trackster = 6)
 )
+
+ticl_v5.toModify(ticlTrackstersHFNoseMIP.pluginPatternRecognitionByCA, computeLocalTime = cms.bool(True))
 
 ticlHFNoseMIPStepTask = cms.Task(ticlSeedingGlobalHFNose
                               ,filteredLayerClustersHFNoseMIP

@@ -9,69 +9,66 @@
 #include <sstream>
 #include <iostream>
 
-PyBind11ProcessDesc::PyBind11ProcessDesc() : theProcessPSet(), theMainModule(), theOwnsInterpreter(false) {}
-
-PyBind11ProcessDesc::PyBind11ProcessDesc(std::string const& config)
-    : theProcessPSet(), theMainModule(), theOwnsInterpreter(true) {
-  pybind11::initialize_interpreter();
-  edm::python::initializePyBind11Module();
-  prepareToRead();
-  read(config);
-}
-
-PyBind11ProcessDesc::PyBind11ProcessDesc(std::string const& config, int argc, char* argv[])
-    : theProcessPSet(),
-      theMainModule(),
-      theOwnsInterpreter(true)
-
-{
-  pybind11::initialize_interpreter();
-  edm::python::initializePyBind11Module();
-  prepareToRead();
-  {
-#if PY_MAJOR_VERSION >= 3
-    typedef std::unique_ptr<wchar_t[], decltype(&PyMem_RawFree)> WArgUPtr;
-    std::vector<WArgUPtr> v_argv;
-    std::vector<wchar_t*> vp_argv;
-    v_argv.reserve(argc);
-    vp_argv.reserve(argc);
-    for (int i = 0; i < argc; i++) {
-      v_argv.emplace_back(Py_DecodeLocale(argv[i], nullptr), &PyMem_RawFree);
-      vp_argv.emplace_back(v_argv.back().get());
-    }
-
-    wchar_t** argvt = vp_argv.data();
-#else
-    char** argvt = argv;
-#endif
-
-    PySys_SetArgv(argc, argvt);
+PyBind11InterpreterSentry::PyBind11InterpreterSentry(bool ownsInterpreter)
+    : mainModule(), ownsInterpreter_(ownsInterpreter) {
+  if (ownsInterpreter_) {
+    pybind11::initialize_interpreter();
   }
-  read(config);
 }
 
-PyBind11ProcessDesc::~PyBind11ProcessDesc() {
-  if (theOwnsInterpreter) {
-    theMainModule = pybind11::object();
+PyBind11InterpreterSentry::~PyBind11InterpreterSentry() {
+  if (ownsInterpreter_) {
+    mainModule = pybind11::object();
     pybind11::finalize_interpreter();
   }
 }
 
-void PyBind11ProcessDesc::prepareToRead() {
-  //  pybind11::scoped_interpreter guard{};
-  theMainModule = pybind11::module::import("__main__");
-  theMainModule.attr("processDesc") = this;
-  theMainModule.attr("processPSet") = &theProcessPSet;
+PyBind11ProcessDesc::PyBind11ProcessDesc() : theProcessPSet(), theInterpreter(false) {}
+
+PyBind11ProcessDesc::PyBind11ProcessDesc(std::string const& config, bool isFile)
+    : theProcessPSet(), theInterpreter(true) {
+  edm::python::initializePyBind11Module();
+  prepareToRead();
+  read(config, isFile);
 }
 
-void PyBind11ProcessDesc::read(std::string const& config) {
-  try {
-    // if it ends with py, it's a file
-    if (config.substr(config.size() - 3) == ".py") {
-      readFile(config);
-    } else {
-      readString(config);
+PyBind11ProcessDesc::PyBind11ProcessDesc(std::string const& config, bool isFile, const std::vector<std::string>& args)
+    : theProcessPSet(), theInterpreter(true) {
+  edm::python::initializePyBind11Module();
+  prepareToRead();
+  {
+    typedef std::unique_ptr<wchar_t[], decltype(&PyMem_RawFree)> WArgUPtr;
+    std::vector<WArgUPtr> v_argv;
+    std::vector<wchar_t*> vp_argv;
+    v_argv.reserve(args.size());
+    vp_argv.reserve(args.size());
+    for (size_t i = 0; i < args.size(); i++) {
+      v_argv.emplace_back(Py_DecodeLocale(args[i].c_str(), nullptr), &PyMem_RawFree);
+      vp_argv.emplace_back(v_argv.back().get());
     }
+
+    wchar_t** argvt = vp_argv.data();
+
+    PySys_SetArgv(args.size(), argvt);
+  }
+  read(config, isFile);
+}
+
+PyBind11ProcessDesc::~PyBind11ProcessDesc() = default;
+
+void PyBind11ProcessDesc::prepareToRead() {
+  //  pybind11::scoped_interpreter guard{};
+  theInterpreter.mainModule = pybind11::module::import("__main__");
+  theInterpreter.mainModule.attr("processDesc") = this;
+  theInterpreter.mainModule.attr("processPSet") = &theProcessPSet;
+}
+
+void PyBind11ProcessDesc::read(std::string const& config, bool isFile) {
+  try {
+    if (isFile)
+      readFile(config);
+    else
+      readString(config);
   } catch (pybind11::error_already_set const& e) {
     edm::pythonToCppException("Configuration", e.what());
   }

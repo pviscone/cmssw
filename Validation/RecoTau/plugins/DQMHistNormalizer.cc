@@ -1,12 +1,12 @@
 /** \class DQMHistNormalizer
- *  
+ *
  *  Class to produce efficiency histograms by dividing nominator by denominator histograms
  *
  *  \author Christian Veelken, UC Davis
  */
 
 // framework & common header files
-#include "FWCore/Framework/interface/EDAnalyzer.h"
+#include "FWCore/Framework/interface/one/EDAnalyzer.h"
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/EventSetup.h"
 #include "FWCore/Framework/interface/MakerMacros.h"
@@ -18,16 +18,32 @@
 #include "FWCore/ServiceRegistry/interface/Service.h"
 
 //Regexp handling
-#include "classlib/utils/RegexpMatch.h"
-#include "classlib/utils/Regexp.h"
-
+#include <regex>
 #include <string>
 #include <vector>
 #include <map>
 
 using namespace std;
 
-class DQMHistNormalizer : public edm::EDAnalyzer {
+namespace {
+  // Three implementations were tested: char-by-char (this version),
+  // using std::string::find + std::string::replace and std::regex_replace.
+  // First one takes ~60 ns per iteration, second one ~85 ns,
+  // and the regex implementation takes nearly 1 us
+  std::string globToRegex(const std::string& s) {
+    std::string out;
+    out.reserve(s.size());
+    for (auto ch : s) {
+      if (ch == '*') {
+        out.push_back('.');
+      }
+      out.push_back(ch);
+    }
+    return out;
+  }
+}  // namespace
+
+class DQMHistNormalizer : public edm::one::EDAnalyzer<edm::one::SharedResources, edm::one::WatchRuns> {
 public:
   typedef dqm::legacy::DQMStore DQMStore;
   typedef dqm::legacy::MonitorElement MonitorElement;
@@ -35,10 +51,10 @@ public:
   explicit DQMHistNormalizer(const edm::ParameterSet&);
   ~DQMHistNormalizer() override;
   void analyze(const edm::Event&, const edm::EventSetup&) override;
+  void beginRun(const edm::Run& r, const edm::EventSetup& c) override {}
   void endRun(const edm::Run& r, const edm::EventSetup& c) override;
 
 private:
-  lat::Regexp* buildRegex(const string& expr);
   vector<string> plotNamesToNormalize_;  //root name used by all the plots that must be normalized
   string reference_;
 };
@@ -46,6 +62,7 @@ private:
 DQMHistNormalizer::DQMHistNormalizer(const edm::ParameterSet& cfg)
     : plotNamesToNormalize_(cfg.getParameter<std::vector<string> >("plotNamesToNormalize")),
       reference_(cfg.getParameter<string>("reference")) {
+  usesResource("DQMStore");
   //std::cout << "<DQMHistNormalizer::DQMHistNormalizer>:" << std::endl;
 }
 
@@ -55,18 +72,6 @@ DQMHistNormalizer::~DQMHistNormalizer() {
 
 void DQMHistNormalizer::analyze(const edm::Event&, const edm::EventSetup&) {
   //--- nothing to be done yet
-}
-
-lat::Regexp* DQMHistNormalizer::buildRegex(const string& expr) {
-  lat::Regexp* rx = nullptr;
-  try {
-    rx = new lat::Regexp(expr, 0, lat::Regexp::Wildcard);
-    rx->study();
-  } catch (lat::Error& e) {
-    throw cms::Exception("DQMHistNormalizer")
-        << "Invalid regular expression '" << expr.c_str() << "':" << e.explain().c_str();
-  }
-  return rx;
 }
 
 void DQMHistNormalizer::endRun(const edm::Run& r, const edm::EventSetup& c) {
@@ -81,21 +86,22 @@ void DQMHistNormalizer::endRun(const edm::Run& r, const edm::EventSetup& c) {
   DQMStore& dqmStore = (*edm::Service<DQMStore>());
 
   vector<MonitorElement*> allOurMEs = dqmStore.getAllContents("RecoTauV/");
-  lat::Regexp* refregex = buildRegex("*RecoTauV/*/" + reference_);
-  vector<lat::Regexp*> toNormRegex;
+  std::regex refregex = std::regex(".*RecoTauV/.*/" + globToRegex(reference_), std::regex::nosubs);
+  vector<std::regex> toNormRegex;
   for (std::vector<string>::const_iterator toNorm = plotNamesToNormalize_.begin();
        toNorm != plotNamesToNormalize_.end();
        ++toNorm)
-    toNormRegex.push_back(buildRegex("*RecoTauV/*/" + *toNorm));
+    toNormRegex.emplace_back(".*RecoTauV/.*/" + globToRegex(*toNorm), std::regex::nosubs);
 
   map<string, MonitorElement*> refsMap;
   vector<MonitorElement*> toNormElements;
+  std::smatch path_match;
 
   for (vector<MonitorElement*>::const_iterator element = allOurMEs.begin(); element != allOurMEs.end(); ++element) {
     string pathname = (*element)->getFullname();
     //cout << pathname << endl;
     //Matches reference
-    if (refregex->match(pathname)) {
+    if (std::regex_match(pathname, path_match, refregex)) {
       //cout << "Matched to ref" << endl;
       string dir = pathname.substr(0, pathname.rfind('/'));
       if (refsMap.find(dir) != refsMap.end()) {
@@ -109,18 +115,14 @@ void DQMHistNormalizer::endRun(const edm::Run& r, const edm::EventSetup& c) {
     }
 
     //Matches targets
-    for (vector<lat::Regexp*>::const_iterator reg = toNormRegex.begin(); reg != toNormRegex.end(); ++reg) {
-      if ((*reg)->match(pathname)) {
+    for (const auto& reg : toNormRegex) {
+      if (std::regex_match(pathname, path_match, reg)) {
         //cout << "Matched to target" << endl;
         toNormElements.push_back(*element);
         //cout << "Filled the collection" << endl;
       }
     }
   }
-
-  delete refregex;
-  for (vector<lat::Regexp*>::const_iterator reg = toNormRegex.begin(); reg != toNormRegex.end(); ++reg)
-    delete *reg;
 
   for (vector<MonitorElement*>::const_iterator matchingElement = toNormElements.begin();
        matchingElement != toNormElements.end();

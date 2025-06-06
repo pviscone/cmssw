@@ -36,7 +36,7 @@ namespace hgc_digi_utils {
                        : false);
     //base time samples for each DetId, initialized to 0
     info.size = (isHalf ? 0.5 : 1.0);
-    info.thickness = 1 + dddConst.waferType(detid);
+    info.thickness = 1 + dddConst.waferType(detid, false);
   }
 
   inline void addCellMetadata(HGCCellInfo& info, const CaloSubdetectorGeometry* geom, const DetId& detid) {
@@ -109,7 +109,7 @@ public:
   /**
      @short DTOR
   */
-  virtual ~HGCDigitizerBase(){};
+  virtual ~HGCDigitizerBase() {}
 
 protected:
   //baseline configuration

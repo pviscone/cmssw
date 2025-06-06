@@ -42,7 +42,7 @@
 #include <utility>
 #include <vector>
 
-#include "FWCore/Framework/interface/EDAnalyzer.h"
+#include "FWCore/Framework/interface/one/EDAnalyzer.h"
 #include "FWCore/Framework/interface/Frameworkfwd.h"
 
 #include "DQMServices/Core/interface/DQMStore.h"
@@ -53,7 +53,8 @@
 #define MAX_PATHS 200
 #define MAX_LUMI_SEG_HLT 2400
 
-class HLTScalersClient : public edm::EDAnalyzer {
+class HLTScalersClient
+    : public edm::one::EDAnalyzer<edm::one::SharedResources, edm::one::WatchRuns, edm::one::WatchLuminosityBlocks> {
 private:
   std::ofstream textfile_;
 
@@ -67,7 +68,7 @@ public:
   // helper data structures - slightly modified stl objects
   class CountLS_t : public std::pair<int, double> {
   public:
-    CountLS_t(int ls, double cnt) : std::pair<int, double>(ls, cnt){};
+    CountLS_t(int ls, double cnt) : std::pair<int, double>(ls, cnt) {}
     bool operator==(int ls) const { return ls == this->first; }
     bool operator<(CountLS_t &rhs) { return this->first < rhs.first; };
   };
@@ -133,6 +134,7 @@ public:
 
   /// End LumiBlock
   /// DQM Client Diagnostic should be performed here
+  void beginLuminosityBlock(const edm::LuminosityBlock &lumiSeg, const edm::EventSetup &c) override {}
   void endLuminosityBlock(const edm::LuminosityBlock &lumiSeg, const edm::EventSetup &c) override;
 
   // unused

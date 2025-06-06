@@ -1,5 +1,5 @@
 from __future__ import print_function
-from ROOT import *
+from ROOT import gDirectory, TBufferFile, TClass
 from array import array
 
 #-------------------------------------------------------------------------------
@@ -30,7 +30,7 @@ def loadStreamerInfo(literal, debug):
   the one contained in the DQM GUI source code."""
 
   bitsarray = array('B')
-  bitsarray.fromstring(literal.decode('hex'))
+  bitsarray.frombytes(bytes.fromhex(literal))
 
   tbuffer = TBufferFile(TBufferFile.kRead)
   tbuffer.Reset();
@@ -63,7 +63,7 @@ def literal2root (literal, rootType, debug=False):
     return None
 
   bitsarray = array('B')
-  bitsarray.fromstring(literal.decode('hex'))
+  bitsarray.frombytes(bytes.fromhex(literal))
 
   tbuffer = TBufferFile(TBufferFile.kRead)
   tbuffer.SetBuffer(bitsarray,len(bitsarray),False)

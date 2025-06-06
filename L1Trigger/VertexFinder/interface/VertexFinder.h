@@ -2,14 +2,17 @@
 #define __L1Trigger_VertexFinder_VertexFinder_h__
 
 #include "DataFormats/Common/interface/Ptr.h"
+#include "DataFormats/L1TrackTrigger/interface/TTTrack.h"
 #include "DataFormats/L1Trigger/interface/VertexWord.h"
 #include "DataFormats/Math/interface/deltaPhi.h"
 #include "DataFormats/TrackerCommon/interface/TrackerTopology.h"
 #include "FWCore/MessageLogger/interface/MessageLogger.h"
 #include "L1Trigger/VertexFinder/interface/AlgoSettings.h"
 #include "L1Trigger/VertexFinder/interface/RecoVertex.h"
+#include "PhysicsTools/TensorFlow/interface/TensorFlow.h"
 
 #include <algorithm>
+#include <cmath>
 #include <iterator>
 #include <vector>
 
@@ -98,6 +101,10 @@ namespace l1tVertexFinder {
     void fastHisto(const TrackerTopology* tTopo);
     /// Histogramming algorithm (emulation)
     void fastHistoEmulation();
+    /// NNVtx algorithm
+    void NNVtxEmulation(tensorflow::Session* TrackWeightSesh = nullptr,
+                        tensorflow::Session* PatternRecSesh = nullptr,
+                        tensorflow::Session* AssociationSesh = nullptr);
 
     /// Sort vertices in pT
     void sortVerticesInPt();

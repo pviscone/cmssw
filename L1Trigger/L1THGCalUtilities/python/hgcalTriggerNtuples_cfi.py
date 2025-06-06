@@ -9,7 +9,6 @@ import L1Trigger.L1THGCal.hgcalLayersCalibrationCoefficients_cfi as layercalibpa
 
 fcPerMip = recoparam.HGCalUncalibRecHit.HGCEEConfig.fCPerMIP
 keV2fC = digiparam.hgceeDigitizer.digiCfg.keV2fC
-layerWeights = layercalibparam.TrgLayer_dEdX_weights
 thicknessCorrections = recocalibparam.HGCalRecHit.thicknessCorrection
 
 ntuple_event = cms.PSet(
@@ -56,8 +55,8 @@ ntuple_digis = cms.PSet(
 
 ntuple_triggercells = cms.PSet(
     NtupleName = cms.string('HGCalTriggerNtupleHGCTriggerCells'),
-    TriggerCells = cms.InputTag('hgcalConcentratorProducer:HGCalConcentratorProcessorSelection'),
-    Multiclusters = cms.InputTag('hgcalBackEndLayer2Producer:HGCalBackendLayer2Processor3DClustering'),
+    TriggerCells = cms.InputTag('l1tHGCalConcentratorProducer:HGCalConcentratorProcessorSelection'),
+    Multiclusters = cms.InputTag('l1tHGCalBackEndLayer2Producer:HGCalBackendLayer2Processor3DClustering'),
     eeSimHits = cms.InputTag('g4SimHits:HGCHitsEE'),
     fhSimHits = cms.InputTag('g4SimHits:HGCHitsHEfront'),
     bhSimHits = cms.InputTag('g4SimHits:HGCHitsHEback'), 
@@ -65,32 +64,32 @@ ntuple_triggercells = cms.PSet(
     FillTruthMap = cms.bool(False),
     fcPerMip = fcPerMip,
     keV2fC = keV2fC,
-    layerWeights = layerWeights,
+    layerWeights = layercalibparam.triggerWeights.weights,
     thicknessCorrections = thicknessCorrections,
     FilterCellsInMulticlusters = cms.bool(False)
 )
 
 ntuple_triggersums = cms.PSet(
     NtupleName = cms.string('HGCalTriggerNtupleHGCTriggerSums'),
-    TriggerSums = cms.InputTag('hgcalConcentratorProducer:HGCalConcentratorProcessorSelection'),
+    TriggerSums = cms.InputTag('l1tHGCalConcentratorProducer:HGCalConcentratorProcessorSelection'),
 )
 
 ntuple_econdata = cms.PSet(
     NtupleName = cms.string('HGCalTriggerNtupleHGCConcentratorData'),
-    ConcentratorData = cms.InputTag('hgcalConcentratorProducer:HGCalConcentratorProcessorSelection'),
+    ConcentratorData = cms.InputTag('l1tHGCalConcentratorProducer:HGCalConcentratorProcessorSelection'),
 )
 
 ntuple_clusters = cms.PSet(
     NtupleName = cms.string('HGCalTriggerNtupleHGCClusters'),
-    Clusters = cms.InputTag('hgcalBackEndLayer1Producer:HGCalBackendLayer1Processor2DClustering'),
-    Multiclusters = cms.InputTag('hgcalBackEndLayer2Producer:HGCalBackendLayer2Processor3DClustering'),
+    Clusters = cms.InputTag('l1tHGCalBackEndLayer1Producer:HGCalBackendLayer1Processor2DClustering'),
+    Multiclusters = cms.InputTag('l1tHGCalBackEndLayer2Producer:HGCalBackendLayer2Processor3DClustering'),
     FilterClustersInMulticlusters = cms.bool(False)
 )
 
 from L1Trigger.L1THGCal.egammaIdentification import egamma_identification_histomax
 ntuple_multiclusters = cms.PSet(
     NtupleName = cms.string('HGCalTriggerNtupleHGCMulticlusters'),
-    Multiclusters = cms.InputTag('hgcalBackEndLayer2Producer:HGCalBackendLayer2Processor3DClustering'),
+    Multiclusters = cms.InputTag('l1tHGCalBackEndLayer2Producer:HGCalBackendLayer2Processor3DClustering'),
     EGIdentification = egamma_identification_histomax.clone(),
     FillLayerInfo = cms.bool(False),
     FillInterpretationInfo = cms.bool(True)
@@ -98,10 +97,10 @@ ntuple_multiclusters = cms.PSet(
 
 ntuple_towers = cms.PSet(
     NtupleName = cms.string('HGCalTriggerNtupleHGCTowers'),
-    Towers = cms.InputTag('hgcalTowerProducer:HGCalTowerProcessor')
+    Towers = cms.InputTag('l1tHGCalTowerProducer:HGCalTowerProcessor')
 )
 
-hgcalTriggerNtuplizer = cms.EDAnalyzer(
+l1tHGCalTriggerNtuplizer = cms.EDAnalyzer(
     "HGCalTriggerNtupleManager",
     Ntuples = cms.VPSet(
         ntuple_event,

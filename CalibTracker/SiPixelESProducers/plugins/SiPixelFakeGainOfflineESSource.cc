@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// Package:    SiPixelFakeGainOfflineESSource
+// Package:    CalibTracker/SiPixelGainESProducers
 // Class:      SiPixelFakeGainOfflineESSource
 //
-/**\class SiPixelFakeGainOfflineESSource SiPixelFakeGainOfflineESSource.h CalibTracker/SiPixelESProducer/src/SiPixelFakeGainOfflineESSource.cc
+/**\class SiPixelFakeGainOfflineESSource SiPixelFakeGainOfflineESSource.cc CalibTracker/SiPixelGainESProducers/plugins/SiPixelFakeGainOfflineESSource.cc
 
  Description: <one line class summary>
 
@@ -12,17 +12,51 @@
 */
 //
 // Original Author:  Vincenzo Chiochia
-//         Created:  Fri Apr 27 12:31:25 CEST 2007
+//         Created:  Tue 8 12:31:25 CEST 2007
 //
 //
+
+// system include files
+#include <memory>
 
 // user include files
-
-#include "CalibTracker/SiPixelESProducers/interface/SiPixelFakeGainOfflineESSource.h"
 #include "CalibTracker/SiPixelESProducers/interface/SiPixelDetInfoFileReader.h"
-#include "Geometry/TrackerGeometryBuilder/interface/TrackerGeometry.h"
-#include "Geometry/Records/interface/TrackerDigiGeometryRecord.h"
+#include "CondFormats/DataRecord/interface/SiPixelGainCalibrationOfflineRcd.h"
+#include "CondFormats/SiPixelObjects/interface/SiPixelGainCalibrationOffline.h"
+#include "FWCore/Framework/interface/ESProducer.h"
+#include "FWCore/Framework/interface/EventSetupRecordIntervalFinder.h"
+#include "FWCore/Framework/interface/MakerMacros.h"
+#include "FWCore/Framework/interface/ModuleFactory.h"
+#include "FWCore/Framework/interface/SourceFactory.h"
 #include "FWCore/MessageLogger/interface/MessageLogger.h"
+#include "FWCore/ParameterSet/interface/ConfigurationDescriptions.h"
+#include "FWCore/ParameterSet/interface/ParameterSet.h"
+#include "FWCore/ParameterSet/interface/ParameterSetDescription.h"
+#include "Geometry/Records/interface/TrackerDigiGeometryRecord.h"
+#include "Geometry/TrackerGeometryBuilder/interface/TrackerGeometry.h"
+
+//
+// class decleration
+//
+
+class SiPixelFakeGainOfflineESSource : public edm::ESProducer, public edm::EventSetupRecordIntervalFinder {
+public:
+  SiPixelFakeGainOfflineESSource(const edm::ParameterSet&);
+  ~SiPixelFakeGainOfflineESSource() override = default;
+
+  static void fillDescriptions(edm::ConfigurationDescriptions& descriptions);
+
+  virtual std::unique_ptr<SiPixelGainCalibrationOffline> produce(const SiPixelGainCalibrationOfflineRcd&);
+
+protected:
+  void setIntervalFor(const edm::eventsetup::EventSetupRecordKey&,
+                      const edm::IOVSyncValue&,
+                      edm::ValidityInterval&) override;
+
+private:
+  edm::FileInPath fp_;
+};
+
 //
 // constructors and destructor
 //
@@ -35,23 +69,15 @@ SiPixelFakeGainOfflineESSource::SiPixelFakeGainOfflineESSource(const edm::Parame
   findingRecord<SiPixelGainCalibrationOfflineRcd>();
 }
 
-SiPixelFakeGainOfflineESSource::~SiPixelFakeGainOfflineESSource() {
-  // do anything here that needs to be done at desctruction time
-  // (e.g. close files, deallocate resources etc.)
-}
-
 std::unique_ptr<SiPixelGainCalibrationOffline> SiPixelFakeGainOfflineESSource::produce(
     const SiPixelGainCalibrationOfflineRcd&) {
   using namespace edm::es;
-  unsigned int nmodules = 0;
-  uint32_t nchannels = 0;
   SiPixelGainCalibrationOffline* obj = new SiPixelGainCalibrationOffline(25., 30., 2., 3.);
   SiPixelDetInfoFileReader reader(fp_.fullPath());
   const std::vector<uint32_t>& DetIds = reader.getAllDetIds();
 
   // Loop over detectors
   for (std::vector<uint32_t>::const_iterator detit = DetIds.begin(); detit != DetIds.end(); detit++) {
-    nmodules++;
     std::vector<char> theSiPixelGainCalibrationOffline;
     const std::pair<int, int>& detUnitDimensions = reader.getDetUnitDimensions(*detit);
 
@@ -60,7 +86,6 @@ std::unique_ptr<SiPixelGainCalibrationOffline> SiPixelFakeGainOfflineESSource::p
       float totalGain = 0.0;
       float totalEntries = 0.0;
       for (int j = 0; j < detUnitDimensions.second; j++) {
-        nchannels++;
         totalGain += 2.8;
         float ped = 28.2;
         totalEntries += 1.0;
@@ -85,8 +110,6 @@ std::unique_ptr<SiPixelGainCalibrationOffline> SiPixelFakeGainOfflineESSource::p
           << "[SiPixelFakeGainOfflineESSource::produce] detid already exists" << std::endl;
   }
 
-  //std::cout << "Modules = " << nmodules << " Channels " << nchannels << std::endl;
-
   //
   return std::unique_ptr<SiPixelGainCalibrationOffline>(obj);
 }
@@ -97,3 +120,11 @@ void SiPixelFakeGainOfflineESSource::setIntervalFor(const edm::eventsetup::Event
   edm::ValidityInterval infinity(iosv.beginOfTime(), iosv.endOfTime());
   oValidity = infinity;
 }
+
+void SiPixelFakeGainOfflineESSource::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
+  edm::ParameterSetDescription desc;
+  desc.add<edm::FileInPath>("file", edm::FileInPath("CalibTracker/SiPixelESProducers/data/PixelSkimmedGeometry.txt"));
+  descriptions.addWithDefaultLabel(desc);
+}
+
+DEFINE_FWK_EVENTSETUP_SOURCE(SiPixelFakeGainOfflineESSource);

@@ -47,12 +47,12 @@ namespace edm {
           std::vector<std::string> const& iDefaultOutputCommands = ProductSelectorRules::defaultSelectionStrings());
 
       //Output modules always need writeRun and writeLumi to be called
-      bool wantsGlobalRuns() const { return true; }
-      bool wantsGlobalLuminosityBlocks() const { return true; }
-      virtual bool wantsProcessBlocks() const = 0;
-      virtual bool wantsInputProcessBlocks() const = 0;
-      virtual bool wantsStreamRuns() const = 0;
-      virtual bool wantsStreamLuminosityBlocks() const = 0;
+      bool wantsGlobalRuns() const noexcept { return true; }
+      bool wantsGlobalLuminosityBlocks() const noexcept { return true; }
+      virtual bool wantsProcessBlocks() const noexcept = 0;
+      virtual bool wantsInputProcessBlocks() const noexcept = 0;
+      virtual bool wantsStreamRuns() const noexcept = 0;
+      virtual bool wantsStreamLuminosityBlocks() const noexcept = 0;
 
       unsigned int concurrencyLimit() const { return queue_.concurrencyLimit(); }
 
@@ -70,14 +70,12 @@ namespace edm {
       //For now this is a placeholder
       /*virtual*/ void preActionBeforeRunEventAsync(WaitingTaskHolder,
                                                     ModuleCallingContext const&,
-                                                    Principal const&) const {}
+                                                    Principal const&) const noexcept {}
 
     private:
       LimitedTaskQueue queue_;
 
       std::string workerType() const { return "WorkerT<edm::limited::OutputModuleBase>"; }
-
-      void registerProductsAndCallbacks(OutputModuleBase const*, ProductRegistry const*) {}
 
       virtual void preallocStreams(unsigned int) {}
       virtual void preallocate(PreallocationConfiguration const&) {}
@@ -94,7 +92,7 @@ namespace edm {
       virtual void doEndRunSummary_(RunForOutput const&, EventSetup const&) {}
       virtual void doBeginLuminosityBlockSummary_(LuminosityBlockForOutput const&, EventSetup const&) {}
       virtual void doEndLuminosityBlockSummary_(LuminosityBlockForOutput const&, EventSetup const&) {}
-      bool hasAcquire() const { return false; }
+      bool hasAcquire() const noexcept { return false; }
     };
   }  // namespace limited
 }  // namespace edm

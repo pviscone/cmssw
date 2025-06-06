@@ -7,6 +7,8 @@
 #include "DataFormats/ParticleFlowReco/interface/PFClusterFwd.h"
 
 #include "RecoParticleFlow/PFClusterProducer/interface/PFCPositionCalculatorBase.h"
+#include "CondFormats/DataRecord/interface/HcalPFCutsRcd.h"
+#include "CondTools/Hcal/interface/HcalPFCutsHandler.h"
 
 #include <string>
 #include <iostream>
@@ -26,10 +28,11 @@ public:
         _nClustersFound(0),
         _minFractionToKeep(conf.getParameter<double>("minFractionToKeep")),
         _algoName(conf.getParameter<std::string>("algoName")) {
-    if (conf.exists("positionCalc")) {
-      const edm::ParameterSet& pcConf = conf.getParameterSet("positionCalc");
+    const auto& pcConf = conf.getParameterSet("positionCalc");
+    if (!pcConf.empty()) {
       const std::string& algo = pcConf.getParameter<std::string>("algoName");
-      _positionCalc = PFCPositionCalculatorFactory::get()->create(algo, pcConf, cc);
+      if (!algo.empty())
+        _positionCalc = PFCPositionCalculatorFactory::get()->create(algo, pcConf, cc);
     }
   }
   virtual ~PFClusterBuilderBase() = default;
@@ -41,7 +44,8 @@ public:
 
   virtual void buildClusters(const reco::PFClusterCollection& topos,
                              const std::vector<bool>& seedable,
-                             reco::PFClusterCollection& outclus) = 0;
+                             reco::PFClusterCollection& outclus,
+                             const HcalPFCuts*) = 0;
 
   std::ostream& operator<<(std::ostream& o) const {
     o << "PFClusterBuilder with algo \"" << _algoName << "\" located " << _nSeeds << " seeds and built "

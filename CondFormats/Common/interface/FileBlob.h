@@ -19,7 +19,7 @@ public:
   /// constructor from  stream to read
   FileBlob(std::istream &is, bool zip);
 
-  ~FileBlob(){};
+  ~FileBlob() {}
 
   /// read from real file
   void read(const std::string &);
@@ -34,7 +34,7 @@ public:
   bool isCompressed() const { return compressed; };
 
   int size() const { return isize; };
-    /// i didn't want to do two copies ... hope this works.
+  /// i didn't want to do two copies ... hope this works.
 #if !defined(__CINT__) && !defined(__MAKECINT__) && !defined(__REFLEX__)
   std::unique_ptr<std::vector<unsigned char> > getUncompressedBlob() const;
 #endif

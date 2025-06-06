@@ -600,7 +600,11 @@ double MatcherUsingTracksAlgorithm::getChi2(const FreeTrajectoryState &start,
   if (other.hasError())
     cov += other.perigeeError().covarianceMatrix();
   cropAndInvert(cov, diagonalOnly, !useVertex);
-  AlgebraicVector5 pgpar1 = PerigeeConversions::ftsToPerigeeParameters(start, other.referencePoint(), pt).vector();
+  auto params = PerigeeConversions::ftsToPerigeeParameters(start, other.referencePoint(), pt);
+  if (not params) {
+    throw cms::Exception("PerigeeConversions") << "track had pt == 0.";
+  }
+  AlgebraicVector5 pgpar1 = params->vector();
   AlgebraicVector5 pgpar2 = other.perigeeParameters().vector();
   AlgebraicVector5 diff(pgpar1 - pgpar2);
   return ROOT::Math::Similarity(diff, cov);

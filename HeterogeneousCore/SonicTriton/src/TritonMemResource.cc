@@ -17,8 +17,24 @@ TritonMemResource<IO>::TritonMemResource(TritonData<IO>* data, const std::string
 
 template <typename IO>
 void TritonMemResource<IO>::set() {
-  TRITON_THROW_IF_ERROR(data_->data_->SetSharedMemory(name_, data_->totalByteSize_, 0),
-                        "unable to set shared memory (" + name_ + ")");
+  for (auto& entry : data_->entries_) {
+    TRITON_THROW_IF_ERROR(entry.data_->SetSharedMemory(name_, entry.totalByteSize_, entry.offset_),
+                          "unable to set shared memory (" + name_ + ")",
+                          true);
+  }
+}
+
+template <typename IO>
+void TritonMemResource<IO>::closeSafe() {
+  CMS_SA_ALLOW try { close(); } catch (TritonException& e) {
+    e.convertToWarning();
+  } catch (cms::Exception& e) {
+    triton_utils::convertToWarning(e);
+  } catch (std::exception& e) {
+    edm::LogWarning("UnknownFailure") << e.what();
+  } catch (...) {
+    edm::LogWarning("UnknownFailure") << "An unknown exception was thrown";
+  }
 }
 
 template <typename IO>
@@ -26,23 +42,32 @@ TritonHeapResource<IO>::TritonHeapResource(TritonData<IO>* data, const std::stri
     : TritonMemResource<IO>(data, name, size) {}
 
 template <>
-void TritonInputHeapResource::copyInput(const void* values, size_t offset) {
-  TRITON_THROW_IF_ERROR(data_->data_->AppendRaw(reinterpret_cast<const uint8_t*>(values), data_->byteSizePerBatch_),
+void TritonInputHeapResource::copyInput(const void* values, size_t offset, unsigned entry) {
+  TRITON_THROW_IF_ERROR(data_->entries_[entry].data_->AppendRaw(reinterpret_cast<const uint8_t*>(values),
+                                                                data_->entries_[entry].byteSizePerBatch_),
                         data_->name_ + " toServer(): unable to set data for batch entry " +
-                            (data_->byteSizePerBatch_ ? std::to_string(offset / data_->byteSizePerBatch_) : ""));
+                            (data_->entries_.size() > 1 ? std::to_string(entry)
+                             : data_->entries_[entry].byteSizePerBatch_
+                                 ? std::to_string(offset / data_->entries_[entry].byteSizePerBatch_)
+                                 : ""),
+                        false);
 }
 
 template <>
-const uint8_t* TritonOutputHeapResource::copyOutput() {
-  size_t contentByteSize;
-  const uint8_t* values;
-  TRITON_THROW_IF_ERROR(data_->result_->RawData(data_->name_, &values, &contentByteSize),
-                        data_->name_ + " fromServer(): unable to get raw");
+void TritonOutputHeapResource::copyOutput() {
+  size_t contentByteSize = 0;
+  for (auto& entry : data_->entries_) {
+    size_t contentByteSizeEntry(0);
+    if (entry.totalByteSize_ > 0)
+      TRITON_THROW_IF_ERROR(entry.result_->RawData(data_->name_, &entry.output_, &contentByteSizeEntry),
+                            data_->name_ + " fromServer(): unable to get raw",
+                            false);
+    contentByteSize += contentByteSizeEntry;
+  }
   if (contentByteSize != data_->totalByteSize_) {
     throw cms::Exception("TritonDataError") << data_->name_ << " fromServer(): unexpected content byte size "
                                             << contentByteSize << " (expected " << data_->totalByteSize_ << ")";
   }
-  return values;
 }
 
 //shared memory helpers based on:
@@ -51,7 +76,7 @@ const uint8_t* TritonOutputHeapResource::copyOutput() {
 
 template <typename IO>
 TritonCpuShmResource<IO>::TritonCpuShmResource(TritonData<IO>* data, const std::string& name, size_t size)
-    : TritonMemResource<IO>(data, name, size) {
+    : TritonMemResource<IO>(data, name, size), sizeOrig_(size) {
   //mmap of size zero is required to fail by POSIX, but still need to have some shared memory region available for Triton
   this->size_ = std::max<size_t>(this->size_, 1);
 
@@ -78,12 +103,13 @@ TritonCpuShmResource<IO>::TritonCpuShmResource(TritonData<IO>* data, const std::
     throw cms::Exception("TritonError") << "unable to close descriptor for shared memory key: " + this->name_;
 
   TRITON_THROW_IF_ERROR(this->data_->client()->RegisterSystemSharedMemory(this->name_, this->name_, this->size_),
-                        "unable to register shared memory region: " + this->name_);
+                        "unable to register shared memory region: " + this->name_,
+                        true);
 }
 
 template <typename IO>
-TritonCpuShmResource<IO>::~TritonCpuShmResource<IO>() {
-  close();
+TritonCpuShmResource<IO>::~TritonCpuShmResource() {
+  this->closeSafe();
 }
 
 template <typename IO>
@@ -92,7 +118,8 @@ void TritonCpuShmResource<IO>::close() {
     return;
 
   TRITON_THROW_IF_ERROR(this->data_->client()->UnregisterSystemSharedMemory(this->name_),
-                        "unable to unregister shared memory region: " + this->name_);
+                        "unable to unregister shared memory region: " + this->name_,
+                        true);
 
   //unmap
   int tmp_fd = munmap(this->addr_, this->size_);
@@ -108,14 +135,16 @@ void TritonCpuShmResource<IO>::close() {
 }
 
 template <>
-void TritonInputCpuShmResource::copyInput(const void* values, size_t offset) {
-  if (size_ > 0)
-    std::memcpy(addr_ + offset, values, data_->byteSizePerBatch_);
+void TritonInputCpuShmResource::copyInput(const void* values, size_t offset, unsigned entry) {
+  if (sizeOrig_ > 0)
+    std::memcpy(addr_ + offset, values, data_->entries_[entry].byteSizePerBatch_);
 }
 
 template <>
-const uint8_t* TritonOutputCpuShmResource::copyOutput() {
-  return addr_;
+void TritonOutputCpuShmResource::copyOutput() {
+  for (auto& entry : data_->entries_) {
+    entry.output_ = addr_ + entry.offset_;
+  }
 }
 
 template class TritonHeapResource<tc::InferInput>;
@@ -132,12 +161,13 @@ TritonGpuShmResource<IO>::TritonGpuShmResource(TritonData<IO>* data, const std::
   cudaCheck(cudaMalloc((void**)&this->addr_, this->size_), "unable to allocate GPU memory for key: " + this->name_);
   cudaCheck(cudaIpcGetMemHandle(handle_.get(), this->addr_), "unable to get IPC handle for key: " + this->name_);
   TRITON_THROW_IF_ERROR(this->data_->client()->RegisterCudaSharedMemory(this->name_, *handle_, deviceId_, this->size_),
-                        "unable to register CUDA shared memory region: " + this->name_);
+                        "unable to register CUDA shared memory region: " + this->name_,
+                        true);
 }
 
 template <typename IO>
-TritonGpuShmResource<IO>::~TritonGpuShmResource<IO>() {
-  close();
+TritonGpuShmResource<IO>::~TritonGpuShmResource() {
+  this->closeSafe();
 }
 
 template <typename IO>
@@ -145,27 +175,30 @@ void TritonGpuShmResource<IO>::close() {
   if (this->closed_)
     return;
   TRITON_THROW_IF_ERROR(this->data_->client()->UnregisterCudaSharedMemory(this->name_),
-                        "unable to unregister CUDA shared memory region: " + this->name_);
+                        "unable to unregister CUDA shared memory region: " + this->name_,
+                        true);
   cudaCheck(cudaFree(this->addr_), "unable to free GPU memory for key: " + this->name_);
   this->closed_ = true;
 }
 
 template <>
-void TritonInputGpuShmResource::copyInput(const void* values, size_t offset) {
-  cudaCheck(
-      cudaMemcpy(addr_ + offset, values, data_->byteSizePerBatch_, cudaMemcpyHostToDevice),
-      data_->name_ + " toServer(): unable to memcpy " + std::to_string(data_->byteSizePerBatch_) + " bytes to GPU");
+void TritonInputGpuShmResource::copyInput(const void* values, size_t offset, unsigned entry) {
+  cudaCheck(cudaMemcpy(addr_ + offset, values, data_->entries_[entry].byteSizePerBatch_, cudaMemcpyHostToDevice),
+            data_->name_ + " toServer(): unable to memcpy " + std::to_string(data_->entries_[entry].byteSizePerBatch_) +
+                " bytes to GPU");
 }
 
 template <>
-const uint8_t* TritonOutputGpuShmResource::copyOutput() {
+void TritonOutputGpuShmResource::copyOutput() {
   //copy back from gpu, keep in scope
   auto ptr = std::make_shared<std::vector<uint8_t>>(data_->totalByteSize_);
   cudaCheck(
       cudaMemcpy(ptr->data(), addr_, data_->totalByteSize_, cudaMemcpyDeviceToHost),
       data_->name_ + " fromServer(): unable to memcpy " + std::to_string(data_->totalByteSize_) + " bytes from GPU");
   data_->holder_ = ptr;
-  return ptr->data();
+  for (auto& entry : data_->entries_) {
+    entry.output_ = ptr->data() + entry.offset_;
+  }
 }
 
 template class TritonGpuShmResource<tc::InferInput>;

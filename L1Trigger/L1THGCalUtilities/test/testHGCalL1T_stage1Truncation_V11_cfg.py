@@ -9,8 +9,8 @@ process.load('SimGeneral.HepPDTESSource.pythiapdt_cfi')
 process.load('FWCore.MessageService.MessageLogger_cfi')
 process.load('Configuration.EventContent.EventContent_cff')
 process.load('SimGeneral.MixingModule.mixNoPU_cfi')
-process.load('Configuration.Geometry.GeometryExtended2026D49Reco_cff')
-process.load('Configuration.Geometry.GeometryExtended2026D49_cff')
+process.load('Configuration.Geometry.GeometryExtendedRun4D49Reco_cff')
+process.load('Configuration.Geometry.GeometryExtendedRun4D49_cff')
 process.load('Configuration.StandardSequences.MagneticField_cff')
 process.load('Configuration.StandardSequences.Generator_cff')
 process.load('IOMC.EventVertexGenerators.VtxSmearedHLLHC14TeV_cfi')
@@ -32,16 +32,7 @@ process.source = cms.Source("PoolSource",
        fileNames = cms.untracked.vstring('/store/mc/Phase2HLTTDRSummer20ReRECOMiniAOD/DoublePhoton_FlatPt-1To100/FEVT/PU200_111X_mcRun4_realistic_T15_v1_ext1-v2/1210000/F2E5E947-0CB4-D245-A943-17F2F05709D3.root'),
        inputCommands=cms.untracked.vstring(
            'keep *',
-           'drop l1tEMTFHit2016Extras_simEmtfDigis_CSC_HLT',
-           'drop l1tEMTFHit2016Extras_simEmtfDigis_RPC_HLT',
-           'drop l1tEMTFHit2016s_simEmtfDigis__HLT',
-           'drop l1tEMTFTrack2016Extras_simEmtfDigis__HLT',
-           'drop l1tEMTFTrack2016s_simEmtfDigis__HLT',
-           'drop FTLClusteredmNewDetSetVector_mtdClusters_FTLBarrel_RECO',
-           'drop FTLClusteredmNewDetSetVector_mtdClusters_FTLEndcap_RECO',
-           'drop MTDTrackingRecHitedmNewDetSetVector_mtdTrackingRecHits__RECO',
-           'drop BTLDetIdBTLSampleFTLDataFrameTsSorted_mix_FTLBarrel_HLT',
-           'drop ETLDetIdETLSampleFTLDataFrameTsSorted_mix_FTLEndcap_HLT',
+           'drop l1tTkPrimaryVertexs_L1TkPrimaryVertex__RECO',
            )
        )
 
@@ -78,7 +69,7 @@ process = custom_stage1_truncation(process)
 from L1Trigger.L1THGCal.customTriggerGeometry import custom_geometry_V11_Imp3
 process = custom_geometry_V11_Imp3(process)
 
-process.hgcl1tpg_step = cms.Path(process.hgcalTriggerPrimitives)
+process.hgcl1tpg_step = cms.Path(process.L1THGCalTriggerPrimitives)
 
 
 # load ntuplizer and custom to use collections from Stag1 truncation processor
@@ -87,7 +78,7 @@ from L1Trigger.L1THGCalUtilities.customNtuples import custom_ntuples_stage1_trun
 from L1Trigger.L1THGCalUtilities.customNtuples import custom_ntuples_layer1_truncation
 process = custom_ntuples_stage1_truncation(process)
 #process = custom_ntuples_layer1_truncation(process)
-process.ntuple_step = cms.Path(process.hgcalTriggerNtuples)
+process.ntuple_step = cms.Path(process.L1THGCalTriggerNtuples)
 
 # Schedule definition
 process.schedule = cms.Schedule(process.hgcl1tpg_step, process.ntuple_step)

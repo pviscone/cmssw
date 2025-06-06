@@ -10,12 +10,12 @@
 
 #include "DataFormats/ForwardDetId/interface/HGCalDetId.h"
 
-#include "CLHEP/Units/GlobalSystemOfUnits.h"
+#include <CLHEP/Units/SystemOfUnits.h>
 #include <iostream>
 
 //#define EDM_ML_DEBUG
 
-HGCNumberingScheme::HGCNumberingScheme(const HGCalDDDConstants& hgc, std::string& name) : hgcons_(hgc) {
+HGCNumberingScheme::HGCNumberingScheme(const HGCalTBDDDConstants& hgc, std::string& name) : hgcons_(hgc) {
   edm::LogVerbatim("HGCSim") << "Creating HGCNumberingScheme for " << name;
 }
 

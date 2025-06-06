@@ -1,13 +1,14 @@
 import FWCore.ParameterSet.Config as cms
 
 hltPfDeepFlavourTagInfos = cms.EDProducer("DeepFlavourTagInfoProducer",
-    candidates = cms.InputTag("particleFlowTmp"),
+    candidates = cms.InputTag("hltParticleFlowTmp"),
     compute_probabilities = cms.bool(False),
     fallback_puppi_weight = cms.bool(False),
     fallback_vertex_association = cms.bool(False),
     flip = cms.bool(False),
     jet_radius = cms.double(0.4),
     jets = cms.InputTag("hltAK4PFPuppiJets"),
+    unsubjet_map = cms.InputTag(""),
     max_jet_eta = cms.double(2.5),
     mightGet = cms.optional.untracked.vstring,
     min_candidate_pt = cms.double(0.95),
@@ -17,5 +18,5 @@ hltPfDeepFlavourTagInfos = cms.EDProducer("DeepFlavourTagInfoProducer",
     secondary_vertices = cms.InputTag("hltDeepInclusiveSecondaryVerticesPF"),
     shallow_tag_infos = cms.InputTag("hltDeepCombinedSecondaryVertexBJetTagsInfosPuppi"),
     vertex_associator = cms.InputTag("hltPrimaryVertexAssociation","original"),
-    vertices = cms.InputTag("offlinePrimaryVertices")
+    vertices = cms.InputTag("hltOfflinePrimaryVertices")
 )

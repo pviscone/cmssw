@@ -40,7 +40,7 @@ process.load('SimGeneral.HepPDTESSource.pythiapdt_cfi')
 process.load('FWCore.MessageService.MessageLogger_cfi')
 process.load('Configuration.EventContent.EventContent_cff')
 process.load('SimGeneral.MixingModule.mixNoPU_cfi')
-process.load('Configuration.Geometry.GeometryExtended2026D76Reco_cff')
+process.load('Configuration.Geometry.GeometryExtendedRun4D76Reco_cff')
 process.load('Configuration.StandardSequences.MagneticField_cff')
 process.load('Configuration.StandardSequences.DQMSaverAtRunEnd_cff')
 process.load('Configuration.StandardSequences.Harvesting_cff')
@@ -50,7 +50,6 @@ dqmStoreStats.runOnEndJob = cms.untracked.bool(True)
 
 process.maxEvents = cms.untracked.PSet(input = cms.untracked.int32(1))
 
-t1 = os.environ['inputPostFile'].split('.')
 localFileInput = os.environ['inputPostFile']#.replace(".root", "_a.root") #
 # Source
 process.source = cms.Source ("PoolSource",fileNames = cms.untracked.vstring("file:" + localFileInput),
@@ -67,7 +66,10 @@ process.GlobalTag.globaltag = '122X_mcRun4_realistic_v1'
 #process.GlobalTag.globaltag = '93X_upgrade2023_realistic_v0'
 #process.GlobalTag.globaltag = '93X_mc2017_realistic_v1'
 
-process.dqmSaver.workflow = '/electronHistos/' + t1[1] + '/RECO3'
+rel = os.environ['DD_SAMPLE']
+part1 = os.environ['DD_RELEASE']
+part2 = os.environ['TEST_GLOBAL_TAG']
+process.dqmSaver.workflow = '/' + rel + '/' + part1 + '-' + part2 + '/RECO'
 process.dqmsave_step = cms.Path(process.DQMSaver)
 
 process.p = cms.Path(process.EDMtoME * process.electronMcSignalPostValidatorPt1000 * process.dqmStoreStats)

@@ -70,12 +70,16 @@ namespace edm {
       static void fillDescriptions(ConfigurationDescriptions& descriptions) { T::fillDescriptions(descriptions); }
       static void prevalidate(ConfigurationDescriptions& descriptions) { T::prevalidate(descriptions); }
 
-      bool wantsProcessBlocks() const final { return T::HasAbility::kWatchProcessBlock; }
-      bool wantsInputProcessBlocks() const final { return T::HasAbility::kInputProcessBlockCache; }
-      bool wantsGlobalRuns() const final { return T::HasAbility::kRunCache or T::HasAbility::kRunSummaryCache; }
-      bool wantsGlobalLuminosityBlocks() const final {
+      bool wantsProcessBlocks() const noexcept final { return T::HasAbility::kWatchProcessBlock; }
+      bool wantsInputProcessBlocks() const noexcept final { return T::HasAbility::kInputProcessBlockCache; }
+      bool wantsGlobalRuns() const noexcept final {
+        return T::HasAbility::kRunCache or T::HasAbility::kRunSummaryCache;
+      }
+      bool wantsStreamRuns() const noexcept final { return T::HasAbility::kWatchRuns; }
+      bool wantsGlobalLuminosityBlocks() const noexcept final {
         return T::HasAbility::kLuminosityBlockCache or T::HasAbility::kLuminosityBlockSummaryCache;
       }
+      bool wantsStreamLuminosityBlocks() const noexcept final { return T::HasAbility::kWatchLuminosityBlocks; }
 
     private:
       using MyGlobal = CallGlobal<T>;
@@ -96,6 +100,10 @@ namespace edm {
         m_pset = nullptr;
       }
 
+      void preallocRuns(unsigned int iNRuns) final {
+        m_runs.resize(iNRuns);
+        m_runSummaries.resize(iNRuns);
+      }
       void preallocLumis(unsigned int iNLumis) final {
         m_lumis.resize(iNLumis);
         m_lumiSummaries.resize(iNLumis);

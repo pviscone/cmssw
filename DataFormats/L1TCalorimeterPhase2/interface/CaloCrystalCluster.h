@@ -1,6 +1,7 @@
 #ifndef DataFormats_L1TCalorimeterPhase2_CaloCrystalsCluster_h
 #define DataFormats_L1TCalorimeterPhase2_CaloCrystalsCluster_h
 
+#include <ap_int.h>
 #include <vector>
 #include <map>
 #include <string>
@@ -28,7 +29,7 @@ namespace l1tp2 {
           photonWP80_(0.),
           electronWP90_(0.),
           looseL1TkMatchWP_(0.),
-          stage2effMatch_(0.){};
+          stage2effMatch_(0.) {}
 
     CaloCrystalCluster(const PolarLorentzVector &p4,
                        float calibratedPt,
@@ -63,9 +64,9 @@ namespace l1tp2 {
           photonWP80_(photonWP80),
           electronWP90_(electronWP90),
           looseL1TkMatchWP_(looseL1TkMatchWP),
-          stage2effMatch_(stage2effMatch){};
+          stage2effMatch_(stage2effMatch) {}
 
-    ~CaloCrystalCluster() override{};
+    ~CaloCrystalCluster() override {}
     inline float calibratedPt() const { return calibratedPt_; };
     inline float hovere() const { return hovere_; };
     inline float isolation() const { return iso_; };

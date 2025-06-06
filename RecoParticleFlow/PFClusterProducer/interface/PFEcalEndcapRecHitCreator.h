@@ -34,7 +34,7 @@ public:
         recHitToken_(cc.consumes<EcalRecHitCollection>(iConfig.getParameter<edm::InputTag>("src"))),
         elecMap_(nullptr),
         geomToken_(cc.esConsumes()),
-        mappingToken_(cc.esConsumes<edm::Transition::BeginLuminosityBlock>()) {
+        mappingToken_(cc.esConsumes<edm::Transition::BeginRun>()) {
     auto srF = iConfig.getParameter<edm::InputTag>("srFlags");
     if (not srF.label().empty())
       srFlagToken_ = cc.consumes<EESrFlagCollection>(srF);
@@ -69,15 +69,16 @@ public:
 
       bool hi = (useSrF ? isHighInterest(detid) : true);
 
-      std::shared_ptr<const CaloCellGeometry> thisCell = ecalGeo->getGeometry(detid);
+      {
+        auto thisCell = ecalGeo->getGeometry(detid);
 
-      // find rechit geometry
-      if (!thisCell) {
-        throw cms::Exception("PFEcalEndcapRecHitCreator") << "detid " << detid.rawId() << "not found in geometry";
+        // find rechit geometry
+        if (!thisCell) {
+          throw cms::Exception("PFEcalEndcapRecHitCreator") << "detid " << detid.rawId() << "not found in geometry";
+        }
+
+        out->emplace_back(std::move(thisCell), detid.rawId(), PFLayer::ECAL_ENDCAP, energy);
       }
-
-      out->emplace_back(thisCell, detid.rawId(), PFLayer::ECAL_ENDCAP, energy);
-
       auto& rh = out->back();
 
       bool rcleaned = false;

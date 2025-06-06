@@ -22,7 +22,7 @@
 /* getline implementation is copied from glibc. */
 
 #ifndef SIZE_MAX
-#define SIZE_MAX ((size_t)-1)
+#define SIZE_MAX ((size_t) - 1)
 #endif
 #ifndef SSIZE_MAX
 #define SSIZE_MAX ((ssize_t)(SIZE_MAX / 2))
@@ -389,7 +389,7 @@ void fillABTTFFiles(const char ttFlags[nTTInEta][nTTInPhi], ofstream files[]) {
 
 void fillABSRPFiles(const char barrelSrFlags[nBarrelTTInEta][nTTInPhi],
                     const char endcapSrFlags[nEndcaps][nSupercrystalXBins][nSupercrystalYBins],
-                    ofstream files[nAB]) {
+                    ofstream files[]) {
   // event headers:
   for (int iAB = 0; iAB < nAB; ++iAB) {
     files[iAB] << "# Event " << iEvent << "\n";
@@ -552,10 +552,8 @@ bool readSRF(FILE *f,
     ++line;
     char *pos = buffer;
     while (*pos == ' ' || *pos == '\t')
-      ++pos;                            // skip spaces
-    if (*pos != '#' && *pos != '\n') {  // not a comment line nor an empty line
-      // go back to beginning of line:
-      pos = buffer;
+      ++pos;                                 // skip spaces
+    if (*pos != '#' && *pos != '\n') {       // not a comment line nor an empty line
       if (iReadLine < nSupercrystalXBins) {  // EE- reading
         if (read - 1 != nSupercrystalYBins) {
           cerr << "Error: line " << line << " of file " << srfFilename << " has incorrect length"

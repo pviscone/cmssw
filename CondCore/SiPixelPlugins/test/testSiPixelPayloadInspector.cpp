@@ -9,6 +9,7 @@
 #include "CondCore/SiPixelPlugins/plugins/SiPixelVCal_PayloadInspector.cc"
 #include "CondCore/SiPixelPlugins/plugins/SiPixelQualityProbabilities_PayloadInspector.cc"
 #include "CondCore/SiPixelPlugins/plugins/SiPixelDynamicInefficiency_PayloadInspector.cc"
+#include "CondCore/SiPixelPlugins/plugins/SiPixelFEDChannelContainer_PayloadInspector.cc"
 #include "FWCore/MessageLogger/interface/MessageLogger.h"
 #include "FWCore/PluginManager/interface/PluginManager.h"
 #include "FWCore/PluginManager/interface/standard.h"
@@ -81,6 +82,7 @@ int main(int argc, char** argv) {
   // SiPixelQuality
 
   tag = "SiPixelQuality_forDigitizer_phase1_2018_permanentlyBad";
+  tag2 = "SiPixelQuality_phase1_2023_v6_mc";
   start = static_cast<unsigned long long>(1);
   end = static_cast<unsigned long long>(1);
 
@@ -93,6 +95,14 @@ int main(int argc, char** argv) {
   SiPixelFPixQualityMap histo9;
   histo9.process(connectionString, PI::mk_input(tag, start, end));
   edm::LogPrint("testSiPixelPayloadInspector") << histo9.data() << std::endl;
+
+  SiPixelQualityBadFractionMap histo9bis;
+  histo9bis.process(connectionString, PI::mk_input(tag, start, end));
+  edm::LogPrint("testSiPixelPayloadInspector") << histo9bis.data() << std::endl;
+
+  SiPixelQualityBadFracCompareTwoTags histo9ter;
+  histo9ter.process(connectionString, PI::mk_input(tag, start, start, tag2, start2, start2));
+  edm::LogPrint("testSiPixelPayloadInspector") << histo9ter.data() << std::endl;
 
   // SiPixelGainCalibrationOffline
 
@@ -155,6 +165,10 @@ int main(int argc, char** argv) {
   SiPixelTemplateLAFPixMap histo19;
   histo19.process(connectionString, PI::mk_input(tag, start, end));
   edm::LogPrint("testSiPixelPayloadInspector") << histo19.data() << std::endl;
+
+  SiPixelTemplateQScaleMap histoQscale;
+  histoQscale.process(connectionString, PI::mk_input(tag, start, end));
+  edm::LogPrint("testSiPixelPayloadInspector") << histoQscale.data() << std::endl;
 
   // SiPixelVCal
 
@@ -220,6 +234,38 @@ int main(int argc, char** argv) {
   SiPixelFullIneffROCsMapCompareTwoTags histo27;
   histo27.process(connectionString, PI::mk_input(tag, start, start, tag2, start2, start2));
   edm::LogPrint("testSiPixelPayloadInspector") << histo27.data() << std::endl;
+
+  SiPixelDynamicInefficiencyPUPixelMaps histo28;
+  histo28.process(connectionString, PI::mk_input(tag2, start, end));
+  edm::LogPrint("testSiPixelPayloadInspector") << histo28.data() << std::endl;
+
+  SiPixelDynamicInefficiencyPUParametrization histo29;
+  histo29.process(connectionString, PI::mk_input(tag2, start, end));
+  edm::LogPrint("testSiPixelPayloadInspector") << histo29.data() << std::endl;
+
+  SiPixelDynamicInefficiencyPUParamComparisonTwoTags histo30;
+  histo30.process(connectionString, PI::mk_input(tag, start, end, tag2, start2, start2));
+  edm::LogPrint("testSiPixelPayloadInspector") << histo30.data() << std::endl;
+
+  // SiPixelFEDChannelContainer
+  tag = "SiPixelStatusScenarios_StuckTBMandOther_2023_v2_mc";
+  tag2 = "SiPixelQualityProbabilities_2023_v2_mc";
+  start = static_cast<unsigned long long>(1);
+  end = static_cast<unsigned long long>(1);
+
+  edm::LogPrint("testSiPixelPayloadInspector") << "## Exercising SiPixelFEDChannelContainer plots " << std::endl;
+
+  inputs["SiPixelQualityProbabilitiesTag"] = tag2;  // Quality Probabilities tag to use
+  SiPixelBPixFEDChannelContainerWeightedMap histo31;
+  histo31.setInputParamValues(inputs);
+  histo31.process(connectionString, PI::mk_input(tag, start, end));
+  edm::LogPrint("testSiPixelPayloadInspector") << histo31.data() << std::endl;
+
+  inputs["Scenarios"] = "370097_302";
+  SiPixelBPixFEDChannelContainerMap histo32;
+  histo32.setInputParamValues(inputs);
+  histo32.process(connectionString, PI::mk_input(tag, start, end));
+  edm::LogPrint("testSiPixelPayloadInspector") << histo32.data() << std::endl;
 
   inputs.clear();
 #if PY_MAJOR_VERSION >= 3

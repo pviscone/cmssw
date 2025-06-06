@@ -1,21 +1,40 @@
+###############################################################################
+# Way to use this:
+#   cmsRun runSens_cfg.py geometry=2023
+#
+#   Options for geometry 2021, 2023, 2024
+#
+###############################################################################
 import FWCore.ParameterSet.Config as cms
+import os, sys, importlib, re
+import FWCore.ParameterSet.VarParsing as VarParsing
 
+####################################################################
+### SETUP OPTIONS
+options = VarParsing.VarParsing('standard')
+options.register('geometry',
+                 "2024",
+                  VarParsing.VarParsing.multiplicity.singleton,
+                  VarParsing.VarParsing.varType.string,
+                  "geometry of operations: 2021, 2023, 2024")
+
+### get and parse the command line arguments
+options.parseArguments()
+
+print(options)
+
+#####p###############################################################
+# Use the options
+
+geomFile = "Configuration.Geometry.GeometryExtended" + options.geometry + "Reco_cff"
 from Configuration.Eras.Era_Run3_DDD_cff import Run3_DDD
-process = cms.Process('PrintGeometry',Run3_DDD)
-process.load('Configuration.Geometry.GeometryExtended2021Reco_cff')
+process = cms.Process('PrintSensitive',Run3_DDD)
 
-#from Configuration.Eras.Era_Run3_dd4hep_cff import Run3_dd4hep
-#process = cms.Process('PrintGeometry',Run3_dd4hep)
-#process.load('Configuration.Geometry.GeometryDD4hepExtended2021Reco_cff')
+print("Geometry file: ", geomFile)
 
-#from Configuration.Eras.Era_Phase2C11_cff import Phase2C11
-#process = cms.Process('PrintGeometry',Phase2C11)
-#process.load('Configuration.Geometry.GeometryExtended2026D83Reco_cff')
-
+process.load(geomFile)
 process.load('FWCore.MessageService.MessageLogger_cfi')
 
-process.MessageLogger.cerr.enable = False
-process.MessageLogger.files.SensDet = dict(extension="txt")
 process.MessageLogger.G4cout=dict()
 
 process.maxEvents = cms.untracked.PSet(
@@ -65,6 +84,7 @@ process.p1 = cms.Path(process.generator*process.VtxSmeared*process.generatorSmea
 process.g4SimHits.UseMagneticField        = False
 process.g4SimHits.Physics.DefaultCutValue = 10. 
 process.g4SimHits.Watchers = cms.VPSet(cms.PSet(
-	Name           = cms.untracked.string('*'),
+	Name           = cms.string('*'),
+        DD4Hep         = cms.bool(False),
 	type           = cms.string('PrintSensitive')
 ))

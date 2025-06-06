@@ -34,7 +34,7 @@
 #include "DataFormats/TrackerCommon/interface/TrackerTopology.h"
 
 //mc
-#include "SimTracker/TrackTriggerAssociation/interface/TTTrackAssociationMap.h"
+#include "SimDataFormats/Associations/interface/TTTrackAssociationMap.h"
 #include "SimDataFormats/TrackingAnalysis/interface/TrackingParticle.h"
 
 #include <fastjet/JetDefinition.hh>
@@ -215,7 +215,7 @@ void L1FastTrackingJetProducer::produce(edm::Event& iEvent, const edm::EventSetu
                                  iterL1Track->momentum().mag());
     JetInputs.push_back(psuedoJet);                     // input tracks for clustering
     JetInputs.back().set_user_index(this_l1track - 1);  // save track index in the collection
-  }                                                     // end loop over tracks
+  }  // end loop over tracks
 
   fastjet::ClusterSequence cs(JetInputs, jet_def);  // define the output jet collection
   std::vector<fastjet::PseudoJet> JetOutputs =
@@ -256,8 +256,8 @@ void L1FastTrackingJetProducer::fillDescriptions(edm::ConfigurationDescriptions&
   {
     // L1FastTrackingJets
     edm::ParameterSetDescription desc;
-    desc.add<edm::InputTag>("L1TrackInputTag", edm::InputTag("TTTracksFromTrackletEmulation", "Level1TTTracks"));
-    desc.add<std::string>("L1PrimaryVertexTag", "l1vertices");
+    desc.add<edm::InputTag>("L1TrackInputTag", edm::InputTag("l1tTTTracksFromTrackletEmulation", "Level1TTTracks"));
+    desc.add<std::string>("L1PrimaryVertexTag", "L1Vertices");
     desc.add<edm::InputTag>("GenInfo", edm::InputTag("TTTrackAssociatorFromPixelDigis", "Level1TTTracks"));
     desc.add<double>("trk_zMax", 15.0);
     desc.add<double>("trk_chi2dofMax", 10.0);

@@ -1,52 +1,67 @@
 ###############################################################################
 # Way to use this:
-#   cmsRun testHGCalWaferValidation_cfg.py geometry=D83
+#   cmsRun testHGCalWaferValidation_cfg.py geometry=D110
 #
-#   Options for geometry D77, D83, D86
+#   Options for geometry D98, D99, D103, D104, D105, D106, D107, D108, D109
+#                        D110, D111, D112, D113, D114, D115
 #
 ###############################################################################
 import FWCore.ParameterSet.Config as cms
-import os, sys, imp, re
+import os, sys, importlib, re
 import FWCore.ParameterSet.VarParsing as VarParsing
 
 ####################################################################
 ### SETUP OPTIONS
 options = VarParsing.VarParsing('standard')
 options.register('geometry',
-                 "D83",
+                 "D110",
                   VarParsing.VarParsing.multiplicity.singleton,
                   VarParsing.VarParsing.varType.string,
-                  "geometry of operations: D77, D83, D86")
+                  "geometry of operations: D98, D99, D103, D104, D105, D106, D107, D108, D109, D110, D111, D112, D113, D114, D115")
 
 ### get and parse the command line arguments
 options.parseArguments()
-#print(options)
+print(options)
 
 ####################################################################
 # Use the options
+if (options.geometry == "D115"):
+    from Configuration.Eras.Era_Phase2C20I13M9_cff import Phase2C20I13M9
+    process = cms.Process('WaferValidation',Phase2C20I13M9)
+elif (options.geometry == "D104"):
+    from Configuration.Eras.Era_Phase2C22I13M9_cff import Phase2C22I13M9
+    process = cms.Process('WaferValidation',PhaseC22I13M9)
+elif (options.geometry == "D106"):
+    from Configuration.Eras.Era_Phase2C22I13M9_cff import Phase2C22I13M9
+    process = cms.Process('WaferValidation',PhaseC22I13M9)
+elif (options.geometry == "D109"):
+    from Configuration.Eras.Era_Phase2C22I13M9_cff import Phase2C22I13M9
+    process = cms.Process('WaferValidation',PhaseC22I13M9)
+elif (options.geometry == "D111"):
+    from Configuration.Eras.Era_Phase2C22I13M9_cff import Phase2C22I13M9
+    process = cms.Process('WaferValidation',PhaseC22I13M9)
+elif (options.geometry == "D112"):
+    from Configuration.Eras.Era_Phase2C22I13M9_cff import Phase2C22I13M9
+    process = cms.Process('WaferValidation',PhaseC22I13M9)
+elif (options.geometry == "D113"):
+    from Configuration.Eras.Era_Phase2C22I13M9_cff import Phase2C22I13M9
+    process = cms.Process('WaferValidation',PhaseC22I13M9)
+else:
+    from Configuration.Eras.Era_Phase2C17I13M9_cff import Phase2C17I13M9
+    process = cms.Process('WaferValidation',Phase2C17I13M9)
 
-if (options.geometry == "D77"):
-    from Configuration.Eras.Era_Phase2C11M9_cff import Phase2C11M9
-    process = cms.Process('TEST',Phase2C11M9)
-    process.load('Configuration.Geometry.GeometryExtended2026D77_cff')
-    fileName = 'Validation/HGCalValidation/data/geomnew_corrected_360.txt'
-elif (options.geometry == "D86"):
-    from Configuration.Eras.Era_Phase2C11_cff import Phase2C11
-    process = cms.Process('TEST',Phase2C11)
-    process.load('Configuration.Geometry.GeometryExtended2026D86_cff')
+geomFile = "Configuration.Geometry.GeometryExtendedRun4" + options.geometry + "Reco_cff"
+if (options.geometry == "D98"):
     fileName = 'Validation/HGCalValidation/data/geomnew_corrected_360_V1.txt'
 else:
-    from Configuration.Eras.Era_Phase2C11M9_cff import Phase2C11M9
-    process = cms.Process('TEST',Phase2C11M9)
-    process.load('Configuration.Geometry.GeometryExtended2026D83_cff')
-    fileName = 'Validation/HGCalValidation/data/geomnew_corrected_360.txt'
+    fileName = 'Validation/HGCalValidation/data/geomnew_corrected_360_V2.txt'
 
+print("Geometry file: ", geomFile)
+print("File Name:     ", fileName)
+
+process.load(geomFile)
 process.load('Validation.HGCalValidation.hgcalWaferValidation_cfi')
 process.hgcalWaferValidation.GeometryFileName = cms.FileInPath(fileName)
-#if (options.geometry == "D84"):
-#    process.hgcalWaferValidation.GeometryFileName = cms.FileInPath('Validation/HGCalValidation/data/geomnew_corrected_360_V1.txt')
-#else:
-#    process.hgcalWaferValidation.GeometryFileName = cms.FileInPath('Validation/HGCalValidation/data/geomnew_corrected_360.txt')
 
 process.load("FWCore.MessageService.MessageLogger_cfi")
 process.MessageLogger = cms.Service("MessageLogger",

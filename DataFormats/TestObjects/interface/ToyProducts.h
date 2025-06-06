@@ -63,6 +63,23 @@ namespace edmtest {
     ProductWithNoDictionary dummy;
   };
 
+  struct ATransientIntProduct {  // just to have a name earlier in alphabetic
+    explicit ATransientIntProduct(int i = 0) : value(i) {}
+    ~ATransientIntProduct() {}
+
+    cms_int32_t value;
+    ProductWithNoDictionary dummy;
+  };
+
+  template <int TAG>
+  struct TransientIntParentT {
+    explicit TransientIntParentT(int i = 0) : value(i) {}
+
+    cms_int32_t value;
+  };
+  constexpr int TransientIntParentTag = 1;
+  using TransientIntParent = TransientIntParentT<TransientIntParentTag>;
+
   struct Int16_tProduct {
     explicit Int16_tProduct(int16_t i = 0, uint16_t j = 1) : value(i), uvalue(j) {}
     ~Int16_tProduct() {}

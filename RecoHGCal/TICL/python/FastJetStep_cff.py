@@ -3,14 +3,12 @@ import FWCore.ParameterSet.Config as cms
 from RecoHGCal.TICL.TICLSeedingRegions_cff import ticlSeedingGlobal, ticlSeedingGlobalHFNose
 from RecoHGCal.TICL.trackstersProducer_cfi import trackstersProducer as _trackstersProducer
 from RecoHGCal.TICL.filteredLayerClustersProducer_cfi import filteredLayerClustersProducer as _filteredLayerClustersProducer
-from RecoHGCal.TICL.multiClustersFromTrackstersProducer_cfi import multiClustersFromTrackstersProducer as _multiClustersFromTrackstersProducer
 
 # CLUSTER FILTERING/MASKING
 
 filteredLayerClustersFastJet = _filteredLayerClustersProducer.clone(
     clusterFilter = "ClusterFilterByAlgoAndSize",
     min_cluster_size = 3, # inclusive
-    algo_number = 8,
     iteration_label = "FastJet"
 )
 
@@ -25,6 +23,10 @@ ticlTrackstersFastJet = _trackstersProducer.clone(
         algo_verbosity = 2
     )
 )
+
+from Configuration.ProcessModifiers.ticl_v5_cff import ticl_v5
+ticl_v5.toModify(ticlTrackstersFastJet.pluginPatternRecognitionByFastJet, computeLocalTime = cms.bool(True))
+
 
 ticlFastJetStepTask = cms.Task(ticlSeedingGlobal
     ,filteredLayerClustersFastJet

@@ -54,76 +54,21 @@ namespace ecaldqm {
       nBinType
     };
 
-    enum Constants {
-      nPresetBinnings = kRCT + 1,
-
-      nEBSMEta = 85,
-      nEBSMPhi = 20,
-      nEESMX = 40,
-      nEESMXRed = 30,  // for EE+-01&05&09
-      nEESMXExt = 45,  // for EE+-02&08
-      nEESMY = 40,
-      nEESMYRed = 35,  // for EE+-03&07
-
-      nEBEtaBins = 34,
-      nEEEtaBins = 20,
-      nPhiBins = 36
-    };
+    typedef int Constants;
+    static constexpr int nPresetBinnings = kRCT + 1, nEBSMEta = 85, nEBSMPhi = 20, nEESMX = 40;
+    static constexpr int nEESMXRed = 30;  // for EE+-01&05&09
+    static constexpr int nEESMXExt = 45;  //for EE+-02&08
+    static constexpr int nEESMY = 40;
+    static constexpr int nEESMYRed = 35;  // for EE+-03&07
+    static constexpr int nEBEtaBins = 34, nEEEtaBins = 20, nPhiBins = 36;
 
     struct AxisSpecs {
       int nbins;
       float low, high;
-      float *edges;
-      std::string *labels;
+      std::vector<float> edges;
+      std::vector<std::string> labels;
       std::string title;
-      AxisSpecs() : nbins(0), low(0.), high(0.), edges(nullptr), labels(nullptr), title("") {}
-      AxisSpecs(AxisSpecs const &_specs)
-          : nbins(_specs.nbins),
-            low(_specs.low),
-            high(_specs.high),
-            edges(nullptr),
-            labels(nullptr),
-            title(_specs.title) {
-        if (_specs.edges) {
-          edges = new float[nbins + 1];
-          for (int i(0); i <= nbins; i++)
-            edges[i] = _specs.edges[i];
-        }
-        if (_specs.labels) {
-          labels = new std::string[nbins];
-          for (int i(0); i < nbins; i++)
-            labels[i] = _specs.labels[i];
-        }
-      }
-      AxisSpecs &operator=(AxisSpecs const &_rhs) {
-        if (edges) {
-          delete[] edges;
-          edges = nullptr;
-        }
-        if (labels) {
-          delete[] labels;
-          labels = nullptr;
-        }
-        nbins = _rhs.nbins;
-        low = _rhs.low;
-        high = _rhs.high;
-        title = _rhs.title;
-        if (_rhs.edges) {
-          edges = new float[nbins + 1];
-          for (int i(0); i <= nbins; i++)
-            edges[i] = _rhs.edges[i];
-        }
-        if (_rhs.labels) {
-          labels = new std::string[nbins];
-          for (int i(0); i < nbins; i++)
-            labels[i] = _rhs.labels[i];
-        }
-        return *this;
-      }
-      ~AxisSpecs() {
-        delete[] edges;
-        delete[] labels;
-      }
+      AxisSpecs() : nbins(0), low(0.), high(0.), edges(0), labels(0), title("") { ; };
     };
 
     AxisSpecs getBinning(EcalElectronicsMapping const *, ObjectType, BinningType, bool, int, unsigned);

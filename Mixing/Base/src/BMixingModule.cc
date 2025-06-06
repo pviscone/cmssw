@@ -12,6 +12,7 @@
 #include "FWCore/Framework/interface/EventSetup.h"
 #include "FWCore/Framework/interface/EventPrincipal.h"
 #include "FWCore/MessageLogger/interface/MessageLogger.h"
+#include "FWCore/Utilities/interface/ExceptionCollector.h"
 #include "DataFormats/Common/interface/Handle.h"
 
 #include "TFile.h"
@@ -201,6 +202,13 @@ namespace edm {
   // Virtual destructor needed.
   BMixingModule::~BMixingModule() { ; }
 
+  void BMixingModule::registerLateConsumes(eventsetup::ESRecordsToProductResolverIndices const& iES) {
+    for (size_t endIdx = 0; endIdx < maxNbSources_; ++endIdx) {
+      if (inputSources_[endIdx])
+        inputSources_[endIdx]->beginJob(iES);
+    }
+  }
+
   namespace MixingCache {
     Config::Config(edm::ParameterSet const& pset, unsigned int maxNbSources)
         : bunchSpace_(pset.getParameter<int>("bunchspace")),
@@ -311,17 +319,24 @@ namespace edm {
     }
   }
 
-  void BMixingModule::beginStream(edm::StreamID iID) {
+  void BMixingModule::beginStream(edm::StreamID streamID) {
     for (size_t endIdx = 0; endIdx < maxNbSources_; ++endIdx) {
       if (inputSources_[endIdx])
-        inputSources_[endIdx]->beginStream(iID);
+        inputSources_[endIdx]->beginStream(streamID);
     }
   }
 
   void BMixingModule::endStream() {
+    ExceptionCollector exceptionCollector(
+        "Multiple exceptions were thrown while executing endStream and endJob for mixing modules. "
+        "An exception message follows for each.\n");
+
     for (size_t endIdx = 0; endIdx < maxNbSources_; ++endIdx) {
       if (inputSources_[endIdx])
-        inputSources_[endIdx]->endStream();
+        inputSources_[endIdx]->endStream(exceptionCollector);
+    }
+    if (exceptionCollector.hasThrown()) {
+      exceptionCollector.rethrow();
     }
   }
 

@@ -6,6 +6,8 @@
 #include "FWCore/Utilities/interface/isFinite.h"
 #include "RecoParticleFlow/PFClusterProducer/interface/CaloRecHitResolutionProvider.h"
 #include "RecoParticleFlow/PFClusterProducer/interface/PFCPositionCalculatorBase.h"
+#include "CondFormats/DataRecord/interface/HcalPFCutsRcd.h"
+#include "CondTools/Hcal/interface/HcalPFCutsHandler.h"
 
 #include "vdt/vdtMath.h"
 
@@ -27,16 +29,13 @@ public:
     std::vector<double> logWeightDenom;
     std::vector<float> logWeightDenomInv;
 
-    if (conf.exists("logWeightDenominatorByDetector")) {
-      const std::vector<edm::ParameterSet>& logWeightDenominatorByDetectorPSet =
-          conf.getParameterSetVector("logWeightDenominatorByDetector");
-
+    const auto& logWeightDenominatorByDetectorPSet = conf.getParameterSetVector("logWeightDenominatorByDetector");
+    if (!logWeightDenominatorByDetectorPSet.empty()) {
       for (const auto& pset : logWeightDenominatorByDetectorPSet) {
-        if (!pset.exists("detector")) {
+        const auto& det = pset.getParameter<std::string>("detector");
+        if (det.empty()) {
           throw cms::Exception("logWeightDenominatorByDetectorPSet") << "logWeightDenominator : detector not specified";
         }
-
-        const std::string& det = pset.getParameter<std::string>("detector");
 
         if (det == std::string("HCAL_BARREL1") || det == std::string("HCAL_ENDCAP")) {
           std::vector<int> depthsT = pset.getParameter<std::vector<int> >("depths");
@@ -68,15 +67,13 @@ public:
     _logWeightDenom = std::make_tuple(detectorEnum, depths, logWeightDenomInv);
 
     _timeResolutionCalcBarrel.reset(nullptr);
-    if (conf.exists("timeResolutionCalcBarrel")) {
-      const edm::ParameterSet& timeResConf = conf.getParameterSet("timeResolutionCalcBarrel");
-      _timeResolutionCalcBarrel = std::make_unique<CaloRecHitResolutionProvider>(timeResConf);
-    }
+    const auto& timeResConfBarrel = conf.getParameterSet("timeResolutionCalcBarrel");
+    if (!timeResConfBarrel.empty() && timeResConfBarrel.getParameter<double>("threshHighE") >= 0)
+      _timeResolutionCalcBarrel = std::make_unique<CaloRecHitResolutionProvider>(timeResConfBarrel);
     _timeResolutionCalcEndcap.reset(nullptr);
-    if (conf.exists("timeResolutionCalcEndcap")) {
-      const edm::ParameterSet& timeResConf = conf.getParameterSet("timeResolutionCalcEndcap");
-      _timeResolutionCalcEndcap = std::make_unique<CaloRecHitResolutionProvider>(timeResConf);
-    }
+    const auto& timeResConfEndcap = conf.getParameterSet("timeResolutionCalcEndcap");
+    if (!timeResConfEndcap.empty() && timeResConfEndcap.getParameter<double>("threshHighE") >= 0)
+      _timeResolutionCalcEndcap = std::make_unique<CaloRecHitResolutionProvider>(timeResConfEndcap);
 
     switch (_posCalcNCrystals) {
       case 5:
@@ -92,8 +89,8 @@ public:
   Basic2DGenericPFlowPositionCalc(const Basic2DGenericPFlowPositionCalc&) = delete;
   Basic2DGenericPFlowPositionCalc& operator=(const Basic2DGenericPFlowPositionCalc&) = delete;
 
-  void calculateAndSetPosition(reco::PFCluster&) override;
-  void calculateAndSetPositions(reco::PFClusterCollection&) override;
+  void calculateAndSetPosition(reco::PFCluster&, const HcalPFCuts*) override;
+  void calculateAndSetPositions(reco::PFClusterCollection&, const HcalPFCuts*) override;
 
 private:
   const int _posCalcNCrystals;
@@ -103,7 +100,7 @@ private:
   std::unique_ptr<CaloRecHitResolutionProvider> _timeResolutionCalcBarrel;
   std::unique_ptr<CaloRecHitResolutionProvider> _timeResolutionCalcEndcap;
 
-  void calculateAndSetPositionActual(reco::PFCluster&) const;
+  void calculateAndSetPositionActual(reco::PFCluster&, const HcalPFCuts*) const;
 };
 
 DEFINE_EDM_PLUGIN(PFCPositionCalculatorFactory, Basic2DGenericPFlowPositionCalc, "Basic2DGenericPFlowPositionCalc");
@@ -115,17 +112,19 @@ namespace {
   }
 }  // namespace
 
-void Basic2DGenericPFlowPositionCalc::calculateAndSetPosition(reco::PFCluster& cluster) {
-  calculateAndSetPositionActual(cluster);
+void Basic2DGenericPFlowPositionCalc::calculateAndSetPosition(reco::PFCluster& cluster, const HcalPFCuts* hcalCuts) {
+  calculateAndSetPositionActual(cluster, hcalCuts);
 }
 
-void Basic2DGenericPFlowPositionCalc::calculateAndSetPositions(reco::PFClusterCollection& clusters) {
+void Basic2DGenericPFlowPositionCalc::calculateAndSetPositions(reco::PFClusterCollection& clusters,
+                                                               const HcalPFCuts* hcalCuts) {
   for (reco::PFCluster& cluster : clusters) {
-    calculateAndSetPositionActual(cluster);
+    calculateAndSetPositionActual(cluster, hcalCuts);
   }
 }
 
-void Basic2DGenericPFlowPositionCalc::calculateAndSetPositionActual(reco::PFCluster& cluster) const {
+void Basic2DGenericPFlowPositionCalc::calculateAndSetPositionActual(reco::PFCluster& cluster,
+                                                                    const HcalPFCuts* hcalCuts) const {
   if (!cluster.seed()) {
     throw cms::Exception("ClusterWithNoSeed") << " Found a cluster with no seed: " << cluster;
   }
@@ -157,7 +156,7 @@ void Basic2DGenericPFlowPositionCalc::calculateAndSetPositionActual(reco::PFClus
     hits[i] = {p, (*p).energy(), float(hf.fraction())};
   }
 
-  bool resGiven = bool(_timeResolutionCalcBarrel) & bool(_timeResolutionCalcEndcap);
+  bool resGiven = bool(_timeResolutionCalcBarrel) && bool(_timeResolutionCalcEndcap);
   LHit mySeed = {};
   for (auto const& rhf : hits) {
     const reco::PFRecHit& refhit = *rhf.hit;
@@ -225,14 +224,23 @@ void Basic2DGenericPFlowPositionCalc::calculateAndSetPositionActual(reco::PFClus
       int cell_layer = (int)refhit.layer();
       float threshold = 0;
 
-      for (unsigned int j = 0; j < (std::get<2>(_logWeightDenom)).size(); ++j) {
-        // barrel is detecor type1
-        int detectorEnum = std::get<0>(_logWeightDenom)[j];
-        int depth = std::get<1>(_logWeightDenom)[j];
+      if (hcalCuts != nullptr &&  // this means, cutsFromDB is set to True in the producer code
+          (cell_layer == PFLayer::HCAL_BARREL1 || cell_layer == PFLayer::HCAL_ENDCAP)) {
+        HcalDetId thisId = refhit.detId();
+        const HcalPFCut* item = hcalCuts->getValues(thisId.rawId());
+        threshold = 1. / (item->noiseThreshold());
 
-        if ((cell_layer == PFLayer::HCAL_BARREL1 && detectorEnum == 1 && refhit.depth() == depth) ||
-            (cell_layer == PFLayer::HCAL_ENDCAP && detectorEnum == 2 && refhit.depth() == depth) || detectorEnum == 0)
-          threshold = std::get<2>(_logWeightDenom)[j];
+      } else {
+        for (unsigned int j = 0; j < (std::get<2>(_logWeightDenom)).size(); ++j) {
+          // barrel is detecor type1
+          int detectorEnum = std::get<0>(_logWeightDenom)[j];
+          int depth = std::get<1>(_logWeightDenom)[j];
+          if ((cell_layer == PFLayer::HCAL_BARREL1 && detectorEnum == 1 && refhit.depth() == depth) ||
+              (cell_layer == PFLayer::HCAL_ENDCAP && detectorEnum == 2 && refhit.depth() == depth) ||
+              detectorEnum == 0) {
+            threshold = std::get<2>(_logWeightDenom)[j];
+          }
+        }
       }
 
       if (ref_depth < 0)

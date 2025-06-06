@@ -6,7 +6,8 @@ electronMcSignalHistosCfg = cms.PSet(
   Nbinpt = cms.int32(50), Nbinpt2D = cms.int32(50), Nbinpteff = cms.int32(19), Ptmax = cms.double(100.0),
   Nbinfhits = cms.int32(30), Fhitsmax = cms.double(30.0),
   Nbinlhits = cms.int32(5), Lhitsmax = cms.double(10.0),
-  Nbineta = cms.int32(50), Nbineta2D = cms.int32(50), Etamin = cms.double(-2.5), Etamax = cms.double(2.5),
+  Nbineta = cms.int32(50), Nbineta2D = cms.int32(50),Etamin = cms.double(-2.5), Etamax = cms.double(2.5),
+  NbinetaExtended = cms.int32(60), Nbineta2DExtended = cms.int32(60),EtaminExtended = cms.double(-3.0), EtamaxExtended = cms.double(3.0),
   Nbindeta = cms.int32(100), Detamin = cms.double(-0.005), Detamax = cms.double(0.005), 
   Nbindetamatch = cms.int32(100), Nbindetamatch2D = cms.int32(50), Detamatchmin = cms.double(-0.05), Detamatchmax = cms.double(0.05),
   Nbinphi = cms.int32(64), Nbinphi2D = cms.int32(32), Phimin = cms.double(-3.2), Phimax = cms.double(3.2),
@@ -39,6 +40,7 @@ electronMcSignalValidator = DQMEDAnalyzer('ElectronMcSignalValidator',
   electronCollection = cms.InputTag("gedGsfElectrons"),
   electronCollectionEndcaps = cms.InputTag("gedGsfElectrons"),
   electronCoreCollection = cms.InputTag("gedGsfElectronCores"),
+  electronCoreCollectionEndcaps = cms.InputTag("gedGsfElectronCores"),
   electronTrackCollection = cms.InputTag("electronGsfTracks"),
   electronSeedCollection = cms.InputTag("electronMergedSeeds"),
   offlinePrimaryVertices = cms.InputTag("offlinePrimaryVertices"),
@@ -57,8 +59,9 @@ electronMcSignalValidator = DQMEDAnalyzer('ElectronMcSignalValidator',
   MaxPt = cms.double(100.0),
   DeltaR = cms.double(0.05),
   MaxAbsEta = cms.double(2.5),
+  MaxAbsEtaExtended = cms.double(3.0),
   MatchingID = cms.vint32(11,-11),
-  MatchingMotherID = cms.vint32(23,24,-24,32),
+  MatchingMotherID = cms.vint32(23,24,-24,32,990),
   histosCfg = cms.PSet(electronMcSignalHistosCfg)
 )
 
@@ -66,7 +69,7 @@ from Configuration.Eras.Modifier_phase2_hgcal_cff import phase2_hgcal
 phase2_hgcal.toModify(
     electronMcSignalValidator,
     electronCollectionEndcaps = 'ecalDrivenGsfElectronsHGC',
-    electronCoreCollection = 'ecalDrivenGsfElectronCoresHGC',
+    electronCoreCollectionEndcaps = 'ecalDrivenGsfElectronCoresHGC',
     MaxAbsEta = 3.0,
     histosCfg = dict( 
         Nbineta = 60 ,
@@ -75,8 +78,8 @@ phase2_hgcal.toModify(
         Etamax = 3.0 ,
  
         NbinOPV = 125, OPV_min = -0.5, OPV_max = 249.5 ,
-        NbinELE = 100, ELE_min = -0.5, ELE_max = 999.5,
-        NbinCORE = 100, CORE_min = -0.5, CORE_max = 999.5,
+        NbinELE = 100, ELE_min = -0.5, ELE_max = 99.5, 
+        NbinCORE = 100, CORE_min = -0.5, CORE_max = 499.5, 
         NbinTRACK = 100, TRACK_min = -0.5, TRACK_max = 999.5,
         NbinSEED = 100, SEED_min = -0.5, SEED_max = 9999.5,
    ),

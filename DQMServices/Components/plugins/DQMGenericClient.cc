@@ -35,14 +35,14 @@ using namespace edm;
 class DQMGenericClient : public DQMEDHarvester {
 public:
   DQMGenericClient(const edm::ParameterSet& pset);
-  ~DQMGenericClient() override{};
+  ~DQMGenericClient() override {}
 
   void dqmEndLuminosityBlock(DQMStore::IBooker& ibooker,
                              DQMStore::IGetter& igetter,
                              const edm::LuminosityBlock& lumiSeg,
                              const edm::EventSetup& c) override;
   void dqmEndRun(DQMStore::IBooker&, DQMStore::IGetter&, edm::Run const&, edm::EventSetup const&) override;
-  void dqmEndJob(DQMStore::IBooker&, DQMStore::IGetter&) override{};
+  void dqmEndJob(DQMStore::IBooker&, DQMStore::IGetter&) override {}
 
   enum class EfficType { none = 0, efficiency, fakerate, simpleratio };
 
@@ -1142,9 +1142,6 @@ void DQMGenericClient::makeNoFlowDist(DQMStore::IBooker& ibooker,
 
 void DQMGenericClient::limitedFit(MonitorElement* srcME, MonitorElement* meanME, MonitorElement* sigmaME) {
   TH2F* histo = srcME->getTH2F();
-
-  static int i = 0;
-  i++;
 
   // Fit slices projected along Y from bins in X
   double cont_min = 100;  //Minimum number of entries

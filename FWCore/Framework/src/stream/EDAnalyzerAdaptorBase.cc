@@ -11,6 +11,7 @@
 //
 
 // system include files
+#include <array>
 #include <cassert>
 
 // user include files
@@ -79,6 +80,7 @@ void EDAnalyzerAdaptorBase::deleteModulesEarly() {
 void EDAnalyzerAdaptorBase::doPreallocate(PreallocationConfiguration const& iPrealloc) {
   m_streamModules.resize(iPrealloc.numberOfStreams(), static_cast<stream::EDAnalyzerBase*>(nullptr));
   setupStreamModules();
+  preallocRuns(iPrealloc.numberOfRuns());
   preallocLumis(iPrealloc.numberOfLuminosityBlocks());
 }
 
@@ -102,7 +104,7 @@ std::vector<edm::ProductResolverIndexAndSkipBit> const& EDAnalyzerAdaptorBase::i
   return m_streamModules[0]->itemsToGetFrom(iType);
 }
 
-std::vector<edm::ESProxyIndex> const& EDAnalyzerAdaptorBase::esGetTokenIndicesVector(edm::Transition iTrans) const {
+std::vector<edm::ESResolverIndex> const& EDAnalyzerAdaptorBase::esGetTokenIndicesVector(edm::Transition iTrans) const {
   assert(not m_streamModules.empty());
   return m_streamModules[0]->esGetTokenIndicesVector(iTrans);
 }
@@ -121,7 +123,7 @@ void EDAnalyzerAdaptorBase::updateLookup(BranchType iType,
   }
 }
 
-void EDAnalyzerAdaptorBase::updateLookup(eventsetup::ESRecordsToProxyIndices const& iPI) {
+void EDAnalyzerAdaptorBase::updateLookup(eventsetup::ESRecordsToProductResolverIndices const& iPI) {
   for (auto mod : m_streamModules) {
     mod->updateLookup(iPI);
   }
@@ -157,12 +159,12 @@ bool EDAnalyzerAdaptorBase::doEvent(EventTransitionInfo const& info,
   EventPrincipal const& ep = info.principal();
   assert(ep.streamID() < m_streamModules.size());
   auto mod = m_streamModules[ep.streamID()];
+  EventSignalsSentry sentry(act, mcc);
   Event e(ep, moduleDescription_, mcc);
   e.setConsumer(mod);
   ESParentContext parentC(mcc);
   const EventSetup c{
       info, static_cast<unsigned int>(Transition::Event), mod->esGetTokenIndices(Transition::Event), parentC};
-  EventSignalsSentry sentry(act, mcc);
   mod->analyze(e, c);
   return true;
 }

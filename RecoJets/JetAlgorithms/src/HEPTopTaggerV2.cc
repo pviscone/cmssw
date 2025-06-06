@@ -406,9 +406,9 @@ namespace external {
               _is_ptmincut_passed = true;
             }
           }  //end better
-        }    //end kk
-      }      //end ll
-    }        //end rr
+        }  //end kk
+      }  //end ll
+    }  //end rr
 
     return;
   }
@@ -472,7 +472,7 @@ namespace external {
                                         const ClusterSequence& cseq,
                                         const double small_radius) {
     for (unsigned i = 0; i < big_fatjets.size(); i++) {
-      PseudoJet this_jet = big_fatjets[i];
+      const PseudoJet& this_jet = big_fatjets[i];
       PseudoJet parent1(0, 0, 0, 0), parent2(0, 0, 0, 0);
       bool test = cseq.has_parents(this_jet, parent1, parent2);
       double dR = 100;

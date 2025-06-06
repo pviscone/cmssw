@@ -5,6 +5,19 @@ from SimCalorimetry.HGCalAssociatorProducers.LCToCPAssociation_cfi import layerC
 from SimCalorimetry.HGCalAssociatorProducers.LCToSCAssociation_cfi import layerClusterSimClusterAssociation as layerClusterSimClusterAssociationProducer
 from SimCalorimetry.HGCalAssociatorProducers.LCToCPAssociation_cfi import layerClusterCaloParticleAssociationHFNose as layerClusterCaloParticleAssociationProducerHFNose
 from SimCalorimetry.HGCalAssociatorProducers.LCToSCAssociation_cfi import layerClusterSimClusterAssociationHFNose as layerClusterSimClusterAssociationProducerHFNose
+# from SimCalorimetry.HGCalAssociatorProducers.TSToSimTSAssociation_cfi import tracksterSimTracksterAssociationLinkingSuperclustering, tracksterSimTracksterAssociationPRSuperclustering #, tracksterSimTracksterAssociationLinkingbyCLUE3DEM, tracksterSimTracksterAssociationLinkingbyCLUE3DHAD, tracksterSimTracksterAssociationPRbyCLUE3DEM, tracksterSimTracksterAssociationPRbyCLUE3DHAD
+from RecoHGCal.TICL.mergedTrackstersProducer_cfi import mergedTrackstersProducer as _mergedTrackstersProducer
+from SimCalorimetry.HGCalAssociatorProducers.SimTauProducer_cfi import *
+
+
+# FP 07/2024: new associators:
+from SimCalorimetry.HGCalAssociatorProducers.LCToTSAssociator_cfi import allLayerClusterToTracksterAssociations
+from SimCalorimetry.HGCalAssociatorProducers.HitToTracksterAssociation_cfi import allHitToTracksterAssociations
+from SimCalorimetry.HGCalAssociatorProducers.TSToSimTSAssociation_cfi import  allTrackstersToSimTrackstersAssociationsByLCs
+from SimCalorimetry.HGCalAssociatorProducers.TSToSimTSAssociationByHits_cfi import allTrackstersToSimTrackstersAssociationsByHits
+from SimCalorimetry.HGCalAssociatorProducers.hitToSimClusterCaloParticleAssociator_cfi import hitToSimClusterCaloParticleAssociator
+from SimCalorimetry.HGCalAssociatorProducers.SimClusterToCaloParticleAssociation_cfi import SimClusterToCaloParticleAssociation
+
 
 from Validation.HGCalValidation.simhitValidation_cff    import *
 from Validation.HGCalValidation.digiValidation_cff      import *
@@ -12,7 +25,8 @@ from Validation.HGCalValidation.rechitValidation_cff    import *
 from Validation.HGCalValidation.hgcalHitValidation_cff  import *
 from RecoHGCal.TICL.SimTracksters_cff import *
 
-from Validation.HGCalValidation.HGCalValidator_cfi import hgcalValidator
+
+from Validation.HGCalValidation.HGCalValidator_cff import hgcalValidator
 from Validation.RecoParticleFlow.PFJetValidation_cff import pfJetValidation1 as _hgcalPFJetValidation
 
 from Validation.HGCalValidation.ticlPFValidation_cfi import ticlPFValidation
@@ -28,7 +42,20 @@ hgcalPFJetValidation = _hgcalPFJetValidation.clone(BenchmarkLabel = 'PFJetValida
 
 hgcalAssociators = cms.Task(lcAssocByEnergyScoreProducer, layerClusterCaloParticleAssociationProducer,
                             scAssocByEnergyScoreProducer, layerClusterSimClusterAssociationProducer,
+                            SimTauProducer,
+                            # FP 07/2024 new associators:
+                            # layerClusterToCLUE3DTracksterAssociation, layerClusterToTracksterMergeAssociation,
+                            # layerClusterToSimTracksterAssociation, layerClusterToSimTracksterFromCPsAssociation,
+                            allLayerClusterToTracksterAssociations, allHitToTracksterAssociations, allTrackstersToSimTrackstersAssociationsByLCs, allTrackstersToSimTrackstersAssociationsByHits,
+                            # hitToTrackstersAssociationLinking, hitToTrackstersAssociationPR,
+                            # hitToSimTracksterAssociation, hitToSimTracksterFromCPsAssociation,
+                            hitToSimClusterCaloParticleAssociator,
+                            SimClusterToCaloParticleAssociation, 
                             )
+
+from Configuration.ProcessModifiers.ticl_v5_cff import ticl_v5
+from Configuration.ProcessModifiers.ticl_superclustering_mustache_pf_cff import ticl_superclustering_mustache_pf
+
 
 hgcalValidation = cms.Sequence(hgcalSimHitValidationEE
                                + hgcalSimHitValidationHEF

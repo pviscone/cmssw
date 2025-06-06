@@ -6,10 +6,10 @@
  Description: Holds pointer to ProcessContext, StreamID,
  transition, EventID and timestamp.
  This is intended primarily to be passed to Services
- as an argument to their callback functions.
-
- Usage:
-
+ as an argument to their callback functions. It is also
+ used internally by the Framework to hold information
+ that can be added to exception messages about the
+ context where an exception was thrown.
 
 */
 //
@@ -23,6 +23,7 @@
 #include "FWCore/Utilities/interface/StreamID.h"
 
 #include <iosfwd>
+#include <string_view>
 
 namespace edm {
 
@@ -80,5 +81,7 @@ namespace edm {
 
   void exceptionContext(std::ostream&, StreamContext const&);
   std::ostream& operator<<(std::ostream&, StreamContext const&);
+
+  std::string_view transitionName(StreamContext::Transition);
 }  // namespace edm
 #endif

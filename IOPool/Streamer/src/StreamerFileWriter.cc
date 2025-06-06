@@ -1,9 +1,11 @@
 #include "IOPool/Streamer/src/StreamerFileWriter.h"
 #include "FWCore/ParameterSet/interface/ParameterSetDescription.h"
 
-namespace edm {
+namespace edm::streamer {
+
   StreamerFileWriter::StreamerFileWriter(edm::ParameterSet const& ps)
-      : stream_writer_(new StreamerOutputFile(ps.getUntrackedParameter<std::string>("fileName"))) {}
+      : stream_writer_(new StreamerOutputFile(ps.getUntrackedParameter<std::string>("fileName"),
+                                              ps.getUntrackedParameter<unsigned int>("padding"))) {}
 
   StreamerFileWriter::StreamerFileWriter(std::string const& fileName)
       : stream_writer_(new StreamerOutputFile(fileName)) {}
@@ -34,5 +36,7 @@ namespace edm {
   void StreamerFileWriter::fillDescription(ParameterSetDescription& desc) {
     desc.setComment("Writes events into a streamer output file.");
     desc.addUntracked<std::string>("fileName", "teststreamfile.dat")->setComment("Name of output file.");
+    desc.addUntracked<unsigned int>("padding", 0)
+        ->setComment("For testing: INIT and event block size will be rounded to this size padded with 0xff bytes.");
   }
-}  //namespace edm
+}  // namespace edm::streamer

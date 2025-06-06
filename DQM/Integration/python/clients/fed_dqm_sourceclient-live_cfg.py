@@ -34,8 +34,8 @@ else:
 process.dqmEnv.subSystemFolder = 'FED'
 process.dqmSaver.tag = 'FED'
 process.dqmSaver.runNumber = options.runNumber
-process.dqmSaverPB.tag = 'FED'
-process.dqmSaverPB.runNumber = options.runNumber
+# process.dqmSaverPB.tag = 'FED'
+# process.dqmSaverPB.runNumber = options.runNumber
 
 # Subsystem sequences
 
@@ -73,6 +73,9 @@ process.load('DQM.EcalMonitorTasks.EcalFEDMonitor_cfi')
 process.ecalFEDMonitor.folderName = folder_name
 # HCAL sequence:
 process.load('EventFilter.HcalRawToDigi.HcalRawToDigi_cfi')
+process.load('DQM.HcalTasks.hcalFEDIntegrityTask_cfi')
+path = 'Hcal/%s/' % folder_name
+process.hcalFEDIntegrityTask.DirName = path
 # DT sequence:
 process.load('DQM.DTMonitorModule.dtDataIntegrityTask_EvF_cff')
 process.dtDataIntegrityTask.processingMode = 'SM'
@@ -99,6 +102,7 @@ if (process.runType.getRunType() == process.runType.hi_run):
     process.ecalPreshowerFEDIntegrityTask.FEDRawDataCollection = 'rawDataRepacker'
     process.ecalDigis.InputLabel = 'rawDataRepacker'
     process.ecalFEDMonitor.FEDRawDataCollection = 'rawDataRepacker'
+    process.hcalFEDIntegrityTask.tagFEDs = 'rawDataRepacker'
     process.hcalDigis.InputLabel = 'rawDataRepacker'
     process.dtunpacker.inputLabel = 'rawDataRepacker'
     process.rpcunpacker.InputLabel = 'rawDataRepacker'
@@ -112,6 +116,7 @@ else:
     process.ecalPreshowerFEDIntegrityTask.FEDRawDataCollection = 'rawDataCollector'
     process.ecalDigis.InputLabel = 'rawDataCollector'
     process.ecalFEDMonitor.FEDRawDataCollection = 'rawDataCollector'
+    process.hcalFEDIntegrityTask.tagFEDs = 'rawDataCollector'
     process.hcalDigis.InputLabel = 'rawDataCollector'
     process.dtunpacker.inputLabel = 'rawDataCollector'
     process.rpcunpacker.InputLabel = 'rawDataCollector'
@@ -134,6 +139,7 @@ process.FEDModulesPath = cms.Path(
  			                      + process.ecalDigis
                                   + process.ecalFEDMonitor
 			                      + process.hcalDigis
+			                      + process.hcalFEDIntegrityTask
                                   + process.cscDQMEvF
  			                      + process.dtunpacker
                                   + process.dtDataIntegrityTask
@@ -147,7 +153,7 @@ process.FEDModulesPath = cms.Path(
 process.DQMmodulesPath = cms.Path(
                                     process.dqmEnv
                                   + process.dqmSaver
-                                  + process.dqmSaverPB
+                                  #+ process.dqmSaverPB
                                  )
 
 process.schedule = cms.Schedule(

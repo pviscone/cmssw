@@ -3,8 +3,10 @@ import FWCore.ParameterSet.Config as cms
 slimmedMuons = cms.EDProducer("PATMuonSlimmer",
     src = cms.InputTag("selectedPatMuons"),
     linkToPackedPFCandidates = cms.bool(True),
+    linkToLostTrack = cms.bool(True),
     pfCandidates = cms.VInputTag(cms.InputTag("particleFlow")),
     packedPFCandidates = cms.VInputTag(cms.InputTag("packedPFCandidates")), 
+    lostTracks = cms.InputTag("lostTracks"),
     saveTeVMuons = cms.string("pt > 100"), # you can put a cut to slim selectively, e.g. pt > 10
     dropDirectionalIso = cms.string("0"),
     dropPfP4 = cms.string("1"),
@@ -20,12 +22,10 @@ slimmedMuons = cms.EDProducer("PATMuonSlimmer",
 )
 
 # full set of track extras not available in existing AOD
-from Configuration.Eras.Modifier_run2_miniAOD_80XLegacy_cff import run2_miniAOD_80XLegacy
-from Configuration.Eras.Modifier_run2_miniAOD_94XFall17_cff import run2_miniAOD_94XFall17
 from Configuration.ProcessModifiers.pp_on_AA_cff import pp_on_AA
 from Configuration.ProcessModifiers.miniAOD_skip_trackExtras_cff import miniAOD_skip_trackExtras
 
-(run2_miniAOD_80XLegacy | run2_miniAOD_94XFall17 | pp_on_AA | miniAOD_skip_trackExtras).toModify(slimmedMuons, trackExtraAssocs = ["slimmedMuonTrackExtras"])
+(pp_on_AA | miniAOD_skip_trackExtras).toModify(slimmedMuons, trackExtraAssocs = ["slimmedMuonTrackExtras"])
 from Configuration.ProcessModifiers.run2_miniAOD_pp_on_AA_103X_cff import run2_miniAOD_pp_on_AA_103X
 run2_miniAOD_pp_on_AA_103X.toModify(slimmedMuons,
                        packedPFCandidates = ["packedPFCandidates","packedPFCandidatesRemoved"],

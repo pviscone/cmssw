@@ -10,7 +10,6 @@ filteredLayerClustersTrkEM = _filteredLayerClustersProducer.clone(
     clusterFilter = "ClusterFilterByAlgoAndSizeAndLayerRange",
     min_cluster_size = 3, # inclusive
     max_layerId = 30, # inclusive
-    algo_number = 8,
     iteration_label = "TrkEM"
 )
 
@@ -38,6 +37,9 @@ ticlTrackstersTrkEM = _trackstersProducer.clone(
     itername = "TrkEM",
 )
 
+from Configuration.ProcessModifiers.ticl_v5_cff import ticl_v5
+ticl_v5.toModify(ticlTrackstersTrkEM.pluginPatternRecognitionByCA, computeLocalTime = cms.bool(True))
+
 ticlTrkEMStepTask = cms.Task(ticlSeedingTrk
     ,filteredLayerClustersTrkEM
     ,ticlTrackstersTrkEM)
@@ -48,7 +50,7 @@ filteredLayerClustersHFNoseTrkEM = filteredLayerClustersTrkEM.clone(
     LayerClusters = 'hgcalLayerClustersHFNose',
     LayerClustersInputMask = "hgcalLayerClustersHFNose:InitialLayerClustersMask",
     min_cluster_size = 3, # inclusive
-    algo_number = 9,
+    algo_number = [9], # reco::CaloCluster::hfnose
     iteration_label = "TrkEMn"
 )
 
@@ -70,6 +72,8 @@ ticlTrackstersHFNoseTrkEM = ticlTrackstersTrkEM.clone(
         shower_start_max_layer = 5 #inclusive
     )
 )
+
+ticl_v5.toModify(ticlTrackstersHFNoseTrkEM.pluginPatternRecognitionByCA, computeLocalTime = cms.bool(True))
 
 ticlHFNoseTrkEMStepTask = cms.Task(ticlSeedingTrkHFNose
     ,filteredLayerClustersHFNoseTrkEM

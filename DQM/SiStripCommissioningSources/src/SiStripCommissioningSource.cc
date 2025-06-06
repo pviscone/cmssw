@@ -76,6 +76,7 @@ SiStripCommissioningSource::SiStripCommissioningSource(const edm::ParameterSet& 
       base_(""),
       view_(pset.getUntrackedParameter<std::string>("View", "Default")),
       parameters_(pset) {
+  usesResource("DQMStore");
   inputModuleSummaryToken_ = consumes<SiStripEventSummary>(edm::InputTag(inputModuleLabelSummary_));
   digiVirginRawToken_ = mayConsume<edm::DetSetVector<SiStripRawDigi> >(edm::InputTag(inputModuleLabel_, "VirginRaw"));
   digiFineDelaySelectionToken_ =
@@ -671,7 +672,7 @@ void SiStripCommissioningSource::fillHistos(const SiStripEventSummary* const sum
         }
       }
     }  // fed channel loop
-  }    // fed id loop
+  }  // fed id loop
 }
 
 // -----------------------------------------------------------------------------
@@ -889,11 +890,11 @@ void SiStripCommissioningSource::createCablingTasks() {
               }
 
             }  // loop through apv pairs
-          }    // loop through modules
-        }      // loop through ccus
-      }        // loop through rings
-    }          // loop through fecs
-  }            // loop through crates
+          }  // loop through modules
+        }  // loop through ccus
+      }  // loop through rings
+    }  // loop through fecs
+  }  // loop through crates
 
   edm::LogVerbatim(mlDqmSource_) << "[SiStripCommissioningSource::" << __func__ << "]"
                                  << " Created " << booked << " CommissioningTask objects and booked histograms";
@@ -1038,8 +1039,8 @@ void SiStripCommissioningSource::createTasks(sistrip::RunType run_type, const ed
           edm::LogWarning(mlDqmSource_) << ss.str();
         }
       }  // loop over fed channels
-    }    // loop over feds
-  }      // end other tasks
+    }  // loop over feds
+  }  // end other tasks
   edm::LogVerbatim(mlDqmSource_) << "[SiStripCommissioningSource::" << __func__ << "]"
                                  << " Created " << booked << " CommissioningTask objects and booked histograms";
 }

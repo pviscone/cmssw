@@ -14,7 +14,7 @@ process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_cff')
 
 # Other statements
 from Configuration.AlCa.GlobalTag import GlobalTag
-process.GlobalTag = GlobalTag(process.GlobalTag, 'auto:phase1_2021_realistic', '')
+process.GlobalTag = GlobalTag(process.GlobalTag, 'auto:phase1_2022_realistic', '')
 
 process.maxEvents = cms.untracked.PSet(
     input = cms.untracked.int32(1000)
@@ -271,7 +271,7 @@ process.schedule = cms.Schedule(
 process.options = cms.untracked.PSet(
     numberOfThreads = cms.untracked.uint32(4),
     numberOfStreams = cms.untracked.uint32(4),
-    SkipEvent = cms.untracked.vstring('ProductNotFound'),
+    TryToContinue = cms.untracked.vstring('ProductNotFound'),
     wantSummary = cms.untracked.bool(True)
 )
 

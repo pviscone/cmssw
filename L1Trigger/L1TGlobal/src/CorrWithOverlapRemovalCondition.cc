@@ -258,8 +258,6 @@ const bool l1t::CorrWithOverlapRemovalCondition::evaluateCondition(const int bxE
   }
 
   // second object
-  reqObjResult = false;
-
   switch (cond1Categ) {
     case CondMuon: {
       corrMuon = static_cast<const MuonTemplate*>(m_gtCond1);
@@ -337,8 +335,6 @@ const bool l1t::CorrWithOverlapRemovalCondition::evaluateCondition(const int bxE
   }
 
   // third object (used for overlap removal)
-  reqObjResult = false;
-
   switch (cond2Categ) {
     case CondMuon: {
       corrMuon = static_cast<const MuonTemplate*>(m_gtCond2);
@@ -779,7 +775,7 @@ const bool l1t::CorrWithOverlapRemovalCondition::evaluateCondition(const int bxE
             }
 
           }  //check it is the EtSum we want
-        }    // loop over Etsums
+        }  // loop over Etsums
 
       }  // end case CondEnergySum
       break;
@@ -1072,7 +1068,7 @@ const bool l1t::CorrWithOverlapRemovalCondition::evaluateCondition(const int bxE
               }
 
             }  //check it is the EtSum we want
-          }    // loop over Etsums
+          }  // loop over Etsums
 
         }  // end case EnergySum
         break;
@@ -1084,15 +1080,14 @@ const bool l1t::CorrWithOverlapRemovalCondition::evaluateCondition(const int bxE
       }  //end switch on second leg
 
       if (m_verbosity) {
-        LogDebug("L1TGlobal") << "    Correlation pair [" << l1TGtObjectEnumToString(cndObjTypeVec[0]) << ", "
-                              << l1TGtObjectEnumToString(cndObjTypeVec[1]) << "] with collection indices [" << obj0Index
-                              << ", " << obj1Index << "] "
+        LogDebug("L1TGlobal") << "    Correlation pair [" << l1t::GlobalObjectEnumToString(cndObjTypeVec[0]) << ", "
+                              << l1t::GlobalObjectEnumToString(cndObjTypeVec[1]) << "] with collection indices ["
+                              << obj0Index << ", " << obj1Index << "] "
                               << " has: \n"
                               << "     Et  value   = [" << etIndex0 << ", " << etIndex1 << "]\n"
                               << "     phi indices = [" << phiIndex0 << ", " << phiIndex1 << "]\n"
                               << "     eta indices = [" << etaIndex0 << ", " << etaIndex1 << "]\n"
-                              << "     chrg        = [" << chrg0 << ", " << chrg1 << "]\n"
-                              << std::endl;
+                              << "     chrg        = [" << chrg0 << ", " << chrg1 << "]\n";
       }
 
       // Now perform the desired correlation on these two objects. Assume true until we find a contradition
@@ -1610,7 +1605,7 @@ const bool l1t::CorrWithOverlapRemovalCondition::evaluateCondition(const int bxE
                 }
 
               }  //check it is the EtSum we want
-            }    // loop over Etsums
+            }  // loop over Etsums
 
           }  // end case CondEnerySum
           break;

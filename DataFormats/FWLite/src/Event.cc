@@ -108,9 +108,9 @@ namespace fwlite {
       Event const* event_;
     };
   }  // namespace internal
-     //
-     // constructors and destructor
-     //
+  //
+  // constructors and destructor
+  //
   Event::Event(TFile* iFile, bool useCache, std::function<void(TBranch const&)> baFunc)
       : file_(iFile),
         //  eventTree_(nullptr),
@@ -295,6 +295,15 @@ namespace fwlite {
     }
     Long_t eventIndex = branchMap_.getEventEntry();
     return dataHelper_.getByLabel(iInfo, iModuleLabel, iProductInstanceLabel, iProcessLabel, oData, eventIndex);
+  }
+
+  bool Event::getByTokenImp(edm::EDGetToken iToken, edm::WrapperBase const*& oData) const {
+    if (atEnd()) {
+      throw cms::Exception("OffEnd") << "You have requested data past the last event";
+    }
+    Long_t eventIndex = branchMap_.getEventEntry();
+    oData = dataHelper_.getByBranchID(edm::BranchID(iToken.index()), eventIndex);
+    return oData != nullptr;
   }
 
   edm::EventAuxiliary const& Event::eventAuxiliary() const {

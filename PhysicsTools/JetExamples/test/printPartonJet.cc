@@ -9,7 +9,7 @@
 
 // user include files
 #include "FWCore/Framework/interface/Frameworkfwd.h"
-#include "FWCore/Framework/interface/EDAnalyzer.h"
+#include "FWCore/Framework/interface/one/EDAnalyzer.h"
 #include "FWCore/Framework/interface/ESHandle.h"
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/EventSetup.h"
@@ -27,10 +27,10 @@ using namespace std;
 using namespace reco;
 using namespace edm;
 
-class printPartonJet : public edm::EDAnalyzer {
+class printPartonJet : public edm::one::EDAnalyzer<> {
 public:
   explicit printPartonJet(const edm::ParameterSet&);
-  ~printPartonJet(){};
+  ~printPartonJet() {}
   void analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup);
 
 private:

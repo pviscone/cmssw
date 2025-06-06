@@ -122,14 +122,16 @@ BeamMonitor::BeamMonitor(const ParameterSet& ps)
       resetHistos_(false),
       StartAverage_(false),
       firstAverageFit_(0),
-      countGapLumi_(0) {
+      countGapLumi_(0),
+      logToDb_(false),
+      loggerActive_(false) {
   monitorName_ = ps.getUntrackedParameter<string>("monitorName", "YourSubsystemName");
   recordName_ = ps.getUntrackedParameter<string>("recordName");
   bsSrc_ = consumes<reco::BeamSpot>(ps.getUntrackedParameter<InputTag>("beamSpot"));
   tracksLabel_ = consumes<reco::TrackCollection>(
       ps.getParameter<ParameterSet>("BeamFitter").getUntrackedParameter<InputTag>("TrackCollection"));
   pvSrc_ = consumes<reco::VertexCollection>(ps.getUntrackedParameter<InputTag>("primaryVertex"));
-  hltSrc_ = consumes<TriggerResults>(ps.getParameter<InputTag>("hltResults"));
+  hltSrc_ = consumes<TriggerResults>(ps.getUntrackedParameter<InputTag>("hltResults"));
   intervalInSec_ = ps.getUntrackedParameter<int>("timeInterval", 920);  //40 LS X 23"
   fitNLumi_ = ps.getUntrackedParameter<int>("fitEveryNLumi", -1);
   resetFitNLumi_ = ps.getUntrackedParameter<int>("resetEveryNLumi", -1);
@@ -163,6 +165,8 @@ BeamMonitor::BeamMonitor(const ParameterSet& ps)
   lastlumi_ = 0;
   nextlumi_ = 0;
   processed_ = false;
+
+  tcdsToken_ = consumes<TCDSRecord>(ps.getUntrackedParameter<InputTag>("tcdsRecord"));
 }
 
 //--------------------------------------------------------
@@ -533,8 +537,9 @@ void BeamMonitor::beginLuminosityBlock(const LuminosityBlock& lumiSeg, const Eve
   // start DB logger
   DBloggerReturn_ = 0;
   nAnalyzedLS_++;
-  if (onlineDbService_.isAvailable()) {
+  if (onlineDbService_.isAvailable() && logToDb_) {
     onlineDbService_->logger().start();
+    loggerActive_ = true;
     onlineDbService_->logger().logInfo() << "BeamMonitor::beginLuminosityBlock - LS: " << lumiSeg.luminosityBlock()
                                          << " - Run: " << lumiSeg.getRun().run();
   }
@@ -567,7 +572,7 @@ void BeamMonitor::beginLuminosityBlock(const LuminosityBlock& lumiSeg, const Eve
       mapBeginBSTime[countLumi_] = ftmptime;
       mapBeginPVTime[countLumi_] = ftmptime;
     }  //processed fails for last lumi
-  }    //nthLumi > nextlumi
+  }  //nthLumi > nextlumi
 
   if (StartAverage_) {
     //Just Make sure it get rest
@@ -661,6 +666,18 @@ void BeamMonitor::beginLuminosityBlock(const LuminosityBlock& lumiSeg, const Eve
 
 // ----------------------------------------------------------
 void BeamMonitor::analyze(const Event& iEvent, const EventSetup& iSetup) {
+  const TCDSRecord& tcdsData = iEvent.get(tcdsToken_);
+  int beamMode = tcdsData.getBST().getBeamMode();
+
+  // Check that the beamMode information is available in the event content
+  if (beamMode == BSTRecord::BeamMode::NOMODE)
+    edm::LogError("BeamMonitor") << "No BeamMode identified from BSTRecord!"
+                                    "Please check that the event content has the raw data from TCDS FEDs (1024,1025)!";
+
+  // Check if stable beams are present
+  if (beamMode == BSTRecord::BeamMode::STABLE)
+    logToDb_ = true;
+
   const int nthlumi = iEvent.luminosityBlock();
   if (onlineMode_ && (nthlumi < nextlumi_)) {
     edm::LogInfo("BeamMonitor") << "analyze::  Spilt event from previous lumi section!" << std::endl;
@@ -725,9 +742,9 @@ void BeamMonitor::analyze(const Event& iEvent, const EventSetup& iSetup) {
           if (triggerResults->accept(thisTrigger_))
             JetTrigPass = true;
         }  //if trigger found
-      }    //for(t=0;..)
-    }      //for(i=0; ..)
-  }        //if trigger colleciton exist)
+      }  //for(t=0;..)
+    }  //for(i=0; ..)
+  }  //if trigger colleciton exist)
 
   //------ Primary Vertices-------
   edm::Handle<reco::VertexCollection> PVCollection;
@@ -809,7 +826,7 @@ void BeamMonitor::endLuminosityBlock(const LuminosityBlock& lumiSeg, const Event
   tmpTime = refBStime[1] = refPVtime[1] = fendtime;
 
   // end DB logger
-  if (onlineDbService_.isAvailable()) {
+  if (onlineDbService_.isAvailable() && logToDb_ && loggerActive_) {
     onlineDbService_->logger().logInfo() << "BeamMonitor::endLuminosityBlock";
     onlineDbService_->logger().end(DBloggerReturn_);
   }
@@ -1089,7 +1106,7 @@ void BeamMonitor::FitAndFill(const LuminosityBlock& lumiSeg, int& lastlumi, int&
         h_PVz[1]->getTH1()->Fit(fgaus.get(), "QLM");
       }
     }  //check if found min Vertices
-  }    //do PVfit
+  }  //do PVfit
 
   if ((resetPVNLumi_ > 0 && countLumi_ == resetPVNLumi_) || StartAverage_) {
     beginLumiOfPVFit_ = 0;
@@ -1397,11 +1414,15 @@ void BeamMonitor::FitAndFill(const LuminosityBlock& lumiSeg, int& lastlumi, int&
       BSOnline.setEndTimeStamp(timeForDIP.second);
       BSOnline.setEndTime(getGMTstring(timeForDIP.second));
 
+      std::string lumiRangeForDIP = std::to_string(LSRange.first) + " - " + std::to_string(LSRange.second);
+      BSOnline.setLumiRange(lumiRangeForDIP);
+
       edm::LogInfo("BeamMonitor") << "FitAndFill::[PayloadCreation] BeamSpotOnline object created: \n" << std::endl;
       edm::LogInfo("BeamMonitor") << BSOnline << std::endl;
 
       // Create the payload for BeamSpotOnlineObjects object
-      if (onlineDbService_.isAvailable() && (nAnalyzedLS_ < nLS_for_upload_ || nAnalyzedLS_ % nLS_for_upload_ == 0)) {
+      if (onlineDbService_.isAvailable() && (nAnalyzedLS_ < nLS_for_upload_ || nAnalyzedLS_ % nLS_for_upload_ == 0) &&
+          logToDb_) {
         edm::LogInfo("BeamMonitor") << "FitAndFill::[PayloadCreation] onlineDbService available \n" << std::endl;
         onlineDbService_->logger().logInfo() << "BeamMonitor::FitAndFill - Lumi of the current fit: " << currentlumi;
         onlineDbService_->logger().logInfo()
@@ -1447,14 +1468,14 @@ void BeamMonitor::FitAndFill(const LuminosityBlock& lumiSeg, int& lastlumi, int&
       }
       edm::LogInfo("BeamMonitor") << "FitAndFill::[PayloadCreation] BeamSpotOnline payload created \n" << std::endl;
 
-    }       //if (theBeamFitter->runPVandTrkFitter())
+    }  //if (theBeamFitter->runPVandTrkFitter())
     else {  // beam fit fails
       reco::BeamSpot bs = theBeamFitter->getBeamSpot();
       edm::LogInfo("BeamMonitor") << "FitAndFill::   [BeamMonitor] Beam fit fails!!! \n" << endl;
       edm::LogInfo("BeamMonitor") << "FitAndFill::   [BeamMonitor] Output beam spot for DIP \n" << endl;
       edm::LogInfo("BeamMonitor") << bs << endl;
 
-      if (onlineDbService_.isAvailable()) {
+      if (onlineDbService_.isAvailable() && logToDb_) {
         onlineDbService_->logger().logInfo() << "BeamMonitor::FitAndFill - Beam fit fails!!!";
         onlineDbService_->logger().logInfo() << "BeamMonitor::FitAndFill - Output beam spot for DIP";
         onlineDbService_->logger().logInfo() << "\n" << bs;
@@ -1469,7 +1490,7 @@ void BeamMonitor::FitAndFill(const LuminosityBlock& lumiSeg, int& lastlumi, int&
       hs[k_z0_lumi]->ShiftFillLast(bs.z0(), bs.z0Error(), fitNLumi_);
     }  // end of beam fit fails
 
-  }       //-------- end of countFitting------------------------------------------
+  }  //-------- end of countFitting------------------------------------------
   else {  // no fit
     // Overwrite Fit LS and fit time when no event processed or no track selected
     theBeamFitter->setFitLSRange(beginLumiOfBSFit_, endLumiOfBSFit_);
@@ -1481,7 +1502,7 @@ void BeamMonitor::FitAndFill(const LuminosityBlock& lumiSeg, int& lastlumi, int&
     edm::LogInfo("BeamMonitor") << "FitAndFill::  [BeamMonitor] Output fake beam spot for DIP \n" << endl;
     edm::LogInfo("BeamMonitor") << bs << endl;
 
-    if (onlineDbService_.isAvailable()) {
+    if (onlineDbService_.isAvailable() && logToDb_) {
       onlineDbService_->logger().logInfo() << "BeamMonitor::FitAndFill - No fitting";
       onlineDbService_->logger().logInfo() << "BeamMonitor::FitAndFill - Output fake beam spot for DIP";
       onlineDbService_->logger().logInfo() << "\n" << bs;

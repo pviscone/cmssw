@@ -97,7 +97,7 @@ void PtAssignment::process(EMTFTrackCollection& best_tracks) {
           pt, track.Mode());  // Multiply by some factor to achieve 90% efficiency at threshold
 
       gmt_pt = aux().getGMTPt(pt);  // Encode integer pT in GMT format
-    }                               // End if (track.Mode() != 1)
+    }  // End if (track.Mode() != 1)
     else {
       gmt_pt = 10 - (abs(gmt_eta) / 32);
     }
@@ -113,7 +113,7 @@ void PtAssignment::process(EMTFTrackCollection& best_tracks) {
 
     pt_assign_engine_dxy_->calculate_pt_dxy(track, feature, prediction);
 
-    pt_dxy = std::abs(1.0 / prediction.at(0));
+    pt_dxy = std::abs(prediction.at(0));
     dxy = prediction.at(1);
 
     gmt_pt_dxy = aux().getGMTPtDxy(pt_dxy);

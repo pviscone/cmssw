@@ -6,6 +6,7 @@
 
 #include <set>
 #include <filesystem>
+#include <sstream>
 
 using namespace trklet;
 using namespace std;
@@ -35,7 +36,7 @@ unsigned int MemoryBase::initLayerDisk(unsigned int pos) {
   initLayerDisk(pos, layer, disk);
 
   if (disk > 0)
-    return N_DISK + disk;
+    return N_LAYER + disk - 1;
   return layer - 1;
 }
 
@@ -105,4 +106,10 @@ size_t MemoryBase::find_nth(const string& haystack, size_t pos, const string& ne
   if (0 == nth || string::npos == found_pos)
     return found_pos;
   return find_nth(haystack, found_pos + 1, needle, nth - 1);
+}
+
+std::string MemoryBase::hexstr(unsigned int index) {
+  std::ostringstream oss;
+  oss << "0x" << std::setfill('0') << std::setw(2) << hex << index << dec;
+  return oss.str();
 }

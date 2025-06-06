@@ -52,19 +52,22 @@ private:
   const MuonResidualsFromTrack::BuilderToken m_esTokenBuilder;
 
   // parameters
-  edm::InputTag m_muonCollectionTag;
-  double m_minTrackPt;
-  double m_minTrackP;
-  double m_maxDxy;
-  int m_minTrackerHits;
-  double m_maxTrackerRedChi2;
-  bool m_allowTIDTEC;
-  bool m_minNCrossedChambers;
-  int m_minDT13Hits;
-  int m_minDT2Hits;
-  int m_minCSCHits;
-  bool m_doDT;
-  bool m_doCSC;
+  const edm::InputTag m_muonCollectionTag;
+  const double m_minTrackPt;
+  const double m_minTrackP;
+  const double m_maxDxy;
+  const int m_minTrackerHits;
+  const double m_maxTrackerRedChi2;
+  const bool m_allowTIDTEC;
+  const bool m_minNCrossedChambers;
+  const int m_minDT13Hits;
+  const int m_minDT2Hits;
+  const int m_minCSCHits;
+  const bool m_doDT;
+  const bool m_doCSC;
+
+  const edm::EDGetTokenT<reco::BeamSpot> bsToken_;
+  const edm::EDGetTokenT<reco::MuonCollection> muonToken_;
 
   // wheel, sector, stationdiff
   TProfile *m_dt13_resid[5][12][3];
@@ -135,7 +138,9 @@ AlignmentMonitorSegmentDifferences::AlignmentMonitorSegmentDifferences(const edm
       m_minDT2Hits(cfg.getParameter<int>("minDT2Hits")),
       m_minCSCHits(cfg.getParameter<int>("minCSCHits")),
       m_doDT(cfg.getParameter<bool>("doDT")),
-      m_doCSC(cfg.getParameter<bool>("doCSC")) {}
+      m_doCSC(cfg.getParameter<bool>("doCSC")),
+      bsToken_(iC.consumes<reco::BeamSpot>(m_beamSpotTag)),
+      muonToken_(iC.consumes<reco::MuonCollection>(m_muonCollectionTag)) {}
 
 void AlignmentMonitorSegmentDifferences::book() {
   char name[225], pos[228], neg[228];
@@ -371,8 +376,7 @@ void AlignmentMonitorSegmentDifferences::book() {
 void AlignmentMonitorSegmentDifferences::event(const edm::Event &iEvent,
                                                const edm::EventSetup &iSetup,
                                                const ConstTrajTrackPairCollection &trajtracks) {
-  edm::Handle<reco::BeamSpot> beamSpot;
-  iEvent.getByLabel(m_beamSpotTag, beamSpot);
+  const edm::Handle<reco::BeamSpot> &beamSpot = iEvent.getHandle(bsToken_);
 
   const GlobalTrackingGeometry *globalGeometry = &iSetup.getData(m_esTokenGBTGeom);
   const DetIdAssociator *muonDetIdAssociator_ = &iSetup.getData(m_esTokenDetId);
@@ -394,8 +398,7 @@ void AlignmentMonitorSegmentDifferences::event(const edm::Event &iEvent,
       }
     }  // end loop over tracks
   } else {
-    edm::Handle<reco::MuonCollection> muons;
-    iEvent.getByLabel(m_muonCollectionTag, muons);
+    const edm::Handle<reco::MuonCollection> &muons = iEvent.getHandle(muonToken_);
 
     for (reco::MuonCollection::const_iterator muon = muons->begin(); muon != muons->end(); ++muon) {
       if (!(muon->isTrackerMuon() && muon->innerTrack().isNonnull()))
@@ -470,8 +473,8 @@ void AlignmentMonitorSegmentDifferences::processMuonResidualsFromTrack(MuonResid
                   }
                 }
               }  // end other numhits
-            }    // end this near other
-          }      // end other is DT
+            }  // end this near other
+          }  // end other is DT
 
           // cross-system: other is CSC
           // only do it for DT stubs in W+-2 St1&2:
@@ -513,8 +516,8 @@ void AlignmentMonitorSegmentDifferences::processMuonResidualsFromTrack(MuonResid
               }
             }
           }  // end other is CSC
-        }    // end loop over other
-      }      // end if DT13
+        }  // end loop over other
+      }  // end if DT13
 
       // z-direction
       if (dt2 != nullptr && dt2->numHits() >= m_minDT2Hits && (dt2->chi2() / double(dt2->ndof())) < 2.0) {
@@ -547,11 +550,11 @@ void AlignmentMonitorSegmentDifferences::processMuonResidualsFromTrack(MuonResid
                   }
                 }
               }  // end other numhits
-            }    // end this near other
-          }      // end other is DT
-        }        // end loop over other
-      }          // end if DT2
-    }            // end if DT
+            }  // end this near other
+          }  // end other is DT
+        }  // end loop over other
+      }  // end if DT2
+    }  // end if DT
 
     // **************** CSC ****************
     else if (m_doCSC && chamberId->subdetId() == MuonSubdetId::CSC) {
@@ -607,13 +610,13 @@ void AlignmentMonitorSegmentDifferences::processMuonResidualsFromTrack(MuonResid
                     }
                   }
                 }  // end of same ring&chamber
-              }    // end other min numhits
-            }      // end this near other
-          }        // end other is CSC
-        }          // end loop over other
+              }  // end other min numhits
+            }  // end this near other
+          }  // end other is CSC
+        }  // end loop over other
 
       }  // end if this min numhits
-    }    // end if CSC
+    }  // end if CSC
 
   }  // end loop over chamberIds
 }

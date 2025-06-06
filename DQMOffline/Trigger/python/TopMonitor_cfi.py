@@ -5,7 +5,7 @@ from DQMOffline.Trigger.topMonitoring_cfi import topMonitoring
 hltTOPmonitoring = topMonitoring.clone()
 
 hltTOPmonitoring.FolderName = 'HLT/TOP/default/'
-hltTOPmonitoring.requireValidHLTPaths = True
+hltTOPmonitoring.requireValidHLTPaths = True 
 
 # histo PSets
 hltTOPmonitoring.histoPSet.lsPSet.nbins =  250
@@ -77,6 +77,7 @@ hltTOPmonitoring.histoPSet.phiBinning2D = [-3.1416,-1.8849,-0.6283,0.6283,1.8849
 
 hltTOPmonitoring.enablePhotonPlot = False
 hltTOPmonitoring.enableMETPlot = False
+hltTOPmonitoring.enable2DPlots = True
 
 hltTOPmonitoring.applyLeptonPVcuts = False
 hltTOPmonitoring.leptonPVcuts.dxy = 9999.
@@ -85,7 +86,7 @@ hltTOPmonitoring.leptonPVcuts.dz  = 9999.
 hltTOPmonitoring.met       = "pfMet" # pfMet
 hltTOPmonitoring.jets      = "ak4PFJetsCHS" # ak4PFJets, ak4PFJetsCHS, ak4PFJets
 hltTOPmonitoring.electrons = "gedGsfElectrons" # while pfIsolatedElectronsEI are reco::PFCandidate !
-hltTOPmonitoring.elecID    = "egmGsfElectronIDsForDQM:cutBasedElectronID-Fall17-94X-V1-tight" #Electron ID
+hltTOPmonitoring.elecID    = "egmGsfElectronIDsForDQM:cutBasedElectronID-RunIIIWinter22-V1-tight" #Electron ID
 hltTOPmonitoring.muons     = "muons" # while pfIsolatedMuonsEI are reco::PFCandidate !
 hltTOPmonitoring.photons   = "photons" # reco::Photon
 hltTOPmonitoring.vertices  = "offlinePrimaryVertices"

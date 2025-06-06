@@ -6,5 +6,5 @@ hltOnlineBeamSpot = cms.EDProducer("BeamSpotOnlineProducer",
     maxRadius = cms.double(2.0),
     maxZ = cms.double(40.0),
     setSigmaZ = cms.double(0.0),
-    src = cms.InputTag("hltScalersRawToDigi")
+    useTransientRecord = cms.bool(True)
 )

@@ -230,9 +230,9 @@ double EmissionVetoHook1::pTcalc(const Pythia8::Event &e, int i, int j, int k, i
               }  // for (rNow)
 
             }  // for (kNow)
-          }    // if (!FSR)
-        }      // if (pTdefMode)
-      }        // for (j)
+          }  // if (!FSR)
+        }  // if (pTdefMode)
+      }  // for (j)
     }
   }  // for (xSR)
 
@@ -442,7 +442,7 @@ bool EmissionVetoHook1::doVetoFSREmission(int, const Pythia8::Event &e, int iSys
     return false;
 
   // only use for outside resonance vetos in combination with bb4l:FSREmission:veto
-  if (!inResonance && settingsPtr->flag("POWHEG:bb4l:FSREmission:veto") == 1)
+  if (inResonance && settingsPtr->flag("POWHEG:bb4l:FSREmission:veto") == 1)
     return false;
 
   // If we already have accepted 'vetoCount' emissions in a row, do nothing

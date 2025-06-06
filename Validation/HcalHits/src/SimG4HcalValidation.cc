@@ -33,6 +33,8 @@
 #include "Validation/HcalHits/interface/SimG4HcalHitCluster.h"
 #include "Validation/HcalHits/interface/SimG4HcalHitJetFinder.h"
 
+#include <CLHEP/Units/SystemOfUnits.h>
+
 #include "G4HCofThisEvent.hh"
 #include "G4SDManager.hh"
 #include "G4Step.hh"
@@ -45,6 +47,8 @@
 #include <vector>
 
 using namespace geant_units::operators;
+using CLHEP::GeV;
+using CLHEP::MeV;
 
 class SimG4HcalValidation : public SimProducer,
                             public Observer<const BeginOfRun *>,
@@ -267,8 +271,7 @@ void SimG4HcalValidation::update(const BeginOfEvent *evt) {
   // Cache reset
   clear();
 
-  int iev = (*evt)()->GetEventID();
-  LogDebug("ValidHcal") << "SimG4HcalValidation: =====> Begin of event = " << iev;
+  LogDebug("ValidHcal") << "SimG4HcalValidation: =====> Begin of event = " << (*evt)()->GetEventID();
 }
 
 //=================================================================== each STEP
@@ -587,10 +590,10 @@ void SimG4HcalValidation::jetAnalysis(PHcalValidInfoJets &product) {
 
     double ecal_collect = 0.;  // collect Ecal energy in the cone
     if (!hcalOnly) {
-      ecal_collect = clus_itr->collectEcalEnergyR();
+      [[clang::suppress]] ecal_collect = clus_itr->collectEcalEnergyR();
     } else {
       collectEnergyRdir(etac, phic);
-      ecal_collect = een;
+      [[clang::suppress]] ecal_collect = een;
     }
     LogDebug("ValidHcal") << " JetAnalysis ===> ecal_collect  = " << ecal_collect;
 
@@ -731,17 +734,14 @@ void SimG4HcalValidation::fetchHits(PHcalValidInfoLayer &product) {
     double phi = (*k1)->phi();
     int lay = ((unitID >> 15) & 31) + 1;
     int subdet = (unitID >> 20) & 15;
-    int zside = (unitID >> 14) & 1;
-    int ieta = (unitID >> 7) & 127;
-    int iphi = (unitID)&127;
 
     // All hits in cache
     product.fillHits(nHits, lay, subdet, eta, phi, ehit, t);
     nHits++;
 
     LogDebug("ValidHcal") << "SimG4HcalValidation::fetchHits:Hit " << nHits << " " << i << " ID 0x" << std::hex
-                          << unitID << "   det " << std::dec << subdet << " " << lay << " " << zside << " " << ieta
-                          << " " << iphi << " Time " << t << " E " << ehit;
+                          << unitID << "   det " << std::dec << subdet << " " << lay << " " << ((unitID >> 14) & 1)
+                          << " " << ((unitID >> 7) & 127) << " " << ((unitID) & 127) << " Time " << t << " E " << ehit;
 
     i += jump;
     k1 += jump;

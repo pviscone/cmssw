@@ -4,7 +4,6 @@
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/Run.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
-#include "FWCore/ServiceRegistry/interface/Service.h"
 
 #include "DQMServices/Core/interface/DQMStore.h"
 
@@ -54,6 +53,13 @@ int CaloTowersDQMClient::CaloTowersEndjob(const std::vector<MonitorElement *> &h
       occupancy_vs_ieta = hcalMEs[ih];
     }
   }
+
+  // Avoid LLVM analyzer warnings
+  assert(Ntowers_vs_ieta);
+  assert(mapEnergy_N);
+  assert(occupancy_map);
+  assert(occupancy_vs_ieta);
+
   if (useAllHistos != 0 && useAllHistos != 3)
     return 0;
 

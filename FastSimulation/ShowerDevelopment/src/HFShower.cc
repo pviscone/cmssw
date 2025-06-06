@@ -389,7 +389,6 @@ void HFShower::makeSteps(int nsteps) {
     if (est < 0.) {
       LogDebug("FastCalorimetry") << "*** FamosHFShower::makeSteps "
                                   << " - negative step energy !!!" << std::endl;
-      est = 0.;
       break;
     }
 
@@ -435,11 +434,9 @@ void HFShower::makeSteps(int nsteps) {
   }
 
   // final re-normalization of the energy fractions
-  double etot = 0.;
   for (int i = 0; i < count; i++) {
     eStep.push_back(temp[i] * e / sumes);
     nspots.push_back((int)(eStep[i] / eSpotSize) + 1);
-    etot += eStep[i];
 
     if (debug)
       LogDebug("FastCalorimetry") << i << "  xO and lamdepth at the end of step = " << x0depth[i] << " " << lamdepth[i]
@@ -627,7 +624,7 @@ bool HFShower::compute() {
                                     << " long.step No." << i << "   Ntry, Nok = " << count << " " << nok << std::endl;
 
     }  // end of longitudinal steps
-  }    // end of no steps
+  }  // end of no steps
   return status;
 }
 

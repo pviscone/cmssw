@@ -55,7 +55,7 @@ TrackCharge ParticleKinematicLinearizedTrackState::charge() const { return part-
 
 RefCountedKinematicParticle ParticleKinematicLinearizedTrackState::particle() const { return part; }
 
-bool ParticleKinematicLinearizedTrackState::operator==(LinearizedTrackState<6>& other) const {
+bool ParticleKinematicLinearizedTrackState::operator==(const LinearizedTrackState<6>& other) const {
   const ParticleKinematicLinearizedTrackState* otherP =
       dynamic_cast<const ParticleKinematicLinearizedTrackState*>(&other);
   if (otherP == nullptr) {
@@ -186,6 +186,11 @@ void ParticleKinematicLinearizedTrackState::computeChargedJacobians() const {
   double phiAtEP = thePredState.theState().globalMomentum().phi();
   double ptAtEP = thePredState.theState().globalMomentum().perp();
   double transverseCurvatureAtEP = field / ptAtEP * signTC;
+
+  // Fix calculation for case where magnetic field swaps sign between previous state and current state
+  if (field * part->currentState().magneticField()->inInverseGeV(part->currentState().globalPosition()).z() < 0.) {
+    signTC = -signTC;
+  }
 
   double x_v = thePredState.theState().globalPosition().x();
   double y_v = thePredState.theState().globalPosition().y();

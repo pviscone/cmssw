@@ -1,8 +1,8 @@
 import FWCore.ParameterSet.Config as cms
 
-from Configuration.Eras.Era_Phase2C11I13M9_cff import Phase2C11I13M9
-process = cms.Process('PROD',Phase2C11I13M9)
-process.load('Configuration.Geometry.GeometryExtended2026D86Reco_cff')
+from Configuration.Eras.Era_Phase2C17I13M9_cff import Phase2C17I13M9
+process = cms.Process('PROD',Phase2C17I13M9)
+process.load('Configuration.Geometry.GeometryExtendedRun4D86Reco_cff')
 process.load("SimGeneral.HepPDTESSource.pdt_cfi")
 process.load('Geometry.HGCalGeometry.hgcalWaferInFileOrientation_cfi')
 process.load('FWCore.MessageService.MessageLogger_cfi')

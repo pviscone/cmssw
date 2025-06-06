@@ -83,6 +83,8 @@ ElectronMcSignalValidatorMiniAOD::ElectronMcSignalValidatorMiniAOD(const edm::Pa
   h1_recEleNum = nullptr;
 
   h1_ele_vertexPt = nullptr;
+  h1_ele_vertexPt_EB = nullptr;
+  h1_ele_vertexPt_EE = nullptr;
   h1_ele_vertexEta = nullptr;
   h1_ele_vertexPt_nocut = nullptr;
 
@@ -143,6 +145,10 @@ void ElectronMcSignalValidatorMiniAOD::bookHistograms(DQMStore::IBooker& iBooker
   setBookPrefix("h_ele");
   h1_ele_vertexPt =
       bookH1withSumw2(iBooker, "vertexPt", "ele transverse momentum", pt_nbin, 0., pt_max, "p_{T vertex} (GeV/c)");
+  h1_ele_vertexPt_EB = bookH1withSumw2(
+      iBooker, "vertexPt_EB", "ele transverse momentum barrel", pt_nbin, 0., pt_max, "p_{T vertex} (GeV/c)");
+  h1_ele_vertexPt_EE = bookH1withSumw2(
+      iBooker, "vertexPt_EE", "ele transverse momentum endcaps", pt_nbin, 0., pt_max, "p_{T vertex} (GeV/c)");
   h1_ele_vertexEta = bookH1withSumw2(iBooker, "vertexEta", "ele momentum eta", eta_nbin, eta_min, eta_max, "#eta");
   h1_ele_vertexPt_nocut =
       bookH1withSumw2(iBooker, "vertexPt_nocut", "pT of prunned electrons", pt_nbin, 0., 20., "p_{T vertex} (GeV/c)");
@@ -430,7 +436,7 @@ void ElectronMcSignalValidatorMiniAOD::analyze(const edm::Event& iEvent, const e
       << "Treating event " << iEvent.id() << " with " << electrons_endcaps.product()->size()
       << " multi slimmed electrons";
 
-  h1_recEleNum->Fill((*electrons).size());
+  //h1_recEleNum->Fill((*electrons).size());
 
   //===============================================
   // all rec electrons
@@ -445,14 +451,14 @@ void ElectronMcSignalValidatorMiniAOD::analyze(const edm::Event& iEvent, const e
   // get a vector with EB  & EE
   //===============================================
   std::vector<pat::Electron> localCollection;
-  int iBarrels = 0;
-  int iEndcaps = 0;
+  std::vector<pat::Electron> localCollection_EB;
+  std::vector<pat::Electron> localCollection_EE;
 
   // looking for EB
   for (el1 = electrons->begin(); el1 != electrons->end(); el1++) {
     if (el1->isEB()) {
       localCollection.push_back(*el1);
-      iBarrels += 1;
+      localCollection_EB.push_back(*el1);
     }
   }
 
@@ -460,9 +466,10 @@ void ElectronMcSignalValidatorMiniAOD::analyze(const edm::Event& iEvent, const e
   for (el1 = electrons_endcaps->begin(); el1 != electrons_endcaps->end(); el1++) {
     if (el1->isEE()) {
       localCollection.push_back(*el1);
-      iEndcaps += 1;
+      localCollection_EE.push_back(*el1);
     }
   }
+  h1_recEleNum->Fill((localCollection).size());
 
   for (el3 = localCollection.begin(); el3 != localCollection.end(); el3++) {
     for (el4 = el3 + 1; el4 != localCollection.end(); el4++) {
@@ -479,7 +486,6 @@ void ElectronMcSignalValidatorMiniAOD::analyze(const edm::Event& iEvent, const e
   // charge mis-ID
   //===============================================
 
-  int mcNum = 0, gamNum = 0, eleNum = 0;
   bool matchingMotherID;
 
   //===============================================
@@ -487,14 +493,6 @@ void ElectronMcSignalValidatorMiniAOD::analyze(const edm::Event& iEvent, const e
   //===============================================
 
   for (size_t i = 0; i < genParticles->size(); i++) {
-    // number of mc particles
-    mcNum++;
-
-    // counts photons
-    if ((*genParticles)[i].pdgId() == 22) {
-      gamNum++;
-    }
-
     // select requested mother matching gen particle
     // always include single particle with no mother
     const Candidate* mother = (*genParticles)[i].mother(0);
@@ -517,7 +515,6 @@ void ElectronMcSignalValidatorMiniAOD::analyze(const edm::Event& iEvent, const e
     if ((*genParticles)[i].pt() > maxPt_ || std::abs((*genParticles)[i].eta()) > maxAbsEta_) {
       continue;
     }
-    eleNum++;
 
     // find best matched electron
     bool okGsfFound = false;
@@ -557,6 +554,11 @@ void ElectronMcSignalValidatorMiniAOD::analyze(const edm::Event& iEvent, const e
 
       // electron related distributions
       h1_ele_vertexPt->Fill(bestGsfElectron.pt());
+      if (isEBflag) {
+        h1_ele_vertexPt_EB->Fill(bestGsfElectron.pt());
+      } else if (isEEflag) {
+        h1_ele_vertexPt_EE->Fill(bestGsfElectron.pt());
+      }
       h1_ele_vertexEta->Fill(bestGsfElectron.eta());
       if ((bestGsfElectron.scSigmaIEtaIEta() == 0.) && (bestGsfElectron.fbrem() == 0.))
         h1_ele_vertexPt_nocut->Fill(bestGsfElectron.pt());

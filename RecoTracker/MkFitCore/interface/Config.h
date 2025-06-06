@@ -3,41 +3,6 @@
 
 namespace mkfit {
 
-  enum PropagationFlagsEnum { PF_none = 0, PF_use_param_b_field = 0x1, PF_apply_material = 0x2 };
-
-  struct PropagationFlags {
-    bool use_param_b_field : 1;
-    bool apply_material : 1;
-    // Could add: bool use_trig_approx       -- now Config::useTrigApprox = true
-    // Could add: int  n_prop_to_r_iters : 8 -- now Config::Niter = 5
-
-    PropagationFlags() : use_param_b_field(false), apply_material(false) {}
-
-    PropagationFlags(int pfe)
-        : use_param_b_field(pfe & PF_use_param_b_field), apply_material(pfe & PF_apply_material) {}
-  };
-
-  class PropagationConfig {
-  public:
-    bool backward_fit_to_pca;
-    bool finding_requires_propagation_to_hit_pos;
-    PropagationFlags finding_inter_layer_pflags;
-    PropagationFlags finding_intra_layer_pflags;
-    PropagationFlags backward_fit_pflags;
-    PropagationFlags forward_fit_pflags;
-    PropagationFlags seed_fit_pflags;
-    PropagationFlags pca_prop_pflags;
-
-    void set_as_default(bool force = false);
-
-    static const PropagationConfig& get_default() { return *s_default; }
-
-  private:
-    static const PropagationConfig* s_default;
-  };
-
-  //------------------------------------------------------------------------------
-
   namespace Const {
     constexpr float PI = 3.14159265358979323846;
     constexpr float TwoPI = 6.28318530717958647692;
@@ -45,7 +10,8 @@ namespace mkfit {
     constexpr float PIOver4 = Const::PI / 4.0f;
     constexpr float PI3Over4 = 3.0f * Const::PI / 4.0f;
     constexpr float InvPI = 1.0f / Const::PI;
-    constexpr float sol = 0.299792458;  // speed of light in nm/s
+    constexpr float sol = 0.299792458;  // speed of light in m/ns
+    constexpr float sol_over_100 = 0.299792458e-2;
 
     // NAN and silly track parameter tracking options
     constexpr bool nan_etc_sigs_enable = false;
@@ -83,8 +49,14 @@ namespace mkfit {
     // Config for propagation - could/should enter into PropagationFlags?!
     constexpr int Niter = 5;
     constexpr bool useTrigApprox = true;
+    // Move to Config.cc, make a command-line option in mkFit.cc to ease profiling comparisons.
+    // If making this constexpr again, also fix ifs using it in MkBuilder.cc and MkFinder.cc.
+    // constexpr bool usePropToPlane = true;
+    // constexpr bool usePtMultScat = true;
+    extern bool usePropToPlane;
+    extern bool usePtMultScat;
 
-    // Config for Bfield. Note: for now the same for CMS-2017 and CylCowWLids.
+    // Config for Bfield. Note: for now the same for CMS-phase1 and CylCowWLids.
     constexpr float Bfield = 3.8112;
     constexpr float mag_c1 = 3.8114;
     constexpr float mag_b0 = -3.94991e-06;

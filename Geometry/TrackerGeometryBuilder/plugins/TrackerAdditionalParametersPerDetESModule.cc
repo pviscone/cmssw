@@ -7,7 +7,6 @@
 #include "FWCore/ParameterSet/interface/ParameterSetDescription.h"
 #include "Geometry/Records/interface/IdealGeometryRecord.h"
 #include "Geometry/Records/interface/PTrackerAdditionalParametersPerDetRcd.h"
-#include "Geometry/Records/interface/IdealGeometryRecord.h"
 #include "Geometry/TrackerNumberingBuilder/interface/GeometricDet.h"
 #include "CondFormats/GeometryObjects/interface/PTrackerAdditionalParametersPerDet.h"
 
@@ -57,7 +56,10 @@ TrackerAdditionalParametersPerDetESModule::ReturnType TrackerAdditionalParameter
 
   for (auto& i : comp) {
     ptitp->setGeographicalId(i->geographicalId());
-    ptitp->setBricked(i->isBricked());
+    ptitp->setBigPixelsX(i->bigPixelsx());
+    ptitp->setBigPixelsY(i->bigPixelsy());
+    ptitp->setBigPixelsPitchX(i->bigPixelsPitchx());
+    ptitp->setBigPixelsPitchY(i->bigPixelsPitchy());
   }
 
   return ptitp;

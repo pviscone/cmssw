@@ -21,11 +21,13 @@ class RunPromptReco:
         self.writeRECO = False
         self.writeAOD = False
         self.writeMINIAOD = False
+        self.writeNANOAOD = False
         self.writeDQM = False
         self.writeDQMIO = False
         self.noOutput = False
         self.globalTag = None
         self.inputLFN = None
+        self.nanoFlavours = None
         self.alcaRecos = None
         self.PhysicsSkims = None
         self.dqmSeq = None
@@ -65,6 +67,9 @@ class RunPromptReco:
         if self.writeMINIAOD:
             dataTiers.append("MINIAOD")
             print("Configuring to Write out MiniAOD")
+        if self.writeNANOAOD:
+            dataTiers.append("NANOAOD")
+            print("Configuring to Write out NanoAOD")
         if self.writeDQM:
             dataTiers.append("DQM")
             print("Configuring to Write out DQM")
@@ -88,6 +93,9 @@ class RunPromptReco:
                                      'moduleLabel' : "write_%s" % dataTier })
                 kwds['outputs'] = outputs
 
+                if self.nanoFlavours:
+                    kwds['nanoFlavours'] = self.nanoFlavours
+
                 if self.alcaRecos:
                     kwds['skims'] = self.alcaRecos
 
@@ -99,9 +107,9 @@ class RunPromptReco:
 
                 if self.setRepacked:
                     kwds['repacked'] = self.isRepacked
-                
+
                 if self.nThreads:
-                    kwds['nThreads'] = self.nThreads
+                    kwds['nThreads'] = int(self.nThreads)
 
             process = scenario.promptReco(self.globalTag, **kwds)
 
@@ -143,8 +151,8 @@ class RunPromptReco:
 
 
 if __name__ == '__main__':
-    valid = ["scenario=", "reco", "aod", "miniaod","dqm", "dqmio", "no-output", "nThreads=", 
-             "global-tag=", "lfn=", "alcarecos=", "PhysicsSkims=", "dqmSeq=", "isRepacked", "isNotRepacked" ]
+    valid = ["scenario=", "reco", "aod", "miniaod", "nanoaod", "dqm", "dqmio", "no-output", "nThreads=", 
+             "global-tag=", "lfn=", "nanoFlavours=", "alcarecos=", "PhysicsSkims=", "dqmSeq=", "isRepacked", "isNotRepacked" ]
     usage = \
 """
 RunPromptReco.py <options>
@@ -153,20 +161,22 @@ Where options are:
  --reco (to enable RECO output)
  --aod (to enable AOD output)
  --miniaod (to enable MiniAOD output)
+ --nanoaod (to enable NanoAOD output)
+ --nanoFlavours=flavour_plus_separated_list
  --dqm (to enable DQM output)
  --dqmio (to enable DQMIO output)
  --isRepacked --isNotRepacked (to override default repacked flags)
  --no-output (create config with no output, overrides other settings)
  --global-tag=GlobalTag
  --lfn=/store/input/lfn
- --alcarecos=alcareco_plus_seprated_list
- --PhysicsSkims=skim_plus_seprated_list
+ --alcarecos=alcareco_plus_separated_list
+ --PhysicsSkims=skim_plus_separated_list
  --dqmSeq=dqmSeq_plus_separated_list
  --nThreads=Number_of_cores_or_Threads_used
 Example:
 python RunPromptReco.py --scenario=cosmics --reco --aod --dqmio --global-tag GLOBALTAG --lfn=/store/whatever --alcarecos=TkAlCosmics0T+MuAlGlobalCosmics
 python RunPromptReco.py --scenario=pp --reco --aod --dqmio --global-tag GLOBALTAG --lfn=/store/whatever --alcarecos=TkAlMinBias+SiStripCalMinBias
-python RunPromptReco.py --scenario=ppEra_Run2_2016 --reco --aod --dqmio --global-tag GLOBALTAG --lfn=/store/whatever --alcarecos=TkAlMinBias+SiStripCalMinBias --PhysicsSkims=@SingleMuon
+python RunPromptReco.py --scenario=ppEra_Run2_2016 --reco --aod --miniaod --nanoaod --dqmio --global-tag GLOBALTAG --lfn=/store/whatever --nanoFlavours=@MUPOG --alcarecos=TkAlMinBias+SiStripCalMinBias --PhysicsSkims=@SingleMuon
 """
     try:
         opts, args = getopt.getopt(sys.argv[1:], "", valid)
@@ -187,6 +197,8 @@ python RunPromptReco.py --scenario=ppEra_Run2_2016 --reco --aod --dqmio --global
             recoinator.writeAOD = True
         if opt == "--miniaod":
             recoinator.writeMINIAOD = True
+        if opt == "--nanoaod":
+            recoinator.writeNANOAOD = True
         if opt == "--dqm":
             recoinator.writeDQM = True
         if opt == "--dqmio":
@@ -199,6 +211,8 @@ python RunPromptReco.py --scenario=ppEra_Run2_2016 --reco --aod --dqmio --global
             recoinator.globalTag = arg
         if opt == "--lfn" :
             recoinator.inputLFN = arg
+        if opt == "--nanoFlavours":
+            recoinator.nanoFlavours = [ x for x in arg.split('+') if len(x) > 0 ]
         if opt == "--alcarecos":
             recoinator.alcaRecos = [ x for x in arg.split('+') if len(x) > 0 ]
         if opt == "--PhysicsSkims":

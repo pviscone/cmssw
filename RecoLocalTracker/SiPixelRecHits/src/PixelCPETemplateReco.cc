@@ -3,7 +3,6 @@
 
 // Geometry services
 #include "Geometry/CommonDetUnit/interface/PixelGeomDetUnit.h"
-#include "Geometry/TrackerGeometryBuilder/interface/RectangularPixelTopology.h"
 
 //#define DEBUG
 
@@ -45,6 +44,7 @@ PixelCPETemplateReco::PixelCPETemplateReco(edm::ParameterSet const& conf,
                                            const TrackerGeometry& geom,
                                            const TrackerTopology& ttopo,
                                            const SiPixelLorentzAngle* lorentzAngle,
+                                           const std::vector<SiPixelTemplateStore>* templateStore,
                                            const SiPixelTemplateDBObject* templateDBobject)
     : PixelCPEBase(conf, mag, geom, ttopo, lorentzAngle, nullptr, templateDBobject, nullptr, 1) {
   //cout << endl;
@@ -62,24 +62,20 @@ PixelCPETemplateReco::PixelCPETemplateReco(edm::ParameterSet const& conf,
 
   if (LoadTemplatesFromDB_) {
     //cout << "PixelCPETemplateReco: Loading templates from database (DB) --------- " << endl;
-
-    // Initialize template store to the selected ID [Morris, 6/25/08]
-    if (!SiPixelTemplate::pushfile(*templateDBobject_, thePixelTemp_))
-      throw cms::Exception("PixelCPETemplateReco")
-          << "\nERROR: Templates not filled correctly. Check the sqlite file. Using SiPixelTemplateDBObject version "
-          << (*templateDBobject_).version() << "\n\n";
+    thePixelTemp_ = templateStore;
   } else {
     //cout << "PixelCPETemplateReco : Loading templates for barrel and forward from ASCII files ----------" << endl;
     barrelTemplateID_ = conf.getParameter<int>("barrelTemplateID");
     forwardTemplateID_ = conf.getParameter<int>("forwardTemplateID");
     templateDir_ = conf.getParameter<int>("directoryWithTemplates");
 
-    if (!SiPixelTemplate::pushfile(barrelTemplateID_, thePixelTemp_, templateDir_))
+    thePixelTemp_ = &thePixelTempCache_;
+    if (!SiPixelTemplate::pushfile(barrelTemplateID_, thePixelTempCache_, templateDir_))
       throw cms::Exception("PixelCPETemplateReco")
           << "\nERROR: Template ID " << barrelTemplateID_
           << " not loaded correctly from text file. Reconstruction will fail.\n\n";
 
-    if (!SiPixelTemplate::pushfile(forwardTemplateID_, thePixelTemp_, templateDir_))
+    if (!SiPixelTemplate::pushfile(forwardTemplateID_, thePixelTempCache_, templateDir_))
       throw cms::Exception("PixelCPETemplateReco")
           << "\nERROR: Template ID " << forwardTemplateID_
           << " not loaded correctly from text file. Reconstruction will fail.\n\n";
@@ -129,7 +125,7 @@ LocalPoint PixelCPETemplateReco::localPosition(DetParam const& theDetParam, Clus
   }
   //cout << "PixelCPETemplateReco : ID = " << ID << endl;
 
-  SiPixelTemplate templ(thePixelTemp_);
+  SiPixelTemplate templ(*thePixelTemp_);
 
   // Preparing to retrieve ADC counts from the SiPixeltheClusterParam.theCluster->  In the cluster,
   // we have the following:
@@ -209,11 +205,11 @@ LocalPoint PixelCPETemplateReco::localPosition(DetParam const& theDetParam, Clus
   bool xdouble[mrow], ydouble[mcol];
   // x directions (shorter), rows
   for (int irow = 0; irow < mrow; ++irow)
-    xdouble[irow] = theDetParam.theRecTopol->isItBigPixelInX(irow + row_offset);
+    xdouble[irow] = theDetParam.theTopol->isItBigPixelInX(irow + row_offset);
 
   // y directions (longer), columns
   for (int icol = 0; icol < mcol; ++icol)
-    ydouble[icol] = theDetParam.theRecTopol->isItBigPixelInY(icol + col_offset);
+    ydouble[icol] = theDetParam.theTopol->isItBigPixelInY(icol + col_offset);
 
   SiPixelTemplateReco::ClusMatrix clusterPayload{&clustMatrix[0][0], xdouble, ydouble, mrow, mcol};
 
@@ -388,7 +384,7 @@ LocalPoint PixelCPETemplateReco::localPosition(DetParam const& theDetParam, Clus
         //   <<" "<<theDetParam.lorentzShiftInCmY
         //   << endl; //dk
       }  //else {cout<<" LA is 0, disable offset corrections "<<endl;} //dk
-    }    //else {cout<<" Do not do LA offset correction "<<endl;} //dk
+    }  //else {cout<<" Do not do LA offset correction "<<endl;} //dk
   }
 
   // Save probabilities and qBin in the quantities given to us by the base class
@@ -444,10 +440,10 @@ LocalError PixelCPETemplateReco::localError(DetParam const& theDetParam, Cluster
     int minPixelRow = theClusterParam.theCluster->minPixelRow();
 
     //--- Are we near either of the edges?
-    bool edgex = (theDetParam.theRecTopol->isItEdgePixelInX(minPixelRow) ||
-                  theDetParam.theRecTopol->isItEdgePixelInX(maxPixelRow));
-    bool edgey = (theDetParam.theRecTopol->isItEdgePixelInY(minPixelCol) ||
-                  theDetParam.theRecTopol->isItEdgePixelInY(maxPixelCol));
+    bool edgex =
+        (theDetParam.theTopol->isItEdgePixelInX(minPixelRow) || theDetParam.theTopol->isItEdgePixelInX(maxPixelRow));
+    bool edgey =
+        (theDetParam.theTopol->isItEdgePixelInY(minPixelCol) || theDetParam.theTopol->isItEdgePixelInY(maxPixelCol));
 
     if (theClusterParam.ierr != 0) {
       // If reconstruction fails the hit position is calculated from cluster center of gravity

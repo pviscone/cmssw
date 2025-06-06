@@ -13,14 +13,14 @@
 #include "FWCore/Framework/test/DepOn2Record.h"
 #include "FWCore/Framework/test/DummyFinder.h"
 #include "FWCore/Framework/test/DummyData.h"
-#include "FWCore/Framework/test/DummyProxyProvider.h"
+#include "FWCore/Framework/test/DummyESProductResolverProvider.h"
 #include "FWCore/Framework/interface/DependentRecordIntervalFinder.h"
 #include "FWCore/Framework/interface/EventSetupImpl.h"
 #include "FWCore/Framework/interface/EventSetupProvider.h"
 #include "FWCore/Framework/interface/EventSetup.h"
-#include "FWCore/Framework/interface/DataProxyProvider.h"
-#include "FWCore/Framework/interface/DataProxyTemplate.h"
-#include "FWCore/Framework/interface/ESRecordsToProxyIndices.h"
+#include "FWCore/Framework/interface/ESProductResolverProvider.h"
+#include "FWCore/Framework/interface/ESProductResolverTemplate.h"
+#include "FWCore/Framework/interface/ESRecordsToProductResolverIndices.h"
 #include "FWCore/Framework/interface/EDConsumerBase.h"
 #include "FWCore/Framework/interface/EventSetupRecordIntervalFinder.h"
 #include "FWCore/Framework/interface/EventSetupRecordProvider.h"
@@ -32,6 +32,7 @@
 #include "FWCore/ServiceRegistry/interface/ESParentContext.h"
 #include "FWCore/Utilities/interface/propagate_const.h"
 #include "FWCore/Concurrency/interface/ThreadsController.h"
+#include "FWCore/Concurrency/interface/FinalWaitingTask.h"
 
 #include "cppunit/extensions/HelperMacros.h"
 
@@ -119,29 +120,30 @@ namespace {
 
   edm::ActivityRegistry activityRegistry;
 
-  class DummyProxyProvider : public edm::eventsetup::DataProxyProvider {
+  class DummyESProductResolverProvider : public edm::eventsetup::ESProductResolverProvider {
   public:
-    DummyProxyProvider() { usingRecord<DummyRecord>(); }
+    DummyESProductResolverProvider() { usingRecord<DummyRecord>(); }
 
   protected:
-    KeyedProxiesVector registerProxies(const EventSetupRecordKey&, unsigned int /* iovIndex */) override {
-      return KeyedProxiesVector();
+    KeyedResolversVector registerResolvers(const EventSetupRecordKey&, unsigned int /* iovIndex */) override {
+      return KeyedResolversVector();
     }
   };
 
-  class DepRecordProxyProvider : public edm::eventsetup::DataProxyProvider {
+  class DepRecordResolverProvider : public edm::eventsetup::ESProductResolverProvider {
   public:
-    DepRecordProxyProvider() { usingRecord<DepRecord>(); }
+    DepRecordResolverProvider() { usingRecord<DepRecord>(); }
 
   protected:
-    KeyedProxiesVector registerProxies(const EventSetupRecordKey&, unsigned int /* iovIndex */) override {
-      return KeyedProxiesVector();
+    KeyedResolversVector registerResolvers(const EventSetupRecordKey&, unsigned int /* iovIndex */) override {
+      return KeyedResolversVector();
     }
   };
 
-  class WorkingDepRecordProxy : public edm::eventsetup::DataProxyTemplate<DepRecord, edm::eventsetup::test::DummyData> {
+  class WorkingDepRecordResolver
+      : public edm::eventsetup::ESProductResolverTemplate<DepRecord, edm::eventsetup::test::DummyData> {
   public:
-    WorkingDepRecordProxy(const edm::eventsetup::test::DummyData* iDummy) : data_(iDummy) {}
+    WorkingDepRecordResolver(const edm::eventsetup::test::DummyData* iDummy) : data_(iDummy) {}
 
   protected:
     const value_type* make(const record_type&, const DataKey&) final { return data_; }
@@ -151,33 +153,33 @@ namespace {
     const edm::eventsetup::test::DummyData* data_;
   };
 
-  class DepRecordProxyProviderWithData : public edm::eventsetup::DataProxyProvider {
+  class DepRecordResolverProviderWithData : public edm::eventsetup::ESProductResolverProvider {
   public:
-    DepRecordProxyProviderWithData(const edm::eventsetup::test::DummyData& iData = edm::eventsetup::test::DummyData())
+    DepRecordResolverProviderWithData(const edm::eventsetup::test::DummyData& iData = edm::eventsetup::test::DummyData())
         : dummy_(iData) {
       usingRecord<DepRecord>();
     }
 
   protected:
-    KeyedProxiesVector registerProxies(const EventSetupRecordKey&, unsigned int /* iovIndex */) override {
-      KeyedProxiesVector keyedProxiesVector;
-      std::shared_ptr<WorkingDepRecordProxy> pProxy = std::make_shared<WorkingDepRecordProxy>(&dummy_);
+    KeyedResolversVector registerResolvers(const EventSetupRecordKey&, unsigned int /* iovIndex */) override {
+      KeyedResolversVector keyedResolversVector;
+      std::shared_ptr<WorkingDepRecordResolver> pResolver = std::make_shared<WorkingDepRecordResolver>(&dummy_);
       edm::eventsetup::DataKey dataKey(edm::eventsetup::DataKey::makeTypeTag<edm::eventsetup::test::DummyData>(), "");
-      keyedProxiesVector.emplace_back(dataKey, pProxy);
-      return keyedProxiesVector;
+      keyedResolversVector.emplace_back(dataKey, pResolver);
+      return keyedResolversVector;
     }
 
   private:
     edm::eventsetup::test::DummyData dummy_;
   };
 
-  class DepOn2RecordProxyProvider : public edm::eventsetup::DataProxyProvider {
+  class DepOn2RecordResolverProvider : public edm::eventsetup::ESProductResolverProvider {
   public:
-    DepOn2RecordProxyProvider() { usingRecord<DepOn2Record>(); }
+    DepOn2RecordResolverProvider() { usingRecord<DepOn2Record>(); }
 
   protected:
-    KeyedProxiesVector registerProxies(const EventSetupRecordKey&, unsigned int /* iovIndex */) override {
-      return KeyedProxiesVector();
+    KeyedResolversVector registerResolvers(const EventSetupRecordKey&, unsigned int /* iovIndex */) override {
+      return KeyedResolversVector();
     }
   };
 
@@ -592,7 +594,8 @@ void testdependentrecord::timeAndRunTest() {
     SynchronousEventSetupsController controller;
     EventSetupProvider& provider = *controller.makeProvider(pset, &activityRegistry);
 
-    std::shared_ptr<edm::eventsetup::DataProxyProvider> dummyProv = std::make_shared<DummyProxyProvider>();
+    std::shared_ptr<edm::eventsetup::ESProductResolverProvider> dummyProv =
+        std::make_shared<DummyESProductResolverProvider>();
     provider.add(dummyProv);
 
     std::shared_ptr<DummyFinder> dummyFinder = std::make_shared<DummyFinder>();
@@ -600,7 +603,8 @@ void testdependentrecord::timeAndRunTest() {
         edm::ValidityInterval(edm::IOVSyncValue(edm::EventID(1, 1, 1)), edm::IOVSyncValue(edm::EventID(1, 1, 5))));
     provider.add(std::shared_ptr<edm::EventSetupRecordIntervalFinder>(dummyFinder));
 
-    std::shared_ptr<edm::eventsetup::DataProxyProvider> depProv = std::make_shared<DepOn2RecordProxyProvider>();
+    std::shared_ptr<edm::eventsetup::ESProductResolverProvider> depProv =
+        std::make_shared<DepOn2RecordResolverProvider>();
     provider.add(depProv);
 
     std::shared_ptr<Dummy2RecordFinder> dummy2Finder = std::make_shared<Dummy2RecordFinder>();
@@ -648,7 +652,8 @@ void testdependentrecord::timeAndRunTest() {
     SynchronousEventSetupsController controller;
     EventSetupProvider& provider = *controller.makeProvider(pset, &activityRegistry);
 
-    std::shared_ptr<edm::eventsetup::DataProxyProvider> dummyProv = std::make_shared<DummyProxyProvider>();
+    std::shared_ptr<edm::eventsetup::ESProductResolverProvider> dummyProv =
+        std::make_shared<DummyESProductResolverProvider>();
     provider.add(dummyProv);
 
     std::shared_ptr<DummyFinder> dummyFinder = std::make_shared<DummyFinder>();
@@ -656,7 +661,8 @@ void testdependentrecord::timeAndRunTest() {
         edm::ValidityInterval(edm::IOVSyncValue(edm::EventID(1, 1, 1)), edm::IOVSyncValue::invalidIOVSyncValue()));
     provider.add(std::shared_ptr<edm::EventSetupRecordIntervalFinder>(dummyFinder));
 
-    std::shared_ptr<edm::eventsetup::DataProxyProvider> depProv = std::make_shared<DepOn2RecordProxyProvider>();
+    std::shared_ptr<edm::eventsetup::ESProductResolverProvider> depProv =
+        std::make_shared<DepOn2RecordResolverProvider>();
     provider.add(depProv);
 
     std::shared_ptr<Dummy2RecordFinder> dummy2Finder = std::make_shared<Dummy2RecordFinder>();
@@ -718,7 +724,8 @@ void testdependentrecord::getTest() {
   edm::ParameterSet pset = createDummyPset();
   EventSetupProvider& provider = *controller.makeProvider(pset, &activityRegistry);
 
-  std::shared_ptr<edm::eventsetup::DataProxyProvider> dummyProv = std::make_shared<DummyProxyProvider>();
+  std::shared_ptr<edm::eventsetup::ESProductResolverProvider> dummyProv =
+      std::make_shared<DummyESProductResolverProvider>();
   provider.add(dummyProv);
 
   std::shared_ptr<DummyFinder> dummyFinder = std::make_shared<DummyFinder>();
@@ -726,7 +733,7 @@ void testdependentrecord::getTest() {
       edm::ValidityInterval(edm::IOVSyncValue(edm::EventID(1, 1, 1)), edm::IOVSyncValue(edm::EventID(1, 1, 3))));
   provider.add(std::shared_ptr<edm::EventSetupRecordIntervalFinder>(dummyFinder));
 
-  std::shared_ptr<edm::eventsetup::DataProxyProvider> depProv = std::make_shared<DepRecordProxyProvider>();
+  std::shared_ptr<edm::eventsetup::ESProductResolverProvider> depProv = std::make_shared<DepRecordResolverProvider>();
   provider.add(depProv);
   edm::ESParentContext parentC;
   {
@@ -754,21 +761,16 @@ namespace {
 
     void prefetch(edm::EventSetupImpl const& iImpl) const {
       auto const& recs = this->esGetTokenRecordIndicesVector(edm::Transition::Event);
-      auto const& proxies = this->esGetTokenIndicesVector(edm::Transition::Event);
-      for (size_t i = 0; i != proxies.size(); ++i) {
+      auto const& resolvers = this->esGetTokenIndicesVector(edm::Transition::Event);
+      for (size_t i = 0; i != resolvers.size(); ++i) {
         auto rec = iImpl.findImpl(recs[i]);
         if (rec) {
-          edm::FinalWaitingTask waitTask;
           oneapi::tbb::task_group group;
+          edm::FinalWaitingTask waitTask{group};
           edm::ServiceToken token;
           rec->prefetchAsync(
-              edm::WaitingTaskHolder(group, &waitTask), proxies[i], &iImpl, token, edm::ESParentContext{});
-          do {
-            group.wait();
-          } while (not waitTask.done());
-          if (waitTask.exceptionPtr()) {
-            std::rethrow_exception(*waitTask.exceptionPtr());
-          }
+              edm::WaitingTaskHolder(group, &waitTask), resolvers[i], &iImpl, token, edm::ESParentContext{});
+          waitTask.wait();
         }
       }
     }
@@ -783,21 +785,16 @@ namespace {
 
     void prefetch(edm::EventSetupImpl const& iImpl) const {
       auto const& recs = this->esGetTokenRecordIndicesVector(edm::Transition::Event);
-      auto const& proxies = this->esGetTokenIndicesVector(edm::Transition::Event);
-      for (size_t i = 0; i != proxies.size(); ++i) {
+      auto const& resolvers = this->esGetTokenIndicesVector(edm::Transition::Event);
+      for (size_t i = 0; i != resolvers.size(); ++i) {
         auto rec = iImpl.findImpl(recs[i]);
         if (rec) {
-          edm::FinalWaitingTask waitTask;
           oneapi::tbb::task_group group;
+          edm::FinalWaitingTask waitTask{group};
           edm::ServiceToken token;
           rec->prefetchAsync(
-              edm::WaitingTaskHolder(group, &waitTask), proxies[i], &iImpl, token, edm::ESParentContext{});
-          do {
-            group.wait();
-          } while (not waitTask.done());
-          if (waitTask.exceptionPtr()) {
-            std::rethrow_exception(*waitTask.exceptionPtr());
-          }
+              edm::WaitingTaskHolder(group, &waitTask), resolvers[i], &iImpl, token, edm::ESParentContext{});
+          waitTask.wait();
         }
       }
     }
@@ -809,7 +806,7 @@ namespace {
 
 void testdependentrecord::getDataWithESGetTokenTest() {
   using edm::eventsetup::test::DummyData;
-  using edm::eventsetup::test::DummyProxyProvider;
+  using edm::eventsetup::test::DummyESProductResolverProvider;
   DummyData kGood{1};
   DummyData kBad{0};
 
@@ -819,23 +816,23 @@ void testdependentrecord::getDataWithESGetTokenTest() {
 
   try {
     {
-      edm::eventsetup::ComponentDescription description("DummyProxyProvider", "testOne", 0, true);
+      edm::eventsetup::ComponentDescription description("DummyESProductResolverProvider", "testOne", 0, true);
       edm::ParameterSet ps;
       ps.addParameter<std::string>("name", "test11");
       ps.registerIt();
       description.pid_ = ps.id();
-      auto dummyProv = std::make_shared<DummyProxyProvider>(kBad);
+      auto dummyProv = std::make_shared<DummyESProductResolverProvider>(kBad);
       dummyProv->setDescription(description);
       provider.add(dummyProv);
     }
     {
-      edm::eventsetup::ComponentDescription description("DepRecordProxyProviderWithData", "testTwo", 1, true);
+      edm::eventsetup::ComponentDescription description("DepRecordResolverProviderWithData", "testTwo", 1, true);
       edm::ParameterSet ps;
       ps.addParameter<std::string>("name", "test22");
       ps.addParameter<std::string>("appendToDataLabel", "blah");
       ps.registerIt();
       description.pid_ = ps.id();
-      auto dummyProv = std::make_shared<DepRecordProxyProviderWithData>(kGood);
+      auto dummyProv = std::make_shared<DepRecordResolverProviderWithData>(kGood);
       dummyProv->setDescription(description);
       dummyProv->setAppendToDataLabel(ps);
       provider.add(dummyProv);
@@ -850,7 +847,7 @@ void testdependentrecord::getDataWithESGetTokenTest() {
     edm::ESParentContext parentC;
     {
       DummyDataConsumer<DepRecord> consumer{edm::ESInputTag{"", "blah"}};
-      consumer.updateLookup(provider.recordsToProxyIndices());
+      consumer.updateLookup(provider.recordsToResolverIndices());
       consumer.prefetch(provider.eventSetupImpl());
       const edm::EventSetup eventSetup{provider.eventSetupImpl(),
                                        static_cast<unsigned int>(edm::Transition::Event),
@@ -861,7 +858,7 @@ void testdependentrecord::getDataWithESGetTokenTest() {
     }
     {
       DummyDataConsumer<DummyRecord> consumer{edm::ESInputTag{"", ""}};
-      consumer.updateLookup(provider.recordsToProxyIndices());
+      consumer.updateLookup(provider.recordsToResolverIndices());
       consumer.prefetch(provider.eventSetupImpl());
       const edm::EventSetup eventSetup{provider.eventSetupImpl(),
                                        static_cast<unsigned int>(edm::Transition::Event),
@@ -872,7 +869,7 @@ void testdependentrecord::getDataWithESGetTokenTest() {
     }
     {
       DummyDataConsumer<DepRecord> consumer{edm::ESInputTag{"", "blah"}};
-      consumer.updateLookup(provider.recordsToProxyIndices());
+      consumer.updateLookup(provider.recordsToResolverIndices());
       consumer.prefetch(provider.eventSetupImpl());
       const edm::EventSetup eventSetup{provider.eventSetupImpl(),
                                        static_cast<unsigned int>(edm::Transition::Event),
@@ -884,7 +881,7 @@ void testdependentrecord::getDataWithESGetTokenTest() {
     }
     {
       DummyDataConsumer<DummyRecord> consumer{edm::ESInputTag{"", ""}};
-      consumer.updateLookup(provider.recordsToProxyIndices());
+      consumer.updateLookup(provider.recordsToResolverIndices());
       consumer.prefetch(provider.eventSetupImpl());
       const edm::EventSetup eventSetup{provider.eventSetupImpl(),
                                        static_cast<unsigned int>(edm::Transition::Event),
@@ -897,7 +894,7 @@ void testdependentrecord::getDataWithESGetTokenTest() {
     }
     {
       DummyDataConsumer<DepRecord> consumer{edm::ESInputTag{"", "blah"}};
-      consumer.updateLookup(provider.recordsToProxyIndices());
+      consumer.updateLookup(provider.recordsToResolverIndices());
       consumer.prefetch(provider.eventSetupImpl());
       const edm::EventSetup eventSetup{provider.eventSetupImpl(),
                                        static_cast<unsigned int>(edm::Transition::Event),
@@ -910,7 +907,7 @@ void testdependentrecord::getDataWithESGetTokenTest() {
     }
     {
       DummyDataConsumer2<DummyRecord, DepRecord> consumer{edm::ESInputTag{"", ""}, edm::ESInputTag{"", "blah"}};
-      consumer.updateLookup(provider.recordsToProxyIndices());
+      consumer.updateLookup(provider.recordsToResolverIndices());
       consumer.prefetch(provider.eventSetupImpl());
       const edm::EventSetup eventSetup{provider.eventSetupImpl(),
                                        static_cast<unsigned int>(edm::Transition::Event),
@@ -926,7 +923,7 @@ void testdependentrecord::getDataWithESGetTokenTest() {
     }
     {
       DummyDataConsumer<DummyRecord> consumer{edm::ESInputTag{"DoesNotExist", ""}};
-      consumer.updateLookup(provider.recordsToProxyIndices());
+      consumer.updateLookup(provider.recordsToResolverIndices());
       consumer.prefetch(provider.eventSetupImpl());
       const edm::EventSetup eventSetup{provider.eventSetupImpl(),
                                        static_cast<unsigned int>(edm::Transition::Event),
@@ -938,7 +935,7 @@ void testdependentrecord::getDataWithESGetTokenTest() {
     }
     {
       DummyDataConsumer<DepRecord> consumer{edm::ESInputTag{"DoesNotExist", "blah"}};
-      consumer.updateLookup(provider.recordsToProxyIndices());
+      consumer.updateLookup(provider.recordsToResolverIndices());
       consumer.prefetch(provider.eventSetupImpl());
       const edm::EventSetup eventSetup{provider.eventSetupImpl(),
                                        static_cast<unsigned int>(edm::Transition::Event),
@@ -956,7 +953,7 @@ void testdependentrecord::getDataWithESGetTokenTest() {
 
 void testdependentrecord::getHandleWithESGetTokenTest() {
   using edm::eventsetup::test::DummyData;
-  using edm::eventsetup::test::DummyProxyProvider;
+  using edm::eventsetup::test::DummyESProductResolverProvider;
   DummyData kGood{1};
   DummyData kBad{0};
 
@@ -966,23 +963,23 @@ void testdependentrecord::getHandleWithESGetTokenTest() {
 
   try {
     {
-      edm::eventsetup::ComponentDescription description("DummyProxyProvider", "testOne", 0, true);
+      edm::eventsetup::ComponentDescription description("DummyESProductResolverProvider", "testOne", 0, true);
       edm::ParameterSet ps;
       ps.addParameter<std::string>("name", "test11");
       ps.registerIt();
       description.pid_ = ps.id();
-      auto dummyProv = std::make_shared<DummyProxyProvider>(kBad);
+      auto dummyProv = std::make_shared<DummyESProductResolverProvider>(kBad);
       dummyProv->setDescription(description);
       provider.add(dummyProv);
     }
     {
-      edm::eventsetup::ComponentDescription description("DepRecordProxyProviderWithData", "testTwo", 1, true);
+      edm::eventsetup::ComponentDescription description("DepRecordResolverProviderWithData", "testTwo", 1, true);
       edm::ParameterSet ps;
       ps.addParameter<std::string>("name", "test22");
       ps.addParameter<std::string>("appendToDataLabel", "blah");
       ps.registerIt();
       description.pid_ = ps.id();
-      auto dummyProv = std::make_shared<DepRecordProxyProviderWithData>(kGood);
+      auto dummyProv = std::make_shared<DepRecordResolverProviderWithData>(kGood);
       dummyProv->setDescription(description);
       dummyProv->setAppendToDataLabel(ps);
       provider.add(dummyProv);
@@ -997,7 +994,7 @@ void testdependentrecord::getHandleWithESGetTokenTest() {
     edm::ESParentContext parentC;
     {
       DummyDataConsumer<DepRecord> consumer{edm::ESInputTag{"", "blah"}};
-      consumer.updateLookup(provider.recordsToProxyIndices());
+      consumer.updateLookup(provider.recordsToResolverIndices());
       consumer.prefetch(provider.eventSetupImpl());
       const edm::EventSetup eventSetup{provider.eventSetupImpl(),
                                        static_cast<unsigned int>(edm::Transition::Event),
@@ -1010,7 +1007,7 @@ void testdependentrecord::getHandleWithESGetTokenTest() {
     }
     {
       DummyDataConsumer<DummyRecord> consumer{edm::ESInputTag{"", ""}};
-      consumer.updateLookup(provider.recordsToProxyIndices());
+      consumer.updateLookup(provider.recordsToResolverIndices());
       consumer.prefetch(provider.eventSetupImpl());
       const edm::EventSetup eventSetup{provider.eventSetupImpl(),
                                        static_cast<unsigned int>(edm::Transition::Event),
@@ -1023,7 +1020,7 @@ void testdependentrecord::getHandleWithESGetTokenTest() {
     }
     {
       DummyDataConsumer<DepRecord> consumer{edm::ESInputTag{"", "blah"}};
-      consumer.updateLookup(provider.recordsToProxyIndices());
+      consumer.updateLookup(provider.recordsToResolverIndices());
       consumer.prefetch(provider.eventSetupImpl());
       const edm::EventSetup eventSetup{provider.eventSetupImpl(),
                                        static_cast<unsigned int>(edm::Transition::Event),
@@ -1038,7 +1035,7 @@ void testdependentrecord::getHandleWithESGetTokenTest() {
     }
     {
       DummyDataConsumer<DummyRecord> consumer{edm::ESInputTag{"", ""}};
-      consumer.updateLookup(provider.recordsToProxyIndices());
+      consumer.updateLookup(provider.recordsToResolverIndices());
       consumer.prefetch(provider.eventSetupImpl());
       const edm::EventSetup eventSetup{provider.eventSetupImpl(),
                                        static_cast<unsigned int>(edm::Transition::Event),
@@ -1053,7 +1050,7 @@ void testdependentrecord::getHandleWithESGetTokenTest() {
     }
     {
       DummyDataConsumer<DepRecord> consumer{edm::ESInputTag{"", "blah"}};
-      consumer.updateLookup(provider.recordsToProxyIndices());
+      consumer.updateLookup(provider.recordsToResolverIndices());
       consumer.prefetch(provider.eventSetupImpl());
       const edm::EventSetup eventSetup{provider.eventSetupImpl(),
                                        static_cast<unsigned int>(edm::Transition::Event),
@@ -1068,7 +1065,7 @@ void testdependentrecord::getHandleWithESGetTokenTest() {
     }
     {
       DummyDataConsumer2<DummyRecord, DepRecord> consumer{edm::ESInputTag{"", ""}, edm::ESInputTag{"", "blah"}};
-      consumer.updateLookup(provider.recordsToProxyIndices());
+      consumer.updateLookup(provider.recordsToResolverIndices());
       consumer.prefetch(provider.eventSetupImpl());
       const edm::EventSetup eventSetup{provider.eventSetupImpl(),
                                        static_cast<unsigned int>(edm::Transition::Event),
@@ -1088,7 +1085,7 @@ void testdependentrecord::getHandleWithESGetTokenTest() {
     }
     {
       DummyDataConsumer<DummyRecord> consumer{edm::ESInputTag{"DoesNotExist", ""}};
-      consumer.updateLookup(provider.recordsToProxyIndices());
+      consumer.updateLookup(provider.recordsToResolverIndices());
       consumer.prefetch(provider.eventSetupImpl());
       const edm::EventSetup eventSetup{provider.eventSetupImpl(),
                                        static_cast<unsigned int>(edm::Transition::Event),
@@ -1101,7 +1098,7 @@ void testdependentrecord::getHandleWithESGetTokenTest() {
     }
     {
       DummyDataConsumer<DepRecord> consumer{edm::ESInputTag{"DoesNotExist", "blah"}};
-      consumer.updateLookup(provider.recordsToProxyIndices());
+      consumer.updateLookup(provider.recordsToResolverIndices());
       consumer.prefetch(provider.eventSetupImpl());
       const edm::EventSetup eventSetup{provider.eventSetupImpl(),
                                        static_cast<unsigned int>(edm::Transition::Event),
@@ -1120,7 +1117,7 @@ void testdependentrecord::getHandleWithESGetTokenTest() {
 
 void testdependentrecord::getTransientHandleWithESGetTokenTest() {
   using edm::eventsetup::test::DummyData;
-  using edm::eventsetup::test::DummyProxyProvider;
+  using edm::eventsetup::test::DummyESProductResolverProvider;
   DummyData kGood{1};
   DummyData kBad{0};
 
@@ -1130,23 +1127,23 @@ void testdependentrecord::getTransientHandleWithESGetTokenTest() {
 
   try {
     {
-      edm::eventsetup::ComponentDescription description("DummyProxyProvider", "testOne", 0, true);
+      edm::eventsetup::ComponentDescription description("DummyESProductResolverProvider", "testOne", 0, true);
       edm::ParameterSet ps;
       ps.addParameter<std::string>("name", "test11");
       ps.registerIt();
       description.pid_ = ps.id();
-      auto dummyProv = std::make_shared<DummyProxyProvider>(kBad);
+      auto dummyProv = std::make_shared<DummyESProductResolverProvider>(kBad);
       dummyProv->setDescription(description);
       provider.add(dummyProv);
     }
     {
-      edm::eventsetup::ComponentDescription description("DepRecordProxyProviderWithData", "testTwo", 1, true);
+      edm::eventsetup::ComponentDescription description("DepRecordResolverProviderWithData", "testTwo", 1, true);
       edm::ParameterSet ps;
       ps.addParameter<std::string>("name", "test22");
       ps.addParameter<std::string>("appendToDataLabel", "blah");
       ps.registerIt();
       description.pid_ = ps.id();
-      auto dummyProv = std::make_shared<DepRecordProxyProviderWithData>(kGood);
+      auto dummyProv = std::make_shared<DepRecordResolverProviderWithData>(kGood);
       dummyProv->setDescription(description);
       dummyProv->setAppendToDataLabel(ps);
       provider.add(dummyProv);
@@ -1160,7 +1157,7 @@ void testdependentrecord::getTransientHandleWithESGetTokenTest() {
     edm::ESParentContext parentC;
     {
       DummyDataConsumer<DepRecord> consumer{edm::ESInputTag{"", "blah"}};
-      consumer.updateLookup(provider.recordsToProxyIndices());
+      consumer.updateLookup(provider.recordsToResolverIndices());
       consumer.prefetch(provider.eventSetupImpl());
       const edm::EventSetup eventSetup{provider.eventSetupImpl(),
                                        static_cast<unsigned int>(edm::Transition::Event),
@@ -1173,7 +1170,7 @@ void testdependentrecord::getTransientHandleWithESGetTokenTest() {
     }
     {
       DummyDataConsumer<DummyRecord> consumer{edm::ESInputTag{"", ""}};
-      consumer.updateLookup(provider.recordsToProxyIndices());
+      consumer.updateLookup(provider.recordsToResolverIndices());
       consumer.prefetch(provider.eventSetupImpl());
       const edm::EventSetup eventSetup{provider.eventSetupImpl(),
                                        static_cast<unsigned int>(edm::Transition::Event),
@@ -1186,7 +1183,7 @@ void testdependentrecord::getTransientHandleWithESGetTokenTest() {
     }
     {
       DummyDataConsumer<DepRecord> consumer{edm::ESInputTag{"", "blah"}};
-      consumer.updateLookup(provider.recordsToProxyIndices());
+      consumer.updateLookup(provider.recordsToResolverIndices());
       consumer.prefetch(provider.eventSetupImpl());
       const edm::EventSetup eventSetup{provider.eventSetupImpl(),
                                        static_cast<unsigned int>(edm::Transition::Event),
@@ -1201,7 +1198,7 @@ void testdependentrecord::getTransientHandleWithESGetTokenTest() {
     }
     {
       DummyDataConsumer<DummyRecord> consumer{edm::ESInputTag{"", ""}};
-      consumer.updateLookup(provider.recordsToProxyIndices());
+      consumer.updateLookup(provider.recordsToResolverIndices());
       consumer.prefetch(provider.eventSetupImpl());
       const edm::EventSetup eventSetup{provider.eventSetupImpl(),
                                        static_cast<unsigned int>(edm::Transition::Event),
@@ -1216,7 +1213,7 @@ void testdependentrecord::getTransientHandleWithESGetTokenTest() {
     }
     {
       DummyDataConsumer<DepRecord> consumer{edm::ESInputTag{"", "blah"}};
-      consumer.updateLookup(provider.recordsToProxyIndices());
+      consumer.updateLookup(provider.recordsToResolverIndices());
       consumer.prefetch(provider.eventSetupImpl());
       const edm::EventSetup eventSetup{provider.eventSetupImpl(),
                                        static_cast<unsigned int>(edm::Transition::Event),
@@ -1231,7 +1228,7 @@ void testdependentrecord::getTransientHandleWithESGetTokenTest() {
     }
     {
       DummyDataConsumer2<DummyRecord, DepRecord> consumer{edm::ESInputTag{"", ""}, edm::ESInputTag{"", "blah"}};
-      consumer.updateLookup(provider.recordsToProxyIndices());
+      consumer.updateLookup(provider.recordsToResolverIndices());
       consumer.prefetch(provider.eventSetupImpl());
       const edm::EventSetup eventSetup{provider.eventSetupImpl(),
                                        static_cast<unsigned int>(edm::Transition::Event),
@@ -1251,7 +1248,7 @@ void testdependentrecord::getTransientHandleWithESGetTokenTest() {
     }
     {
       DummyDataConsumer<DummyRecord> consumer{edm::ESInputTag{"DoesNotExist", ""}};
-      consumer.updateLookup(provider.recordsToProxyIndices());
+      consumer.updateLookup(provider.recordsToResolverIndices());
       consumer.prefetch(provider.eventSetupImpl());
       const edm::EventSetup eventSetup{provider.eventSetupImpl(),
                                        static_cast<unsigned int>(edm::Transition::Event),
@@ -1265,7 +1262,7 @@ void testdependentrecord::getTransientHandleWithESGetTokenTest() {
     }
     {
       DummyDataConsumer<DepRecord> consumer{edm::ESInputTag{"DoesNotExist", "blah"}};
-      consumer.updateLookup(provider.recordsToProxyIndices());
+      consumer.updateLookup(provider.recordsToResolverIndices());
       consumer.prefetch(provider.eventSetupImpl());
       const edm::EventSetup eventSetup{provider.eventSetupImpl(),
                                        static_cast<unsigned int>(edm::Transition::Event),
@@ -1288,7 +1285,8 @@ void testdependentrecord::oneOfTwoRecordTest() {
   edm::ParameterSet pset = createDummyPset();
   EventSetupProvider& provider = *controller.makeProvider(pset, &activityRegistry);
 
-  std::shared_ptr<edm::eventsetup::DataProxyProvider> dummyProv = std::make_shared<DummyProxyProvider>();
+  std::shared_ptr<edm::eventsetup::ESProductResolverProvider> dummyProv =
+      std::make_shared<DummyESProductResolverProvider>();
   provider.add(dummyProv);
 
   std::shared_ptr<DummyFinder> dummyFinder = std::make_shared<DummyFinder>();
@@ -1296,7 +1294,8 @@ void testdependentrecord::oneOfTwoRecordTest() {
       edm::ValidityInterval(edm::IOVSyncValue(edm::EventID(1, 1, 1)), edm::IOVSyncValue(edm::EventID(1, 1, 3))));
   provider.add(std::shared_ptr<edm::EventSetupRecordIntervalFinder>(dummyFinder));
 
-  std::shared_ptr<edm::eventsetup::DataProxyProvider> depProv = std::make_shared<DepOn2RecordProxyProvider>();
+  std::shared_ptr<edm::eventsetup::ESProductResolverProvider> depProv =
+      std::make_shared<DepOn2RecordResolverProvider>();
   provider.add(depProv);
   {
     edm::ESParentContext parentC;
@@ -1323,7 +1322,8 @@ void testdependentrecord::resetTest() {
   edm::ParameterSet pset = createDummyPset();
   EventSetupProvider& provider = *controller.makeProvider(pset, &activityRegistry);
 
-  std::shared_ptr<edm::eventsetup::DataProxyProvider> dummyProv = std::make_shared<DummyProxyProvider>();
+  std::shared_ptr<edm::eventsetup::ESProductResolverProvider> dummyProv =
+      std::make_shared<DummyESProductResolverProvider>();
   provider.add(dummyProv);
 
   std::shared_ptr<DummyFinder> dummyFinder = std::make_shared<DummyFinder>();
@@ -1331,7 +1331,7 @@ void testdependentrecord::resetTest() {
       edm::ValidityInterval(edm::IOVSyncValue(edm::EventID(1, 1, 1)), edm::IOVSyncValue(edm::EventID(1, 1, 3))));
   provider.add(std::shared_ptr<edm::EventSetupRecordIntervalFinder>(dummyFinder));
 
-  std::shared_ptr<edm::eventsetup::DataProxyProvider> depProv = std::make_shared<DepRecordProxyProvider>();
+  std::shared_ptr<edm::eventsetup::ESProductResolverProvider> depProv = std::make_shared<DepRecordResolverProvider>();
   provider.add(depProv);
   {
     edm::ESParentContext parentC;
@@ -1468,7 +1468,8 @@ void testdependentrecord::extendIOVTest() {
   edm::ParameterSet pset = createDummyPset();
   EventSetupProvider& provider = *controller.makeProvider(pset, &activityRegistry);
 
-  std::shared_ptr<edm::eventsetup::DataProxyProvider> dummyProv = std::make_shared<DummyProxyProvider>();
+  std::shared_ptr<edm::eventsetup::ESProductResolverProvider> dummyProv =
+      std::make_shared<DummyESProductResolverProvider>();
   provider.add(dummyProv);
 
   std::shared_ptr<DummyFinder> dummyFinder = std::make_shared<DummyFinder>();
@@ -1477,7 +1478,8 @@ void testdependentrecord::extendIOVTest() {
   dummyFinder->setInterval(edm::ValidityInterval{startSyncValue, edm::IOVSyncValue{edm::EventID{1, 1, 5}}});
   provider.add(std::shared_ptr<edm::EventSetupRecordIntervalFinder>{dummyFinder});
 
-  std::shared_ptr<edm::eventsetup::DataProxyProvider> depProv = std::make_shared<DepOn2RecordProxyProvider>();
+  std::shared_ptr<edm::eventsetup::ESProductResolverProvider> depProv =
+      std::make_shared<DepOn2RecordResolverProvider>();
   provider.add(depProv);
 
   edm::ESParentContext parentC;

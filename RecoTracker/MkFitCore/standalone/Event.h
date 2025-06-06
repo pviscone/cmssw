@@ -1,9 +1,10 @@
 #ifndef RecoTracker_MkFitCore_standalone_Event_h
 #define RecoTracker_MkFitCore_standalone_Event_h
 
-#include "RecoTracker/MkFitCore/interface/Track.h"
-#include "Validation.h"
 #include "RecoTracker/MkFitCore/interface/Config.h"
+#include "RecoTracker/MkFitCore/interface/Track.h"
+#include "RecoTracker/MkFitCore/interface/BeamSpot.h"
+#include "Validation.h"
 
 #include <mutex>
 
@@ -49,8 +50,21 @@ namespace mkfit {
 
     Validation &validation_;
 
+    // For seed access in deep data dumpers.
+    struct SimLabelFromHits {
+      int n_hits = 0, n_match = 0, label = -1;
+      float good_frac() const { return (float)n_match / n_hits; }
+      bool is_set() const { return label >= 0; }
+    };
+    void setCurrentSeedTracks(const TrackVec &seeds);
+    const Track &currentSeed(int i) const;
+    SimLabelFromHits simLabelForCurrentSeed(int i) const;
+    void resetCurrentSeedTracks();
+
   private:
     int evtID_;
+    const TrackVec *currentSeedTracks_ = nullptr;
+    mutable std::vector<SimLabelFromHits> currentSeedSimFromHits_;
 
   public:
     BeamSpot beamSpot_;  // XXXX Read/Write of BeamSpot + file-version bump or extra-section to be added.
@@ -72,7 +86,7 @@ namespace mkfit {
 
   struct DataFileHeader {
     int f_magic = 0xBEEF;
-    int f_format_version = 6;
+    int f_format_version = 7;  //last update with ph2 geom
     int f_sizeof_track = sizeof(Track);
     int f_sizeof_hit = sizeof(Hit);
     int f_sizeof_hot = sizeof(HitOnTrack);
@@ -111,6 +125,8 @@ namespace mkfit {
     int openRead(const std::string &fname, int expected_n_layers);
     void openWrite(const std::string &fname, int n_layers, int n_ev, int extra_sections = 0);
 
+    void rewind();
+
     int advancePosToNextEvent(FILE *fp);
 
     void skipNEvents(int n_to_skip);
@@ -118,6 +134,8 @@ namespace mkfit {
     void close();
     void CloseWrite(int n_written);  //override nevents in the header and close
   };
+
+  void print(std::string pfx, int itrack, const Track &trk, const Event &ev);
 
 }  // end namespace mkfit
 #endif

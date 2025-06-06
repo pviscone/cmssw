@@ -88,7 +88,6 @@ void RPCPhiEff::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
   float etaGen = 0, phiGen = 0, ptGen = 0;
 
-  int noOfMuons = 0;
   int noOfRecMuons = 0;
   int noOfMatchedRecMuons = 0;
 
@@ -125,7 +124,6 @@ void RPCPhiEff::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
       etaGen = momentum.eta();
       ptGen = momentum.Pt();
       phiGen = momentum.phi();
-      noOfMuons++;
 
       bool matched = false;
       int ptCodeRec = 0;
@@ -173,8 +171,8 @@ void RPCPhiEff::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
                          << ptCodeRec << " " << qual << " " << ghost << std::endl;
             }
           }  // (ptCode != 0)
-        }    // muon cands iter ends
-      }      // barrell/fwd iter ends
+        }  // muon cands iter ends
+      }  // barrell/fwd iter ends
       firstRunForMuonMatchingCnt = false;
       if (!matched) {
         m_outfileR << etaGen << " " << phiGen << " " << ptGen << " " << 0 << " " << 0 << " " << 0 << " " << 0 << " "

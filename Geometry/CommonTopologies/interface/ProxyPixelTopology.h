@@ -23,6 +23,8 @@
 #include "Geometry/CommonTopologies/interface/PixelTopology.h"
 #include "Geometry/CommonTopologies/interface/PixelGeomDetType.h"
 
+#include <memory>
+
 class Plane;
 
 class ProxyPixelTopology final : public PixelTopology {
@@ -61,7 +63,8 @@ public:
   int rocsX() const override { return specificTopology().rocsX(); }
   int rowsperroc() const override { return specificTopology().rowsperroc(); }
   int colsperroc() const override { return specificTopology().colsperroc(); }
-  bool isBricked() const override { return specificTopology().isBricked(); }
+  bool bigpixelsX() const override { return specificTopology().bigpixelsX(); }
+  bool bigpixelsY() const override { return specificTopology().bigpixelsY(); }
   float localX(const float mpX) const override;
   float localX(const float mpX, const Topology::LocalTrackPred &trkPred) const override;
   float localY(const float mpY) const override;
@@ -69,6 +72,8 @@ public:
 
   bool isItBigPixelInX(const int ixbin) const override { return specificTopology().isItBigPixelInX(ixbin); }
   bool isItBigPixelInY(const int iybin) const override { return specificTopology().isItBigPixelInY(iybin); }
+  float pixelFractionInX(int ixbin) const override { return specificTopology().pixelFractionInX(ixbin); }
+  float pixelFractionInY(int iybin) const override { return specificTopology().pixelFractionInY(iybin); }
   bool containsBigPixelInX(int ixmin, int ixmax) const override {
     return specificTopology().containsBigPixelInX(ixmin, ixmax);
   }

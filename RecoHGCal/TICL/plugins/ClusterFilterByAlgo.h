@@ -15,25 +15,21 @@ namespace ticl {
   class ClusterFilterByAlgo final : public ClusterFilterBase {
   public:
     ClusterFilterByAlgo(const edm::ParameterSet& ps)
-        : ClusterFilterBase(ps), algo_number_(ps.getParameter<int>("algo_number")) {}
-    ~ClusterFilterByAlgo() override{};
+        : ClusterFilterBase(ps), algo_number_(ps.getParameter<std::vector<int>>("algo_number")) {}
+    ~ClusterFilterByAlgo() override {}
 
     void filter(const std::vector<reco::CaloCluster>& layerClusters,
-                const HgcalClusterFilterMask& availableLayerClusters,
                 std::vector<float>& layerClustersMask,
                 hgcal::RecHitTools& rhtools) const override {
-      auto filteredLayerClusters = std::make_unique<HgcalClusterFilterMask>();
-      for (auto const& cl : availableLayerClusters) {
-        if (layerClusters[cl.first].algo() == algo_number_) {
-          filteredLayerClusters->emplace_back(cl);
-        } else {
-          layerClustersMask[cl.first] = 0.;
+      for (size_t i = 0; i < layerClusters.size(); i++) {
+        if (find(algo_number_.begin(), algo_number_.end(), layerClusters[i].algo()) == algo_number_.end()) {
+          layerClustersMask[i] = 0.;
         }
       }
     }
 
   private:
-    int algo_number_;
+    std::vector<int> algo_number_;
   };
 }  // namespace ticl
 

@@ -2,7 +2,9 @@ from __future__ import print_function
 import FWCore.ParameterSet.Config as cms
 from PhysicsTools.NanoAOD.common_cff import *
 from PhysicsTools.NanoAOD.nano_eras_cff import *
-from PhysicsTools.NanoAOD.jets_cff import *
+from PhysicsTools.NanoAOD.jetsAK4_CHS_cff import *
+from PhysicsTools.NanoAOD.jetsAK4_Puppi_cff import *
+from PhysicsTools.NanoAOD.jetsAK8_cff import *
 from PhysicsTools.NanoAOD.jetMC_cff import *
 from PhysicsTools.NanoAOD.muons_cff import *
 from PhysicsTools.NanoAOD.taus_cff import *
@@ -16,13 +18,13 @@ from PhysicsTools.NanoAOD.ttbarCategorization_cff import *
 from PhysicsTools.NanoAOD.genparticles_cff import *
 from PhysicsTools.NanoAOD.particlelevel_cff import *
 from PhysicsTools.NanoAOD.genWeightsTable_cfi import *
+from PhysicsTools.NanoAOD.tauSpinnerTable_cfi import *
 from PhysicsTools.NanoAOD.genVertex_cff import *
 from PhysicsTools.NanoAOD.vertices_cff import *
 from PhysicsTools.NanoAOD.met_cff import *
 from PhysicsTools.NanoAOD.triggerObjects_cff import *
 from PhysicsTools.NanoAOD.isotracks_cff import *
 from PhysicsTools.NanoAOD.protons_cff import *
-from PhysicsTools.NanoAOD.btagWeightTable_cff import *
 from PhysicsTools.NanoAOD.NanoAODEDMEventContent_cff import *
 from PhysicsTools.NanoAOD.fsrPhotons_cff import *
 from PhysicsTools.NanoAOD.softActivity_cff import *
@@ -34,46 +36,50 @@ nanoMetadata = cms.EDProducer("UniqueStringProducer",
 )
 
 linkedObjects = cms.EDProducer("PATObjectCrossLinker",
-   jets=cms.InputTag("finalJets"),
+   jets=cms.InputTag("finalJetsPuppi"),
    muons=cms.InputTag("finalMuons"),
    electrons=cms.InputTag("finalElectrons"),
+   lowPtElectrons=cms.InputTag("finalLowPtElectrons"),
    taus=cms.InputTag("finalTaus"),
+   boostedTaus=cms.InputTag("finalBoostedTaus"),
    photons=cms.InputTag("finalPhotons"),
+   vertices=cms.InputTag("slimmedSecondaryVertices")
 )
 
-simpleCleanerTable = cms.EDProducer("NanoAODSimpleCrossCleaner",
-   name=cms.string("cleanmask"),
-   doc=cms.string("simple cleaning mask with priority to leptons"),
-   jets=cms.InputTag("linkedObjects","jets"),
-   muons=cms.InputTag("linkedObjects","muons"),
-   electrons=cms.InputTag("linkedObjects","electrons"),
-   taus=cms.InputTag("linkedObjects","taus"),
-   photons=cms.InputTag("linkedObjects","photons"),
-   jetSel=cms.string("pt>15"),
-   muonSel=cms.string("track.isNonnull && isLooseMuon && isPFMuon && innerTrack.validFraction >= 0.49 && ( isGlobalMuon && globalTrack.normalizedChi2 < 3 && combinedQuality.chi2LocalPosition < 12 && combinedQuality.trkKink < 20 && segmentCompatibility >= 0.303 || segmentCompatibility >= 0.451 )"),
-   electronSel=cms.string(""),
-   tauSel=cms.string(""),
-   photonSel=cms.string(""),
-   jetName=cms.string("Jet"),muonName=cms.string("Muon"),electronName=cms.string("Electron"),
-   tauName=cms.string("Tau"),photonName=cms.string("Photon")
+# Switch to AK4 CHS jets for Run-2
+run2_nanoAOD_ANY.toModify(
+    linkedObjects, jets="finalJets"
 )
 
-
-lhcInfoTable = cms.EDProducer("LHCInfoProducer",
-                              precision = cms.int32(10),
+from PhysicsTools.NanoAOD.lhcInfoProducer_cfi import lhcInfoProducer
+lhcInfoTable = lhcInfoProducer.clone()
+(~run3_common).toModify(
+    lhcInfoTable, useNewLHCInfo=False
 )
 
 nanoTableTaskCommon = cms.Task(
-     cms.Task(nanoMetadata), jetTask, jetForMETTask, extraFlagsProducersTask, muonTask, tauTask, boostedTauTask,
-     electronTask , lowPtElectronTask, photonTask,
-     vertexTask, isoTrackTask, jetLepTask,  # must be after all the leptons
-     softActivityTask,
-     cms.Task(linkedObjects),
-     jetTablesTask, muonTablesTask, fsrTablesTask, tauTablesTask, boostedTauTablesTask,
-     electronTablesTask, lowPtElectronTablesTask, photonTablesTask,
-     globalTablesTask, vertexTablesTask, metTablesTask, simpleCleanerTable, extraFlagsTableTask,
-     isoTrackTablesTask,softActivityTablesTask
- )
+    cms.Task(nanoMetadata), 
+    jetPuppiTask, jetPuppiForMETTask, jetAK8Task,
+    extraFlagsProducersTask, muonTask, tauTask, boostedTauTask,
+    electronTask , lowPtElectronTask, photonTask,
+    vertexTask, isoTrackTask, jetAK8LepTask,  # must be after all the leptons
+    softActivityTask,
+    cms.Task(linkedObjects),
+    jetPuppiTablesTask, jetAK8TablesTask,
+    muonTablesTask, fsrTablesTask, tauTablesTask, boostedTauTablesTask,
+    electronTablesTask, lowPtElectronTablesTask, photonTablesTask,
+    globalTablesTask, vertexTablesTask, metTablesTask, extraFlagsTableTask,
+    isoTrackTablesTask,softActivityTablesTask
+)
+
+# Replace AK4 Puppi with AK4 CHS for Run-2
+_nanoTableTaskCommonRun2 = nanoTableTaskCommon.copy()
+_nanoTableTaskCommonRun2.replace(jetPuppiTask, jetTask)
+_nanoTableTaskCommonRun2.replace(jetPuppiForMETTask, jetForMETTask)
+_nanoTableTaskCommonRun2.replace(jetPuppiTablesTask, jetTablesTask)
+run2_nanoAOD_ANY.toReplaceWith(
+    nanoTableTaskCommon, _nanoTableTaskCommonRun2
+)
 
 nanoSequenceCommon = cms.Sequence(nanoTableTaskCommon)
 
@@ -82,10 +88,12 @@ nanoSequenceOnlyData = cms.Sequence(cms.Sequence(protonTablesTask) + lhcInfoTabl
 
 nanoSequence = cms.Sequence(nanoSequenceCommon + nanoSequenceOnlyData + nanoSequenceOnlyFullSim)
 
-nanoTableTaskFS = cms.Task(genParticleTask, particleLevelTask, jetMCTask, muonMCTask, electronMCTask, lowPtElectronMCTask, photonMCTask,
-                            tauMCTask, boostedTauMCTask,
-                            metMCTable, ttbarCatMCProducersTask, globalTablesMCTask, cms.Task(btagWeightTable), ttbarCategoryTableTask,
-                            genWeightsTableTask, genVertexTablesTask, genParticleTablesTask, genProtonTablesTask, particleLevelTablesTask)
+nanoTableTaskFS = cms.Task(
+    genParticleTask, particleLevelTask, jetMCTask, muonMCTask, electronMCTask, lowPtElectronMCTask, photonMCTask,
+    tauMCTask, boostedTauMCTask,
+    metMCTable, ttbarCatMCProducersTask, globalTablesMCTask, ttbarCategoryTableTask,
+    genWeightsTableTask, genVertexTablesTask, genParticleTablesTask, genProtonTablesTask, particleLevelTablesTask, tauSpinnerTableTask
+)
 
 nanoSequenceFS = cms.Sequence(nanoSequenceCommon + cms.Sequence(nanoTableTaskFS))
 
@@ -93,22 +101,20 @@ nanoSequenceFS = cms.Sequence(nanoSequenceCommon + cms.Sequence(nanoTableTaskFS)
 nanoSequenceMC = nanoSequenceFS.copy()
 nanoSequenceMC.insert(nanoSequenceFS.index(nanoSequenceCommon)+1,nanoSequenceOnlyFullSim)
 
-# modifier which adds new tauIDs (currently only deepTauId2017v2p1 is being added)
+# modifier which adds new tauIDs
 import RecoTauTag.RecoTau.tools.runTauIdMVA as tauIdConfig
 def nanoAOD_addTauIds(process, idsToRun=[]):
     if idsToRun: #no-empty list of tauIDs to run
         updatedTauName = "slimmedTausUpdated"
         tauIdEmbedder = tauIdConfig.TauIDEmbedder(process, debug = False,
                                                   updatedTauName = updatedTauName,
+                                                  postfix = "ForNano",
             toKeep = idsToRun)
         tauIdEmbedder.runTauID()
-        _tauTask = patTauMVAIDsTask.copy()
-        _tauTask.add(process.rerunMvaIsolationTask)
-        _tauTask.add(finalTaus)
         process.finalTaus.src = updatedTauName
         #remember to adjust the selection and tables with added IDs
 
-        process.tauTask = _tauTask.copy()
+        process.tauTask.add( process.rerunMvaIsolationTaskForNano, getattr(process, updatedTauName) )
 
     return process
 
@@ -118,105 +124,61 @@ def nanoAOD_addBoostedTauIds(process, idsToRun=[]):
         boostedTauIdEmbedder = tauIdConfig.TauIDEmbedder(process, debug = False,
                                                          originalTauName = "slimmedTausBoosted",
                                                          updatedTauName = updatedBoostedTauName,
-                                                         postfix = "Boosted",
+                                                         postfix = "BoostedForNano",
                                                          toKeep = idsToRun)
         boostedTauIdEmbedder.runTauID()
-        _boostedTauTask = process.rerunMvaIsolationTaskBoosted.copy()
-        _boostedTauTask.add(getattr(process, updatedBoostedTauName))
-        _boostedTauTask.add(process.finalBoostedTaus)
         process.finalBoostedTaus.src = updatedBoostedTauName
         #remember to adjust the selection and tables with added IDs
 
-        process.boostedTauTask = _boostedTauTask.copy()
+        process.boostedTauTask.add( process.rerunMvaIsolationTaskBoostedForNano, getattr(process, updatedBoostedTauName))
 
     return process
 
+def nanoAOD_addUTagToTaus(process, addUTagInfo=False, usePUPPIjets=False):
+    
+    if addUTagInfo:
+        originalTauName = process.finalTaus.src.value()
+        
+        if usePUPPIjets: # option to use PUPPI jets   
+            jetCollection = "updatedJetsPuppi"
+            TagName = "pfUnifiedParticleTransformerAK4JetTags"
+            tag_prefix = "byUTagPUPPI"
+            updatedTauName = originalTauName+'WithUTagPUPPI'
+            # Unified ParT Tagger used for PUPPI jets
+            from RecoBTag.ONNXRuntime.pfUnifiedParticleTransformerAK4JetTags_cfi import pfUnifiedParticleTransformerAK4JetTags
+            Discriminators = [TagName+":"+tag for tag in pfUnifiedParticleTransformerAK4JetTags.flav_names.value()]
+        else: # use CHS jets by default
+            jetCollection = "updatedJets"
+            TagName = "pfParticleNetFromMiniAODAK4CHSCentralJetTags"
+            tag_prefix = "byUTagCHS"
+            updatedTauName = originalTauName+'WithUTagCHS'
+            # PNet tagger used for CHS jets
+            from RecoBTag.ONNXRuntime.pfParticleNetFromMiniAODAK4_cff import pfParticleNetFromMiniAODAK4CHSCentralJetTags
+            Discriminators = [TagName+":"+tag for tag in pfParticleNetFromMiniAODAK4CHSCentralJetTags.flav_names.value()]
 
-from PhysicsTools.PatAlgos.tools.jetTools import updateJetCollection
-def nanoAOD_addDeepInfo(process,addDeepBTag,addDeepFlavour):
-    _btagDiscriminators=[]
-    if addDeepBTag:
-        print("Updating process to run DeepCSV btag")
-        _btagDiscriminators += ['pfDeepCSVJetTags:probb','pfDeepCSVJetTags:probbb','pfDeepCSVJetTags:probc']
-    if addDeepFlavour:
-        print("Updating process to run DeepFlavour btag")
-        _btagDiscriminators += ['pfDeepFlavourJetTags:probb','pfDeepFlavourJetTags:probbb','pfDeepFlavourJetTags:problepb','pfDeepFlavourJetTags:probc']
-    if len(_btagDiscriminators)==0: return process
-    print("Will recalculate the following discriminators: "+", ".join(_btagDiscriminators))
-    updateJetCollection(
-               process,
-               jetSource = cms.InputTag('slimmedJets'),
-               jetCorrections = ('AK4PFchs', cms.vstring(['L1FastJet', 'L2Relative', 'L3Absolute','L2L3Residual']), 'None'),
-               btagDiscriminators = _btagDiscriminators,
-               postfix = 'WithDeepInfo',
-           )
-    process.load("Configuration.StandardSequences.MagneticField_cff")
-    process.jetCorrFactorsNano.src="selectedUpdatedPatJetsWithDeepInfo"
-    process.updatedJets.jetSource="selectedUpdatedPatJetsWithDeepInfo"
-    return process
+        # Define "hybridTau" producer
+        from PhysicsTools.PatAlgos.patTauHybridProducer_cfi import patTauHybridProducer
+        setattr(process, updatedTauName, patTauHybridProducer.clone(
+            src = originalTauName,
+            jetSource = jetCollection,
+            dRMax = 0.4,
+            jetPtMin = 15,
+            jetEtaMax = 2.5,
+            UTagLabel = TagName,
+            UTagScoreNames = Discriminators,
+            tagPrefix = tag_prefix,
+            tauScoreMin = -1,
+            vsJetMin = 0.05,
+            checkTauScoreIsBest = False,
+            chargeAssignmentProbMin = 0.2,
+            addGenJetMatch = False,
+            genJetMatch = ""
+        ))
+        process.finalTaus.src = updatedTauName
 
+        #remember to adjust the selection and tables with added IDs
 
-from PhysicsTools.PatUtils.tools.runMETCorrectionsAndUncertainties import runMetCorAndUncFromMiniAOD
-def nanoAOD_recalibrateMETs(process,isData):
-    # add DeepMETs
-    nanoAOD_DeepMET_switch = cms.PSet(
-        ResponseTune_Graph = cms.untracked.string('RecoMET/METPUSubtraction/data/deepmet/deepmet_resp_v1_2018.pb')
-    )
-    for modifier in run2_miniAOD_80XLegacy, run2_nanoAOD_94X2016:
-        modifier.toModify(nanoAOD_DeepMET_switch, ResponseTune_Graph=cms.untracked.string("RecoMET/METPUSubtraction/data/deepmet/deepmet_resp_v1_2016.pb"))
-
-    print("add DeepMET Producers")
-    process.load('RecoMET.METPUSubtraction.deepMETProducer_cfi')
-    process.deepMETsResolutionTune = process.deepMETProducer.clone()
-    process.deepMETsResponseTune = process.deepMETProducer.clone()
-    process.deepMETsResponseTune.graph_path = nanoAOD_DeepMET_switch.ResponseTune_Graph.value()
-
-    runMetCorAndUncFromMiniAOD(process,isData=isData)
-    process.nanoSequenceCommon.insert(2,cms.Sequence(process.fullPatMetSequence))
-
-
-    from PhysicsTools.PatAlgos.slimming.puppiForMET_cff import makePuppiesFromMiniAOD
-    makePuppiesFromMiniAOD(process,True)
-    process.puppiNoLep.useExistingWeights = True
-    process.puppi.useExistingWeights = True
-    run2_nanoAOD_106Xv1.toModify(process.puppiNoLep, useExistingWeights = False)
-    run2_nanoAOD_106Xv1.toModify(process.puppi, useExistingWeights = False)
-    print("will make Puppies on top of MINIAOD")
-
-#    makePuppiesFromMiniAOD(process,True) # call this before in the global customizer otherwise it would reset photon IDs in VID
-    nanoAOD_PuppiV15_switch = cms.PSet(
-            recoMetFromPFCs = cms.untracked.bool(False),
-            reclusterJets = cms.untracked.bool(False),
-            )
-    run2_nanoAOD_106Xv1.toModify(nanoAOD_PuppiV15_switch,recoMetFromPFCs=True,reclusterJets=True)
-    if nanoAOD_PuppiV15_switch.reclusterJets:
-        from RecoJets.JetProducers.ak4PFJets_cfi import ak4PFJets
-        from PhysicsTools.PatAlgos.tools.helpers import getPatAlgosToolsTask, addToProcessAndTask
-        task = getPatAlgosToolsTask(process)
-        addToProcessAndTask('ak4PuppiJets', ak4PFJets.clone (src = 'puppi', doAreaFastjet = True, jetPtMin = 10.), process, task)
-        from PhysicsTools.PatAlgos.tools.jetTools import addJetCollection
-        addJetCollection(process,
-                            labelName = 'Puppi',
-                            jetSource = cms.InputTag('ak4PuppiJets'),
-                            algo = 'AK', rParam=0.4,
-                            genJetCollection=cms.InputTag('slimmedGenJets'),
-                            jetCorrections = ('AK4PFPuppi', ['L1FastJet', 'L2Relative', 'L3Absolute','L2L3Residual'], 'None'),
-                            pfCandidates = cms.InputTag('packedPFCandidates'),
-                            pvSource = cms.InputTag('offlineSlimmedPrimaryVertices'),
-                            svSource = cms.InputTag('slimmedSecondaryVertices'),
-                            muSource =cms.InputTag( 'slimmedMuons'),
-                            elSource = cms.InputTag('slimmedElectrons'),
-                            genParticles= cms.InputTag('prunedGenParticles'),
-                            getJetMCFlavour= False
-        )
-
-        process.patJetsPuppi.addGenPartonMatch = cms.bool(False)
-        process.patJetsPuppi.addGenJetMatch = cms.bool(False)
-
-        print("nanoAOD_PuppiV15_switch.reclusterJets is true")
-
-    runMetCorAndUncFromMiniAOD(process,isData=isData,metType="Puppi",postfix="Puppi",jetFlavor="AK4PFPuppi", recoMetFromPFCs=bool(nanoAOD_PuppiV15_switch.recoMetFromPFCs), reclusterJets=bool(nanoAOD_PuppiV15_switch.reclusterJets))
-    process.nanoSequenceCommon.insert(2,cms.Sequence(process.puppiMETSequence+process.fullPatMetSequencePuppi))
+        process.tauTask.add(process.jetTask, getattr(process, updatedTauName))
 
     return process
 
@@ -227,164 +189,107 @@ def nanoAOD_activateVID(process):
     for modname in electron_id_modules_WorkingPoints_nanoAOD.modules:
         setupAllVIDIdsInModule(process,modname,setupVIDElectronSelection)
 
-    electronTask_ = process.egmGsfElectronIDTask.copy()
-    electronTask_.add(electronTask.copy())
-    process.electronTask = electronTask_.copy()
-    for modifier in run2_miniAOD_80XLegacy,run2_nanoAOD_94XMiniAODv1,run2_nanoAOD_94XMiniAODv2,run2_nanoAOD_94X2016,run2_nanoAOD_102Xv1,run2_nanoAOD_106Xv1:
-        modifier.toModify(process.electronMVAValueMapProducer, src = "slimmedElectronsUpdated")
-        modifier.toModify(process.egmGsfElectronIDs, physicsObjectSrc = "slimmedElectronsUpdated")
+    process.electronTask.add( process.egmGsfElectronIDTask )
 
     switchOnVIDPhotonIdProducer(process,DataFormat.MiniAOD,photonTask) # do not call this to avoid resetting photon IDs in VID, if called before inside makePuppiesFromMiniAOD
     for modname in photon_id_modules_WorkingPoints_nanoAOD.modules:
         setupAllVIDIdsInModule(process,modname,setupVIDPhotonSelection)
 
-    photonTask_ = process.egmPhotonIDTask.copy()
-    photonTask_.add(photonTask.copy())
-    process.photonTask = photonTask_.copy()
-    for modifier in run2_miniAOD_80XLegacy,run2_nanoAOD_94XMiniAODv1,run2_nanoAOD_94XMiniAODv2,run2_nanoAOD_94X2016,run2_nanoAOD_102Xv1:
-        modifier.toModify(process.photonMVAValueMapProducer, src = "slimmedPhotonsTo106X")
-        modifier.toModify(process.egmPhotonIDs, physicsObjectSrc = "slimmedPhotonsTo106X")
+    process.photonTask.add( process.egmPhotonIDTask )
+
     return process
-
-def nanoAOD_addDeepInfoAK8(process, addDeepBTag, addDeepBoostedJet, addDeepDoubleX, addDeepDoubleXV2, addParticleNet, addParticleNetMass, jecPayload):
-    _btagDiscriminators=[]
-    if addDeepBTag:
-        print("Updating process to run DeepCSV btag to AK8 jets")
-        _btagDiscriminators += ['pfDeepCSVJetTags:probb','pfDeepCSVJetTags:probbb']
-    if addDeepBoostedJet:
-        print("Updating process to run DeepBoostedJet on datasets before 103X")
-        from RecoBTag.ONNXRuntime.pfDeepBoostedJet_cff import _pfDeepBoostedJetTagsAll as pfDeepBoostedJetTagsAll
-        _btagDiscriminators += pfDeepBoostedJetTagsAll
-    if addParticleNet:
-        print("Updating process to run ParticleNet before it's included in MiniAOD")
-        from RecoBTag.ONNXRuntime.pfParticleNet_cff import _pfParticleNetJetTagsAll as pfParticleNetJetTagsAll
-        _btagDiscriminators += pfParticleNetJetTagsAll
-    if addParticleNetMass:
-        from RecoBTag.ONNXRuntime.pfParticleNet_cff import _pfParticleNetMassRegressionOutputs
-        _btagDiscriminators += _pfParticleNetMassRegressionOutputs
-    if addDeepDoubleX:
-        print("Updating process to run DeepDoubleX on datasets before 104X")
-        _btagDiscriminators += ['pfDeepDoubleBvLJetTags:probHbb', \
-            'pfDeepDoubleCvLJetTags:probHcc', \
-            'pfDeepDoubleCvBJetTags:probHcc', \
-            'pfMassIndependentDeepDoubleBvLJetTags:probHbb', 'pfMassIndependentDeepDoubleCvLJetTags:probHcc', 'pfMassIndependentDeepDoubleCvBJetTags:probHcc']
-    if addDeepDoubleXV2:
-        print("Updating process to run DeepDoubleXv2 on datasets before 11X")
-        _btagDiscriminators += [
-            'pfMassIndependentDeepDoubleBvLV2JetTags:probHbb',
-            'pfMassIndependentDeepDoubleCvLV2JetTags:probHcc',
-            'pfMassIndependentDeepDoubleCvBV2JetTags:probHcc'
-            ]
-    if len(_btagDiscriminators)==0: return process
-    print("Will recalculate the following discriminators on AK8 jets: "+", ".join(_btagDiscriminators))
-    updateJetCollection(
-       process,
-       jetSource = cms.InputTag('slimmedJetsAK8'),
-       pvSource = cms.InputTag('offlineSlimmedPrimaryVertices'),
-       svSource = cms.InputTag('slimmedSecondaryVertices'),
-       rParam = 0.8,
-       jetCorrections = (jecPayload.value(), cms.vstring(['L1FastJet', 'L2Relative', 'L3Absolute', 'L2L3Residual']), 'None'),
-       btagDiscriminators = _btagDiscriminators,
-       postfix='AK8WithDeepInfo',
-       printWarning = False
-       )
-    process.jetCorrFactorsAK8.src="selectedUpdatedPatJetsAK8WithDeepInfo"
-    process.updatedJetsAK8.jetSource="selectedUpdatedPatJetsAK8WithDeepInfo"
-    return process
-
-from PhysicsTools.PatUtils.tools.runMETCorrectionsAndUncertainties import runMetCorAndUncFromMiniAOD
-def nanoAOD_runMETfixEE2017(process,isData):
-    runMetCorAndUncFromMiniAOD(process,isData=isData,
-                               fixEE2017 = True,
-                               fixEE2017Params = {'userawPt': True, 'ptThreshold':50.0, 'minEtaThreshold':2.65, 'maxEtaThreshold': 3.139},
-                               postfix = "FixEE2017")
-    process.nanoSequenceCommon.insert(2,process.fullPatMetSequenceFixEE2017)
-
 
 def nanoAOD_customizeCommon(process):
 
     process = nanoAOD_activateVID(process)
-    nanoAOD_addDeepInfo_switch = cms.PSet(
-        nanoAOD_addDeepBTag_switch = cms.untracked.bool(False),
-        nanoAOD_addDeepFlavourTag_switch = cms.untracked.bool(False),
-        )
-    run2_miniAOD_80XLegacy.toModify(nanoAOD_addDeepInfo_switch, nanoAOD_addDeepBTag_switch = cms.untracked.bool(True))
-    for modifier in run2_miniAOD_80XLegacy, run2_nanoAOD_94X2016, run2_nanoAOD_94XMiniAODv1, run2_nanoAOD_94XMiniAODv2:
-        modifier.toModify(nanoAOD_addDeepInfo_switch, nanoAOD_addDeepFlavourTag_switch =  cms.untracked.bool(True))
-    process = nanoAOD_addDeepInfo(process,
-                                  addDeepBTag=nanoAOD_addDeepInfo_switch.nanoAOD_addDeepBTag_switch,
-                                  addDeepFlavour=nanoAOD_addDeepInfo_switch.nanoAOD_addDeepFlavourTag_switch)
-    nanoAOD_addDeepInfoAK8_switch = cms.PSet(
-        nanoAOD_addDeepBTag_switch = cms.untracked.bool(False),
-        nanoAOD_addDeepBoostedJet_switch = cms.untracked.bool(False),
-        nanoAOD_addDeepDoubleX_switch = cms.untracked.bool(False),
-        nanoAOD_addDeepDoubleXV2_switch = cms.untracked.bool(False),
-        nanoAOD_addParticleNet_switch = cms.untracked.bool(False),
-        nanoAOD_addParticleNetMass_switch = cms.untracked.bool(False),
-        jecPayload = cms.untracked.string('AK8PFPuppi')
-        )
-    # deepAK8 should not run on 80X, that contains ak8PFJetsCHS jets
-    run2_miniAOD_80XLegacy.toModify(nanoAOD_addDeepInfoAK8_switch,
-                                    nanoAOD_addDeepBTag_switch = True,
-                                    jecPayload = 'AK8PFchs')
-    # for 94X and 102X samples: needs to run DeepAK8, DeepDoubleX and ParticleNet
-    (run2_nanoAOD_94X2016 | run2_nanoAOD_94XMiniAODv1 | run2_nanoAOD_94XMiniAODv2 | run2_nanoAOD_102Xv1).toModify(
-        nanoAOD_addDeepInfoAK8_switch,
-        nanoAOD_addDeepBoostedJet_switch = True,
-        nanoAOD_addDeepDoubleX_switch = True,
-        nanoAOD_addDeepDoubleXV2_switch = True,
-        nanoAOD_addParticleNet_switch = True,
-        nanoAOD_addParticleNetMass_switch = True,
-    )
-    # for 106Xv1: only needs to run ParticleNet and DDXV2; DeepAK8, DeepDoubleX are already in MiniAOD
-    run2_nanoAOD_106Xv1.toModify(
-        nanoAOD_addDeepInfoAK8_switch,
-        nanoAOD_addDeepDoubleXV2_switch = True,
-        nanoAOD_addParticleNet_switch = True,
-        nanoAOD_addParticleNetMass_switch = True,
-    )
 
     run2_nanoAOD_106Xv2.toModify(
-         nanoAOD_addDeepInfoAK8_switch,
-         nanoAOD_addParticleNetMass_switch = True,
+        nanoAOD_addDeepInfoAK4CHS_switch, nanoAOD_addParticleNet_switch=True,
+        nanoAOD_addRobustParTAK4Tag_switch=False,
+        nanoAOD_addUnifiedParTAK4Tag_switch=True,
+    )
+  
+    # This function is defined in jetsAK4_Puppi_cff.py
+    process = nanoAOD_addDeepInfoAK4(process,
+        addParticleNet=nanoAOD_addDeepInfoAK4_switch.nanoAOD_addParticleNet_switch,
+        addRobustParTAK4=nanoAOD_addDeepInfoAK4_switch.nanoAOD_addRobustParTAK4Tag_switch,
+        addUnifiedParTAK4=nanoAOD_addDeepInfoAK4_switch.nanoAOD_addUnifiedParTAK4Tag_switch
     )
 
-    process = nanoAOD_addDeepInfoAK8(process,
-                                     addDeepBTag=nanoAOD_addDeepInfoAK8_switch.nanoAOD_addDeepBTag_switch,
-                                     addDeepBoostedJet=nanoAOD_addDeepInfoAK8_switch.nanoAOD_addDeepBoostedJet_switch,
-                                     addDeepDoubleX=nanoAOD_addDeepInfoAK8_switch.nanoAOD_addDeepDoubleX_switch,
-                                     addDeepDoubleXV2=nanoAOD_addDeepInfoAK8_switch.nanoAOD_addDeepDoubleXV2_switch,
-                                     addParticleNet=nanoAOD_addDeepInfoAK8_switch.nanoAOD_addParticleNet_switch,
-                                     addParticleNetMass=nanoAOD_addDeepInfoAK8_switch.nanoAOD_addParticleNetMass_switch,
-                                     jecPayload=nanoAOD_addDeepInfoAK8_switch.jecPayload)
-    nanoAOD_tau_switch = cms.PSet(
-        idsToAdd = cms.vstring()
+    # This function is defined in jetsAK4_CHS_cff.py
+    process = nanoAOD_addDeepInfoAK4CHS(process,
+        addDeepBTag=nanoAOD_addDeepInfoAK4CHS_switch.nanoAOD_addDeepBTag_switch,
+        addDeepFlavour=nanoAOD_addDeepInfoAK4CHS_switch.nanoAOD_addDeepFlavourTag_switch,
+        addParticleNet=nanoAOD_addDeepInfoAK4CHS_switch.nanoAOD_addParticleNet_switch,
+        addRobustParTAK4=nanoAOD_addDeepInfoAK4CHS_switch.nanoAOD_addRobustParTAK4Tag_switch,
+        addUnifiedParTAK4=nanoAOD_addDeepInfoAK4CHS_switch.nanoAOD_addUnifiedParTAK4Tag_switch
     )
-    (run2_nanoAOD_94XMiniAODv1 | run2_nanoAOD_94X2016 | run2_nanoAOD_94XMiniAODv2 | run2_nanoAOD_102Xv1 | run2_nanoAOD_106Xv1).toModify(nanoAOD_tau_switch, idsToAdd = ["deepTau2017v2p1"])
-    (run2_nanoAOD_94XMiniAODv1 | run2_nanoAOD_94X2016 | run2_nanoAOD_94XMiniAODv2 | run2_nanoAOD_102Xv1 | run2_nanoAOD_106Xv1).toModify(process, lambda p : nanoAOD_addTauIds(p, nanoAOD_tau_switch.idsToAdd.value()))
+
+    # This function is defined in jetsAK8_cff.py
+    process = nanoAOD_addDeepInfoAK8(process,
+        addDeepBTag=nanoAOD_addDeepInfoAK8_switch.nanoAOD_addDeepBTag_switch,
+        addDeepBoostedJet=nanoAOD_addDeepInfoAK8_switch.nanoAOD_addDeepBoostedJet_switch,
+        addDeepDoubleX=nanoAOD_addDeepInfoAK8_switch.nanoAOD_addDeepDoubleX_switch,
+        addDeepDoubleXV2=nanoAOD_addDeepInfoAK8_switch.nanoAOD_addDeepDoubleXV2_switch,
+        addParticleNetMassLegacy=nanoAOD_addDeepInfoAK8_switch.nanoAOD_addParticleNetMassLegacy_switch,
+        addParticleNet=nanoAOD_addDeepInfoAK8_switch.nanoAOD_addParticleNet_switch,
+        addGlobalParT=nanoAOD_addDeepInfoAK8_switch.nanoAOD_addGlobalParT_switch,
+        jecPayload=nanoAOD_addDeepInfoAK8_switch.jecPayload
+    )
+
+    nanoAOD_tau_switch = cms.PSet(
+        idsToAdd = cms.vstring(),
+        addUParTInfo = cms.bool(False),
+        addPNet = cms.bool(False)
+    )
+    (run2_nanoAOD_106Xv2).toModify(
+        nanoAOD_tau_switch, idsToAdd = ["deepTau2018v2p5"]
+    ).toModify(
+        process, lambda p : nanoAOD_addTauIds(p, nanoAOD_tau_switch.idsToAdd.value())
+    )
+    
+    # Add Unified Tagger for CHS jets (PNet) for Run 2 era,
+    # but don't add Unified Tagger for PUPPI jets (as different PUPPI tune
+    # and base jet algorithm)
+    (run2_nanoAOD_106Xv2).toModify(
+        nanoAOD_tau_switch, addPNet = True
+    )
+    # Add Unified Taggers for Run 3 pre 142X (pre v15) era (Unified taggers 
+    # are already added to slimmedTaus in miniAOD for newer eras)
+    run3_nanoAOD_pre142X.toModify(
+        nanoAOD_tau_switch, addPNet = True, addUParTInfo = True
+    )
+    
+    # Add Unified Tagger For CHS Jets (PNet 2023)
+    nanoAOD_addUTagToTaus(process,
+                          addUTagInfo = nanoAOD_tau_switch.addPNet.value(),
+                          usePUPPIjets = False
+    )
+
+    # Add Unified Tagger For PUPPI Jets (UParT 2024)
+    nanoAOD_addUTagToTaus(process,
+                        addUTagInfo = nanoAOD_tau_switch.addUParTInfo.value(),
+                        usePUPPIjets = True
+    )
+    
     nanoAOD_boostedTau_switch = cms.PSet(
         idsToAdd = cms.vstring()
     )
-    run2_nanoAOD_106Xv2.toModify(nanoAOD_boostedTau_switch, idsToAdd = ["2017v2", "dR0p32017v2", "newDM2017v2","againstEle2018"])
-    run2_nanoAOD_106Xv2.toModify(process, lambda p : nanoAOD_addBoostedTauIds(p, nanoAOD_boostedTau_switch.idsToAdd.value()))
+    run2_nanoAOD_106Xv2.toModify(
+        nanoAOD_boostedTau_switch, idsToAdd = ["mvaIso", "mvaIsoNewDM", "mvaIsoDR0p3", "againstEle", "boostedDeepTauRunIIv2p0"]
+    ).toModify(
+        process, lambda p : nanoAOD_addBoostedTauIds(p, nanoAOD_boostedTau_switch.idsToAdd.value())
+    )
+    run3_nanoAOD_pre142X.toModify(
+        nanoAOD_boostedTau_switch, idsToAdd = ["boostedDeepTauRunIIv2p0"]
+    ).toModify(
+        process, lambda p : nanoAOD_addBoostedTauIds(p, nanoAOD_boostedTau_switch.idsToAdd.value())
+    )
 
-    return process
+    # Add lepton time-life info
+    from PhysicsTools.NanoAOD.leptonTimeLifeInfo_common_cff import addTimeLifeInfoBase
+    process = addTimeLifeInfoBase(process)
 
-def nanoAOD_customizeData(process):
-    process = nanoAOD_customizeCommon(process)
-
-    for modifier in run2_miniAOD_80XLegacy,run2_nanoAOD_94X2016,run2_nanoAOD_94XMiniAODv1,run2_nanoAOD_94XMiniAODv2,run2_nanoAOD_102Xv1,run2_nanoAOD_106Xv1:
-        modifier.toModify(process, lambda p: nanoAOD_recalibrateMETs(p,isData=True))
-    for modifier in run2_nanoAOD_94XMiniAODv1, run2_nanoAOD_94XMiniAODv2:
-        modifier.toModify(process, lambda p: nanoAOD_runMETfixEE2017(p,isData=True))
-    return process
-
-def nanoAOD_customizeMC(process):
-    process = nanoAOD_customizeCommon(process)
-    for modifier in run2_miniAOD_80XLegacy,run2_nanoAOD_94X2016,run2_nanoAOD_94XMiniAODv1,run2_nanoAOD_94XMiniAODv2,run2_nanoAOD_102Xv1,run2_nanoAOD_106Xv1:
-        modifier.toModify(process, lambda p: nanoAOD_recalibrateMETs(p,isData=False))
-    for modifier in run2_nanoAOD_94XMiniAODv1, run2_nanoAOD_94XMiniAODv2:
-        modifier.toModify(process, lambda p: nanoAOD_runMETfixEE2017(p,isData=False))
     return process
 
 ###increasing the precision of selected GenParticles.
@@ -398,3 +303,4 @@ def nanoWmassGenCustomize(process):
     etaPrecision="{} ? {} : {}".format(pdgSelection, CandVars.eta.precision.value(), genParticleTable.variables.eta.precision.value())
     process.genParticleTable.variables.eta.precision=cms.string(etaPrecision)
     return process
+

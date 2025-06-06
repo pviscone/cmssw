@@ -14,6 +14,10 @@
 #include "Geometry/HcalCommonData/interface/HcalHitRelabeller.h"
 #include "Geometry/HcalTowerAlgo/interface/HcalGeometry.h"
 #include "Geometry/Records/interface/HcalRecNumberingRecord.h"
+#include "FWCore/Framework/interface/GetterOfProducts.h"
+#include "FWCore/Framework/interface/ProcessMatch.h"
+using CLHEP::micrometer;
+using CLHEP::millimeter;
 
 GlobalHitsAnalyzer::GlobalHitsAnalyzer(const edm::ParameterSet &iPSet)
     : fName(""),
@@ -33,7 +37,9 @@ GlobalHitsAnalyzer::GlobalHitsAnalyzer(const edm::ParameterSet &iPSet)
       caloGeomToken_(esConsumes()),
       hcaldddRecToken_(esConsumes()),
       count(0) {
-  consumesMany<edm::HepMCProduct>();
+  getterOfProducts_ = edm::GetterOfProducts<edm::HepMCProduct>(edm::ProcessMatch("*"), this);
+  callWhenNewProductsRegistered(getterOfProducts_);
+
   std::string MsgLoggerCat = "GlobalHitsAnalyzer_GlobalHitsAnalyzer";
 
   // get information from parameter set
@@ -753,8 +759,7 @@ void GlobalHitsAnalyzer::fillG4MC(const edm::Event &iEvent) {
   /////////////////////
   edm::Handle<edm::HepMCProduct> HepMCEvt;
   std::vector<edm::Handle<edm::HepMCProduct>> AllHepMCEvt;
-  iEvent.getManyByType(AllHepMCEvt);
-
+  getterOfProducts_.fillHandles(iEvent, AllHepMCEvt);
   // loop through products and extract VtxSmearing if available. Any of them
   // should have the information needed
   for (unsigned int i = 0; i < AllHepMCEvt.size(); ++i) {
@@ -990,7 +995,7 @@ void GlobalHitsAnalyzer::fillTrk(const edm::Event &iEvent, const edm::EventSetup
                                     << sdPxlBrl << "); value returned is: (" << detector << "," << subdetector << ")";
       continue;
     }  // end detector type check
-  }    // end loop through PxlBrl Hits
+  }  // end loop through PxlBrl Hits
 
   if (verbosity > 1) {
     eventout += "\n          Number of Pixel Barrel Hits collected:..... ";
@@ -1064,7 +1069,7 @@ void GlobalHitsAnalyzer::fillTrk(const edm::Event &iEvent, const edm::EventSetup
                                     << sdPxlFwd << "); value returned is: (" << detector << "," << subdetector << ")";
       continue;
     }  // end detector type check
-  }    // end loop through PxlFwd Hits
+  }  // end loop through PxlFwd Hits
 
   if (verbosity > 1) {
     eventout += "\n          Number of Pixel Forward Hits collected:.... ";
@@ -1162,7 +1167,7 @@ void GlobalHitsAnalyzer::fillTrk(const edm::Event &iEvent, const edm::EventSetup
                                     << subdetector << ")";
       continue;
     }  // end detector type check
-  }    // end loop through SiBrl Hits
+  }  // end loop through SiBrl Hits
 
   if (verbosity > 1) {
     eventout += "\n          Number of Silicon Barrel Hits collected:... ";
@@ -1254,7 +1259,7 @@ void GlobalHitsAnalyzer::fillTrk(const edm::Event &iEvent, const edm::EventSetup
                                     << subdetector << ")";
       continue;
     }  // end check detector type
-  }    // end loop through SiFwd Hits
+  }  // end loop through SiFwd Hits
 
   if (verbosity > 1) {
     eventout += "\n          Number of Silicon Forward Hits collected:.. ";
@@ -1347,7 +1352,7 @@ void GlobalHitsAnalyzer::fillMuon(const edm::Event &iEvent, const edm::EventSetu
                                       << ")";
         continue;
       }  // end detector type check
-    }    // end loop through CSC Hits
+    }  // end loop through CSC Hits
 
     if (verbosity > 1) {
       eventout += "\n          Number of CSC muon Hits collected:......... ";
@@ -1422,7 +1427,7 @@ void GlobalHitsAnalyzer::fillMuon(const edm::Event &iEvent, const edm::EventSetu
                                       << sdMuonDT << "); value returned is: (" << detector << "," << subdetector << ")";
         continue;
       }  // end detector type check
-    }    // end loop through DT Hits
+    }  // end loop through DT Hits
 
     if (verbosity > 1) {
       eventout += "\n          Number of DT muon Hits collected:.......... ";
@@ -1524,7 +1529,7 @@ void GlobalHitsAnalyzer::fillMuon(const edm::Event &iEvent, const edm::EventSetu
                                       << ")";
         continue;
       }  // end detector type check
-    }    // end loop through RPC Hits
+    }  // end loop through RPC Hits
 
     if (verbosity > 1) {
       eventout += "\n          Number of RPC muon Hits collected:......... ";
@@ -1635,7 +1640,7 @@ void GlobalHitsAnalyzer::fillECal(const edm::Event &iEvent, const edm::EventSetu
                                     << subdetector << ")";
       continue;
     }  // end detector type check
-  }    // end loop through ECal Hits
+  }  // end loop through ECal Hits
 
   if (verbosity > 1) {
     eventout += "\n          Number of ECal Hits collected:............. ";
@@ -1702,7 +1707,7 @@ void GlobalHitsAnalyzer::fillECal(const edm::Event &iEvent, const edm::EventSetu
                                       << sdEcalPS << "); value returned is: (" << detector << "," << subdetector << ")";
         continue;
       }  // end detector type check
-    }    // end loop through PreShower Hits
+    }  // end loop through PreShower Hits
 
     if (verbosity > 1) {
       eventout += "\n          Number of PreSh Hits collected:............ ";
@@ -1804,7 +1809,7 @@ void GlobalHitsAnalyzer::fillHCal(const edm::Event &iEvent, const edm::EventSetu
                                       << "); value returned is: (" << detector << "," << subdetector << ")";
         continue;
       }  // end detector type check
-    }    // end loop through HCal Hits
+    }  // end loop through HCal Hits
 
     if (verbosity > 1) {
       eventout += "\n          Number of HCal Hits collected:............. ";

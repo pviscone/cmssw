@@ -1,3 +1,4 @@
+#include "catch.hpp"
 
 #include "FWCore/Framework/interface/EventSelector.h"
 #include "DataFormats/Common/interface/TriggerResults.h"
@@ -26,29 +27,24 @@ typedef std::vector<Strings> VStrings;
 typedef std::vector<bool> Bools;
 typedef std::vector<Bools> VBools;
 
-std::ostream& operator<<(std::ostream& ost, const Strings& s) {
-  for (Strings::const_iterator i(s.begin()), e(s.end()); i != e; ++i) {
-    ost << *i << " ";
+namespace {
+  std::ostream& operator<<(std::ostream& ost, const Strings& s) {
+    for (Strings::const_iterator i(s.begin()), e(s.end()); i != e; ++i) {
+      ost << *i << " ";
+    }
+    return ost;
   }
-  return ost;
-}
 
-std::ostream& operator<<(std::ostream& ost, const Bools& b) {
-  for (unsigned int i = 0; i < b.size(); ++i) {
-    ost << b[i] << " ";
+  std::ostream& operator<<(std::ostream& ost, const Bools& b) {
+    for (unsigned int i = 0; i < b.size(); ++i) {
+      ost << b[i] << " ";
+    }
+    return ost;
   }
-  return ost;
-}
-
+}  // namespace
 void testone(const Strings& paths, const Strings& pattern, const Bools& mask, bool answer, int jmask) {
-  ParameterSet pset;  //, parent;
-  pset.addParameter<Strings>("SelectEvents", pattern);
-  //parent.addUntrackedParameter<ParameterSet>("SelectEvents",pset);
-  pset.registerIt();
-
-  // There are 3 different ways to build the EventSelector.  All
-  // should give the same result.  We exercise all 3 here.
-  EventSelector select(pset, paths);
+  // There are 2 different ways to build the EventSelector.
+  // Both should give the same result.  We exercise both here.
   EventSelector select1(pattern, paths);
   EventSelector select2(pattern);
 
@@ -87,8 +83,6 @@ void testone(const Strings& paths, const Strings& pattern, const Bools& mask, bo
   //        std::cerr << "pattern=" << pattern
   //	 	  << "mask=" << mask << "\n";  // DBG
 
-  //  	std:: cerr << "a \n";
-  bool a = select.acceptEvent(results);
   //  	std:: cerr << "a1 \n";
   bool a1 = select1.acceptEvent(results);
   //  	std:: cerr << "a2 \n";
@@ -98,15 +92,20 @@ void testone(const Strings& paths, const Strings& pattern, const Bools& mask, bo
   //  	std:: cerr << "c1 \n";
   bool c1 = select1.acceptEvent(&(bitArray[0]), number_of_trigger_paths);
 
-  if (a != answer || a1 != answer || a2 != answer || b2 != answer || c1 != answer) {
-    std::cerr << "failed to compare pattern with mask: "
-              << "correct=" << answer << " "
-              << "results=" << a << "  " << a1 << "  " << a2 << "  " << b2 << "  " << c1 << "\n"
-              << "pattern=" << pattern << "\n"
-              << "mask=" << mask << "\n"
-              << "jmask = " << jmask << "\n";
-    abort();
+  std::ostringstream s;
+  if (a1 != answer || a2 != answer || b2 != answer || c1 != answer) {
+    s << "failed to compare pattern with mask: "
+      << "correct=" << answer << " "
+      << "results=" << a1 << "  " << a2 << "  " << b2 << "  " << c1 << "\n"
+      << "pattern=" << pattern << "\n"
+      << "mask=" << mask << "\n"
+      << "jmask = " << jmask << "\n";
   }
+  REQUIRE_THAT(
+      answer,
+      Catch::Predicate<bool>(
+          [a1, a2, b2, c1](auto answer) { return a1 == answer and a2 == answer and b2 == answer and c1 == answer; },
+          s.str()));
 
   // Repeat putting the list of trigger names in the pset
   // registry
@@ -118,23 +117,24 @@ void testone(const Strings& paths, const Strings& pattern, const Bools& mask, bo
   TriggerResults results_id(bm, trigger_pset.id());
 
   //  	std:: cerr << "a11 \n";
-  bool a11 = select.acceptEvent(results_id);
+  bool a11 = select1.acceptEvent(results_id);
   //  	std:: cerr << "a12 \n";
-  bool a12 = select1.acceptEvent(results_id);
+  bool a12 = select2.acceptEvent(results_id);
   //  	std:: cerr << "a13 \n";
   bool a13 = select2.acceptEvent(results_id);
-  //  	std:: cerr << "a14 \n";
-  bool a14 = select2.acceptEvent(results_id);
 
-  if (a11 != answer || a12 != answer || a13 != answer || a14 != answer) {
-    std::cerr << "failed to compare pattern with mask using pset ID: "
-              << "correct=" << answer << " "
-              << "results=" << a11 << "  " << a12 << "  " << a13 << "  " << a14 << "\n"
-              << "pattern=" << pattern << "\n"
-              << "mask=" << mask << "\n"
-              << "jmask = " << jmask << "\n";
-    abort();
+  if (a11 != answer || a12 != answer || a13 != answer) {
+    s << "failed to compare pattern with mask using pset ID: "
+      << "correct=" << answer << " "
+      << "results=" << a11 << "  " << a12 << "  " << a13 << "\n"
+      << "pattern=" << pattern << "\n"
+      << "mask=" << mask << "\n"
+      << "jmask = " << jmask << "\n";
   }
+  REQUIRE_THAT(
+      answer,
+      Catch::Predicate<bool>([a11, a12, a13](auto answer) { return a11 == answer and a12 == answer and a13 == answer; },
+                             s.str()));
 }
 
 void testall(const Strings& paths, const VStrings& patterns, const VBools& masks, const Answers& answers) {
@@ -145,7 +145,7 @@ void testall(const Strings& paths, const VStrings& patterns, const VBools& masks
   }
 }
 
-int main() try {
+TEST_CASE("test EventSelector", "[EventSelector]") {
   // Name all our paths. We have as many paths as there are trigger
   // bits.
   std::array<char const*, numBits> cpaths = {{"a1", "a2", "a3", "a4", "a5"}};
@@ -253,11 +253,4 @@ int main() try {
   // We are ready to run some tests
 
   testall(paths, patterns, testmasks, ans);
-  return 0;
-} catch (cms::Exception const& e) {
-  std::cerr << e.explainSelf() << std::endl;
-  return 1;
-} catch (std::exception const& e) {
-  std::cerr << e.what() << std::endl;
-  return 1;
 }

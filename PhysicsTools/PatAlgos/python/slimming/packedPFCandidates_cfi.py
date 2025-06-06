@@ -31,9 +31,6 @@ packedPFCandidates = cms.EDProducer("PATPackedCandidateProducer",
 from Configuration.Eras.Modifier_phase1Pixel_cff import phase1Pixel
 phase1Pixel.toModify(packedPFCandidates, covarianceVersion =1 )
 
-from Configuration.Eras.Modifier_run2_miniAOD_80XLegacy_cff import run2_miniAOD_80XLegacy
-run2_miniAOD_80XLegacy.toModify(packedPFCandidates, chargedHadronIsolation = "" )
-
 from Configuration.Eras.Modifier_run2_HCAL_2018_cff import run2_HCAL_2018
 run2_HCAL_2018.toModify(packedPFCandidates,
     pfCandidateTypesForHcalDepth = [130,11,22,211,13],  # PF cand types for adding Hcal depth energy frac information
@@ -57,3 +54,6 @@ run2_miniAOD_pp_on_AA_103X.toModify(packedPFCandidates,
                                     inputCollection = "cleanedParticleFlow",
                                     chargedHadronIsolation = ""
                                 )
+
+from Configuration.Eras.Modifier_run3_upc_cff import run3_upc
+run3_upc.toModify(packedPFCandidates, minPtForChargedHadronProperties = 0.0, minPtForTrackProperties = 0.0)

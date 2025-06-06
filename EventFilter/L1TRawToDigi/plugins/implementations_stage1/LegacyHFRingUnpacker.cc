@@ -59,10 +59,9 @@ namespace l1t {
           LogDebug("L1T") << "hfrs pT " << hfrs.hwPt();
           resHFRingSums_->push_back(bx, hfrs);
 
-          l1t::EtSum mht = l1t::EtSum();
+          l1t::EtSum mht{l1t::EtSum::kMissingHt};
           mht.setHwPt(htmiss);
           mht.setHwPhi(htmissphi);
-          mht.setType(l1t::EtSum::kMissingHt);
           int flaghtmiss = mht.hwQual();
           flaghtmiss |= overflowhtmiss;
           mht.setHwQual(flaghtmiss);
@@ -73,7 +72,7 @@ namespace l1t {
         return true;
       }
     }  // namespace legacy
-  }    // namespace stage1
+  }  // namespace stage1
 }  // namespace l1t
 
 DEFINE_L1T_UNPACKER(l1t::stage1::legacy::HFRingUnpacker);

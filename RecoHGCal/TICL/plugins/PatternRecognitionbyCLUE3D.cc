@@ -21,29 +21,26 @@ template <typename TILES>
 PatternRecognitionbyCLUE3D<TILES>::PatternRecognitionbyCLUE3D(const edm::ParameterSet &conf, edm::ConsumesCollector iC)
     : PatternRecognitionAlgoBaseT<TILES>(conf, iC),
       caloGeomToken_(iC.esConsumes<CaloGeometry, CaloGeometryRecord>()),
-      criticalDensity_(conf.getParameter<double>("criticalDensity")),
-      criticalSelfDensity_(conf.getParameter<double>("criticalSelfDensity")),
-      densitySiblingLayers_(conf.getParameter<int>("densitySiblingLayers")),
-      densityEtaPhiDistanceSqr_(conf.getParameter<double>("densityEtaPhiDistanceSqr")),
-      densityXYDistanceSqr_(conf.getParameter<double>("densityXYDistanceSqr")),
-      kernelDensityFactor_(conf.getParameter<double>("kernelDensityFactor")),
+      criticalDensity_(conf.getParameter<std::vector<double>>("criticalDensity")),
+      criticalSelfDensity_(conf.getParameter<std::vector<double>>("criticalSelfDensity")),
+      densitySiblingLayers_(conf.getParameter<std::vector<int>>("densitySiblingLayers")),
+      densityEtaPhiDistanceSqr_(conf.getParameter<std::vector<double>>("densityEtaPhiDistanceSqr")),
+      densityXYDistanceSqr_(conf.getParameter<std::vector<double>>("densityXYDistanceSqr")),
+      kernelDensityFactor_(conf.getParameter<std::vector<double>>("kernelDensityFactor")),
       densityOnSameLayer_(conf.getParameter<bool>("densityOnSameLayer")),
       nearestHigherOnSameLayer_(conf.getParameter<bool>("nearestHigherOnSameLayer")),
       useAbsoluteProjectiveScale_(conf.getParameter<bool>("useAbsoluteProjectiveScale")),
       useClusterDimensionXY_(conf.getParameter<bool>("useClusterDimensionXY")),
       rescaleDensityByZ_(conf.getParameter<bool>("rescaleDensityByZ")),
-      criticalEtaPhiDistance_(conf.getParameter<double>("criticalEtaPhiDistance")),
-      criticalXYDistance_(conf.getParameter<double>("criticalXYDistance")),
-      criticalZDistanceLyr_(conf.getParameter<int>("criticalZDistanceLyr")),
-      outlierMultiplier_(conf.getParameter<double>("outlierMultiplier")),
-      minNumLayerCluster_(conf.getParameter<int>("minNumLayerCluster")),
-      eidInputName_(conf.getParameter<std::string>("eid_input_name")),
-      eidOutputNameEnergy_(conf.getParameter<std::string>("eid_output_name_energy")),
-      eidOutputNameId_(conf.getParameter<std::string>("eid_output_name_id")),
-      eidMinClusterEnergy_(conf.getParameter<double>("eid_min_cluster_energy")),
-      eidNLayers_(conf.getParameter<int>("eid_n_layers")),
-      eidNClusters_(conf.getParameter<int>("eid_n_clusters")){};
-
+      criticalEtaPhiDistance_(conf.getParameter<std::vector<double>>("criticalEtaPhiDistance")),
+      criticalXYDistance_(conf.getParameter<std::vector<double>>("criticalXYDistance")),
+      criticalZDistanceLyr_(conf.getParameter<std::vector<int>>("criticalZDistanceLyr")),
+      outlierMultiplier_(conf.getParameter<std::vector<double>>("outlierMultiplier")),
+      minNumLayerCluster_(conf.getParameter<std::vector<int>>("minNumLayerCluster")),
+      doPidCut_(conf.getParameter<bool>("doPidCut")),
+      cutHadProb_(conf.getParameter<double>("cutHadProb")),
+      computeLocalTime_(conf.getParameter<bool>("computeLocalTime")),
+      usePCACleaning_(conf.getParameter<bool>("usePCACleaning")){};
 template <typename TILES>
 void PatternRecognitionbyCLUE3D<TILES>::dumpTiles(const TILES &tiles) const {
   constexpr int nEtaBin = TILES::constants_type_t::nEtaBins;
@@ -56,7 +53,7 @@ void PatternRecognitionbyCLUE3D<TILES>::dumpTiles(const TILES &tiles) const {
       for (int phi = 0; phi < nPhiBin; phi++) {
         int iphi = ((phi % nPhiBin + nPhiBin) % nPhiBin);
         if (!tiles[layer][offset + iphi].empty()) {
-          if (this->algo_verbosity_ > this->Advanced) {
+          if (this->algo_verbosity_ > VerbosityLevel::Advanced) {
             edm::LogVerbatim("PatternRecognitionbyCLUE3D") << "Layer: " << layer << " ieta: " << ieta << " phi: " << phi
                                                            << " " << tiles[layer][offset + iphi].size();
           }
@@ -70,7 +67,7 @@ template <typename TILES>
 void PatternRecognitionbyCLUE3D<TILES>::dumpTracksters(const std::vector<std::pair<int, int>> &layerIdx2layerandSoa,
                                                        const int eventNumber,
                                                        const std::vector<Trackster> &tracksters) const {
-  if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > PatternRecognitionAlgoBaseT<TILES>::Advanced) {
+  if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > VerbosityLevel::Advanced) {
     edm::LogVerbatim("PatternRecognitionbyCLUE3D")
         << "[evt, tracksterId, cells, prob_photon, prob_ele, prob_chad, prob_nhad, layer_i, x_i, y_i, eta_i, phi_i, "
            "energy_i, radius_i, rho_i, z_extension, delta_tr, delta_lyr, isSeed_i";
@@ -82,7 +79,7 @@ void PatternRecognitionbyCLUE3D<TILES>::dumpTracksters(const std::vector<std::pa
     for (auto v : t.vertices()) {
       auto [lyrIdx, soaIdx] = layerIdx2layerandSoa[v];
       auto const &thisLayer = clusters_[lyrIdx];
-      if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > PatternRecognitionAlgoBaseT<TILES>::Advanced) {
+      if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > VerbosityLevel::Advanced) {
         edm::LogVerbatim("PatternRecognitionbyCLUE3D_NTP")
             << std::setw(4) << eventNumber << sep << std::setw(4) << num << sep << std::setw(4) << t.vertices().size()
             << sep << std::setw(8) << t.id_probability(ticl::Trackster::ParticleType::photon) << sep << std::setw(8)
@@ -105,7 +102,7 @@ template <typename TILES>
 void PatternRecognitionbyCLUE3D<TILES>::dumpClusters(const TILES &tiles,
                                                      const std::vector<std::pair<int, int>> &layerIdx2layerandSoa,
                                                      const int eventNumber) const {
-  if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > PatternRecognitionAlgoBaseT<TILES>::Advanced) {
+  if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > VerbosityLevel::Advanced) {
     edm::LogVerbatim("PatternRecognitionbyCLUE3D") << "[evt, lyr, Seed,      x,       y,       z, r/|z|,   eta,   phi, "
                                                       "etab,  phib, cells, enrgy, e/rho,   rho,   z_ext, "
                                                       "   dlt_tr,   dlt_lyr, "
@@ -116,7 +113,7 @@ void PatternRecognitionbyCLUE3D<TILES>::dumpClusters(const TILES &tiles,
     auto const &thisLayer = clusters_[layer];
     int num = 0;
     for (auto v : thisLayer.x) {
-      if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > PatternRecognitionAlgoBaseT<TILES>::Advanced) {
+      if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > VerbosityLevel::Advanced) {
         edm::LogVerbatim("PatternRecognitionbyCLUE3D")
             << std::setw(4) << eventNumber << ", " << std::setw(3) << layer << ", " << std::setw(4)
             << thisLayer.isSeed[num] << ", " << std::setprecision(3) << std::fixed << v << ", " << thisLayer.y[num]
@@ -140,7 +137,7 @@ void PatternRecognitionbyCLUE3D<TILES>::dumpClusters(const TILES &tiles,
     // Skip masked layer clusters
     if ((layerandSoa.first == -1) && (layerandSoa.second == -1))
       continue;
-    if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > PatternRecognitionAlgoBaseT<TILES>::Advanced) {
+    if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > VerbosityLevel::Advanced) {
       edm::LogVerbatim("PatternRecognitionbyCLUE3D")
           << "lcIdx: " << lcIdx << " on Layer: " << layerandSoa.first << " SOA: " << layerandSoa.second;
     }
@@ -157,7 +154,7 @@ void PatternRecognitionbyCLUE3D<TILES>::makeTracksters(
     return;
 
   const int eventNumber = input.ev.eventAuxiliary().event();
-  if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > PatternRecognitionAlgoBaseT<TILES>::Advanced) {
+  if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > VerbosityLevel::Advanced) {
     edm::LogVerbatim("PatternRecognitionbyCLUE3D") << "New Event";
   }
 
@@ -169,12 +166,14 @@ void PatternRecognitionbyCLUE3D<TILES>::makeTracksters(
   // Also, layers inside the HGCAL geometry start from 1.
   for (unsigned int i = 0; i < rhtools_.lastLayer(); ++i) {
     layersPosZ_.push_back(rhtools_.getPositionLayer(i + 1).z());
-    if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > PatternRecognitionAlgoBaseT<TILES>::Advanced) {
+    if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > VerbosityLevel::Advanced) {
       edm::LogVerbatim("PatternRecognitionbyCLUE3D") << "Layer " << i << " located at Z: " << layersPosZ_.back();
     }
   }
 
   clusters_.clear();
+  tracksterSeedAlgoId_.clear();
+
   clusters_.resize(2 * rhtools_.lastLayer(false));
   std::vector<std::pair<int, int>> layerIdx2layerandSoa;  //used everywhere also to propagate cluster masking
 
@@ -182,7 +181,7 @@ void PatternRecognitionbyCLUE3D<TILES>::makeTracksters(
   unsigned int layerIdx = 0;
   for (auto const &lc : input.layerClusters) {
     if (input.mask[layerIdx] == 0.) {
-      if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > PatternRecognitionAlgoBaseT<TILES>::Advanced) {
+      if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > VerbosityLevel::Advanced) {
         edm::LogVerbatim("PatternRecognitionbyCLUE3D") << "Skipping masked cluster: " << layerIdx;
       }
       layerIdx2layerandSoa.emplace_back(-1, -1);
@@ -194,8 +193,8 @@ void PatternRecognitionbyCLUE3D<TILES>::makeTracksters(
                 rhtools_.lastLayer(false) * ((rhtools_.zside(firstHitDetId) + 1) >> 1);
     assert(layer >= 0);
     auto detId = lc.hitsAndFractions()[0].first;
-
-    layerIdx2layerandSoa.emplace_back(layer, clusters_[layer].x.size());
+    int layerClusterIndexInLayer = clusters_[layer].x.size();
+    layerIdx2layerandSoa.emplace_back(layer, layerClusterIndexInLayer);
     float sum_x = 0.;
     float sum_y = 0.;
     float sum_sqr_x = 0.;
@@ -217,7 +216,7 @@ void PatternRecognitionbyCLUE3D<TILES>::makeTracksters(
     // below, too.
     float radius_x = sqrt((sum_sqr_x - (sum_x * sum_x) * invClsize) * invClsize);
     float radius_y = sqrt((sum_sqr_y - (sum_y * sum_y) * invClsize) * invClsize);
-    if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > PatternRecognitionAlgoBaseT<TILES>::Advanced) {
+    if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > VerbosityLevel::Advanced) {
       edm::LogVerbatim("PatternRecognitionbyCLUE3D")
           << "cluster rx: " << std::setw(5) << radius_x << ", ry: " << std::setw(5) << radius_y
           << ", r:  " << std::setw(5) << (radius_x + radius_y) << ", cells: " << std::setw(4)
@@ -230,7 +229,7 @@ void PatternRecognitionbyCLUE3D<TILES>::makeTracksters(
       // Silicon case
       if (rhtools_.isSilicon(detId)) {
         radius_x = radius_y = rhtools_.getRadiusToSide(detId);
-        if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > PatternRecognitionAlgoBaseT<TILES>::Advanced) {
+        if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > VerbosityLevel::Advanced) {
           edm::LogVerbatim("PatternRecognitionbyCLUE3D") << "Single cell cluster in silicon, rx: " << std::setw(5)
                                                          << radius_x << ", ry: " << std::setw(5) << radius_y;
         }
@@ -238,7 +237,7 @@ void PatternRecognitionbyCLUE3D<TILES>::makeTracksters(
         auto const &point = rhtools_.getPosition(detId);
         auto const &eta_phi_window = rhtools_.getScintDEtaDPhi(detId);
         radius_x = radius_y = point.perp() * eta_phi_window.second;
-        if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > PatternRecognitionAlgoBaseT<TILES>::Advanced) {
+        if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > VerbosityLevel::Advanced) {
           edm::LogVerbatim("PatternRecognitionbyCLUE3D")
               << "Single cell cluster in scintillator. rx: " << std::setw(5) << radius_x << ", ry: " << std::setw(5)
               << radius_y << ", eta-span: " << std::setw(5) << eta_phi_window.first << ", phi-span: " << std::setw(5)
@@ -246,6 +245,8 @@ void PatternRecognitionbyCLUE3D<TILES>::makeTracksters(
         }
       }
     }
+
+    // Maybe check if these vectors can be reserved beforehands
     clusters_[layer].x.emplace_back(lc.x());
     clusters_[layer].y.emplace_back(lc.y());
     clusters_[layer].z.emplace_back(lc.z());
@@ -254,6 +255,7 @@ void PatternRecognitionbyCLUE3D<TILES>::makeTracksters(
     clusters_[layer].eta.emplace_back(lc.eta());
     clusters_[layer].phi.emplace_back(lc.phi());
     clusters_[layer].cells.push_back(lc.hitsAndFractions().size());
+    clusters_[layer].algoId.push_back(lc.algo() - reco::CaloCluster::hgcal_em);
     clusters_[layer].isSilicon.push_back(rhtools_.isSilicon(detId));
     clusters_[layer].energy.emplace_back(lc.energy());
     clusters_[layer].isSeed.push_back(false);
@@ -280,7 +282,7 @@ void PatternRecognitionbyCLUE3D<TILES>::makeTracksters(
   }
 
   auto nTracksters = findAndAssignTracksters(input.tiles, layerIdx2layerandSoa);
-  if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > PatternRecognitionAlgoBaseT<TILES>::Advanced) {
+  if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > VerbosityLevel::Advanced) {
     edm::LogVerbatim("PatternRecognitionbyCLUE3D") << "Reconstructed " << nTracksters << " tracksters" << std::endl;
     dumpClusters(input.tiles, layerIdx2layerandSoa, eventNumber);
   }
@@ -290,15 +292,15 @@ void PatternRecognitionbyCLUE3D<TILES>::makeTracksters(
 
   for (unsigned int layer = 0; layer < clusters_.size(); ++layer) {
     const auto &thisLayer = clusters_[layer];
-    if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > PatternRecognitionAlgoBaseT<TILES>::Advanced) {
+    if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > VerbosityLevel::Advanced) {
       edm::LogVerbatim("PatternRecognitionbyCLUE3D") << "Examining Layer: " << layer;
     }
     for (unsigned int lc = 0; lc < thisLayer.x.size(); ++lc) {
-      if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > PatternRecognitionAlgoBaseT<TILES>::Advanced) {
+      if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > VerbosityLevel::Advanced) {
         edm::LogVerbatim("PatternRecognitionbyCLUE3D") << "Trackster " << thisLayer.clusterIndex[lc];
       }
       if (thisLayer.clusterIndex[lc] >= 0) {
-        if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > PatternRecognitionAlgoBaseT<TILES>::Advanced) {
+        if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > VerbosityLevel::Advanced) {
           edm::LogVerbatim("PatternRecognitionbyCLUE3D") << " adding lcIdx: " << thisLayer.layerClusterOriginalIdx[lc];
         }
         result[thisLayer.clusterIndex[lc]].vertices().push_back(thisLayer.layerClusterOriginalIdx[lc]);
@@ -313,22 +315,27 @@ void PatternRecognitionbyCLUE3D<TILES>::makeTracksters(
       }
     }
   }
+  size_t tracksterIndex = 0;
+  result.erase(std::remove_if(std::begin(result),
+                              std::end(result),
+                              [&](auto const &v) {
+                                return static_cast<int>(v.vertices().size()) <
+                                       minNumLayerCluster_[tracksterSeedAlgoId_[tracksterIndex++]];
+                              }),
+               result.end());
 
-  result.erase(
-      std::remove_if(std::begin(result),
-                     std::end(result),
-                     [&](auto const &v) { return static_cast<int>(v.vertices().size()) < minNumLayerCluster_; }),
-      result.end());
   result.shrink_to_fit();
 
   ticl::assignPCAtoTracksters(result,
                               input.layerClusters,
                               input.layerClustersTime,
-                              rhtools_.getPositionLayer(rhtools_.lastLayerEE(false), false).z());
+                              rhtools_.getPositionLayer(rhtools_.lastLayerEE(false), false).z(),
+                              rhtools_,
+                              computeLocalTime_,
+                              true,  // energy weighting
+                              usePCACleaning_);
 
-  // run energy regression and ID
-  energyRegressionAndID(input.layerClusters, input.tfSession, result);
-  if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > PatternRecognitionAlgoBaseT<TILES>::Advanced) {
+  if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > VerbosityLevel::Advanced) {
     for (auto const &t : result) {
       edm::LogVerbatim("PatternRecognitionbyCLUE3D") << "Barycenter: " << t.barycenter();
       edm::LogVerbatim("PatternRecognitionbyCLUE3D") << "LCs: " << t.vertices().size();
@@ -338,154 +345,35 @@ void PatternRecognitionbyCLUE3D<TILES>::makeTracksters(
   }
 
   // Dump Tracksters information
-  if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > PatternRecognitionAlgoBaseT<TILES>::Advanced) {
+  if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > VerbosityLevel::Advanced) {
     dumpTracksters(layerIdx2layerandSoa, eventNumber, result);
   }
 
   // Reset internal clusters_ structure of array for next event
   reset();
-  if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > PatternRecognitionAlgoBaseT<TILES>::Advanced) {
+  if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > VerbosityLevel::Advanced) {
     edm::LogVerbatim("PatternRecognitionbyCLUE3D") << std::endl;
   }
 }
-
 template <typename TILES>
-void PatternRecognitionbyCLUE3D<TILES>::energyRegressionAndID(const std::vector<reco::CaloCluster> &layerClusters,
-                                                              const tensorflow::Session *eidSession,
-                                                              std::vector<Trackster> &tracksters) {
-  // Energy regression and particle identification strategy:
-  //
-  // 1. Set default values for regressed energy and particle id for each trackster.
-  // 2. Store indices of tracksters whose total sum of cluster energies is above the
-  //    eidMinClusterEnergy_ (GeV) treshold. Inference is not applied for soft tracksters.
-  // 3. When no trackster passes the selection, return.
-  // 4. Create input and output tensors. The batch dimension is determined by the number of
-  //    selected tracksters.
-  // 5. Fill input tensors with layer cluster features. Per layer, clusters are ordered descending
-  //    by energy. Given that tensor data is contiguous in memory, we can use pointer arithmetic to
-  //    fill values, even with batching.
-  // 6. Zero-fill features for empty clusters in each layer.
-  // 7. Batched inference.
-  // 8. Assign the regressed energy and id probabilities to each trackster.
-  //
-  // Indices used throughout this method:
-  // i -> batch element / trackster
-  // j -> layer
-  // k -> cluster
-  // l -> feature
+void PatternRecognitionbyCLUE3D<TILES>::filter(std::vector<Trackster> &output,
+                                               const std::vector<Trackster> &inTracksters,
+                                               const typename PatternRecognitionAlgoBaseT<TILES>::Inputs &input,
+                                               std::unordered_map<int, std::vector<int>> &seedToTracksterAssociation) {
+  auto isHAD = [this](const Trackster &t) -> bool {
+    auto const hadProb = t.id_probability(ticl::Trackster::ParticleType::charged_hadron) +
+                         t.id_probability(ticl::Trackster::ParticleType::neutral_hadron);
+    return hadProb >= cutHadProb_;
+  };
 
-  // set default values per trackster, determine if the cluster energy threshold is passed,
-  // and store indices of hard tracksters
-  std::vector<int> tracksterIndices;
-  for (int i = 0; i < static_cast<int>(tracksters.size()); i++) {
-    // calculate the cluster energy sum (2)
-    // note: after the loop, sumClusterEnergy might be just above the threshold which is enough to
-    // decide whether to run inference for the trackster or not
-    float sumClusterEnergy = 0.;
-    for (const unsigned int &vertex : tracksters[i].vertices()) {
-      sumClusterEnergy += static_cast<float>(layerClusters[vertex].energy());
-      // there might be many clusters, so try to stop early
-      if (sumClusterEnergy >= eidMinClusterEnergy_) {
-        // set default values (1)
-        tracksters[i].setRegressedEnergy(0.f);
-        tracksters[i].zeroProbabilities();
-        tracksterIndices.push_back(i);
-        break;
+  if (doPidCut_) {
+    for (auto const &t : inTracksters) {
+      if (!isHAD(t)) {
+        output.push_back(t);
       }
     }
-  }
-
-  // do nothing when no trackster passes the selection (3)
-  int batchSize = static_cast<int>(tracksterIndices.size());
-  if (batchSize == 0) {
-    return;
-  }
-
-  // create input and output tensors (4)
-  tensorflow::TensorShape shape({batchSize, eidNLayers_, eidNClusters_, eidNFeatures_});
-  tensorflow::Tensor input(tensorflow::DT_FLOAT, shape);
-  tensorflow::NamedTensorList inputList = {{eidInputName_, input}};
-
-  std::vector<tensorflow::Tensor> outputs;
-  std::vector<std::string> outputNames;
-  if (!eidOutputNameEnergy_.empty()) {
-    outputNames.push_back(eidOutputNameEnergy_);
-  }
-  if (!eidOutputNameId_.empty()) {
-    outputNames.push_back(eidOutputNameId_);
-  }
-
-  // fill input tensor (5)
-  for (int i = 0; i < batchSize; i++) {
-    const Trackster &trackster = tracksters[tracksterIndices[i]];
-
-    // per layer, we only consider the first eidNClusters_ clusters in terms of energy, so in order
-    // to avoid creating large / nested structures to do the sorting for an unknown number of total
-    // clusters, create a sorted list of layer cluster indices to keep track of the filled clusters
-    std::vector<int> clusterIndices(trackster.vertices().size());
-    for (int k = 0; k < (int)trackster.vertices().size(); k++) {
-      clusterIndices[k] = k;
-    }
-    sort(clusterIndices.begin(), clusterIndices.end(), [&layerClusters, &trackster](const int &a, const int &b) {
-      return layerClusters[trackster.vertices(a)].energy() > layerClusters[trackster.vertices(b)].energy();
-    });
-
-    // keep track of the number of seen clusters per layer
-    std::vector<int> seenClusters(eidNLayers_);
-
-    // loop through clusters by descending energy
-    for (const int &k : clusterIndices) {
-      // get features per layer and cluster and store the values directly in the input tensor
-      const reco::CaloCluster &cluster = layerClusters[trackster.vertices(k)];
-      int j = rhtools_.getLayerWithOffset(cluster.hitsAndFractions()[0].first) - 1;
-      if (j < eidNLayers_ && seenClusters[j] < eidNClusters_) {
-        // get the pointer to the first feature value for the current batch, layer and cluster
-        float *features = &input.tensor<float, 4>()(i, j, seenClusters[j], 0);
-
-        // fill features
-        *(features++) = float(cluster.energy() / float(trackster.vertex_multiplicity(k)));
-        *(features++) = float(std::abs(cluster.eta()));
-        *(features) = float(cluster.phi());
-
-        // increment seen clusters
-        seenClusters[j]++;
-      }
-    }
-
-    // zero-fill features of empty clusters in each layer (6)
-    for (int j = 0; j < eidNLayers_; j++) {
-      for (int k = seenClusters[j]; k < eidNClusters_; k++) {
-        float *features = &input.tensor<float, 4>()(i, j, k, 0);
-        for (int l = 0; l < eidNFeatures_; l++) {
-          *(features++) = 0.f;
-        }
-      }
-    }
-  }
-
-  // run the inference (7)
-  tensorflow::run(const_cast<tensorflow::Session *>(eidSession), inputList, outputNames, &outputs);
-
-  // store regressed energy per trackster (8)
-  if (!eidOutputNameEnergy_.empty()) {
-    // get the pointer to the energy tensor, dimension is batch x 1
-    float *energy = outputs[0].flat<float>().data();
-
-    for (const int &i : tracksterIndices) {
-      tracksters[i].setRegressedEnergy(*(energy++));
-    }
-  }
-
-  // store id probabilities per trackster (8)
-  if (!eidOutputNameId_.empty()) {
-    // get the pointer to the id probability tensor, dimension is batch x id_probabilities.size()
-    int probsIdx = eidOutputNameEnergy_.empty() ? 0 : 1;
-    float *probs = outputs[probsIdx].flat<float>().data();
-
-    for (const int &i : tracksterIndices) {
-      tracksters[i].setProbabilities(probs);
-      probs += tracksters[i].id_probabilities().size();
-    }
+  } else {
+    output = inTracksters;
   }
 }
 
@@ -506,36 +394,37 @@ void PatternRecognitionbyCLUE3D<TILES>::calculateLocalDensity(
   };
 
   for (unsigned int i = 0; i < numberOfClusters; i++) {
+    auto algoId = clustersOnLayer.algoId[i];
     // We need to partition the two sides of the HGCAL detector
     auto lastLayerPerSide = static_cast<int>(rhtools_.lastLayer(false));
     int minLayer = 0;
     int maxLayer = 2 * lastLayerPerSide - 1;
     if (layerId < lastLayerPerSide) {
-      minLayer = std::max(layerId - densitySiblingLayers_, minLayer);
-      maxLayer = std::min(layerId + densitySiblingLayers_, lastLayerPerSide - 1);
+      minLayer = std::max(layerId - densitySiblingLayers_[algoId], minLayer);
+      maxLayer = std::min(layerId + densitySiblingLayers_[algoId], lastLayerPerSide - 1);
     } else {
-      minLayer = std::max(layerId - densitySiblingLayers_, lastLayerPerSide);
-      maxLayer = std::min(layerId + densitySiblingLayers_, maxLayer);
+      minLayer = std::max(layerId - densitySiblingLayers_[algoId], lastLayerPerSide);
+      maxLayer = std::min(layerId + densitySiblingLayers_[algoId], maxLayer);
     }
     float deltaLayersZ = std::abs(layersPosZ_[maxLayer % lastLayerPerSide] - layersPosZ_[minLayer % lastLayerPerSide]);
 
     for (int currentLayer = minLayer; currentLayer <= maxLayer; currentLayer++) {
-      if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > PatternRecognitionAlgoBaseT<TILES>::Advanced) {
+      if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > VerbosityLevel::Advanced) {
         edm::LogVerbatim("PatternRecognitionbyCLUE3D") << "RefLayer: " << layerId << " SoaIDX: " << i;
         edm::LogVerbatim("PatternRecognitionbyCLUE3D") << "NextLayer: " << currentLayer;
       }
       const auto &tileOnLayer = tiles[currentLayer];
       bool onSameLayer = (currentLayer == layerId);
-      if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > PatternRecognitionAlgoBaseT<TILES>::Advanced) {
+      if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > VerbosityLevel::Advanced) {
         edm::LogVerbatim("PatternRecognitionbyCLUE3D") << "onSameLayer: " << onSameLayer;
       }
       const int etaWindow = 2;
       const int phiWindow = 2;
       int etaBinMin = std::max(tileOnLayer.etaBin(clustersOnLayer.eta[i]) - etaWindow, 0);
-      int etaBinMax = std::min(tileOnLayer.etaBin(clustersOnLayer.eta[i]) + etaWindow, nEtaBin);
+      int etaBinMax = std::min(tileOnLayer.etaBin(clustersOnLayer.eta[i]) + etaWindow, nEtaBin - 1);
       int phiBinMin = tileOnLayer.phiBin(clustersOnLayer.phi[i]) - phiWindow;
       int phiBinMax = tileOnLayer.phiBin(clustersOnLayer.phi[i]) + phiWindow;
-      if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > PatternRecognitionAlgoBaseT<TILES>::Advanced) {
+      if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > VerbosityLevel::Advanced) {
         edm::LogVerbatim("PatternRecognitionbyCLUE3D") << "eta: " << clustersOnLayer.eta[i];
         edm::LogVerbatim("PatternRecognitionbyCLUE3D") << "phi: " << clustersOnLayer.phi[i];
         edm::LogVerbatim("PatternRecognitionbyCLUE3D") << "etaBinMin: " << etaBinMin << ", etaBinMax: " << etaBinMax;
@@ -543,12 +432,12 @@ void PatternRecognitionbyCLUE3D<TILES>::calculateLocalDensity(
       }
       for (int ieta = etaBinMin; ieta <= etaBinMax; ++ieta) {
         auto offset = ieta * nPhiBin;
-        if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > PatternRecognitionAlgoBaseT<TILES>::Advanced) {
+        if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > VerbosityLevel::Advanced) {
           edm::LogVerbatim("PatternRecognitionbyCLUE3D") << "offset: " << offset;
         }
         for (int iphi_it = phiBinMin; iphi_it <= phiBinMax; ++iphi_it) {
           int iphi = ((iphi_it % nPhiBin + nPhiBin) % nPhiBin);
-          if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > PatternRecognitionAlgoBaseT<TILES>::Advanced) {
+          if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > VerbosityLevel::Advanced) {
             edm::LogVerbatim("PatternRecognitionbyCLUE3D") << "iphi: " << iphi;
             edm::LogVerbatim("PatternRecognitionbyCLUE3D")
                 << "Entries in tileBin: " << tileOnLayer[offset + iphi].size();
@@ -557,18 +446,28 @@ void PatternRecognitionbyCLUE3D<TILES>::calculateLocalDensity(
             auto const &layerandSoa = layerIdx2layerandSoa[otherClusterIdx];
             // Skip masked layer clusters
             if ((layerandSoa.first == -1) && (layerandSoa.second == -1)) {
-              if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > PatternRecognitionAlgoBaseT<TILES>::Advanced) {
+              if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > VerbosityLevel::Advanced) {
                 edm::LogVerbatim("PatternRecognitionbyCLUE3D") << "Skipping masked layerIdx " << otherClusterIdx;
               }
               continue;
             }
             auto const &clustersLayer = clusters_[layerandSoa.first];
-            if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > PatternRecognitionAlgoBaseT<TILES>::Advanced) {
+            if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > VerbosityLevel::Advanced) {
               edm::LogVerbatim("PatternRecognitionbyCLUE3D")
                   << "OtherLayer: " << layerandSoa.first << " SoaIDX: " << layerandSoa.second;
               edm::LogVerbatim("PatternRecognitionbyCLUE3D") << "OtherEta: " << clustersLayer.eta[layerandSoa.second];
               edm::LogVerbatim("PatternRecognitionbyCLUE3D") << "OtherPhi: " << clustersLayer.phi[layerandSoa.second];
             }
+
+            bool onSameCluster = clustersOnLayer.layerClusterOriginalIdx[i] == otherClusterIdx;
+            if (onSameLayer && !densityOnSameLayer_ && !onSameCluster) {
+              if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > VerbosityLevel::Advanced) {
+                edm::LogVerbatim("PatternRecognitionbyCLUE3D")
+                    << "Skipping different cluster " << otherClusterIdx << "in the same layer " << currentLayer;
+              }
+              continue;
+            }
+
             bool reachable = false;
             if (useAbsoluteProjectiveScale_) {
               if (useClusterDimensionXY_) {
@@ -579,13 +478,13 @@ void PatternRecognitionbyCLUE3D<TILES>::calculateLocalDensity(
                                         clustersOnLayer.radius[i] * clustersOnLayer.radius[i]);
               } else {
                 // Still differentiate between silicon and Scintillator.
-                // Silicon has yet to be studied further.
+                // Scintillator has yet to be studied further.
                 if (clustersOnLayer.isSilicon[i]) {
                   reachable = isReachable(clustersOnLayer.r_over_absz[i] * clustersOnLayer.z[i],
                                           clustersLayer.r_over_absz[layerandSoa.second] * clustersOnLayer.z[i],
                                           clustersOnLayer.phi[i],
                                           clustersLayer.phi[layerandSoa.second],
-                                          densityXYDistanceSqr_);
+                                          densityXYDistanceSqr_[algoId]);
                 } else {
                   reachable = isReachable(clustersOnLayer.r_over_absz[i] * clustersOnLayer.z[i],
                                           clustersLayer.r_over_absz[layerandSoa.second] * clustersOnLayer.z[i],
@@ -598,9 +497,9 @@ void PatternRecognitionbyCLUE3D<TILES>::calculateLocalDensity(
               reachable = (reco::deltaR2(clustersOnLayer.eta[i],
                                          clustersOnLayer.phi[i],
                                          clustersLayer.eta[layerandSoa.second],
-                                         clustersLayer.phi[layerandSoa.second]) < densityEtaPhiDistanceSqr_);
+                                         clustersLayer.phi[layerandSoa.second]) < densityEtaPhiDistanceSqr_[algoId]);
             }
-            if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > PatternRecognitionAlgoBaseT<TILES>::Advanced) {
+            if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > VerbosityLevel::Advanced) {
               edm::LogVerbatim("PatternRecognitionbyCLUE3D") << "Distance[eta,phi]: "
                                                              << reco::deltaR2(clustersOnLayer.eta[i],
                                                                               clustersOnLayer.phi[i],
@@ -620,21 +519,21 @@ void PatternRecognitionbyCLUE3D<TILES>::calculateLocalDensity(
               float factor_same_layer_different_cluster = (onSameLayer && !densityOnSameLayer_) ? 0.f : 1.f;
               auto energyToAdd = (clustersOnLayer.layerClusterOriginalIdx[i] == otherClusterIdx
                                       ? 1.f
-                                      : kernelDensityFactor_ * factor_same_layer_different_cluster) *
+                                      : kernelDensityFactor_[algoId] * factor_same_layer_different_cluster) *
                                  clustersLayer.energy[layerandSoa.second];
               clustersOnLayer.rho[i] += energyToAdd;
               clustersOnLayer.z_extension[i] = deltaLayersZ;
-              if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > PatternRecognitionAlgoBaseT<TILES>::Advanced) {
+              if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > VerbosityLevel::Advanced) {
                 edm::LogVerbatim("PatternRecognitionbyCLUE3D")
                     << "Adding " << energyToAdd << " partial " << clustersOnLayer.rho[i];
               }
             }
           }  // end of loop on possible compatible clusters
-        }    // end of loop over phi-bin region
-      }      // end of loop over eta-bin region
-    }        // end of loop on the sibling layers
+        }  // end of loop over phi-bin region
+      }  // end of loop over eta-bin region
+    }  // end of loop on the sibling layers
     if (rescaleDensityByZ_) {
-      if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > PatternRecognitionAlgoBaseT<TILES>::Advanced) {
+      if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > VerbosityLevel::Advanced) {
         edm::LogVerbatim("PatternRecognitionbyCLUE3D")
             << "Rescaling original density: " << clustersOnLayer.rho[i] << " by Z: " << deltaLayersZ
             << " to final density/cm: " << clustersOnLayer.rho[i] / deltaLayersZ;
@@ -658,7 +557,7 @@ void PatternRecognitionbyCLUE3D<TILES>::calculateDistanceToHigher(
   };
 
   for (unsigned int i = 0; i < numberOfClusters; i++) {
-    if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > PatternRecognitionAlgoBaseT<TILES>::Advanced) {
+    if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > VerbosityLevel::Advanced) {
       edm::LogVerbatim("PatternRecognitionbyCLUE3D")
           << "Starting searching nearestHigher on " << layerId << " with rho: " << clustersOnLayer.rho[i]
           << " at eta, phi: " << tiles[layerId].etaBin(clustersOnLayer.eta[i]) << ", "
@@ -668,12 +567,13 @@ void PatternRecognitionbyCLUE3D<TILES>::calculateDistanceToHigher(
     auto lastLayerPerSide = static_cast<int>(rhtools_.lastLayer(false));
     int minLayer = 0;
     int maxLayer = 2 * lastLayerPerSide - 1;
+    auto algoId = clustersOnLayer.algoId[i];
     if (layerId < lastLayerPerSide) {
-      minLayer = std::max(layerId - densitySiblingLayers_, minLayer);
-      maxLayer = std::min(layerId + densitySiblingLayers_, lastLayerPerSide - 1);
+      minLayer = std::max(layerId - densitySiblingLayers_[algoId], minLayer);
+      maxLayer = std::min(layerId + densitySiblingLayers_[algoId], lastLayerPerSide - 1);
     } else {
-      minLayer = std::max(layerId - densitySiblingLayers_, lastLayerPerSide + 1);
-      maxLayer = std::min(layerId + densitySiblingLayers_, maxLayer);
+      minLayer = std::max(layerId - densitySiblingLayers_[algoId], lastLayerPerSide + 1);
+      maxLayer = std::min(layerId + densitySiblingLayers_[algoId], maxLayer);
     }
     constexpr float maxDelta = std::numeric_limits<float>::max();
     float i_delta = maxDelta;
@@ -686,14 +586,14 @@ void PatternRecognitionbyCLUE3D<TILES>::calculateDistanceToHigher(
       int etaWindow = 1;
       int phiWindow = 1;
       int etaBinMin = std::max(tileOnLayer.etaBin(clustersOnLayer.eta[i]) - etaWindow, 0);
-      int etaBinMax = std::min(tileOnLayer.etaBin(clustersOnLayer.eta[i]) + etaWindow, nEtaBin);
+      int etaBinMax = std::min(tileOnLayer.etaBin(clustersOnLayer.eta[i]) + etaWindow, nEtaBin - 1);
       int phiBinMin = tileOnLayer.phiBin(clustersOnLayer.phi[i]) - phiWindow;
       int phiBinMax = tileOnLayer.phiBin(clustersOnLayer.phi[i]) + phiWindow;
       for (int ieta = etaBinMin; ieta <= etaBinMax; ++ieta) {
         auto offset = ieta * nPhiBin;
         for (int iphi_it = phiBinMin; iphi_it <= phiBinMax; ++iphi_it) {
           int iphi = ((iphi_it % nPhiBin + nPhiBin) % nPhiBin);
-          if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > PatternRecognitionAlgoBaseT<TILES>::Advanced) {
+          if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > VerbosityLevel::Advanced) {
             edm::LogVerbatim("PatternRecognitionbyCLUE3D")
                 << "Searching nearestHigher on " << currentLayer << " eta, phi: " << ieta << ", " << iphi_it << " "
                 << iphi << " " << offset << " " << (offset + iphi);
@@ -725,7 +625,7 @@ void PatternRecognitionbyCLUE3D<TILES>::calculateDistanceToHigher(
                                (clustersOnOtherLayer.rho[layerandSoa.second] == clustersOnLayer.rho[i] &&
                                 clustersOnOtherLayer.layerClusterOriginalIdx[layerandSoa.second] >
                                     clustersOnLayer.layerClusterOriginalIdx[i]);
-            if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > PatternRecognitionAlgoBaseT<TILES>::Advanced) {
+            if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > VerbosityLevel::Advanced) {
               edm::LogVerbatim("PatternRecognitionbyCLUE3D")
                   << "Searching nearestHigher on " << currentLayer
                   << " with rho: " << clustersOnOtherLayer.rho[layerandSoa.second]
@@ -740,26 +640,12 @@ void PatternRecognitionbyCLUE3D<TILES>::calculateDistanceToHigher(
               i_nearestHigher = layerandSoa;
             }
           }  // End of loop on clusters
-        }    // End of loop on phi bins
-      }      // End of loop on eta bins
-    }        // End of loop on layers
+        }  // End of loop on phi bins
+      }  // End of loop on eta bins
+    }  // End of loop on layers
 
-    bool foundNearestInFiducialVolume = (i_delta != maxDelta);
-    if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > PatternRecognitionAlgoBaseT<TILES>::Advanced) {
-      edm::LogVerbatim("PatternRecognitionbyCLUE3D")
-          << "i_delta: " << i_delta << " passed: " << foundNearestInFiducialVolume << " " << i_nearestHigher.first
-          << " " << i_nearestHigher.second << " distances: " << nearest_distances.first << ", "
-          << nearest_distances.second;
-    }
-    if (foundNearestInFiducialVolume) {
-      clustersOnLayer.delta[i] = nearest_distances;
-      clustersOnLayer.nearestHigher[i] = i_nearestHigher;
-    } else {
-      // otherwise delta is guaranteed to be larger outlierDeltaFactor_*delta_c
-      // we can safely maximize delta to be maxDelta
-      clustersOnLayer.delta[i] = std::make_pair(maxDelta, std::numeric_limits<int>::max());
-      clustersOnLayer.nearestHigher[i] = {-1, -1};
-    }
+    clustersOnLayer.delta[i] = nearest_distances;
+    clustersOnLayer.nearestHigher[i] = i_nearestHigher;
   }  // End of loop on clusters
 }
 
@@ -767,9 +653,9 @@ template <typename TILES>
 int PatternRecognitionbyCLUE3D<TILES>::findAndAssignTracksters(
     const TILES &tiles, const std::vector<std::pair<int, int>> &layerIdx2layerandSoa) {
   unsigned int nTracksters = 0;
-
   std::vector<std::pair<int, int>> localStack;
-  auto critical_transverse_distance = useAbsoluteProjectiveScale_ ? criticalXYDistance_ : criticalEtaPhiDistance_;
+  const auto &critical_transverse_distance =
+      useAbsoluteProjectiveScale_ ? criticalXYDistance_ : criticalEtaPhiDistance_;
   // find cluster seeds and outlier
   for (unsigned int layer = 0; layer < 2 * rhtools_.lastLayer(); layer++) {
     auto &clustersOnLayer = clusters_[layer];
@@ -777,29 +663,32 @@ int PatternRecognitionbyCLUE3D<TILES>::findAndAssignTracksters(
     for (unsigned int i = 0; i < numberOfClusters; i++) {
       // initialize clusterIndex
       clustersOnLayer.clusterIndex[i] = -1;
-      bool isSeed = (clustersOnLayer.delta[i].first > critical_transverse_distance ||
-                     clustersOnLayer.delta[i].second > criticalZDistanceLyr_) &&
-                    (clustersOnLayer.rho[i] >= criticalDensity_) &&
-                    (clustersOnLayer.energy[i] / clustersOnLayer.rho[i] > criticalSelfDensity_);
+      auto algoId = clustersOnLayer.algoId[i];
+      bool isSeed = (clustersOnLayer.delta[i].first > critical_transverse_distance[algoId] ||
+                     clustersOnLayer.delta[i].second > criticalZDistanceLyr_[algoId]) &&
+                    (clustersOnLayer.rho[i] >= criticalDensity_[algoId]) &&
+                    (clustersOnLayer.energy[i] / clustersOnLayer.rho[i] > criticalSelfDensity_[algoId]);
       if (!clustersOnLayer.isSilicon[i]) {
         isSeed = (clustersOnLayer.delta[i].first > clustersOnLayer.radius[i] ||
-                  clustersOnLayer.delta[i].second > criticalZDistanceLyr_) &&
-                 (clustersOnLayer.rho[i] >= criticalDensity_) &&
-                 (clustersOnLayer.energy[i] / clustersOnLayer.rho[i] > criticalSelfDensity_);
+                  clustersOnLayer.delta[i].second > criticalZDistanceLyr_[algoId]) &&
+                 (clustersOnLayer.rho[i] >= criticalDensity_[algoId]) &&
+                 (clustersOnLayer.energy[i] / clustersOnLayer.rho[i] > criticalSelfDensity_[algoId]);
       }
-      bool isOutlier = (clustersOnLayer.delta[i].first > outlierMultiplier_ * critical_transverse_distance) &&
-                       (clustersOnLayer.rho[i] < criticalDensity_);
+      bool isOutlier =
+          (clustersOnLayer.delta[i].first > outlierMultiplier_[algoId] * critical_transverse_distance[algoId]) &&
+          (clustersOnLayer.rho[i] < criticalDensity_[algoId]);
       if (isSeed) {
-        if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > PatternRecognitionAlgoBaseT<TILES>::Advanced) {
+        if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > VerbosityLevel::Advanced) {
           edm::LogVerbatim("PatternRecognitionbyCLUE3D")
               << "Found seed on Layer " << layer << " SOAidx: " << i << " assigned ClusterIdx: " << nTracksters;
         }
         clustersOnLayer.clusterIndex[i] = nTracksters++;
+        tracksterSeedAlgoId_.push_back(algoId);
         clustersOnLayer.isSeed[i] = true;
         localStack.emplace_back(layer, i);
       } else if (!isOutlier) {
         auto [lyrIdx, soaIdx] = clustersOnLayer.nearestHigher[i];
-        if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > PatternRecognitionAlgoBaseT<TILES>::Advanced) {
+        if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > VerbosityLevel::Advanced) {
           edm::LogVerbatim("PatternRecognitionbyCLUE3D")
               << "Found follower on Layer " << layer << " SOAidx: " << i << " attached to cluster on layer: " << lyrIdx
               << " SOAidx: " << soaIdx;
@@ -807,7 +696,7 @@ int PatternRecognitionbyCLUE3D<TILES>::findAndAssignTracksters(
         if (lyrIdx >= 0)
           clusters_[lyrIdx].followers[soaIdx].emplace_back(layer, i);
       } else {
-        if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > PatternRecognitionAlgoBaseT<TILES>::Advanced) {
+        if (PatternRecognitionAlgoBaseT<TILES>::algo_verbosity_ > VerbosityLevel::Advanced) {
           edm::LogVerbatim("PatternRecognitionbyCLUE3D")
               << "Found Outlier on Layer " << layer << " SOAidx: " << i << " with rho: " << clustersOnLayer.rho[i]
               << " and delta: " << clustersOnLayer.delta[i].first << ", " << clustersOnLayer.delta[i].second;
@@ -836,16 +725,17 @@ int PatternRecognitionbyCLUE3D<TILES>::findAndAssignTracksters(
 template <typename TILES>
 void PatternRecognitionbyCLUE3D<TILES>::fillPSetDescription(edm::ParameterSetDescription &iDesc) {
   iDesc.add<int>("algo_verbosity", 0);
-  iDesc.add<double>("criticalDensity", 4)->setComment("in GeV");
-  iDesc.add<double>("criticalSelfDensity", 0.15 /* roughly 1/(densitySiblingLayers+1) */)
+  iDesc.add<std::vector<double>>("criticalDensity", {4, 4, 4})->setComment("in GeV");
+  iDesc.add<std::vector<double>>("criticalSelfDensity", {0.15, 0.15, 0.15} /* roughly 1/(densitySiblingLayers+1) */)
       ->setComment("Minimum ratio of self_energy/local_density to become a seed.");
-  iDesc.add<int>("densitySiblingLayers", 3)
+  iDesc.add<std::vector<int>>("densitySiblingLayers", {3, 3, 3})
       ->setComment(
           "inclusive, layers to consider while computing local density and searching for nearestHigher higher");
-  iDesc.add<double>("densityEtaPhiDistanceSqr", 0.0008);
-  iDesc.add<double>("densityXYDistanceSqr", 3.24 /*6.76*/)
-      ->setComment("in cm, 2.6*2.6, distance on the transverse plane to consider for local density");
-  iDesc.add<double>("kernelDensityFactor", 0.2)
+  iDesc.add<std::vector<double>>("densityEtaPhiDistanceSqr", {0.0008, 0.0008, 0.0008})
+      ->setComment("in eta,phi space, distance to consider for local density");
+  iDesc.add<std::vector<double>>("densityXYDistanceSqr", {3.24, 3.24, 3.24})
+      ->setComment("in cm, distance on the transverse plane to consider for local density");
+  iDesc.add<std::vector<double>>("kernelDensityFactor", {0.2, 0.2, 0.2})
       ->setComment("Kernel factor to be applied to other LC while computing the local density");
   iDesc.add<bool>("densityOnSameLayer", false);
   iDesc.add<bool>("nearestHigherOnSameLayer", false)
@@ -860,20 +750,19 @@ void PatternRecognitionbyCLUE3D<TILES>::fillPSetDescription(edm::ParameterSetDes
       ->setComment(
           "Rescale local density by the extension of the Z 'volume' explored. The transvere dimension is, at present, "
           "fixed and factored out.");
-  iDesc.add<double>("criticalEtaPhiDistance", 0.025)
+  iDesc.add<std::vector<double>>("criticalEtaPhiDistance", {0.025, 0.025, 0.025})
       ->setComment("Minimal distance in eta,phi space from nearestHigher to become a seed");
-  iDesc.add<double>("criticalXYDistance", 1.8)
+  iDesc.add<std::vector<double>>("criticalXYDistance", {1.8, 1.8, 1.8})
       ->setComment("Minimal distance in cm on the XY plane from nearestHigher to become a seed");
-  iDesc.add<int>("criticalZDistanceLyr", 5)
+  iDesc.add<std::vector<int>>("criticalZDistanceLyr", {5, 5, 5})
       ->setComment("Minimal distance in layers along the Z axis from nearestHigher to become a seed");
-  iDesc.add<double>("outlierMultiplier", 2);
-  iDesc.add<int>("minNumLayerCluster", 2)->setComment("Not Inclusive");
-  iDesc.add<std::string>("eid_input_name", "input");
-  iDesc.add<std::string>("eid_output_name_energy", "output/regressed_energy");
-  iDesc.add<std::string>("eid_output_name_id", "output/id_probabilities");
-  iDesc.add<double>("eid_min_cluster_energy", 1.);
-  iDesc.add<int>("eid_n_layers", 50);
-  iDesc.add<int>("eid_n_clusters", 10);
+  iDesc.add<std::vector<double>>("outlierMultiplier", {2, 2, 2})
+      ->setComment("Minimal distance in transverse space from nearestHigher to become an outlier");
+  iDesc.add<std::vector<int>>("minNumLayerCluster", {2, 2, 2})->setComment("Not Inclusive");
+  iDesc.add<bool>("doPidCut", false);
+  iDesc.add<double>("cutHadProb", 0.5);
+  iDesc.add<bool>("computeLocalTime", false);
+  iDesc.add<bool>("usePCACleaning", false)->setComment("Enable PCA cleaning alorithm");
 }
 
 template class ticl::PatternRecognitionbyCLUE3D<TICLLayerTiles>;

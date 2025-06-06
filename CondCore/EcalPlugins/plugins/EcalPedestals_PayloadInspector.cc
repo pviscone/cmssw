@@ -18,9 +18,9 @@
 #include <sstream>
 
 namespace {
-  enum { kEBChannels = 61200, kEEChannels = 14648, kGains = 3, kRMS = 5 };
-  enum { MIN_IETA = 1, MIN_IPHI = 1, MAX_IETA = 85, MAX_IPHI = 360 };  // barrel lower and upper bounds on eta and phi
-  enum { IX_MIN = 1, IY_MIN = 1, IX_MAX = 100, IY_MAX = 100 };         // endcaps lower and upper bounds on x and y
+  constexpr int kEBChannels = 61200, kEEChannels = 14648, kGains = 3, kRMS = 5;
+  constexpr int MIN_IPHI = 1, MAX_IETA = 85, MAX_IPHI = 360;         // barrel lower and upper bounds on eta and phi
+  constexpr int IX_MIN = 1, IY_MIN = 1, IX_MAX = 100, IY_MAX = 100;  // endcaps lower and upper bounds on x and y
 
   /**************************************
      1d plot of ECAL pedestal of 1 IOV
@@ -35,9 +35,9 @@ namespace {
       TH1F** barrel_r = new TH1F*[kGains];
       TH1F** endcap_r = new TH1F*[kGains];
       float bmin[kGains] = {0.7, 0.5, 0.4};
-      float bmax[kGains] = {2.2, 1.3, 0.7};
+      float bmax[kGains] = {3.6, 2.0, 1.0};  //  11/11/2023
       float emin[kGains] = {1.5, 0.8, 0.4};
-      float emax[kGains] = {2.5, 1.5, 0.8};
+      float emax[kGains] = {3.0, 2.0, 1.0};  //  11/11/2023
       for (int gainId = 0; gainId < kGains; gainId++) {
         barrel_m[gainId] = new TH1F(Form("EBm%i", gainId), Form("mean %i EB", gainValues[gainId]), 100, 150., 250.);
         endcap_m[gainId] = new TH1F(Form("EEm%i", gainId), Form("mean %i EE", gainValues[gainId]), 100, 150., 250.);
@@ -83,7 +83,7 @@ namespace {
                 endcap_m[2]->Fill((*payload)[rawid].mean_x1);
                 endcap_r[2]->Fill((*payload)[rawid].rms_x1);
               }  // validDetId
-      }          // if payload.get()
+      }  // if payload.get()
       else
         return false;
 
@@ -125,7 +125,7 @@ namespace {
       canvas.SaveAs(ImageName.c_str());
       return true;
     }  // fill method
-  };   //   class EcalPedestalsHist
+  };  //   class EcalPedestalsHist
 
   /**************************************
      2d plot of ECAL pedestal of 1 IOV
@@ -310,7 +310,7 @@ namespace {
                   }
                 }
               }  // validDetId
-      }          // if payload.get()
+      }  // if payload.get()
       else
         return false;
 
@@ -372,15 +372,15 @@ namespace {
       //      l->SetLineWidth(1);
       for (int gId = 0; gId < kGains; gId++) {
         pad[gId][0]->cd();
-        DrawEE(endc_m_m[gId], 175., 225.);
+        DrawEE(endc_m_m[gId], 180., 300.);  //   11/11/2023
         pad[gId + kGains][0]->cd();
         DrawEE(endc_m_r[gId], pEEmin[gId], pEEmax[gId]);
         pad[gId][1]->cd();
-        DrawEB(barrel_m[gId], 175., 225.);
+        DrawEB(barrel_m[gId], 180., 240.);  //   11/11/2023
         pad[gId + kGains][1]->cd();
         DrawEB(barrel_r[gId], pEBmin[gId], pEBmax[gId]);
         pad[gId][2]->cd();
-        DrawEE(endc_p_m[gId], 175., 225.);
+        DrawEE(endc_p_m[gId], 180., 300.);  //   11/11/2023
         pad[gId + kGains][2]->cd();
         DrawEE(endc_p_r[gId], pEEmin[gId], pEEmax[gId]);
       }
@@ -605,7 +605,7 @@ namespace {
                 }
               }
             }  // loop over cellid
-          }    //  barrel data present
+          }  //  barrel data present
           if (payload->endcapItems().empty()) {
             // looping over the EE channels
             for (int iz = -1; iz < 2; iz = iz + 2) {  // -1 or +1
@@ -730,12 +730,12 @@ namespace {
                         EEtot[2]++;
                       }
                     }  // second run
-                  }    // validDetId
-                }      //   loop over ix
-              }        //  loop over iy
-            }          //  loop over iz
-          }            //  endcap data present
-        }              //  if payload.get()
+                  }  // validDetId
+                }  //   loop over ix
+              }  //  loop over iy
+            }  //  loop over iz
+          }  //  endcap data present
+        }  //  if payload.get()
         else
           return false;
       }  // loop over IOVs
@@ -823,7 +823,7 @@ namespace {
       canvas.SaveAs(ImageName.c_str());
       return true;
     }  // fill method
-  };   // class EcalPedestalsBase
+  };  // class EcalPedestalsBase
   using EcalPedestalsDiffOneTag = EcalPedestalsBase<cond::payloadInspector::SINGLE_IOV, 1, 0>;
   using EcalPedestalsDiffTwoTags = EcalPedestalsBase<cond::payloadInspector::SINGLE_IOV, 2, 0>;
   using EcalPedestalsRatioOneTag = EcalPedestalsBase<cond::payloadInspector::SINGLE_IOV, 1, 1>;
@@ -858,6 +858,9 @@ namespace {
           // looping over the EB channels, via the dense-index, mapped into EBDetId's
           if (payload->barrelItems().empty())
             return false;
+          // set to 200 for ieta 0 (no crystal)
+          for (int iphi = MIN_IPHI; iphi < MAX_IPHI + 1; iphi++)
+            fillWithValue(iphi, 0, 200);
           for (int cellid = EBDetId::MIN_HASH; cellid < EBDetId::kSizeForDenseIndexing; ++cellid) {
             uint32_t rawid = EBDetId::unhashIndex(cellid);
 
@@ -878,8 +881,8 @@ namespace {
             //	    if(valped < 150.) valped = 150.;
             fillWithValue((EBDetId(rawid)).iphi(), (EBDetId(rawid)).ieta(), valped);
           }  // loop over cellid
-        }    // if payload.get()
-      }      // loop over IOV's (1 in this case)
+        }  // if payload.get()
+      }  // loop over IOV's (1 in this case)
       return true;
     }  // fill method
   };
@@ -907,6 +910,9 @@ namespace {
           // looping over the EB channels, via the dense-index, mapped into EBDetId's
           if (payload->barrelItems().empty())
             return false;
+          // set to 200 for ieta 0 (no crystal)
+          for (int iphi = MIN_IPHI; iphi < MAX_IPHI + 1; iphi++)
+            fillWithValue(iphi, 0, 200);
           for (int cellid = EBDetId::MIN_HASH; cellid < EBDetId::kSizeForDenseIndexing; ++cellid) {
             uint32_t rawid = EBDetId::unhashIndex(cellid);
 
@@ -923,8 +929,8 @@ namespace {
             //	    if(valped < 150.) valped = 150.;
             fillWithValue((EBDetId(rawid)).iphi(), (EBDetId(rawid)).ieta(), valped);
           }  // loop over cellid
-        }    // if payload.get()
-      }      // loop over IOV's (1 in this case)
+        }  // if payload.get()
+      }  // loop over IOV's (1 in this case)
       return true;
     }  // fill method
   };
@@ -952,6 +958,9 @@ namespace {
           // looping over the EB channels, via the dense-index, mapped into EBDetId's
           if (payload->barrelItems().empty())
             return false;
+          // set to 200 for ieta 0 (no crystal)
+          for (int iphi = MIN_IPHI; iphi < MAX_IPHI + 1; iphi++)
+            fillWithValue(iphi, 0, 200);
           for (int cellid = EBDetId::MIN_HASH; cellid < EBDetId::kSizeForDenseIndexing; ++cellid) {
             uint32_t rawid = EBDetId::unhashIndex(cellid);
 
@@ -968,8 +977,8 @@ namespace {
             //	    if(valped < 150.) valped = 150.;
             fillWithValue((EBDetId(rawid)).iphi(), (EBDetId(rawid)).ieta(), valped);
           }  // loop over cellid
-        }    // if payload.get()
-      }      // loop over IOV's (1 in this case)
+        }  // if payload.get()
+      }  // loop over IOV's (1 in this case)
       return true;
     }  // fill method
   };
@@ -1021,8 +1030,8 @@ namespace {
                     fillWithValue(ix + IX_MAX + 20, iy, valped);
 
                 }  // validDetId
-        }          // payload
-      }            // loop over IOV's (1 in this case)
+        }  // payload
+      }  // loop over IOV's (1 in this case)
       return true;
     }  // fill method
   };
@@ -1072,8 +1081,8 @@ namespace {
                   else
                     fillWithValue(ix + IX_MAX + 20, iy, valped);
                 }  // validDetId
-        }          // payload
-      }            // loop over IOV's (1 in this case)
+        }  // payload
+      }  // loop over IOV's (1 in this case)
       return true;
     }  // fill method
   };
@@ -1123,8 +1132,8 @@ namespace {
                   else
                     fillWithValue(ix + IX_MAX + 20, iy, valped);
                 }  // validDetId
-        }          // if payload.get()
-      }            // loop over IOV's (1 in this case)
+        }  // if payload.get()
+      }  // loop over IOV's (1 in this case)
       return true;
     }  // fill method
   };
@@ -1153,6 +1162,9 @@ namespace {
           // looping over the EB channels, via the dense-index, mapped into EBDetId's
           if (payload->barrelItems().empty())
             return false;
+          // set to 2 for ieta 0 (no crystal)
+          for (int iphi = MIN_IPHI; iphi < MAX_IPHI + 1; iphi++)
+            fillWithValue(iphi, 0, 2);
           for (int cellid = EBDetId::MIN_HASH; cellid < EBDetId::kSizeForDenseIndexing; ++cellid) {
             uint32_t rawid = EBDetId::unhashIndex(cellid);
 
@@ -1168,12 +1180,12 @@ namespace {
             //	    fillWithValue(  (EBDetId(rawid)).iphi() , (EBDetId(rawid)).ieta()+0.5+delta, (*payload)[rawid].mean_x12 );
             // set max on noise 2d plots
             float valrms = (*payload)[rawid].rms_x12;
-            if (valrms > 2.2)
-              valrms = 2.2;
+            if (valrms > 4.0)
+              valrms = 4.0;
             fillWithValue((EBDetId(rawid)).iphi(), (EBDetId(rawid)).ieta(), valrms);
           }  // loop over cellid
-        }    // if payload.get()
-      }      // loop over IOV's (1 in this case)
+        }  // if payload.get()
+      }  // loop over IOV's (1 in this case)
       return true;
     }  // fill method
   };
@@ -1201,6 +1213,9 @@ namespace {
           // looping over the EB channels, via the dense-index, mapped into EBDetId's
           if (payload->barrelItems().empty())
             return false;
+          // set to 1 for ieta 0 (no crystal)
+          for (int iphi = MIN_IPHI; iphi < MAX_IPHI + 1; iphi++)
+            fillWithValue(iphi, 0, 1);
           for (int cellid = EBDetId::MIN_HASH; cellid < EBDetId::kSizeForDenseIndexing; ++cellid) {
             uint32_t rawid = EBDetId::unhashIndex(cellid);
 
@@ -1212,12 +1227,12 @@ namespace {
 
             // set max on noise 2d plots
             float valrms = (*payload)[rawid].rms_x6;
-            if (valrms > 1.5)
-              valrms = 1.5;
+            if (valrms > 2.5)
+              valrms = 2.5;
             fillWithValue((EBDetId(rawid)).iphi(), (EBDetId(rawid)).ieta(), valrms);
           }  // loop over cellid
-        }    // if payload.get()
-      }      // loop over IOV's (1 in this case)
+        }  // if payload.get()
+      }  // loop over IOV's (1 in this case)
       return true;
     }  // fill method
   };
@@ -1245,6 +1260,9 @@ namespace {
           // looping over the EB channels, via the dense-index, mapped into EBDetId's
           if (payload->barrelItems().empty())
             return false;
+          // set to 0.5 for ieta 0 (no crystal)
+          for (int iphi = MIN_IPHI; iphi < MAX_IPHI + 1; iphi++)
+            fillWithValue(iphi, 0, 0.5);
           for (int cellid = EBDetId::MIN_HASH; cellid < EBDetId::kSizeForDenseIndexing; ++cellid) {
             uint32_t rawid = EBDetId::unhashIndex(cellid);
 
@@ -1256,12 +1274,12 @@ namespace {
 
             // set max on noise 2d plots
             float valrms = (*payload)[rawid].rms_x1;
-            if (valrms > 1.0)
-              valrms = 1.0;
+            if (valrms > 1.2)
+              valrms = 1.2;
             fillWithValue((EBDetId(rawid)).iphi(), (EBDetId(rawid)).ieta(), valrms);
           }  // loop over cellid
-        }    // if payload.get()
-      }      // loop over IOV's (1 in this case)
+        }  // if payload.get()
+      }  // loop over IOV's (1 in this case)
       return true;
     }  // fill method
   };
@@ -1304,16 +1322,16 @@ namespace {
                     continue;
                   // set max on noise 2d plots
                   float valrms = (*payload)[rawid].rms_x12;
-                  if (valrms > 3.5)
-                    valrms = 3.5;
+                  if (valrms > 4.0)
+                    valrms = 4.0;
                   if (iz == -1)
                     fillWithValue(ix, iy, valrms);
                   else
                     fillWithValue(ix + IX_MAX + 20, iy, valrms);
 
                 }  // validDetId
-        }          // payload
-      }            // loop over IOV's (1 in this case)
+        }  // payload
+      }  // loop over IOV's (1 in this case)
       return true;
     }  // fill method
   };
@@ -1355,15 +1373,15 @@ namespace {
                     continue;
                   // set max on noise 2d plots
                   float valrms = (*payload)[rawid].rms_x6;
-                  if (valrms > 2.0)
-                    valrms = 2.0;
+                  if (valrms > 2.5)
+                    valrms = 2.5;
                   if (iz == -1)
                     fillWithValue(ix, iy, valrms);
                   else
                     fillWithValue(ix + IX_MAX + 20, iy, valrms);
                 }  // validDetId
-        }          // payload
-      }            // loop over IOV's (1 in this case)
+        }  // payload
+      }  // loop over IOV's (1 in this case)
       return true;
     }  // fill method
   };
@@ -1405,15 +1423,15 @@ namespace {
                     continue;
                   // set max on noise 2d plots
                   float valrms = (*payload)[rawid].rms_x1;
-                  if (valrms > 1.5)
-                    valrms = 1.5;
+                  if (valrms > 1.2)
+                    valrms = 1.2;
                   if (iz == -1)
                     fillWithValue(ix, iy, valrms);
                   else
                     fillWithValue(ix + IX_MAX + 20, iy, valrms);
                 }  // validDetId
-        }          // if payload.get()
-      }            // loop over IOV's (1 in this case)
+        }  // if payload.get()
+      }  // loop over IOV's (1 in this case)
       return true;
     }  // fill method
   };

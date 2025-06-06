@@ -2,14 +2,14 @@
 #define GeneratorInterface_RivetInterface_DQMRivetClient_H
 
 #include "FWCore/Framework/interface/Frameworkfwd.h"
-#include "FWCore/Framework/interface/EDAnalyzer.h"
+#include "FWCore/Framework/interface/one/EDAnalyzer.h"
 #include "DQMServices/Core/interface/DQMStore.h"
 #include <set>
 #include <string>
 #include <vector>
 #include <TH1.h>
 
-class DQMRivetClient : public edm::EDAnalyzer {
+class DQMRivetClient : public edm::one::EDAnalyzer<edm::one::SharedResources, edm::one::WatchRuns> {
 public:
   typedef dqm::legacy::DQMStore DQMStore;
   typedef dqm::legacy::MonitorElement MonitorElement;
@@ -18,13 +18,13 @@ public:
   };
 
   DQMRivetClient(const edm::ParameterSet& pset);
-  ~DQMRivetClient() override{};
+  ~DQMRivetClient() override {}
 
-  void analyze(const edm::Event& event, const edm::EventSetup& eventSetup) override{};
+  void analyze(const edm::Event& event, const edm::EventSetup& eventSetup) override {}
 
   void endJob() override;
 
-  /// EndRun
+  void beginRun(const edm::Run& r, const edm::EventSetup& c) override {}
   void endRun(const edm::Run& r, const edm::EventSetup& c) override;
 
   struct LumiOption {

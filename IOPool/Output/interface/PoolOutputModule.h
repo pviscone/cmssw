@@ -144,7 +144,7 @@ namespace edm {
   private:
     void preActionBeforeRunEventAsync(WaitingTaskHolder iTask,
                                       ModuleCallingContext const& iModuleCallingContext,
-                                      Principal const& iPrincipal) const override;
+                                      Principal const& iPrincipal) const noexcept override;
 
     void openFile(FileBlock const& fb) override;
     void respondToOpenInputFile(FileBlock const& fb) override;
@@ -216,6 +216,7 @@ namespace edm {
     bool mergeJob_;
     edm::propagate_const<std::unique_ptr<RootOutputFile>> rootOutputFile_;
     std::string statusFileName_;
+    std::string overrideGUID_;
     std::vector<std::string> processesWithSelectedMergeableRunProducts_;
   };
 }  // namespace edm

@@ -6,8 +6,9 @@
 #include "FWCore/Framework/interface/LuminosityBlock.h"
 #include "FWCore/Framework/interface/Run.h"
 #include "FWCore/Framework/interface/SignallingProductRegistry.h"
-#include "FWCore/Framework/interface/ESRecordsToProxyIndices.h"
+#include "FWCore/Framework/interface/ESRecordsToProductResolverIndices.h"
 #include "FWCore/ServiceRegistry/interface/ActivityRegistry.h"
+#include "FWCore/ServiceRegistry/interface/GlobalContext.h"
 #include "FWCore/ServiceRegistry/interface/ProcessContext.h"
 #include "FWCore/Sources/interface/VectorInputSourceDescription.h"
 #include "FWCore/Sources/interface/VectorInputSourceFactory.h"
@@ -29,6 +30,8 @@
 
 #include "CLHEP/Random/RandPoissonQ.h"
 #include "CLHEP/Random/RandPoisson.h"
+
+#include "PileupRandomNumberGenerator.h"
 
 #include <algorithm>
 #include <memory>
@@ -105,6 +108,18 @@ namespace edm {
 
     if (pset.existsAs<std::vector<ParameterSet> >("producers", true)) {
       std::vector<ParameterSet> producers = pset.getParameter<std::vector<ParameterSet> >("producers");
+
+      std::vector<std::string> names;
+      names.reserve(producers.size());
+      std::transform(producers.begin(), producers.end(), std::back_inserter(names), [](edm::ParameterSet const& iPSet) {
+        return iPSet.getParameter<std::string>("@module_label");
+      });
+      auto randomGenerator = std::make_unique<PileupRandomNumberGenerator>(names);
+      randomGenerator_ = randomGenerator.get();
+      std::unique_ptr<edm::RandomNumberGenerator> baseGen = std::move(randomGenerator);
+      serviceToken_ = edm::ServiceRegistry::createContaining(
+          std::move(baseGen), edm::ServiceRegistry::instance().presentToken(), true);
+
       provider_ = std::make_unique<SecondaryEventProvider>(producers, *productRegistry_, processConfiguration_);
     }
 
@@ -184,29 +199,56 @@ namespace edm {
     }
   }  // end of constructor
 
+  void PileUp::beginJob(eventsetup::ESRecordsToProductResolverIndices const& iES) {
+    input_->doBeginJob();
+    if (provider_.get() != nullptr) {
+      edm::ServiceRegistry::Operate guard(*serviceToken_);
+      GlobalContext globalContext(GlobalContext::Transition::kBeginJob, processContext_.get());
+      provider_->beginJob(*productRegistry_, iES, globalContext);
+    }
+  }
+
   void PileUp::beginStream(edm::StreamID) {
     auto iID = eventPrincipal_->streamID();  // each producer has its own workermanager, so use default streamid
     streamContext_.reset(new StreamContext(iID, processContext_.get()));
-    input_->doBeginJob();
+    streamContext_->setTransition(StreamContext::Transition::kBeginStream);
     if (provider_.get() != nullptr) {
-      //TODO for now, we do not support consumes from EventSetup
-      provider_->beginJob(*productRegistry_, eventsetup::ESRecordsToProxyIndices{{}});
+      edm::ServiceRegistry::Operate guard(*serviceToken_);
       provider_->beginStream(iID, *streamContext_);
     }
   }
 
   void PileUp::endStream() {
+    ExceptionCollector exceptionCollector(
+        "Multiple exceptions were thrown while executing PileUp::endStream. An exception message follows for "
+        "each.\n");
+    endStream(exceptionCollector);
+
+    if (exceptionCollector.hasThrown()) {
+      exceptionCollector.rethrow();
+    }
+  }
+
+  void PileUp::endStream(ExceptionCollector& exceptionCollector) {
     if (provider_.get() != nullptr) {
-      provider_->endStream(streamContext_->streamID(), *streamContext_);
-      provider_->endJob();
+      edm::ServiceRegistry::Operate guard(*serviceToken_);
+      streamContext_->setTransition(StreamContext::Transition::kEndStream);
+      provider_->endStream(streamContext_->streamID(), *streamContext_, exceptionCollector);
+      // This is kind of strange, end of job running as part of endStream multiple times...
+      // For the moment, I'm leaving this as is but maybe we should think about this...
+      // I think nothing uses this code anymore anyway...
+      GlobalContext globalContext(GlobalContext::Transition::kEndJob, processContext_.get());
+      provider_->endJob(exceptionCollector, globalContext);
     }
     input_->doEndJob();
   }
 
   void PileUp::beginRun(const edm::Run& run, const edm::EventSetup& setup) {
     if (provider_.get() != nullptr) {
-      auto aux = std::make_shared<RunAuxiliary>(run.runAuxiliary());
-      runPrincipal_.reset(new RunPrincipal(aux, productRegistry_, *processConfiguration_, nullptr, 0));
+      runPrincipal_.reset(new RunPrincipal(productRegistry_, *processConfiguration_, nullptr, 0));
+      runPrincipal_->setAux(run.runAuxiliary());
+      edm::ServiceRegistry::Operate guard(*serviceToken_);
+      streamContext_->setTransition(StreamContext::Transition::kBeginRun);
       provider_->beginRun(*runPrincipal_, setup.impl(), run.moduleCallingContext(), *streamContext_);
     }
   }
@@ -215,17 +257,24 @@ namespace edm {
       lumiPrincipal_.reset(new LuminosityBlockPrincipal(productRegistry_, *processConfiguration_, nullptr, 0));
       lumiPrincipal_->setAux(lumi.luminosityBlockAuxiliary());
       lumiPrincipal_->setRunPrincipal(runPrincipal_);
+      setRandomEngine(lumi);
+      edm::ServiceRegistry::Operate guard(*serviceToken_);
+      streamContext_->setTransition(StreamContext::Transition::kBeginLuminosityBlock);
       provider_->beginLuminosityBlock(*lumiPrincipal_, setup.impl(), lumi.moduleCallingContext(), *streamContext_);
     }
   }
 
   void PileUp::endRun(const edm::Run& run, const edm::EventSetup& setup) {
     if (provider_.get() != nullptr) {
+      edm::ServiceRegistry::Operate guard(*serviceToken_);
+      streamContext_->setTransition(StreamContext::Transition::kEndRun);
       provider_->endRun(*runPrincipal_, setup.impl(), run.moduleCallingContext(), *streamContext_);
     }
   }
   void PileUp::endLuminosityBlock(const edm::LuminosityBlock& lumi, const edm::EventSetup& setup) {
     if (provider_.get() != nullptr) {
+      edm::ServiceRegistry::Operate guard(*serviceToken_);
+      streamContext_->setTransition(StreamContext::Transition::kEndLuminosityBlock);
       provider_->endLuminosityBlock(*lumiPrincipal_, setup.impl(), lumi.moduleCallingContext(), *streamContext_);
     }
   }
@@ -235,6 +284,8 @@ namespace edm {
       // note:  run and lumi numbers must be modified to match lumiPrincipal_
       eventPrincipal_->setLuminosityBlockPrincipal(lumiPrincipal_.get());
       eventPrincipal_->setRunAndLumiNumber(lumiPrincipal_->run(), lumiPrincipal_->luminosityBlock());
+      edm::ServiceRegistry::Operate guard(*serviceToken_);
+      streamContext_->setTransition(StreamContext::Transition::kEvent);
       provider_->setupPileUpEvent(*eventPrincipal_, setup.impl(), *streamContext_);
     }
   }
@@ -353,6 +404,13 @@ namespace edm {
     return randomEngine_;
   }
 
+  void PileUp::setRandomEngine(StreamID streamID) { randomGenerator_->setEngine(*randomEngine(streamID)); }
+  void PileUp::setRandomEngine(LuminosityBlock const& iLumi) {
+    Service<RandomNumberGenerator> rng;
+    randomGenerator_->setSeed(rng->mySeed());
+    randomGenerator_->setEngine(rng->getEngine(iLumi.index()));
+  }
+
   void PileUp::CalculatePileup(int MinBunch,
                                int MaxBunch,
                                std::vector<int>& PileupSelection,
@@ -363,6 +421,10 @@ namespace edm {
 
     int nzero_crossing = -1;
     double Fnzero_crossing = -1;
+
+    if (provider_) {
+      setRandomEngine(streamID);
+    }
 
     if (manage_OOT_) {
       if (none_) {

@@ -7,8 +7,10 @@
  *  Python script plotBaryCentre_VS_BeamSpot.py under script dir is used to plot barycentres from alignment constants used in Prompt-Reco, End-of-Year Rereco and so-called Run-2 (Ultra)Legacy Rereco. Options of the plotting script can be found from the helper in the script.
  *
  *  $Date: 2021/01/05 $
- *  $Revision: 1.0 $
+ *  $Last Modified: 2024/09/23 $
+ *  $Revision: 1.1 $
  *  \author Tongguang Cheng - Beihang University <tongguang.cheng@cern.ch>
+ *  \author Alberto Mecca - Torino University <alberto.mecca@cern.ch>
  *
 */
 
@@ -51,9 +53,8 @@
 #include "CommonTools/UtilAlgos/interface/TFileService.h"
 
 // ROOT
-#include <TTree.h>
-#include <TString.h>
-//#include <TVector3.h>
+#include "TTree.h"
+#include "TString.h"
 
 //
 // class declaration
@@ -62,9 +63,17 @@
 class PixelBaryCentreAnalyzer : public edm::one::EDAnalyzer<edm::one::SharedResources> {
 public:
   explicit PixelBaryCentreAnalyzer(const edm::ParameterSet&);
-  ~PixelBaryCentreAnalyzer() override;
+  ~PixelBaryCentreAnalyzer() override = default;
 
   static void fillDescriptions(edm::ConfigurationDescriptions& descriptions);
+
+  struct SimplePoint {
+    float x, y, z;
+    SimplePoint(const GlobalPoint& p) : x(p.x()), y(p.y()), z(p.z()) {}
+    SimplePoint() : x(0), y(0), z(0) {}
+  };
+  static const unsigned int nPixelLayers = 4;
+  static const unsigned int nPixelDiscs = 3;
 
 private:
   void beginJob() override;
@@ -74,7 +83,7 @@ private:
   void initBC();
   void initBS();
 
-  bool usePixelQuality_;
+  const bool usePixelQuality_;
   int phase_;
 
   // ----------member data ---------------------------
@@ -86,11 +95,11 @@ private:
   // labels of beamspot tags
   std::vector<std::string> bsLabels_;
 
-  edm::ESGetToken<TrackerGeometry, TrackerDigiGeometryRecord> trackerGeometryToken_;
-  edm::ESGetToken<TrackerTopology, TrackerTopologyRcd> trackerTopologyToken_;
-  edm::ESGetToken<SiPixelQuality, SiPixelQualityFromDbRcd> siPixelQualityToken_;
+  const edm::ESGetToken<TrackerGeometry, TrackerDigiGeometryRecord> trackerGeometryToken_;
+  const edm::ESGetToken<TrackerTopology, TrackerTopologyRcd> trackerTopologyToken_;
+  const edm::ESGetToken<SiPixelQuality, SiPixelQualityFromDbRcd> siPixelQualityToken_;
 
-  edm::ESGetToken<Alignments, GlobalPositionRcd> gprToken_;
+  const edm::ESGetToken<Alignments, GlobalPositionRcd> gprToken_;
   std::map<std::string, edm::ESGetToken<Alignments, TrackerAlignmentRcd>> tkAlignTokens_;
   std::map<std::string, edm::ESGetToken<BeamSpotObjects, BeamSpotObjectsRcd>> bsTokens_;
 
@@ -103,14 +112,28 @@ private:
   GlobalPoint PIX_, BPIX_, FPIX_;
   GlobalPoint BPIX_Flipped_, BPIX_NonFlipped_, BPIX_DiffFlippedNonFlipped_;
 
-  GlobalPoint BPIXLayer_[4];
-  GlobalPoint BPIXLayer_Flipped_[4];
-  GlobalPoint BPIXLayer_NonFlipped_[4];
-  GlobalPoint BPIXLayer_DiffFlippedNonFlipped_[4];
+  GlobalPoint BPIXLayer_[nPixelLayers];
+  GlobalPoint BPIXLayer_Flipped_[nPixelLayers];
+  GlobalPoint BPIXLayer_NonFlipped_[nPixelLayers];
+  GlobalPoint BPIXLayer_DiffFlippedNonFlipped_[nPixelLayers];
 
   GlobalPoint FPIX_plus_, FPIX_minus_;
-  GlobalPoint FPIXDisks_plus_[3];
-  GlobalPoint FPIXDisks_minus_[3];
+  GlobalPoint FPIXDisks_plus_[nPixelDiscs];
+  GlobalPoint FPIXDisks_minus_[nPixelDiscs];
+
+  SimplePoint vBS_;
+
+  SimplePoint vPIX_, vBPIX_, vFPIX_;
+  SimplePoint vBPIX_Flipped_, vBPIX_NonFlipped_, vBPIX_DiffFlippedNonFlipped_;
+
+  SimplePoint vBPIXLayer_[nPixelLayers];
+  SimplePoint vBPIXLayer_Flipped_[nPixelLayers];
+  SimplePoint vBPIXLayer_NonFlipped_[nPixelLayers];
+  SimplePoint vBPIXLayer_DiffFlippedNonFlipped_[nPixelLayers];
+
+  SimplePoint vFPIX_plus_, vFPIX_minus_;
+  SimplePoint vFPIXDisks_plus_[nPixelDiscs];
+  SimplePoint vFPIXDisks_minus_[nPixelDiscs];
 
   edm::Service<TFileService> tFileService;
   std::map<std::string, TTree*> bcTrees_;
@@ -141,11 +164,6 @@ PixelBaryCentreAnalyzer::PixelBaryCentreAnalyzer(const edm::ParameterSet& iConfi
   usesResource("TFileService");
 }
 
-PixelBaryCentreAnalyzer::~PixelBaryCentreAnalyzer() {
-  // do anything here that needs to be done at desctruction time
-  // (e.g. close files, deallocate resources etc.)
-}
-
 //
 // member functions
 //
@@ -154,6 +172,7 @@ void PixelBaryCentreAnalyzer::initBS() {
   double dummy_float = 999999.0;
 
   BS_ = GlobalPoint(dummy_float, dummy_float, dummy_float);
+  vBS_ = SimplePoint(BS_);
 }
 
 void PixelBaryCentreAnalyzer::initBC() {
@@ -171,16 +190,39 @@ void PixelBaryCentreAnalyzer::initBC() {
   FPIX_plus_ = GlobalPoint(dummy_float, dummy_float, dummy_float);
   FPIX_minus_ = GlobalPoint(dummy_float, dummy_float, dummy_float);
 
-  for (unsigned int i = 0; i < 4; i++) {
+  for (unsigned int i = 0; i < nPixelLayers; i++) {
     BPIXLayer_[i] = GlobalPoint(dummy_float, dummy_float, dummy_float);
     BPIXLayer_Flipped_[i] = GlobalPoint(dummy_float, dummy_float, dummy_float);
     BPIXLayer_NonFlipped_[i] = GlobalPoint(dummy_float, dummy_float, dummy_float);
     BPIXLayer_DiffFlippedNonFlipped_[i] = GlobalPoint(dummy_float, dummy_float, dummy_float);
   }
 
-  for (unsigned int i = 0; i < 3; i++) {
+  for (unsigned int i = 0; i < nPixelDiscs; i++) {
     FPIXDisks_plus_[i] = GlobalPoint(dummy_float, dummy_float, dummy_float);
     FPIXDisks_minus_[i] = GlobalPoint(dummy_float, dummy_float, dummy_float);
+  }
+
+  vPIX_ = SimplePoint(PIX_);
+  vBPIX_ = SimplePoint(BPIX_);
+  vFPIX_ = SimplePoint(FPIX_);
+
+  vBPIX_Flipped_ = SimplePoint(BPIX_Flipped_);
+  vBPIX_NonFlipped_ = SimplePoint(BPIX_NonFlipped_);
+  vBPIX_DiffFlippedNonFlipped_ = SimplePoint(BPIX_DiffFlippedNonFlipped_);
+
+  vFPIX_plus_ = SimplePoint(FPIX_plus_);
+  vFPIX_minus_ = SimplePoint(FPIX_minus_);
+
+  for (unsigned int i = 0; i < nPixelLayers; i++) {
+    vBPIXLayer_[i] = SimplePoint(BPIXLayer_[i]);
+    vBPIXLayer_Flipped_[i] = SimplePoint(BPIXLayer_Flipped_[i]);
+    vBPIXLayer_NonFlipped_[i] = SimplePoint(BPIXLayer_NonFlipped_[i]);
+    vBPIXLayer_DiffFlippedNonFlipped_[i] = SimplePoint(BPIXLayer_DiffFlippedNonFlipped_[i]);
+  }
+
+  for (unsigned int i = 0; i < nPixelDiscs; i++) {
+    vFPIXDisks_plus_[i] = SimplePoint(FPIXDisks_plus_[i]);
+    vFPIXDisks_minus_[i] = SimplePoint(FPIXDisks_minus_[i]);
   }
 }
 
@@ -206,21 +248,21 @@ void PixelBaryCentreAnalyzer::analyze(const edm::Event& iEvent, const edm::Event
 
     phase_ = -1;
 
-    const TrackerGeometry* tkGeo = &iSetup.getData(trackerGeometryToken_);
-    const TrackerTopology* tkTopo = &iSetup.getData(trackerTopologyToken_);
+    const TrackerGeometry& tkGeom = iSetup.getData(trackerGeometryToken_);
+    const TrackerTopology& tkTopo = iSetup.getData(trackerTopologyToken_);
 
-    if (tkGeo->isThere(GeomDetEnumerators::PixelBarrel) && tkGeo->isThere(GeomDetEnumerators::PixelEndcap))
+    if (tkGeom.isThere(GeomDetEnumerators::PixelBarrel) && tkGeom.isThere(GeomDetEnumerators::PixelEndcap)) {
       phase_ = 0;
-    else if (tkGeo->isThere(GeomDetEnumerators::P1PXB) && tkGeo->isThere(GeomDetEnumerators::P1PXEC))
+    } else if (tkGeom.isThere(GeomDetEnumerators::P1PXB) && tkGeom.isThere(GeomDetEnumerators::P1PXEC)) {
       phase_ = 1;
+    }
 
     // pixel quality
-    const SiPixelQuality* badPixelInfo = &iSetup.getData(siPixelQualityToken_);
+    const SiPixelQuality& badPixelInfo = iSetup.getData(siPixelQualityToken_);
 
     // Tracker global position
-    const Alignments* globalAlignments = &iSetup.getData(gprToken_);
-    std::unique_ptr<const Alignments> globalPositions = std::make_unique<Alignments>(*globalAlignments);
-    const AlignTransform& globalCoordinates = align::DetectorGlobalPosition(*globalPositions, DetId(DetId::Tracker));
+    const Alignments& globalAlignments = iSetup.getData(gprToken_);
+    const AlignTransform globalCoordinates = align::DetectorGlobalPosition(globalAlignments, DetId(DetId::Tracker));
     GlobalVector globalTkPosition(
         globalCoordinates.translation().x(), globalCoordinates.translation().y(), globalCoordinates.translation().z());
 
@@ -230,8 +272,8 @@ void PixelBaryCentreAnalyzer::analyze(const edm::Event& iEvent, const edm::Event
       PixelBaryCentreAnalyzer::initBC();
 
       // Get TkAlign from EventSetup:
-      const Alignments* alignments = &iSetup.getData(tkAlignTokens_[label]);
-      std::vector<AlignTransform> tkAlignments = alignments->m_align;
+      const Alignments& alignments = iSetup.getData(tkAlignTokens_[label]);
+      std::vector<AlignTransform> tkAlignments = alignments.m_align;
 
       // PIX
       GlobalVector barycentre_PIX(0.0, 0.0, 0.0);
@@ -255,7 +297,7 @@ void PixelBaryCentreAnalyzer::analyze(const edm::Event& iEvent, const edm::Event
         //DetId
         const DetId& detId = DetId(ali.rawId());
         // remove bad module
-        if (usePixelQuality_ && badPixelInfo->IsModuleBad(detId))
+        if (usePixelQuality_ && badPixelInfo.IsModuleBad(detId))
           continue;
 
         // alignment for a given module
@@ -268,8 +310,8 @@ void PixelBaryCentreAnalyzer::analyze(const edm::Event& iEvent, const edm::Event
           barycentre_BPIX += ali_translation;
           barycentre_PIX += ali_translation;
 
-          int layer = tkTopo->pxbLayer(detId);
-          int ladder = tkTopo->pxbLadder(detId);
+          int layer = tkTopo.pxbLayer(detId);
+          int ladder = tkTopo.pxbLadder(detId);
           nmodules_bpix[layer][ladder] += 1;
           barycentre_bpix[layer][ladder] += ali_translation;
 
@@ -281,16 +323,16 @@ void PixelBaryCentreAnalyzer::analyze(const edm::Event& iEvent, const edm::Event
           barycentre_FPIX += ali_translation;
           barycentre_PIX += ali_translation;
 
-          int disk = tkTopo->pxfDisk(detId);
-          int quadrant = PixelEndcapName(detId, tkTopo, phase_).halfCylinder();
+          int disk = tkTopo.pxfDisk(detId);
+          int quadrant = PixelEndcapName(detId, &tkTopo, phase_).halfCylinder();
           if (quadrant < 3)
             disk *= -1;
 
           int ring = -9999;
           if (phase_ == 0) {
-            ring = 1 + (tkTopo->pxfPanel(detId) + tkTopo->pxfModule(detId.rawId()) > 3);
+            ring = 1 + (tkTopo.pxfPanel(detId) + tkTopo.pxfModule(detId.rawId()) > 3);
           } else if (phase_ == 1) {
-            ring = PixelEndcapName(detId, tkTopo, phase_).ringName();
+            ring = PixelEndcapName(detId, &tkTopo, phase_).ringName();
           }
 
           nmodules_fpix[disk][ring] += 1;
@@ -305,16 +347,18 @@ void PixelBaryCentreAnalyzer::analyze(const edm::Event& iEvent, const edm::Event
       barycentre_PIX *= (1.0 / nmodules_PIX);
       barycentre_PIX += globalTkPosition;
       PIX_ = GlobalPoint(barycentre_PIX.x(), barycentre_PIX.y(), barycentre_PIX.z());
+      vPIX_ = SimplePoint(PIX_);
 
       //BPIX
       barycentre_BPIX *= (1.0 / nmodules_BPIX);
       barycentre_BPIX += globalTkPosition;
       BPIX_ = GlobalPoint(barycentre_BPIX.x(), barycentre_BPIX.y(), barycentre_BPIX.z());
+      vBPIX_ = SimplePoint(BPIX_);
       //FPIX
       barycentre_FPIX *= (1.0 / nmodules_FPIX);
       barycentre_FPIX += globalTkPosition;
       FPIX_ = GlobalPoint(barycentre_FPIX.x(), barycentre_FPIX.y(), barycentre_FPIX.z());
-
+      vFPIX_ = SimplePoint(FPIX_);
       // Pixel substructures
 
       // BPix barycentre per-layer/per-ladder
@@ -331,10 +375,8 @@ void PixelBaryCentreAnalyzer::analyze(const edm::Event& iEvent, const edm::Event
       GlobalVector BPIX_NonFlipped(0.0, 0.0, 0.0);
 
       // loop over layers
-      for (std::map<int, std::map<int, GlobalVector>>::iterator il = barycentre_bpix.begin();
-           il != barycentre_bpix.end();
-           ++il) {
-        int layer = il->first;
+      for (const auto& il : barycentre_bpix) {
+        int layer = il.first;
 
         int nmodulesLayer = 0;
         int nmodulesLayer_Flipped = 0;
@@ -345,8 +387,8 @@ void PixelBaryCentreAnalyzer::analyze(const edm::Event& iEvent, const edm::Event
 
         // loop over ladder
         std::map<int, GlobalVector> barycentreLayer = barycentre_bpix[layer];
-        for (std::map<int, GlobalVector>::iterator it = barycentreLayer.begin(); it != barycentreLayer.end(); ++it) {
-          int ladder = it->first;
+        for (const auto& it : barycentreLayer) {
+          int ladder = it.first;
           //BPIXLayerLadder_[layer][ladder] = (1.0/nmodules[layer][ladder])*barycentreLayer[ladder] + globalTkPosition;
 
           nmodulesLayer += nmodules_bpix[layer][ladder];
@@ -358,19 +400,19 @@ void PixelBaryCentreAnalyzer::analyze(const edm::Event& iEvent, const edm::Event
           if (phase_ == 1) {
             if (layer != 4) {  // layer 1-3
 
-              if (ladder % 2 != 0) {  // odd ladder = inner = flipped
-                nmodulesLayer_Flipped += nmodules_bpix[layer][ladder];
-                BPIXLayer_Flipped += barycentreLayer[ladder];
-              } else {
+              if (ladder % 2 != 0) {  // odd ladder = outer ladder = unflipped
                 nmodulesLayer_NonFlipped += nmodules_bpix[layer][ladder];
                 BPIXLayer_NonFlipped += barycentreLayer[ladder];
+              } else {  // even ladder = inner ladder = flipped
+                nmodulesLayer_Flipped += nmodules_bpix[layer][ladder];
+                BPIXLayer_Flipped += barycentreLayer[ladder];
               }
             } else {  // layer-4
 
-              if (ladder % 2 == 0) {  // even ladder = inner = flipped
+              if (ladder % 2 != 0) {  // odd ladder = inner = flipped
                 nmodulesLayer_Flipped += nmodules_bpix[layer][ladder];
                 BPIXLayer_Flipped += barycentreLayer[ladder];
-              } else {  // odd ladder = outer = non-flipped
+              } else {  //even ladder = outer ladder  = unflipped
                 nmodulesLayer_NonFlipped += nmodules_bpix[layer][ladder];
                 BPIXLayer_NonFlipped += barycentreLayer[ladder];
               }
@@ -421,26 +463,32 @@ void PixelBaryCentreAnalyzer::analyze(const edm::Event& iEvent, const edm::Event
         BPIXLayer_NonFlipped += globalTkPosition;
 
         BPIXLayer_[layer - 1] = GlobalPoint(BPIXLayer.x(), BPIXLayer.y(), BPIXLayer.z());
+        vBPIXLayer_[layer - 1] = SimplePoint(BPIXLayer_[layer - 1]);
         BPIXLayer_Flipped_[layer - 1] =
             GlobalPoint(BPIXLayer_Flipped.x(), BPIXLayer_Flipped.y(), BPIXLayer_Flipped.z());
+        vBPIXLayer_Flipped_[layer - 1] = SimplePoint(BPIXLayer_Flipped_[layer - 1]);
         BPIXLayer_NonFlipped_[layer - 1] =
             GlobalPoint(BPIXLayer_NonFlipped.x(), BPIXLayer_NonFlipped.y(), BPIXLayer_NonFlipped.z());
-
+        vBPIXLayer_NonFlipped_[layer - 1] = SimplePoint(BPIXLayer_NonFlipped_[layer - 1]);
         BPIXLayer_DiffFlippedNonFlipped_[layer - 1] = GlobalPoint(BPIXLayer_Flipped.x() - BPIXLayer_NonFlipped.x(),
                                                                   BPIXLayer_Flipped.y() - BPIXLayer_NonFlipped.y(),
                                                                   BPIXLayer_Flipped.z() - BPIXLayer_NonFlipped.z());
+        vBPIXLayer_DiffFlippedNonFlipped_[layer - 1] = SimplePoint(BPIXLayer_DiffFlippedNonFlipped_[layer - 1]);
 
       }  // loop over layers
 
       BPIX_Flipped *= (1.0 / nmodules_BPIX_Flipped);
       BPIX_Flipped += globalTkPosition;
       BPIX_Flipped_ = GlobalPoint(BPIX_Flipped.x(), BPIX_Flipped.y(), BPIX_Flipped.z());
+      vBPIX_Flipped_ = SimplePoint(BPIX_Flipped_);
       BPIX_NonFlipped *= (1.0 / nmodules_BPIX_NonFlipped);
       BPIX_NonFlipped += globalTkPosition;
       BPIX_NonFlipped_ = GlobalPoint(BPIX_NonFlipped.x(), BPIX_NonFlipped.y(), BPIX_NonFlipped.z());
+      vBPIX_NonFlipped_ = SimplePoint(BPIX_NonFlipped_);
       BPIX_DiffFlippedNonFlipped_ = GlobalPoint(BPIX_Flipped.x() - BPIX_NonFlipped.x(),
                                                 BPIX_Flipped.y() - BPIX_NonFlipped.y(),
                                                 BPIX_Flipped.z() - BPIX_NonFlipped.z());
+      vBPIX_DiffFlippedNonFlipped_ = SimplePoint(BPIX_DiffFlippedNonFlipped_);
 
       // FPIX substructures per-(signed)disk/per-ring
       int nmodules_FPIX_plus = 0;
@@ -448,27 +496,25 @@ void PixelBaryCentreAnalyzer::analyze(const edm::Event& iEvent, const edm::Event
       GlobalVector FPIX_plus(0.0, 0.0, 0.0);
       GlobalVector FPIX_minus(0.0, 0.0, 0.0);
       // loop over disks
-      for (std::map<int, std::map<int, GlobalVector>>::iterator id = barycentre_fpix.begin();
-           id != barycentre_fpix.end();
-           ++id) {
-        int disk = id->first;
+
+      for (const auto& id : barycentre_fpix) {
+        int disk = id.first;
 
         int nmodulesDisk = 0;
         GlobalVector FPIXDisk(0.0, 0.0, 0.0);
 
-        std::map<int, GlobalVector> baryCentreDisk = id->second;
-        for (std::map<int, GlobalVector>::iterator ir = baryCentreDisk.begin(); ir != baryCentreDisk.end();
-             ++ir) {  // loop over rings
-          int ring = ir->first;
+        std::map<int, GlobalVector> baryCentreDisk = id.second;
+        for (const auto& ir : baryCentreDisk) {
+          int ring = ir.first;
           nmodulesDisk += nmodules_fpix[disk][ring];
-          FPIXDisk += ir->second;
+          FPIXDisk += ir.second;
           if (disk > 0) {
             nmodules_FPIX_plus += nmodules_fpix[disk][ring];
-            FPIX_plus += ir->second;
+            FPIX_plus += ir.second;
           }
           if (disk < 0) {
             nmodules_FPIX_minus += nmodules_fpix[disk][ring];
-            FPIX_minus += ir->second;
+            FPIX_minus += ir.second;
           }
 
         }  // loop over rings
@@ -476,18 +522,24 @@ void PixelBaryCentreAnalyzer::analyze(const edm::Event& iEvent, const edm::Event
         FPIXDisk *= (1.0 / nmodulesDisk);
         FPIXDisk += globalTkPosition;
 
-        if (disk > 0)
+        if (disk > 0) {
           FPIXDisks_plus_[disk - 1] = GlobalPoint(FPIXDisk.x(), FPIXDisk.y(), FPIXDisk.z());
-        if (disk < 0)
+          vFPIXDisks_plus_[disk - 1] = SimplePoint(FPIXDisks_plus_[disk - 1]);
+        }
+        if (disk < 0) {
           FPIXDisks_minus_[-disk - 1] = GlobalPoint(FPIXDisk.x(), FPIXDisk.y(), FPIXDisk.z());
+          vFPIXDisks_minus_[-disk - 1] = SimplePoint(FPIXDisks_minus_[-disk - 1]);
+        }
       }  // loop over disks
 
       FPIX_plus *= (1.0 / nmodules_FPIX_plus);
       FPIX_plus += globalTkPosition;
       FPIX_plus_ = GlobalPoint(FPIX_plus.x(), FPIX_plus.y(), FPIX_plus.z());
+      vFPIX_plus_ = SimplePoint(FPIX_plus_);
       FPIX_minus *= (1.0 / nmodules_FPIX_minus);
       FPIX_minus += globalTkPosition;
       FPIX_minus_ = GlobalPoint(FPIX_minus.x(), FPIX_minus.y(), FPIX_minus.z());
+      vFPIX_minus_ = SimplePoint(FPIX_minus_);
 
       bcTrees_[label]->Fill();
 
@@ -506,6 +558,7 @@ void PixelBaryCentreAnalyzer::analyze(const edm::Event& iEvent, const edm::Event
       const BeamSpotObjects* mybeamspot = &iSetup.getData(bsTokens_[label]);
 
       BS_ = GlobalPoint(mybeamspot->x(), mybeamspot->y(), mybeamspot->z());
+      vBS_ = SimplePoint(BS_);
 
       bsTrees_[label]->Fill();
     }  // bsLabels_
@@ -527,7 +580,7 @@ void PixelBaryCentreAnalyzer::beginJob() {
     bsTrees_[label]->Branch("run", &run_, "run/I");
     bsTrees_[label]->Branch("ls", &ls_, "ls/I");
 
-    bsTrees_[label]->Branch("BS", &BS_);
+    bsTrees_[label]->Branch("BS", &vBS_, "x/F:y/F:z/F");
 
   }  // bsLabels_
 
@@ -541,39 +594,40 @@ void PixelBaryCentreAnalyzer::beginJob() {
     bcTrees_[label]->Branch("run", &run_, "run/I");
     bcTrees_[label]->Branch("ls", &ls_, "ls/I");
 
-    bcTrees_[label]->Branch("PIX", &PIX_);
+    bcTrees_[label]->Branch("PIX", &vPIX_, "x/F:y/F:z/F");
 
-    bcTrees_[label]->Branch("BPIX", &BPIX_);
-    bcTrees_[label]->Branch("BPIX_Flipped", &BPIX_Flipped_);
-    bcTrees_[label]->Branch("BPIX_NonFlipped", &BPIX_NonFlipped_);
-    bcTrees_[label]->Branch("BPIX_DiffFlippedNonFlipped", &BPIX_DiffFlippedNonFlipped_);
+    bcTrees_[label]->Branch("BPIX", &vBPIX_, "x/F:y/F:z/F");
+    bcTrees_[label]->Branch("BPIX_Flipped", &vBPIX_Flipped_, "x/F:y/F:z/F");
+    bcTrees_[label]->Branch("BPIX_NonFlipped", &vBPIX_NonFlipped_, "x/F:y/F:z/F");
+    bcTrees_[label]->Branch("BPIX_DiffFlippedNonFlipped", &vBPIX_DiffFlippedNonFlipped_, "x/F:y/F:z/F");
 
-    bcTrees_[label]->Branch("FPIX", &FPIX_);
-    bcTrees_[label]->Branch("FPIX_plus", &FPIX_plus_);
-    bcTrees_[label]->Branch("FPIX_minus", &FPIX_minus_);
+    bcTrees_[label]->Branch("FPIX", &vFPIX_, "x/F:y/F:z/F");
+    bcTrees_[label]->Branch("FPIX_plus", &vFPIX_plus_, "x/F:y/F:z/F");
+    bcTrees_[label]->Branch("FPIX_minus", &vFPIX_minus_, "x/F:y/F:z/F");
 
     //per-layer
-    for (unsigned int i = 0; i < 4; i++) {
+    for (unsigned int i = 0; i < nPixelLayers; i++) {
       TString structure = "BPIXLYR";
       int layer = i + 1;
       structure += layer;
 
-      bcTrees_[label]->Branch(structure, &BPIXLayer_[i]);
-      bcTrees_[label]->Branch(structure + "_Flipped", &BPIXLayer_Flipped_[i]);
-      bcTrees_[label]->Branch(structure + "_NonFlipped", &BPIXLayer_NonFlipped_[i]);
-      bcTrees_[label]->Branch(structure + "_DiffFlippedNonFlipped", &BPIXLayer_DiffFlippedNonFlipped_[i]);
+      bcTrees_[label]->Branch(structure, &vBPIXLayer_[i], "x/F:y/F:z/F");
+      bcTrees_[label]->Branch(structure + "_Flipped", &vBPIXLayer_Flipped_[i], "x/F:y/F:z/F");
+      bcTrees_[label]->Branch(structure + "_NonFlipped", &vBPIXLayer_NonFlipped_[i], "x/F:y/F:z/F");
+      bcTrees_[label]->Branch(
+          structure + "_DiffFlippedNonFlipped", &vBPIXLayer_DiffFlippedNonFlipped_[i], "x/F:y/F:z/F");
     }
 
     //per-disk/ring
-    for (unsigned int i = 0; i < 3; i++) {
-      TString structure = "FPIXDisk+";
+    for (unsigned int i = 0; i < nPixelDiscs; i++) {
+      TString structure = "FPIXDisk_plus";
       int disk = i + 1;
       structure += disk;
-      bcTrees_[label]->Branch(structure, &FPIXDisks_plus_[i]);
+      bcTrees_[label]->Branch(structure, &vFPIXDisks_plus_[i], "x/F:y/F:z/F");
 
-      structure = "FPIXDisk-";
+      structure = "FPIXDisk_minus";
       structure += disk;
-      bcTrees_[label]->Branch(structure, &FPIXDisks_minus_[i]);
+      bcTrees_[label]->Branch(structure, &vFPIXDisks_minus_[i], "x/F:y/F:z/F");
     }
 
   }  // bcLabels_
@@ -590,11 +644,12 @@ void PixelBaryCentreAnalyzer::endJob() {
 
 // ------------ method fills 'descriptions' with the allowed parameters for the module  ------------
 void PixelBaryCentreAnalyzer::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
-  //The following says we do not know what parameters are allowed so do no validation
-  // Please change this to state exactly what you do use, even if it is no parameters
   edm::ParameterSetDescription desc;
-  desc.setUnknown();
-  descriptions.addDefault(desc);
+  desc.setComment("Validates alignment payloads by providing the position of the pixel barycenter positions");
+  desc.addUntracked<bool>("usePixelQuality", false);
+  desc.addUntracked<std::vector<std::string>>("tkAlignLabels", {});
+  desc.addUntracked<std::vector<std::string>>("beamSpotLabels", {});
+  descriptions.addWithDefaultLabel(desc);
 }
 
 //define this as a plug-in

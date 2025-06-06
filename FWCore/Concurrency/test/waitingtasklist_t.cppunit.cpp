@@ -8,12 +8,13 @@
 #include <iostream>
 
 #include <cppunit/extensions/HelperMacros.h>
-#include <unistd.h>
+#include <chrono>
 #include <memory>
 #include <atomic>
 #include <thread>
 #include "oneapi/tbb/task.h"
 #include "FWCore/Concurrency/interface/WaitingTaskList.h"
+#include "FWCore/Concurrency/interface/FinalWaitingTask.h"
 
 class WaitingTaskList_test : public CppUnit::TestFixture {
   CPPUNIT_TEST_SUITE(WaitingTaskList_test);
@@ -41,7 +42,7 @@ namespace {
 
     void execute() final {
       if (exceptionPtr()) {
-        m_ptr = *exceptionPtr();
+        m_ptr = exceptionPtr();
       }
       m_called = true;
       return;
@@ -65,6 +66,7 @@ namespace {
   };
 
 }  // namespace
+using namespace std::chrono_literals;
 
 void WaitingTaskList_test::addThenDone() {
   std::atomic<bool> called{false};
@@ -78,7 +80,7 @@ void WaitingTaskList_test::addThenDone() {
     oneapi::tbb::task_group group;
     waitList.add(edm::WaitingTaskHolder(group, t));
 
-    usleep(10);
+    std::this_thread::sleep_for(10us);
     CPPUNIT_ASSERT(false == called);
 
     waitList.doneWaiting(std::exception_ptr{});
@@ -99,7 +101,7 @@ void WaitingTaskList_test::addThenDone() {
 
     waitList.add(edm::WaitingTaskHolder(group, t));
 
-    usleep(10);
+    std::this_thread::sleep_for(10us);
     CPPUNIT_ASSERT(false == called);
 
     waitList.doneWaiting(std::exception_ptr{});
@@ -141,7 +143,7 @@ void WaitingTaskList_test::addThenDoneFailed() {
 
     waitList.add(edm::WaitingTaskHolder(group, t));
 
-    usleep(10);
+    std::this_thread::sleep_for(10us);
     CPPUNIT_ASSERT(false == called);
 
     waitList.doneWaiting(std::make_exception_ptr(std::string("failed")));
@@ -185,7 +187,7 @@ void WaitingTaskList_test::stressTest() {
   unsigned int index = 1000;
   const unsigned int nTasks = 10000;
   while (0 != --index) {
-    edm::FinalWaitingTask waitTask;
+    edm::FinalWaitingTask waitTask{group};
     auto* pWaitTask = &waitTask;
     {
       edm::WaitingTaskHolder waitTaskH(group, pWaitTask);
@@ -199,9 +201,7 @@ void WaitingTaskList_test::stressTest() {
       std::thread doneWaitThread([&waitList, waitTaskH] { waitList.doneWaiting(std::exception_ptr{}); });
       std::shared_ptr<std::thread>(&doneWaitThread, join_thread);
     }
-    do {
-      group.wait();
-    } while (not waitTask.done());
+    waitTask.wait();
   }
 }
 

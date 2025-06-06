@@ -4,7 +4,6 @@
 #include "classlib/iobase/Socket.h"
 #include "classlib/iobase/IOSelector.h"
 #include "classlib/iobase/Pipe.h"
-#include "classlib/utils/Signal.h"
 #include "classlib/utils/Error.h"
 #include "classlib/utils/Time.h"
 #include <pthread.h>
@@ -16,7 +15,7 @@
 #include <list>
 #include <map>
 #include <set>
-#include <ext/hash_set>
+#include <unordered_set>
 
 // for definition of QValue
 #include "DataFormats/Histograms/interface/MonitorElementCollection.h"
@@ -34,9 +33,11 @@ public:
   static const uint32_t DQM_PROP_TYPE_TH1F = 0x00000010;
   static const uint32_t DQM_PROP_TYPE_TH1S = 0x00000011;
   static const uint32_t DQM_PROP_TYPE_TH1D = 0x00000012;
+  static const uint32_t DQM_PROP_TYPE_TH1I = 0x00000013;
   static const uint32_t DQM_PROP_TYPE_TH2F = 0x00000020;
   static const uint32_t DQM_PROP_TYPE_TH2S = 0x00000021;
   static const uint32_t DQM_PROP_TYPE_TH2D = 0x00000022;
+  static const uint32_t DQM_PROP_TYPE_TH2I = 0x00000023;
   static const uint32_t DQM_PROP_TYPE_TH3F = 0x00000030;
   static const uint32_t DQM_PROP_TYPE_TH3S = 0x00000031;
   static const uint32_t DQM_PROP_TYPE_TH3D = 0x00000032;
@@ -381,7 +382,7 @@ public:
   struct ImplPeer;
 
   using DirMap = std::set<std::string>;
-  typedef __gnu_cxx::hash_set<ObjType, HashOp, HashEqual> ObjectMap;
+  typedef std::unordered_set<ObjType, HashOp, HashEqual> ObjectMap;
   typedef std::map<lat::Socket *, ImplPeer> PeerMap;
   struct ImplPeer : Peer {
     ImplPeer() = default;

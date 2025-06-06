@@ -84,17 +84,23 @@ private:
       tree.Branch("run", &m_run, "run/i");
       tree.Branch("luminosityBlock", &m_luminosityBlock, "luminosityBlock/i");
       tree.Branch("event", &m_event, "event/l");
+      tree.Branch("bunchCrossing", &m_bunchCrossing, "bunchCrossing/i");
+      tree.Branch("orbitNumber", &m_orbitNumber, "orbitNumber/i");
     }
-    void fill(const edm::EventID& id) {
-      m_run = id.run();
-      m_luminosityBlock = id.luminosityBlock();
-      m_event = id.event();
+    void fill(const edm::EventAuxiliary& aux) {
+      m_run = aux.id().run();
+      m_luminosityBlock = aux.id().luminosityBlock();
+      m_event = aux.id().event();
+      m_bunchCrossing = aux.bunchCrossing();
+      m_orbitNumber = aux.orbitNumber();
     }
 
   private:
     UInt_t m_run;
     UInt_t m_luminosityBlock;
     ULong64_t m_event;
+    UInt_t m_bunchCrossing;
+    UInt_t m_orbitNumber;
   } m_commonBranches;
 
   class CommonLumiBranches {
@@ -198,7 +204,7 @@ void NanoAODOutputModule::write(edm::EventForOutput const& iEvent) {
     m_eventsSinceFlush++;
   }
 
-  m_commonBranches.fill(iEvent.id());
+  m_commonBranches.fill(iEvent.eventAuxiliary());
   // fill all tables, starting from main tables and then doing extension tables
   for (unsigned int extensions = 0; extensions <= 1; ++extensions) {
     for (auto& t : m_tables)
@@ -293,13 +299,17 @@ void NanoAODOutputModule::openFile(edm::FileBlock const&) {
                                    std::vector<std::string>());
 
   if (m_compressionAlgorithm == std::string("ZLIB")) {
-    m_file->SetCompressionAlgorithm(ROOT::kZLIB);
+    m_file->SetCompressionAlgorithm(ROOT::RCompressionSetting::EAlgorithm::kZLIB);
   } else if (m_compressionAlgorithm == std::string("LZMA")) {
-    m_file->SetCompressionAlgorithm(ROOT::kLZMA);
+    m_file->SetCompressionAlgorithm(ROOT::RCompressionSetting::EAlgorithm::kLZMA);
+  } else if (m_compressionAlgorithm == std::string("ZSTD")) {
+    m_file->SetCompressionAlgorithm(ROOT::RCompressionSetting::EAlgorithm::kZSTD);
+  } else if (m_compressionAlgorithm == std::string("LZ4")) {
+    m_file->SetCompressionAlgorithm(ROOT::RCompressionSetting::EAlgorithm::kLZ4);
   } else {
     throw cms::Exception("Configuration")
         << "NanoAODOutputModule configured with unknown compression algorithm '" << m_compressionAlgorithm << "'\n"
-        << "Allowed compression algorithms are ZLIB and LZMA\n";
+        << "Allowed compression algorithms are ZLIB, LZMA, ZSTD, and LZ4\n";
   }
   /* Setup file structure here */
   m_tables.clear();

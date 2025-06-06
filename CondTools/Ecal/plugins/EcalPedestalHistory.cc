@@ -249,7 +249,7 @@ void EcalPedestalHistory::beginRun(edm::Run const&, edm::EventSetup const& c) {
         std::map<EcalLogicID, MonPedestalsDat> dataset_mon;
         econn->fetchDataSet(&dataset_mon, &mon_run_vec[kr]);
         std::cout << "OMDS record for run " << irun << " is made of " << dataset_mon.size() << std::endl;
-        int nEB = 0, nEE = 0, nEBbad = 0, nEEbad = 0;
+        int nEB = 0, nEE = 0;
         typedef std::map<EcalLogicID, MonPedestalsDat>::const_iterator CImon;
         EcalLogicID ecid_xt;
         MonPedestalsDat rd_ped;
@@ -280,12 +280,8 @@ void EcalPedestalHistory::beginRun(edm::Run const&, edm::EventSetup const& c) {
           }
           if (ecid_xt.getName() == "EB_crystal_number") {
             nEB++;
-            if (!result)
-              nEBbad++;
           } else {
             nEE++;
-            if (!result)
-              nEEbad++;
           }
         }  // end loop over pedestal data
         // ok or bad? A bad run is for more than 5% bad channels
@@ -333,14 +329,14 @@ void EcalPedestalHistory::beginRun(edm::Run const&, edm::EventSetup const& c) {
                 PedVal.Mean[iChanEE] = rd_ped.getPedMeanG12();
                 PedVal.RMS[iChanEE] = rd_ped.getPedRMSG12();
               }  // valid ee Id
-            }    // Endcaps
-          }      // loop over channels
+            }  // Endcaps
+          }  // loop over channels
           tPedHist->Fill();
           cout << " We got a good run " << irun << endl;
         }  // good run
-      }    // mon_run_vec
-    }      // loop over all runs
-  }        // number of runs > 0
+      }  // mon_run_vec
+    }  // loop over all runs
+  }  // number of runs > 0
   cout << "Exiting beginRun" << endl;
   for (int NbChan = 0; NbChan < 15; NbChan++) {
     if (hMean[NbChan]->GetEntries() > 0.) {  // save only when filled!

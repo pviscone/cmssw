@@ -5,7 +5,6 @@
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 #include "FWCore/Framework/interface/ConsumesCollector.h"
 #include "FWCore/Framework/interface/Event.h"
-#include "DataFormats/Scalers/interface/LumiScalers.h"
 
 namespace ecaldqm {
   OccupancyTask::OccupancyTask() : DQWorkerTask(), recHitThreshold_(0.), tpThreshold_(0.), m_iTime(0.) {}
@@ -13,7 +12,7 @@ namespace ecaldqm {
   void OccupancyTask::setParams(edm::ParameterSet const& _params) {
     recHitThreshold_ = _params.getUntrackedParameter<double>("recHitThreshold");
     tpThreshold_ = _params.getUntrackedParameter<double>("tpThreshold");
-    lumiTag = _params.getParameter<edm::InputTag>("scalers");
+    metadataTag = _params.getParameter<edm::InputTag>("metadata");
     lumiCheck_ = _params.getUntrackedParameter<bool>("lumiCheck", false);
     if (!onlineMode_) {
       MEs_.erase(std::string("PU"));
@@ -21,12 +20,13 @@ namespace ecaldqm {
       MEs_.erase(std::string("TrendEventsperLumi"));
       MEs_.erase(std::string("TrendPUperLumi"));
       MEs_.erase(std::string("AELoss"));
+      MEs_.erase(std::string("AEReco"));
     }
   }
 
   void OccupancyTask::setTokens(edm::ConsumesCollector& _collector) {
     lasertoken_ = _collector.esConsumes();
-    lumiScalersToken_ = _collector.consumes<LumiScalersCollection>(lumiTag);
+    metaDataToken_ = _collector.consumes<OnlineLuminosityRecord>(metadataTag);
   }
 
   bool OccupancyTask::filterRunType(short const* _runType) {
@@ -85,12 +85,11 @@ namespace ecaldqm {
     if (lumiCheck_ && FindPUinLS) {
       scal_pu = -1.;
       MESet& mePU(static_cast<MESet&>(MEs_.at("PU")));
-      edm::Handle<LumiScalersCollection> lumiScalers;
-      _evt.getByToken(lumiScalersToken_, lumiScalers);
-      if (lumiScalers.isValid() and not lumiScalers->empty()) {
-        auto scalit = lumiScalers->begin();
-        scal_pu = scalit->pileup();
-      }
+      edm::Handle<OnlineLuminosityRecord> metaData;
+      _evt.getByToken(metaDataToken_, metaData);
+
+      if (metaData.isValid())
+        scal_pu = metaData->avgPileUp();
       mePU.fill(getEcalDQMSetupObjects(), double(scal_pu));
       FindPUinLS = false;
     }
@@ -126,9 +125,11 @@ namespace ecaldqm {
     MESet& meDigi1D(MEs_.at("Digi1D"));
     MESet& meTrendNDigi(MEs_.at("TrendNDigi"));
     MESet* meAELoss = nullptr;
-    if (onlineMode_)
+    MESet* meAEReco = nullptr;
+    if (onlineMode_) {
       meAELoss = &MEs_.at("AELoss");
-
+      meAEReco = &MEs_.at("AEReco");
+    }
     std::for_each(_digis.begin(), _digis.end(), [&](typename DigiCollection::Digi const& digi) {
       DetId id(digi.id());
       meDigi.fill(getEcalDQMSetupObjects(), id);
@@ -137,8 +138,10 @@ namespace ecaldqm {
       meDigiAll.fill(getEcalDQMSetupObjects(), id);
       meDigiAllByLumi.fill(getEcalDQMSetupObjects(), id);
       meDigiDCC.fill(getEcalDQMSetupObjects(), id);
-      if (onlineMode_)
+      if (onlineMode_) {
         meAELoss->fill(getEcalDQMSetupObjects(), id);
+        meAEReco->fill(getEcalDQMSetupObjects(), id);
+      }
     });
 
     int iSubdet(_collection == kEBDigi ? EcalBarrel : EcalEndcap);
@@ -195,7 +198,7 @@ namespace ecaldqm {
     MESet& meRecHitThr1D(MEs_.at("RecHitThr1D"));
     MESet& meTrendNRecHitThr(MEs_.at("TrendNRecHitThr"));
 
-    uint32_t mask(~(0x1 << EcalRecHit::kGood));
+    uint32_t goodBits(0x1 << EcalRecHit::kGood);
     double nFiltered(0.);
 
     float nRHThrp(0), nRHThrm(0);
@@ -207,7 +210,7 @@ namespace ecaldqm {
       meRecHitProjEta.fill(getEcalDQMSetupObjects(), id);
       meRecHitProjPhi.fill(getEcalDQMSetupObjects(), id);
 
-      if (!hit.checkFlagMask(mask) && hit.energy() > recHitThreshold_) {
+      if (hit.checkFlagMask(goodBits) && hit.energy() > recHitThreshold_) {
         meRecHitThrProjEta.fill(getEcalDQMSetupObjects(), id);
         meRecHitThrProjPhi.fill(getEcalDQMSetupObjects(), id);
         meRecHitThrAll.fill(getEcalDQMSetupObjects(), id);

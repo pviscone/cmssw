@@ -5,8 +5,8 @@
 #include "DataFormats/RecoCandidate/interface/RecoChargedCandidateFwd.h"
 #include "DataFormats/MuonReco/interface/MuonFwd.h"
 #include "DataFormats/MuonReco/interface/MuonSelectors.h"
-#include "DataFormats/L1TCorrelator/interface/TkMuon.h"
-#include "DataFormats/L1TCorrelator/interface/TkMuonFwd.h"
+#include "DataFormats/L1TMuonPhase2/interface/TrackerMuon.h"
+#include "DataFormats/L1Trigger/interface/P2GTAlgoBlock.h"
 
 namespace edm {
   class ConfigurationDescriptions;
@@ -28,9 +28,9 @@ private:
   edm::EDGetTokenT<reco::MuonCollection> m_muonsToken;  // input collection of muons
   edm::InputTag m_candsTag;                             // input collection of candidates to be referenced
   edm::EDGetTokenT<reco::RecoChargedCandidateCollection> m_candsToken;  // input collection of candidates to be referenced
-  edm::InputTag m_previousCandTag;  // input tag identifying product contains muons passing the previous level
-  edm::EDGetTokenT<trigger::TriggerFilterObjectWithRefs>
-      m_previousCandToken;  // token identifying product contains muons passing the previous level
+  edm::InputTag m_l1GTAlgoBlockTag;
+  edm::EDGetTokenT<l1t::P2GTAlgoBlockMap> m_algoBlockToken;
+  std::vector<std::string> m_l1GTAlgoNames;
   int m_minTrkHits;
   int m_minMuonHits;
   int m_minMuonStations;

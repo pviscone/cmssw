@@ -38,8 +38,8 @@ public:
 private:
   const edm::ESGetToken<TrackerTopology, TrackerTopologyRcd> topoToken_;
   edm::EDGetTokenT<TrajTrackAssociationCollection> trajTrackToken_;
-  edm::EDGetTokenT<SiPixelCluster> siPixelClustersToken_;
-  edm::EDGetTokenT<SiStripCluster> siStripClustersToken_;
+  edm::EDGetTokenT<edmNew::DetSetVector<SiPixelCluster>> siPixelClustersToken_;
+  edm::EDGetTokenT<edmNew::DetSetVector<SiStripCluster>> siStripClustersToken_;
   edm::InputTag src_;
   edm::InputTag srcClust_;
   bool rejectBadMods_;
@@ -209,7 +209,7 @@ void TkAlCaOverlapTagger::produce(edm::Event& iEvent, const edm::EventSetup& iSe
                                                      << className(*hit);
               }
 
-            }       //end if hit in Strips
+            }  //end if hit in Strips
             else {  //pixel hit
               const SiPixelRecHit* transpixelhit = dynamic_cast<const SiPixelRecHit*>(hit);
               if (transpixelhit != nullptr) {
@@ -237,7 +237,7 @@ void TkAlCaOverlapTagger::produce(edm::Event& iEvent, const edm::EventSetup& iSe
             break;
           }
         }  //end second loop on TM
-      }    //end if a previous TM exists
+      }  //end if a previous TM exists
 
       previousTM = &(*itTrajMeas);
       previousId = detid;

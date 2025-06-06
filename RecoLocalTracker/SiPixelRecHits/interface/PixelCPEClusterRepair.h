@@ -6,7 +6,6 @@
 // Already in the base class
 //#include "Geometry/CommonDetUnit/interface/GeomDetType.h"
 //#include "Geometry/CommonDetUnit/interface/PixelGeomDetUnit.h"
-//#include "Geometry/TrackerGeometryBuilder/interface/RectangularPixelTopology.h"
 //#include "Geometry/CommonDetAlgo/interface/MeasurementPoint.h"
 //#include "Geometry/CommonDetAlgo/interface/MeasurementError.h"
 //#include "Geometry/Surface/interface/GloballyPositioned.h"
@@ -56,6 +55,7 @@ public:
                         const TrackerGeometry &,
                         const TrackerTopology &,
                         const SiPixelLorentzAngle *,
+                        const std::vector<SiPixelTemplateStore> *,
                         const SiPixelTemplateDBObject *,
                         const SiPixel2DTemplateDBObject *);
 
@@ -97,7 +97,8 @@ private:
   void fill2DTemplIDs();
 
   // Template storage
-  std::vector<SiPixelTemplateStore> thePixelTemp_;
+  std::vector<SiPixelTemplateStore> const *thePixelTemp_;
+  std::vector<SiPixelTemplateStore> thePixelTempCache_;
   std::vector<SiPixelTemplateStore2D> thePixelTemp2D_;
 
   int speed_;

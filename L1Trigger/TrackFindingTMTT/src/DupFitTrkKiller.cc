@@ -79,7 +79,7 @@ namespace tmtt {
         if ((!usePtAndZ0Cuts) ||
             (std::abs(trk.z0()) < settings_->beamWindowZ() && trk.pt() > settings_->houghMinPt() - 0.2)) {
           // For debugging.
-          const TP* tp = trk.matchedTP();
+          [[clang::suppress]] const TP* tp = trk.matchedTP();
 
           // Check if this track's fitted (q/pt, phi0) helix parameters correspond to the same HT cell as the HT originally found the track in.
           bool consistentCell = trk.consistentHTcell();
@@ -167,7 +167,7 @@ namespace tmtt {
         pair<unsigned int, unsigned int> htCell = trk->cellLocationFit();
         // If this HT cell was not already memorized, rescue this track, since it is probably not a duplicate,
         // but just a track whose fitted helix parameters are a bit wierd for some reason.
-        if (std::count(htCellUsed.begin(), htCellUsed.end(), htCell) == 0) {
+        if (htCellUsed.count(htCell) == 0) {
           tracksFiltered.push_back(trk);  // Rescue track.
           // Optionally store cell location to avoid rescuing other tracks at the same location, which may be duplicates of this track.
           bool outsideCheck = (goOutsideArray || trk->pt() > settings_->houghMinPt());
@@ -175,7 +175,7 @@ namespace tmtt {
             htCellUsed.insert(htCell);
 
           // For debugging.
-          const TP* tp = trk->matchedTP();
+          [[clang::suppress]] const TP* tp = trk->matchedTP();
 
           if (debug && tp != nullptr) {
             PrintL1trk() << "SECOND PASS: m=" << trk->cellLocationHT().first << "/" << trk->cellLocationFit().first
@@ -222,7 +222,7 @@ namespace tmtt {
       pair<unsigned int, unsigned int> htCell = trk.cellLocationFit();
       // If this HT cell was not already memorized, rescue this track, since it is probably not a duplicate,
       // but just a track whose fitted helix parameters are a bit wierd for some reason.
-      if (std::count(htCellUsed.begin(), htCellUsed.end(), htCell) == 0) {
+      if (htCellUsed.count(htCell) == 0) {
         tracksFiltered.push_back(&trk);  // Rescue track.
         // Store cell location to avoid rescuing other tracks at the same location, which may be duplicates of this track.
         htCellUsed.insert(htCell);

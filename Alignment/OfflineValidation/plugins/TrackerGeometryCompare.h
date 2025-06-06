@@ -53,6 +53,8 @@ public:
 
   void analyze(const edm::Event&, const edm::EventSetup&) override;
 
+  static void fillDescriptions(edm::ConfigurationDescriptions& descriptions);
+
 private:
   //parameters
   std::vector<align::StructureType> m_theLevels;
@@ -117,6 +119,7 @@ private:
   bool weightById_;
   std::string weightByIdFile_;
   std::vector<unsigned int> weightByIdVector_;
+  SiPixelPI::phase phase_;
 
   std::vector<uint32_t> detIdFlagVector_;
   align::StructureType commonTrackerLevel_;
@@ -130,6 +133,7 @@ private:
 
   //root configuration
   std::string filename_;
+  std::string surfdir_;
   TFile* theFile_;
   TTree* alignTree_;
   TFile* inputRootFile1_;

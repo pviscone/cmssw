@@ -1,8 +1,12 @@
 import FWCore.ParameterSet.Config as cms
 
 import sys
-from Configuration.Eras.Era_Run3_cff import Run3
-process = cms.Process("DQM", Run3)
+if 'runkey=hi_run' in sys.argv:
+  from Configuration.Eras.Era_Run3_pp_on_PbPb_approxSiStripClusters_cff import Run3_pp_on_PbPb_approxSiStripClusters
+  process = cms.Process("DQM", Run3_pp_on_PbPb_approxSiStripClusters)
+else:
+  from Configuration.Eras.Era_Run3_cff import Run3
+  process = cms.Process("DQM", Run3)
 
 unitTest = False
 if 'unitTest=True' in sys.argv:
@@ -31,8 +35,8 @@ process.load("DQM.Integration.config.environment_cfi")
 process.dqmEnv.subSystemFolder = 'HLT'
 process.dqmSaver.tag = 'HLT'
 process.dqmSaver.runNumber = options.runNumber
-process.dqmSaverPB.tag = 'HLT'
-process.dqmSaverPB.runNumber = options.runNumber
+# process.dqmSaverPB.tag = 'HLT'
+# process.dqmSaverPB.runNumber = options.runNumber
 
 process.load("Configuration.StandardSequences.GeometryRecoDB_cff")
 process.load("Configuration.StandardSequences.MagneticField_cff")
@@ -40,18 +44,20 @@ process.GlobalTrackingGeometryESProducer = cms.ESProducer( "GlobalTrackingGeomet
 process.HLTSiStripClusterChargeCutNone = cms.PSet(  value = cms.double( -1.0 ) )
 process.ClusterShapeHitFilterESProducer = cms.ESProducer( "ClusterShapeHitFilterESProducer",
     ComponentName = cms.string( "ClusterShapeHitFilter" ),
-    PixelShapeFileL1 = cms.string( "RecoPixelVertexing/PixelLowPtUtilities/data/pixelShapePhase1_loose.par" ),
+    PixelShapeFileL1 = cms.string( "RecoTracker/PixelLowPtUtilities/data/pixelShapePhase1_loose.par" ),
     clusterChargeCut = cms.PSet(  refToPSet_ = cms.string( "HLTSiStripClusterChargeCutNone" ) ),
-    PixelShapeFile = cms.string( "RecoPixelVertexing/PixelLowPtUtilities/data/pixelShapePhase1_noL1.par" )
+    PixelShapeFile = cms.string( "RecoTracker/PixelLowPtUtilities/data/pixelShapePhase1_noL1.par" )
 )
 #SiStrip Local Reco
 process.load("CalibTracker.SiStripCommon.TkDetMapESProducer_cfi")
+#Track refitters
+process.load("RecoTracker.TrackProducer.TrackRefitters_cff")
 
 #---- for P5 (online) DB access
 process.load("DQM.Integration.config.FrontierCondition_GT_cfi")
 # Condition for lxplus: change and possibly customise the GT
 #from Configuration.AlCa.GlobalTag import GlobalTag as gtCustomise
-#process.GlobalTag = gtCustomise(process.GlobalTag, 'auto:run2_data', '')
+#process.GlobalTag = gtCustomise(process.GlobalTag, 'auto:run3_data', '')
 
 process.hltESSHcalSeverityLevel = cms.ESSource( "EmptyESSource",
     iovIsRunNotTime = cms.bool( True ),
@@ -129,7 +135,7 @@ process.load("DQM.HLTEvF.HLTObjectMonitor_Client_cff")
 
 #process.p = cms.EndPath(process.hlts+process.hltsClient)
 
-process.pp = cms.Path(process.dqmEnv+process.dqmSaver+process.dqmSaverPB)
+process.pp = cms.Path(process.dqmEnv+process.dqmSaver)#+process.dqmSaverPB)
 #process.hltResults.plotAll = True
 
 

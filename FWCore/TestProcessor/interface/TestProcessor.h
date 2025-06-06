@@ -36,6 +36,8 @@
 #include "FWCore/Framework/interface/Schedule.h"
 #include "FWCore/Framework/interface/EventSetupRecordKey.h"
 #include "FWCore/Framework/interface/DataKey.h"
+#include "FWCore/Framework/interface/MergeableRunProductProcesses.h"
+
 #include "FWCore/ServiceRegistry/interface/ActivityRegistry.h"
 #include "FWCore/ServiceRegistry/interface/ProcessContext.h"
 #include "FWCore/ServiceRegistry/interface/ServiceLegacy.h"
@@ -49,7 +51,7 @@
 #include "FWCore/TestProcessor/interface/LuminosityBlock.h"
 #include "FWCore/TestProcessor/interface/ProcessBlock.h"
 #include "FWCore/TestProcessor/interface/Run.h"
-#include "FWCore/TestProcessor/interface/TestDataProxy.h"
+#include "FWCore/TestProcessor/interface/TestESProductResolver.h"
 #include "FWCore/TestProcessor/interface/ESPutTokenT.h"
 #include "FWCore/TestProcessor/interface/ESProduceEntry.h"
 #include "FWCore/TestProcessor/interface/EventSetupTestHelper.h"
@@ -62,6 +64,7 @@ namespace edm {
   class ThinnedAssociationsHelper;
   class ExceptionToActionTable;
   class HistoryAppender;
+  class ModuleTypeResolverMaker;
 
   namespace eventsetup {
     class EventSetupProvider;
@@ -119,7 +122,7 @@ namespace edm {
       edm::test::ESPutTokenT<T> esProduces(std::string iLabel = std::string()) {
         auto rk = eventsetup::EventSetupRecordKey::makeKey<REC>();
         eventsetup::DataKey dk(eventsetup::DataKey::makeTypeTag<T>(), iLabel.c_str());
-        esProduceEntries_.emplace_back(rk, dk, std::make_shared<TestDataProxy<T>>());
+        esProduceEntries_.emplace_back(rk, dk, std::make_shared<TestESProductResolver<T>>());
         return edm::test::ESPutTokenT<T>(esProduceEntries_.size() - 1);
       }
 
@@ -267,7 +270,8 @@ This simulates a problem happening early in the job which causes processing not 
 
       template <typename T>
       void put(std::pair<edm::test::ESPutTokenT<T>, std::unique_ptr<T>>&& iPut) {
-        dynamic_cast<TestDataProxy<T>*>(esHelper_->getProxy(iPut.first.index()).get())->setData(std::move(iPut.second));
+        dynamic_cast<TestESProductResolver<T>*>(esHelper_->getResolver(iPut.first.index()).get())
+            ->setData(std::move(iPut.second));
       }
 
       void put(unsigned int, std::unique_ptr<WrapperBase>);
@@ -315,13 +319,17 @@ This simulates a problem happening early in the job which causes processing not 
       void teardownProcessing();
 
       void beginJob();
+      void respondToOpenInputFile();
+      void openOutputFiles();
       void beginProcessBlock();
       void beginRun();
       void beginLuminosityBlock();
       void event();
       std::shared_ptr<LuminosityBlockPrincipal> endLuminosityBlock();
       std::shared_ptr<RunPrincipal> endRun();
+      void respondToCloseInputFile();
       ProcessBlockPrincipal const* endProcessBlock();
+      void closeOutputFiles();
       void endJob();
 
       // ---------- member data --------------------------------
@@ -335,6 +343,7 @@ This simulates a problem happening early in the job which causes processing not 
       std::shared_ptr<ProcessBlockHelper> processBlockHelper_;
       std::shared_ptr<ThinnedAssociationsHelper> thinnedAssociationsHelper_;
       ServiceToken serviceToken_;
+      std::unique_ptr<ModuleTypeResolverMaker const> moduleTypeResolverMaker_;
       std::unique_ptr<eventsetup::EventSetupsController> espController_;
       std::shared_ptr<eventsetup::EventSetupProvider> esp_;
       std::shared_ptr<EventSetupTestHelper> esHelper_;
@@ -343,7 +352,10 @@ This simulates a problem happening early in the job which causes processing not 
       std::shared_ptr<ProcessConfiguration const> processConfiguration_;
       ProcessContext processContext_;
 
+      MergeableRunProductProcesses mergeableRunProductProcesses_;
+
       ProcessHistoryRegistry processHistoryRegistry_;
+      ProcessHistory processHistory_;
       std::unique_ptr<HistoryAppender> historyAppender_;
 
       PrincipalCache principalCache_;
@@ -351,6 +363,7 @@ This simulates a problem happening early in the job which causes processing not 
 
       std::shared_ptr<ModuleRegistry> moduleRegistry_;
       std::unique_ptr<Schedule> schedule_;
+      std::shared_ptr<RunPrincipal> runPrincipal_;
       std::shared_ptr<LuminosityBlockPrincipal> lumiPrincipal_;
 
       std::vector<std::pair<edm::BranchDescription, std::unique_ptr<WrapperBase>>> dataProducts_;
@@ -359,9 +372,11 @@ This simulates a problem happening early in the job which causes processing not 
       LuminosityBlockNumber_t lumiNumber_ = 1;
       EventNumber_t eventNumber_ = 1;
       bool beginJobCalled_ = false;
+      bool respondToOpenInputFileCalled_ = false;
       bool beginProcessBlockCalled_ = false;
       bool beginRunCalled_ = false;
       bool beginLumiCalled_ = false;
+      bool openOutputFilesCalled_ = false;
     };
   }  // namespace test
 }  // namespace edm

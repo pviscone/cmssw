@@ -54,10 +54,10 @@ namespace edm {
     bool EDAnalyzerBase::doEvent(EventTransitionInfo const& info,
                                  ActivityRegistry* act,
                                  ModuleCallingContext const* mcc) {
+      EventSignalsSentry sentry(act, mcc);
       Event e(info, moduleDescription_, mcc);
       e.setConsumer(this);
       e.setSharedResourcesAcquirer(&resourcesAcquirer_);
-      EventSignalsSentry sentry(act, mcc);
       ESParentContext parentC(mcc);
       const EventSetup c{
           info, static_cast<unsigned int>(Transition::Event), esGetTokenIndices(Transition::Event), parentC};
@@ -82,9 +82,12 @@ namespace edm {
     void EDAnalyzerBase::doEndJob() { this->endJob(); }
 
     void EDAnalyzerBase::doPreallocate(PreallocationConfiguration const& iPrealloc) {
+      preallocRuns(iPrealloc.numberOfRuns());
       preallocLumis(iPrealloc.numberOfLuminosityBlocks());
     }
-    void EDAnalyzerBase::preallocLumis(unsigned int){};
+
+    void EDAnalyzerBase::preallocRuns(unsigned int) {}
+    void EDAnalyzerBase::preallocLumis(unsigned int) {}
 
     void EDAnalyzerBase::doBeginProcessBlock(ProcessBlockPrincipal const& pbp, ModuleCallingContext const* mcc) {
       ProcessBlock processBlock(pbp, moduleDescription_, mcc, false);

@@ -9,7 +9,6 @@
 #include "FWCore/Utilities/interface/Exception.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 #include "FWCore/Framework/interface/one/EDAnalyzer.h"
-#include "CommonTools/ConditionDBWriter/interface/ConditionDBWriter.h"
 #include "FWCore/ParameterSet/interface/FileInPath.h"
 #include "Geometry/Records/interface/TrackerTopologyRcd.h"
 #include "Geometry/Records/interface/TrackerDigiGeometryRecord.h"
@@ -33,7 +32,7 @@ class SiStripNoiseNormalizedWithApvGainBuilder : public edm::one::EDAnalyzer<> {
 public:
   explicit SiStripNoiseNormalizedWithApvGainBuilder(const edm::ParameterSet& iConfig);
 
-  ~SiStripNoiseNormalizedWithApvGainBuilder() override{};
+  ~SiStripNoiseNormalizedWithApvGainBuilder() override {}
 
   void analyze(const edm::Event&, const edm::EventSetup&) override;
 

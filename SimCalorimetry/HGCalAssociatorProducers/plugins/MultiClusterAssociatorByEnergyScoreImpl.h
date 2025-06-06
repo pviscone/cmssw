@@ -32,7 +32,7 @@ namespace hgcal {
     float fraction;
   };
 
-  struct caloParticleOnLayer {
+  struct caloParticleOnALayer {
     unsigned int caloParticleId;
     float energy = 0;
     std::vector<std::pair<DetId, float>> hits_and_fractions;
@@ -40,7 +40,7 @@ namespace hgcal {
   };
 
   typedef std::vector<std::vector<std::pair<unsigned int, float>>> multiClusterToCaloParticle;
-  typedef std::vector<std::vector<hgcal::caloParticleOnLayer>> caloParticleToMultiCluster;
+  typedef std::vector<std::vector<hgcal::caloParticleOnALayer>> caloParticleToMultiCluster;
   typedef std::tuple<multiClusterToCaloParticle, caloParticleToMultiCluster> association;
 }  // namespace hgcal
 
@@ -49,7 +49,8 @@ public:
   explicit MultiClusterAssociatorByEnergyScoreImpl(edm::EDProductGetter const &,
                                                    bool,
                                                    std::shared_ptr<hgcal::RecHitTools>,
-                                                   const std::unordered_map<DetId, const HGCRecHit *> *&);
+                                                   const std::unordered_map<DetId, const unsigned int> *&,
+                                                   std::vector<const HGCRecHit *> &hits);
 
   hgcal::RecoToSimCollectionWithMultiClusters associateRecoToSim(
       const edm::Handle<reco::HGCalMultiClusterCollection> &mCCH,
@@ -62,7 +63,8 @@ public:
 private:
   const bool hardScatterOnly_;
   std::shared_ptr<hgcal::RecHitTools> recHitTools_;
-  const std::unordered_map<DetId, const HGCRecHit *> *hitMap_;
+  const std::unordered_map<DetId, const unsigned int> *hitMap_;
+  std::vector<const HGCRecHit *> hits_;
   unsigned layers_;
   edm::EDProductGetter const *productGetter_;
   hgcal::association makeConnections(const edm::Handle<reco::HGCalMultiClusterCollection> &mCCH,

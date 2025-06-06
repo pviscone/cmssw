@@ -107,7 +107,7 @@ void BestTrackSelection::cancel_one_bx(const std::deque<EMTFTrackCollection>& ex
         segments.at(zn).push_back(segment);
       }
     }  // end loop over n
-  }    // end loop over z
+  }  // end loop over z
 
   // Simultaneously compare each rank with each other
   int i = 0, j = 0, ri = 0, rj = 0, gt = 0, eq = 0, sum = 0;
@@ -164,7 +164,7 @@ void BestTrackSelection::cancel_one_bx(const std::deque<EMTFTrackCollection>& ex
   // remove ghosts according to kill mask
   //exists = exists & (~kill1);
   for (i = 0; i < max_zn; ++i) {
-    exists[i] = exists[i] & (!killed[i]);
+    exists[i] = exists[i] && (!killed[i]);
   }
 
   bool anything_exists = (std::find(exists.begin(), exists.end(), 1) != exists.end());
@@ -177,7 +177,7 @@ void BestTrackSelection::cancel_one_bx(const std::deque<EMTFTrackCollection>& ex
       //if  (exists[i]) larger[i] = larger[i] | (~exists); // if this track exists make it larger than all non-existing tracks
       //else  larger[i] = 0; // else make it smaller than anything
       if (exists[i])
-        larger[i][j] = larger[i][j] | (!exists[j]);
+        larger[i][j] = larger[i][j] || (!exists[j]);
       else
         larger[i][j] = false;
     }
@@ -315,8 +315,8 @@ void BestTrackSelection::cancel_multi_bx(const std::deque<EMTFTrackCollection>& 
           segments.at(hzn).push_back(segment);
         }
       }  // end loop over n
-    }    // end loop over z
-  }      // end loop over h
+    }  // end loop over z
+  }  // end loop over h
 
   // Simultaneously compare each rank with each other
   int i = 0, j = 0, ri = 0, rj = 0, sum = 0;
@@ -371,7 +371,7 @@ void BestTrackSelection::cancel_multi_bx(const std::deque<EMTFTrackCollection>& 
   // remove ghosts according to kill mask
   //exists = exists & (~kill1);
   for (i = 0; i < max_hzn; ++i) {
-    exists[i] = exists[i] & (!killed[i]);
+    exists[i] = exists[i] && (!killed[i]);
   }
 
   // remove tracks that are not at correct BX number
@@ -390,7 +390,7 @@ void BestTrackSelection::cancel_multi_bx(const std::deque<EMTFTrackCollection>& 
       //if  (exists[i]) larger[i] = larger[i] | (~exists); // if this track exists make it larger than all non-existing tracks
       //else  larger[i] = 0; // else make it smaller than anything
       if (exists[i])
-        larger[i][j] = larger[i][j] | (!exists[j]);
+        larger[i][j] = larger[i][j] || (!exists[j]);
       else
         larger[i][j] = false;
     }

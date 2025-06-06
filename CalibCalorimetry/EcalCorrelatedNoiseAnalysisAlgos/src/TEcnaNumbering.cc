@@ -60,7 +60,7 @@ TEcnaNumbering::TEcnaNumbering(TEcnaObject* pObjectManager, const TString& SubDe
   SetEcalSubDetector(SubDet.Data());
 }
 
-TEcnaNumbering::TEcnaNumbering(const TString& SubDet, const TEcnaParEcal* pEcal) {
+TEcnaNumbering::TEcnaNumbering(const TString& SubDet, TEcnaParEcal* pEcal) {
   // Constructor with argument: call to methods Init() and SetEcalSubDetector(const TString&)
 
   // std::cout << "[Info Management] CLASS: TEcnaNumbering.    CREATE OBJECT: this = " << this << std::endl;
@@ -219,15 +219,14 @@ void TEcnaNumbering::Init() {
 }
 // end of Init()
 //------------------------------------------------------------- SetEcalSubDetector(...)
-void TEcnaNumbering::SetEcalSubDetector(const TString& SubDet, const TEcnaParEcal* pEcal) {
+void TEcnaNumbering::SetEcalSubDetector(const TString& SubDet, TEcnaParEcal* pEcal) {
   //Set the current subdetector flag and the current subdetector parameters
 
   fEcal = nullptr;
   if (pEcal == nullptr) {
     fEcal = new TEcnaParEcal(SubDet.Data()); /*fCnew++*/
-    ;
   } else {
-    fEcal = (TEcnaParEcal*)pEcal;
+    fEcal = pEcal;
   }
 
   Int_t MaxCar = fgMaxCar;
@@ -1561,14 +1560,14 @@ void TEcnaNumbering::BuildEndcapSCTable() {
   Int_t ids = 0;
 
   //........... (D1,S1)=(D2,S9)=(D3,S9)=(D4,S1)
-  for (Int_t dee = 1; dee <= 4; dee++) {
+  for (Int_t dee = 1; dee <= MaxEEDee; dee++) {
     if (dee == 1 || dee == 4) {
       ids = 1;
     }
     if (dee == 2 || dee == 3) {
       ids = 9;
     }
-    for (Int_t isc = 13; isc <= 20; isc++)
+    for (Int_t isc = 13; isc <= 20; isc++) [[clang::suppress]]
       fT2d_DS[dee - 1][isc - 1] = ids;
     for (Int_t isc = 33; isc <= 40; isc++)
       fT2d_DS[dee - 1][isc - 1] = ids;
@@ -1582,7 +1581,7 @@ void TEcnaNumbering::BuildEndcapSCTable() {
       fT2d_DS[dee - 1][isc - 1] = ids;
   }
   //........... (D1,S2)=(D2,S8)=(D3,S8)=(D4,S2)
-  for (Int_t dee = 1; dee <= 4; dee++) {
+  for (Int_t dee = 1; dee <= MaxEEDee; dee++) {
     if (dee == 1 || dee == 4) {
       ids = 2;
     }
@@ -1609,7 +1608,7 @@ void TEcnaNumbering::BuildEndcapSCTable() {
       fT2d_DS[dee - 1][isc - 1] = ids;
   }
   //........... (D1,S3)=(D2,S7)=(D3,S7)=(D4,S3)
-  for (Int_t dee = 1; dee <= 4; dee++) {
+  for (Int_t dee = 1; dee <= MaxEEDee; dee++) {
     if (dee == 1 || dee == 4) {
       ids = 3;
     }
@@ -1634,7 +1633,7 @@ void TEcnaNumbering::BuildEndcapSCTable() {
       fT2d_DS[dee - 1][isc - 1] = ids;
   }
   //........... (D1,S4)=(D2,S6)=(D3,S6)=(D4,S4)
-  for (Int_t dee = 1; dee <= 4; dee++) {
+  for (Int_t dee = 1; dee <= MaxEEDee; dee++) {
     if (dee == 1 || dee == 4) {
       ids = 4;
     }
@@ -1659,7 +1658,7 @@ void TEcnaNumbering::BuildEndcapSCTable() {
       fT2d_DS[dee - 1][isc - 1] = ids;
   }
   //........... (D1,S5)=(D2,S5)=(D3,S5)=(D4,S5)
-  for (Int_t dee = 1; dee <= 4; dee++) {
+  for (Int_t dee = 1; dee <= MaxEEDee; dee++) {
     for (Int_t isc = 1; isc <= 8; isc++)
       fT2d_DS[dee - 1][isc - 1] = 5;
     for (Int_t isc = 21; isc <= 26; isc++)
@@ -1897,7 +1896,7 @@ void TEcnaNumbering::BuildEndcapSCTable() {
   //                                fT2d_DeeSCCons[dee-1][SC ECNA number - 1] = SC number for construction;
 
   //............................... init to -1
-  for (Int_t dee = 1; dee <= 4; dee++) {
+  for (Int_t dee = 1; dee <= MaxEEDee; dee++) {
     for (Int_t isc = 1; isc <= MaxDeeSC; isc++) {
       fT2d_DeeSCCons[dee - 1][isc - 1] = -1;
     }

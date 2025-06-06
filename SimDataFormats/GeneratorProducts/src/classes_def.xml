@@ -81,7 +81,7 @@
 	<!-- HepMCProduct -->
 
 	<class name="edm::Wrapper&lt;edm::HepMCProduct&gt;"/>
-	<class name="edm::HepMCProduct" ClassVersion="10">
+	<class name="edm::HepMCProduct" ClassVersion="10" rntupleStreamerMode="true">
   <version ClassVersion="10" checksum="3587845075"/>
  </class>
         <class name="std::vector&lt;const edm::HepMCProduct*&gt;"/>
@@ -96,6 +96,25 @@
 	<class name="std::pair&lt;const int,HepMC::GenParticle*&gt;"/>
 	<class name="std::pair&lt;int,HepMC::GenParticle*&gt;"/>
 	<class name="std::map&lt;int,HepMC::GenVertex*,std::greater&lt;int&gt; &gt;"/>
+
+	<class name="edm::Wrapper<edm::HepMC3Product>"/>
+	<class name="edm::HepMC3Product" ClassVersion="3">
+		<version ClassVersion="3" checksum="91123597"/>
+	</class>
+	<class name="HepMC3::GenEventData" ClassVersion="3">
+		<version ClassVersion="3" checksum="1128771783"/>
+	</class>
+	<class name="HepMC3::FourVector" ClassVersion="3">
+		<version ClassVersion="3" checksum="743129961"/>
+	</class>
+	<class name="HepMC3::GenParticleData" ClassVersion="3">
+		<version ClassVersion="3" checksum="3857904215"/>
+	</class>
+	<class name="HepMC3::GenVertexData" ClassVersion="3">
+		<version ClassVersion="3" checksum="2170201021"/>
+	</class>
+	<class name="std::vector<HepMC3::GenParticleData>"/>
+	<class name="std::vector<HepMC3::GenVertexData>"/>
 
 	<!-- Classes shared between different kinds of products -->
 
@@ -174,7 +193,7 @@
   <version ClassVersion="11" checksum="4154339631"/>
   <version ClassVersion="10" checksum="2479857328"/>
  </class>
- <ioread sourceClass = "GenEventInfoProduct" version="[11]" targetClass="GenEventInfoProduct" source = "std::auto_ptr<gen::PdfInfo> pdf_;" target="pdf_">
+ <ioread sourceClass = "GenEventInfoProduct" version="[-11]" targetClass="GenEventInfoProduct" source = "std::auto_ptr<gen::PdfInfo> pdf_;" target="pdf_">
    <![CDATA[pdf_.reset(onfile.pdf_.get()); onfile.pdf_.release();]]>
  </ioread>
  <ioread sourceClass = "GenEventInfoProduct" version="[-10]" targetClass="GenEventInfoProduct" source = "" target="nMEPartons_">
@@ -184,6 +203,11 @@
     <![CDATA[nMEPartonsFiltered_ = -1;]]>
  </ioread> 
 	<class name="edm::Wrapper&lt;GenEventInfoProduct&gt;"/>
+
+	<class name="GenEventInfoProduct3" ClassVersion="3">
+		<version ClassVersion="3" checksum="2242328487"/>
+	</class>
+	<class name="edm::Wrapper&lt;GenEventInfoProduct3&gt;"/>
 
 	<!-- LHE products -->
 
@@ -209,12 +233,13 @@
 	<class name="LHERunInfoProduct" ClassVersion="10">
   <version ClassVersion="10" checksum="2098560362"/>
  </class>
-	<class name="LHEEventProduct" ClassVersion="14">
+	<class name="LHEEventProduct" ClassVersion="15">
   <version ClassVersion="10" checksum="1026978494"/>
   <version ClassVersion="11" checksum="619154414"/>
   <version ClassVersion="12" checksum="259352862"/>
   <version ClassVersion="13" checksum="3927731647"/>
   <version ClassVersion="14" checksum="905719452"/>
+  <version ClassVersion="15" checksum="898288635"/>
  </class>
  <ioread sourceClass = "LHEEventProduct" version="[13]" targetClass="LHEEventProduct" source = "std::auto_ptr<gen::PdfInfo> pdf_;" target="pdf_">
    <![CDATA[pdf_.reset(onfile.pdf_.get()); onfile.pdf_.release();]]>

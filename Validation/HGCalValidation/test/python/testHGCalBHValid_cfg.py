@@ -1,13 +1,64 @@
+###############################################################################
+# Way to use this:
+#   cmsRun runHGCalBHValid_cfg.py geometry=D110
+#
+#   Options for geometry D98, D99, D103, D104, D105, D106, D107, D108, D109
+#                        D110, D111, D112, D113, D114, D115
+#
+###############################################################################
 import FWCore.ParameterSet.Config as cms
+import os, sys, importlib, re
+import FWCore.ParameterSet.VarParsing as VarParsing
 
-from Configuration.Eras.Era_Phase2C11I13M9_cff import Phase2C11I13M9
-process = cms.Process('HGCGeomAnalysis',Phase2C11I13M9)
-#process.load('Configuration.Geometry.GeometryExtended2026D77_cff')
-#process.load('Configuration.Geometry.GeometryExtended2026D77Reco_cff')
-process.load('Configuration.Geometry.GeometryExtended2026D83_cff')
-process.load('Configuration.Geometry.GeometryExtended2026D83Reco_cff')
+####################################################################
+### SETUP OPTIONS
+options = VarParsing.VarParsing('standard')
+options.register('geometry',
+                 "D110",
+                  VarParsing.VarParsing.multiplicity.singleton,
+                  VarParsing.VarParsing.varType.string,
+                  "geometry of operations: D98, D99, D103, D104, D105, D106, D107, D108, D109, D110, D111, D112, D113, D114, D115")
+
+### get and parse the command line arguments
+options.parseArguments()
+
+print(options)
+
+####################################################################
+# Use the options
+if (options.geometry == "D115"):
+    from Configuration.Eras.Era_Phase2C20I13M9_cff import Phase2C20I13M9
+    process = cms.Process('BHValid',Phase2C20I13M9)
+elif (options.geometry == "D104"):
+    from Configuration.Eras.Era_Phase2C22I13M9_cff import Phase2C22I13M9
+    process = cms.Process('BHValid',PhaseC22I13M9)
+elif (options.geometry == "D106"):
+    from Configuration.Eras.Era_Phase2C22I13M9_cff import Phase2C22I13M9
+    process = cms.Process('BHValid',PhaseC22I13M9)
+elif (options.geometry == "D109"):
+    from Configuration.Eras.Era_Phase2C22I13M9_cff import Phase2C22I13M9
+    process = cms.Process('BHValid',PhaseC22I13M9)
+elif (options.geometry == "D111"):
+    from Configuration.Eras.Era_Phase2C22I13M9_cff import Phase2C22I13M9
+    process = cms.Process('BHValid',PhaseC22I13M9)
+elif (options.geometry == "D112"):
+    from Configuration.Eras.Era_Phase2C22I13M9_cff import Phase2C22I13M9
+    process = cms.Process('BHValid',PhaseC22I13M9)
+elif (options.geometry == "D113"):
+    from Configuration.Eras.Era_Phase2C22I13M9_cff import Phase2C22I13M9
+    process = cms.Process('BHValid',PhaseC22I13M9)
+else:
+    from Configuration.Eras.Era_Phase2C17I13M9_cff import Phase2C17I13M9
+    process = cms.Process('BHValid',Phase2C17I13M9)
+
+geomFile = "Configuration.Geometry.GeometryExtendedRun4" + options.geometry + "Reco_cff"
+fileName = "hgcBHValid" + options.geometry + ".root"
+
+print("Geometry file:  ", geomFile)
+print("Output file:    ", fileName)
 
 # import of standard configurations
+process.load(geomFile)
 process.load('Configuration.StandardSequences.Services_cff')
 process.load('SimGeneral.HepPDTESSource.pythiapdt_cfi')
 process.load('FWCore.MessageService.MessageLogger_cfi')
@@ -58,7 +109,7 @@ if hasattr(process,'MessageLogger'):
 process.load('Validation.HGCalValidation.hgcalBHValidation_cfi')
 
 process.TFileService = cms.Service("TFileService",
-                                   fileName = cms.string('hgcBHValidD83.root'),
+                                   fileName = cms.string(fileName),
                                    closeFileFast = cms.untracked.bool(True)
                                    )
 
