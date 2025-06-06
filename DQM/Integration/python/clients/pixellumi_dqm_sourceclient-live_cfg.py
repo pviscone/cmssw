@@ -13,11 +13,10 @@ unitTest=False
 if 'unitTest=True' in sys.argv:
     unitTest=True
 
-process.MessageLogger = cms.Service("MessageLogger",
-    debugModules = cms.untracked.vstring('siPixelDigis', 
-					 'sipixelEDAClient'),
-    cout = cms.untracked.PSet(threshold = cms.untracked.string('ERROR')),
-    destinations = cms.untracked.vstring('cout')
+process.load('FWCore.MessageService.MessageLogger_cfi')
+process.MessageLogger.debugModules = cms.untracked.vstring('siPixelDigis','sipixelEDAClient')
+process.MessageLogger.cout = cms.untracked.PSet(
+    threshold = cms.untracked.string('ERROR')
 )
 
 #----------------------------
@@ -49,8 +48,8 @@ process.load("DQM.Integration.config.environment_cfi")
 process.dqmEnv.subSystemFolder = "PixelLumi"
 process.dqmSaver.tag = "PixelLumi"
 process.dqmSaver.runNumber = options.runNumber
-process.dqmSaverPB.tag = "PixelLumi"
-process.dqmSaverPB.runNumber = options.runNumber
+# process.dqmSaverPB.tag = "PixelLumi"
+# process.dqmSaverPB.runNumber = options.runNumber
 
 if not unitTest:
     process.source.SelectEvents = cms.untracked.vstring("HLT_ZeroBias*","HLT_L1AlwaysTrue*", "HLT_PAZeroBias*", "HLT_PAL1AlwaysTrue*")

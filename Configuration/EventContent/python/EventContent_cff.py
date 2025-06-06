@@ -56,7 +56,7 @@ from RecoBTau.Configuration.RecoBTau_EventContent_cff import *
 from RecoBTag.Configuration.RecoBTag_EventContent_cff import *
 from RecoTauTag.Configuration.RecoTauTag_EventContent_cff import *
 from RecoVertex.Configuration.RecoVertex_EventContent_cff import *
-from RecoTracker.Configuration.RecoPixelVertexing_EventContent_cff import *
+from RecoVertex.Configuration.RecoPixelVertexing_EventContent_cff import *
 from RecoEgamma.Configuration.RecoEgamma_EventContent_cff import *
 from RecoParticleFlow.Configuration.RecoParticleFlow_EventContent_cff import *
 from RecoVertex.BeamSpotProducer.BeamSpot_EventContent_cff import *
@@ -185,6 +185,30 @@ approxSiStripClusters.toModify(RAWEventContent,
                               ])
 
 #
+# HLTSCOUT Data Tier definition
+#
+#
+HLTSCOUTEventContent = cms.PSet(
+    outputCommands = cms.untracked.vstring('drop *'),
+    splitLevel = cms.untracked.int32(0),
+    compressionAlgorithm=cms.untracked.string("LZMA"),
+    compressionLevel=cms.untracked.int32(4)
+)
+HLTSCOUTEventContent.outputCommands.extend(HLTriggerRAW.outputCommands)
+
+#
+# L1SCOUT Data Tier definition
+#
+#
+L1SCOUTEventContent = cms.PSet(
+    outputCommands = cms.untracked.vstring('drop *'),
+    splitLevel = cms.untracked.int32(0),
+    compressionAlgorithm=cms.untracked.string("LZMA"),
+    compressionLevel=cms.untracked.int32(4)
+)
+L1SCOUTEventContent.outputCommands.extend(L1TriggerRAW.outputCommands)
+
+#
 #
 # HLTONLY Data Tier definition
 #
@@ -233,12 +257,12 @@ RECOEventContent.outputCommands.extend(CommonEventContent.outputCommands)
 
 from Configuration.Eras.Modifier_ctpps_cff import ctpps
 from Configuration.Eras.Modifier_phase2_hgcal_cff import phase2_hgcal
+from Configuration.Eras.Modifier_phase2_common_cff import phase2_common
 from Configuration.Eras.Modifier_phase2_tracker_cff import phase2_tracker
 from Configuration.Eras.Modifier_phase2_muon_cff import phase2_muon
 from Configuration.Eras.Modifier_phase2_timing_layer_cff import phase2_timing_layer
 from Configuration.Eras.Modifier_run2_GEM_2017_cff import run2_GEM_2017
 from Configuration.Eras.Modifier_run3_GEM_cff import run3_GEM
-from Configuration.Eras.Modifier_pp_on_PbPb_run3_cff import pp_on_PbPb_run3
 from Configuration.ProcessModifiers.pp_on_AA_cff import pp_on_AA
 from RecoLocalFastTime.Configuration.RecoLocalFastTime_EventContent_cff import *
 from RecoMTD.Configuration.RecoMTD_EventContent_cff import *
@@ -544,6 +568,8 @@ phase2_timing_layer.toModify(FEVTEventContent,
     outputCommands = FEVTEventContent.outputCommands + RecoLocalFastTimeFEVT.outputCommands)
 phase2_timing_layer.toModify(FEVTEventContent, 
     outputCommands = FEVTEventContent.outputCommands + RecoMTDFEVT.outputCommands)
+from Configuration.ProcessModifiers.ticl_v5_cff import ticl_v5
+ticl_v5.toModify(FEVTEventContent, outputCommands=FEVTEventContent.outputCommands+TICLv5_FEVT.outputCommands)
 
 FEVTHLTALLEventContent = cms.PSet(
     outputCommands = cms.untracked.vstring('drop *'),
@@ -627,6 +653,8 @@ approxSiStripClusters.toModify(FEVTDEBUGEventContent,
                                   'keep *_hltSiStripClusters2ApproxClusters_*_*',
                                   'keep DetIds_hltSiStripRawToDigi_*_*'
                               ])
+
+ticl_v5.toModify(FEVTDEBUGEventContent, outputCommands=FEVTDEBUGEventContent.outputCommands+TICLv5_FEVT.outputCommands)
 #
 #
 # FEVTDEBUGHLT Data Tier definition
@@ -649,11 +677,27 @@ approxSiStripClusters.toModify(FEVTDEBUGHLTEventContent,
                               ])
 phase2_tracker.toModify(FEVTDEBUGHLTEventContent,
                         outputCommands = FEVTDEBUGHLTEventContent.outputCommands+[
+                            'keep *_hltSiPixelClusters_*_*',
+                            'keep *_hltSiPhase2Clusters_*_*',
                             'keep *_hltPhase2PixelTracks_*_*',
-                            'keep *_hltPhase2PixelVertices_*_*'
+                            'keep *_hltPhase2PixelVertices_*_*',
+                            'keep *_hltGeneralTracks_*_*',
+                            'keep *_hltOfflinePrimaryVertices_*_*',
+                            'keep *_hltHGCalRecHit_*_*'
                         ])
+
+phase2_common.toModify(FEVTDEBUGHLTEventContent,
+                       outputCommands = FEVTDEBUGHLTEventContent.outputCommands+[
+                           'keep *_hltEgammaGsfTracksL1Seeded_*_*',
+                       ])
+
 phase2_muon.toModify(FEVTDEBUGHLTEventContent, 
     outputCommands = FEVTDEBUGHLTEventContent.outputCommands + ['keep recoMuons_muons1stStep_*_*'])
+
+phase2_hgcal.toModify(FEVTDEBUGHLTEventContent,
+    outputCommands = FEVTDEBUGHLTEventContent.outputCommands + TICL_FEVTHLT.outputCommands)
+
+ticl_v5.toModify(FEVTDEBUGHLTEventContent, outputCommands=FEVTDEBUGHLTEventContent.outputCommands+TICLv5_FEVTHLT.outputCommands)
 
 from Configuration.ProcessModifiers.premix_stage2_cff import premix_stage2
 
@@ -880,6 +924,7 @@ MINIAODEventContent= cms.PSet(
     compressionLevel=cms.untracked.int32(4)
 )
 MINIAODEventContent.outputCommands.extend(MicroEventContent.outputCommands)
+MINIAODEventContent.outputCommands.extend(HLTriggerMINIAOD.outputCommands)
 
 MINIAODSIMEventContent= cms.PSet(
     outputCommands = cms.untracked.vstring('drop *'),
@@ -888,7 +933,7 @@ MINIAODSIMEventContent= cms.PSet(
     compressionLevel=cms.untracked.int32(4)
 )
 MINIAODSIMEventContent.outputCommands.extend(MicroEventContentMC.outputCommands)
-MINIAODSIMEventContent.outputCommands.extend(HLTScouting.outputCommands)
+MINIAODSIMEventContent.outputCommands.extend(HLTriggerMINIAOD.outputCommands)
 
 MINIGENEventContent= cms.PSet(
     outputCommands = cms.untracked.vstring('drop *'),
@@ -945,3 +990,4 @@ for _entry in [FEVTDEBUGHLTEventContent,FEVTDEBUGEventContent,RECOSIMEventConten
     fastSim.toModify(_entry, outputCommands = _entry.outputCommands + fastSimEC.dropSimDigis)
 for _entry in [MINIAODEventContent, MINIAODSIMEventContent]:
     fastSim.toModify(_entry, outputCommands = _entry.outputCommands + fastSimEC.dropPatTrigger)
+

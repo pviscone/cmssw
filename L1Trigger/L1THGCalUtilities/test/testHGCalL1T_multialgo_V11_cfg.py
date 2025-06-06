@@ -9,8 +9,8 @@ process.load('SimGeneral.HepPDTESSource.pythiapdt_cfi')
 process.load('FWCore.MessageService.MessageLogger_cfi')
 process.load('Configuration.EventContent.EventContent_cff')
 process.load('SimGeneral.MixingModule.mixNoPU_cfi')
-process.load('Configuration.Geometry.GeometryExtended2026D49Reco_cff')
-process.load('Configuration.Geometry.GeometryExtended2026D49_cff')
+process.load('Configuration.Geometry.GeometryExtendedRun4D49Reco_cff')
+process.load('Configuration.Geometry.GeometryExtendedRun4D49_cff')
 process.load('Configuration.StandardSequences.MagneticField_cff')
 process.load('Configuration.StandardSequences.Generator_cff')
 process.load('IOMC.EventVertexGenerators.VtxSmearedHLLHC14TeV_cfi')
@@ -32,11 +32,7 @@ process.source = cms.Source("PoolSource",
        fileNames = cms.untracked.vstring('/store/mc/Phase2HLTTDRWinter20DIGI/SingleElectron_PT2to200/GEN-SIM-DIGI-RAW/PU200_110X_mcRun4_realistic_v3_ext2-v2/40000/00582F93-5A2A-5847-8162-D81EE503500F.root'),
        inputCommands=cms.untracked.vstring(
            'keep *',
-           'drop l1tEMTFHit2016Extras_simEmtfDigis_CSC_HLT',
-           'drop l1tEMTFHit2016Extras_simEmtfDigis_RPC_HLT',
-           'drop l1tEMTFHit2016s_simEmtfDigis__HLT',
-           'drop l1tEMTFTrack2016Extras_simEmtfDigis__HLT',
-           'drop l1tEMTFTrack2016s_simEmtfDigis__HLT',
+           'drop l1tTkPrimaryVertexs_L1TkPrimaryVertex__RECO',
            )
        )
 

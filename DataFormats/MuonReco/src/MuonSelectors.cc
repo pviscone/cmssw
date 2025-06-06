@@ -867,8 +867,7 @@ bool muon::isLooseTriggerMuon(const reco::Muon& muon) {
   bool tk_id = muon::isGoodMuon(muon, TMOneStationTight);
   if (not tk_id)
     return false;
-  bool layer_requirements = muon.innerTrack()->hitPattern().trackerLayersWithMeasurement() > 5 &&
-                            muon.innerTrack()->hitPattern().pixelLayersWithMeasurement() > 0;
+  bool layer_requirements = muon.innerTrack()->hitPattern().trackerLayersWithMeasurement() > 5;
   bool match_requirements =
       (muon.expectedNnumberOfMatchedStations() < 2) or (muon.numberOfMatchedStations() > 1) or (muon.pt() < 8);
   return layer_requirements and match_requirements;
@@ -1003,10 +1002,10 @@ int muon::sharedSegments(const reco::Muon& mu, const reco::Muon& mu2, unsigned i
               (segmentMatch->dtSegmentRef.isNonnull() && segmentMatch->dtSegmentRef == segmentMatch2->dtSegmentRef)) {
             ++ret;
           }  // is the same
-        }    // segment of mu2 in chamber
-      }      // segment of mu1 in chamber
-    }        // chamber of mu2
-  }          // chamber of mu1
+        }  // segment of mu2 in chamber
+      }  // segment of mu1 in chamber
+    }  // chamber of mu2
+  }  // chamber of mu1
 
   return ret;
 }

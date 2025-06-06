@@ -46,14 +46,22 @@ if 'unitTest=True' in sys.argv:
 if unitTest:
   process.load("DQM.Integration.config.unitteststreamerinputsource_cfi")
   from DQM.Integration.config.unitteststreamerinputsource_cfi import options
-  # new stream label
-  process.source.streamLabel = cms.untracked.string('streamDQMOnlineBeamspot')
+  # stream label
+  if process.runType.getRunType() == process.runType.hi_run:
+    process.source.streamLabel = 'streamHIDQMOnlineBeamspot'
+  else:
+    process.source.streamLabel = 'streamDQMOnlineBeamspot'
+
 elif live:
   # for live online DQM in P5
   process.load("DQM.Integration.config.inputsource_cfi")
   from DQM.Integration.config.inputsource_cfi import options
-  # new stream label
-  process.source.streamLabel = cms.untracked.string('streamDQMOnlineBeamspot')
+  # stream label
+  if process.runType.getRunType() == process.runType.hi_run:
+    process.source.streamLabel = 'streamHIDQMOnlineBeamspot'
+  else:
+    process.source.streamLabel = 'streamDQMOnlineBeamspot'
+
 else:
   process.load("DQM.Integration.config.fileinputsource_cfi")
   from DQM.Integration.config.fileinputsource_cfi import options
@@ -77,8 +85,8 @@ process.load("DQM.Integration.config.environment_cfi")
 process.dqmEnv.subSystemFolder = 'BeamMonitorHLT'
 process.dqmSaver.tag           = 'BeamMonitorHLT'
 process.dqmSaver.runNumber     = options.runNumber
-process.dqmSaverPB.tag         = 'BeamMonitorHLT'
-process.dqmSaverPB.runNumber   = options.runNumber
+# process.dqmSaverPB.tag         = 'BeamMonitorHLT'
+# process.dqmSaverPB.runNumber   = options.runNumber
 
 # Configure tag and jobName if running Playback system
 if process.isDqmPlayback.value :
@@ -116,7 +124,7 @@ else:
   process.dqmBeamMonitor.BeamFitter.DIPFileName = '/nfshome0/dqmdev/BeamMonitorDQM/BeamFitResults.txt'
 
 process.dqmcommon = cms.Sequence(process.dqmEnv
-                               * process.dqmSaver*process.dqmSaverPB)
+                               * process.dqmSaver)#*process.dqmSaverPB)
 
 process.monitor = cms.Sequence(process.dqmBeamMonitor)
 

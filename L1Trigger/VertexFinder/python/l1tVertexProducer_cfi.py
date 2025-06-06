@@ -38,7 +38,7 @@ l1tVertexProducer = cms.EDProducer('VertexProducer',
         # Track word limits (256 binns): [-20.46912512, 20.46912512, 0.15991504]
         FH_HistogramParameters = cms.vdouble(-20.46912512, 20.46912512, 0.15991504),
         # The number of vertixes to return (i.e. N windows with the highest combined pT)
-        FH_NVtx = cms.uint32(10),
+        FH_NVtx = cms.uint32(1),
         # fastHisto algorithm assumed vertex half-width [cm]
         FH_VertexWidth = cms.double(.15),
         # Window size of the sliding window
@@ -67,6 +67,10 @@ l1tVertexProducer = cms.EDProducer('VertexProducer',
         VxMinNStub = cms.uint32(4),
         # Minimum number of stubs in PS modules associated to a track
         VxMinNStubPS = cms.uint32(3),
+        # Track weight NN graph 
+        TrackWeightGraph = cms.FileInPath("L1Trigger/VertexFinder/data/NNVtx_WeightModelGraph.pb"),
+        # Pattern recognition NN graph
+        PatternRecGraph = cms.FileInPath("L1Trigger/VertexFinder/data/NNVtx_PatternModelGraph.pb"),
     ),
   # Debug printout
   debug  = cms.uint32(0)

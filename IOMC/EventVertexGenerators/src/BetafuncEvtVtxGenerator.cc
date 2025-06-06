@@ -21,13 +21,14 @@ ________________________________________________________________________
 #include "FWCore/Framework/interface/EventSetup.h"
 #include "FWCore/Framework/interface/ESHandle.h"
 
-#include "CLHEP/Random/RandGaussQ.h"
-#include "CLHEP/Units/GlobalSystemOfUnits.h"
-#include "CLHEP/Units/GlobalPhysicalConstants.h"
-//#include "CLHEP/Vector/ThreeVector.h"
+#include <CLHEP/Random/RandGaussQ.h>
+#include <CLHEP/Units/SystemOfUnits.h>
+#include <CLHEP/Units/GlobalPhysicalConstants.h>
 #include "HepMC/SimpleVector.h"
 
-#include <iostream>
+using CLHEP::cm;
+using CLHEP::ns;
+using CLHEP::radian;
 
 BetafuncEvtVtxGenerator::BetafuncEvtVtxGenerator(const edm::ParameterSet& p) : BaseEvtVtxGenerator(p), boost_(4, 4) {
   readDB_ = p.getParameter<bool>("readDB");
@@ -140,3 +141,19 @@ void BetafuncEvtVtxGenerator::sigmaZ(double s) {
 }
 
 TMatrixD const* BetafuncEvtVtxGenerator::GetInvLorentzBoost() const { return &boost_; }
+
+void BetafuncEvtVtxGenerator::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
+  edm::ParameterSetDescription desc;
+  desc.add<double>("X0", 0.0)->setComment("in cm");
+  desc.add<double>("Y0", 0.0)->setComment("in cm");
+  desc.add<double>("Z0", 0.0)->setComment("in cm");
+  desc.add<double>("SigmaZ", 0.0)->setComment("in cm");
+  desc.add<double>("BetaStar", 0.0)->setComment("in cm");
+  desc.add<double>("Emittance", 0.0)->setComment("in cm");
+  desc.add<double>("Alpha", 0.0)->setComment("in radians");
+  desc.add<double>("Phi", 0.0)->setComment("in radians");
+  desc.add<double>("TimeOffset", 0.0)->setComment("in ns");
+  desc.add<edm::InputTag>("src");
+  desc.add<bool>("readDB");
+  descriptions.add("BetafuncEvtVtxGenerator", desc);
+}

@@ -69,12 +69,12 @@ namespace edm {
       // Warning: the returned moduleDescription will be invalid during construction
       ModuleDescription const& moduleDescription() const { return moduleDescription_; }
 
-      virtual bool wantsProcessBlocks() const = 0;
-      virtual bool wantsInputProcessBlocks() const = 0;
-      virtual bool wantsGlobalRuns() const = 0;
-      virtual bool wantsGlobalLuminosityBlocks() const = 0;
-      virtual bool wantsStreamRuns() const = 0;
-      virtual bool wantsStreamLuminosityBlocks() const = 0;
+      virtual bool wantsProcessBlocks() const noexcept = 0;
+      virtual bool wantsInputProcessBlocks() const noexcept = 0;
+      virtual bool wantsGlobalRuns() const noexcept = 0;
+      virtual bool wantsGlobalLuminosityBlocks() const noexcept = 0;
+      virtual bool wantsStreamRuns() const noexcept = 0;
+      virtual bool wantsStreamLuminosityBlocks() const noexcept = 0;
 
       unsigned int concurrencyLimit() const { return queue_.concurrencyLimit(); }
 
@@ -86,8 +86,8 @@ namespace edm {
                             size_t iTransformIndex,
                             EventPrincipal const& iEvent,
                             ActivityRegistry*,
-                            ModuleCallingContext const*,
-                            ServiceWeakToken const&);
+                            ModuleCallingContext,
+                            ServiceWeakToken const&) noexcept;
       void doPreallocate(PreallocationConfiguration const&);
       void doBeginJob();
       void doEndJob();
@@ -122,7 +122,7 @@ namespace edm {
       //For now this is a placeholder
       /*virtual*/ void preActionBeforeRunEventAsync(WaitingTaskHolder iTask,
                                                     ModuleCallingContext const& iModuleCallingContext,
-                                                    Principal const& iPrincipal) const {}
+                                                    Principal const& iPrincipal) const noexcept {}
 
       virtual void beginJob() {}
       virtual void endJob() {}
@@ -161,17 +161,18 @@ namespace edm {
       virtual void doBeginLuminosityBlockProduce_(LuminosityBlock& lbp, EventSetup const& c);
       virtual void doEndLuminosityBlockProduce_(LuminosityBlock& lbp, EventSetup const& c);
 
-      virtual size_t transformIndex_(edm::BranchDescription const& iBranch) const;
-      virtual ProductResolverIndex transformPrefetch_(std::size_t iIndex) const;
+      virtual size_t transformIndex_(edm::BranchDescription const& iBranch) const noexcept;
+      virtual ProductResolverIndex transformPrefetch_(std::size_t iIndex) const noexcept;
       virtual void transformAsync_(WaitingTaskHolder iTask,
                                    std::size_t iIndex,
                                    edm::EventForTransformer& iEvent,
-                                   ServiceWeakToken const& iToken) const;
+                                   edm::ActivityRegistry* iAct,
+                                   ServiceWeakToken const& iToken) const noexcept;
 
       virtual void clearInputProcessBlockCaches();
-      virtual bool hasAccumulator() const { return false; }
+      virtual bool hasAccumulator() const noexcept { return false; }
 
-      bool hasAcquire() const { return false; }
+      bool hasAcquire() const noexcept { return false; }
 
       void setModuleDescription(ModuleDescription const& md) { moduleDescription_ = md; }
       ModuleDescription moduleDescription_;

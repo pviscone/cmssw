@@ -2,8 +2,8 @@
 // Original Author: Felice Pantaleo, CERN
 //
 
-// #define NTUPLE_DEBUG
-// #define GPU_DEBUG
+//#define NTUPLE_DEBUG
+//#define GPU_DEBUG
 
 #include <cmath>
 #include <cstdint>
@@ -11,15 +11,16 @@
 
 #include <cuda_runtime.h>
 
+#include "CUDADataFormats/Track/interface/PixelTrackUtilities.h"
+#include "CUDADataFormats/TrackingRecHit/interface/TrackingRecHitsUtilities.h"
 #include "HeterogeneousCore/CUDAUtilities/interface/cudaCheck.h"
 #include "HeterogeneousCore/CUDAUtilities/interface/cuda_assert.h"
 #include "RecoLocalTracker/SiPixelRecHits/interface/pixelCPEforGPU.h"
 
-#include "CUDADataFormats/Track/interface/PixelTrackUtilities.h"
-#include "CUDADataFormats/TrackingRecHit/interface/TrackingRecHitsUtilities.h"
+#include "FWCore/Utilities/interface/isFinite.h"
 
-#include "CAStructures.h"
 #include "CAHitNtupletGeneratorKernels.h"
+#include "CAStructures.h"
 #include "GPUCACell.h"
 #include "gpuFishbone.h"
 #include "gpuPixelDoublets.h"
@@ -483,7 +484,7 @@ namespace caHitNtupletGeneratorKernels {
       // if the fit has any invalid parameters, mark it as bad
       bool isNaN = false;
       for (int i = 0; i < 5; ++i) {
-        isNaN |= std::isnan(tracks_view[it].state()(i));
+        isNaN |= edm::isNotFinite(tracks_view[it].state()(i));
       }
       if (isNaN) {
 #ifdef NTUPLE_DEBUG

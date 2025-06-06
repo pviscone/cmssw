@@ -3,6 +3,7 @@
 
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 #include "FWCore/ParameterSet/interface/ParameterSetDescription.h"
+#include "FWCore/ServiceRegistry/interface/ServiceToken.h"
 #include "HeterogeneousCore/SonicCore/interface/SonicClient.h"
 #include "HeterogeneousCore/SonicTriton/interface/TritonData.h"
 #include "HeterogeneousCore/SonicTriton/interface/TritonService.h"
@@ -48,6 +49,7 @@ public:
   void resetBatchMode();
   void reset() override;
   TritonServerType serverType() const { return serverType_; }
+  bool isLocal() const { return isLocal_; }
 
   //for fillDescriptions
   static void fillPSetDescription(edm::ParameterSetDescription& iDesc);
@@ -78,12 +80,14 @@ protected:
   bool verbose_;
   bool useSharedMemory_;
   TritonServerType serverType_;
+  bool isLocal_;
   grpc_compression_algorithm compressionAlgo_;
   triton::client::Headers headers_;
 
   std::unique_ptr<triton::client::InferenceServerGrpcClient> client_;
   //stores timeout, model name and version
   std::vector<triton::client::InferOptions> options_;
+  edm::ServiceToken token_;
 
 private:
   friend TritonInputData;

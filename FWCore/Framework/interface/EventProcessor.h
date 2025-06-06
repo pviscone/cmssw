@@ -35,6 +35,8 @@ configured in the user's main() function, and is set running.
 #include "FWCore/Utilities/interface/get_underlying_safe.h"
 #include "FWCore/Utilities/interface/propagate_const.h"
 
+#include "oneapi/tbb/task_group.h"
+
 #include <atomic>
 #include <map>
 #include <memory>
@@ -46,6 +48,7 @@ configured in the user's main() function, and is set running.
 
 namespace edm {
 
+  class ExceptionCollector;
   class ExceptionToActionTable;
   class BranchIDListHelper;
   class MergeableRunProductMetadata;
@@ -120,6 +123,10 @@ namespace edm {
        */
     void beginJob();
 
+    void beginStreams();
+
+    void endStreams(ExceptionCollector&) noexcept;
+
     /**This should be called before the EventProcessor is destroyed
        throws if any module's endJob throws an exception.
        */
@@ -185,8 +192,9 @@ namespace edm {
     // The following functions are used by the code implementing
     // transition handling.
 
-    InputSource::ItemType nextTransitionType();
-    InputSource::ItemType lastTransitionType() const { return lastSourceTransition_; }
+    InputSource::ItemTypeInfo nextTransitionType();
+    InputSource::ItemTypeInfo lastTransitionType() const { return lastSourceTransition_; }
+    void nextTransitionTypeAsync(std::shared_ptr<RunProcessingStatus> iRunStatus, WaitingTaskHolder nextTask);
 
     void readFile();
     bool fileBlockValid() { return fb_.get() != nullptr; }
@@ -211,10 +219,7 @@ namespace edm {
 
     InputSource::ItemType processRuns();
     void beginRunAsync(IOVSyncValue const&, WaitingTaskHolder);
-    void streamBeginRunAsync(unsigned int iStream,
-                             std::shared_ptr<RunProcessingStatus>,
-                             bool precedingTasksSucceeded,
-                             WaitingTaskHolder);
+    void streamBeginRunAsync(unsigned int iStream, std::shared_ptr<RunProcessingStatus>, WaitingTaskHolder) noexcept;
     void releaseBeginRunResources(unsigned int iStream);
     void endRunAsync(std::shared_ptr<RunProcessingStatus>, WaitingTaskHolder);
     void handleEndRunExceptions(std::exception_ptr, WaitingTaskHolder const&);
@@ -293,7 +298,10 @@ namespace edm {
 
     void throwAboutModulesRequiringLuminosityBlockSynchronization() const;
     void warnAboutModulesRequiringRunSynchronization() const;
-    void warnAboutLegacyModules() const;
+
+    bool needToCallNext() const { return needToCallNext_; }
+    void setNeedToCallNext(bool val) { needToCallNext_ = val; }
+
     //------------------------------------------------------------------
     //
     // Data members below.
@@ -311,7 +319,7 @@ namespace edm {
     edm::propagate_const<std::shared_ptr<ThinnedAssociationsHelper>> thinnedAssociationsHelper_;
     ServiceToken serviceToken_;
     edm::propagate_const<std::unique_ptr<InputSource>> input_;
-    InputSource::ItemType lastSourceTransition_ = InputSource::IsInvalid;
+    InputSource::ItemTypeInfo lastSourceTransition_;
     edm::propagate_const<std::unique_ptr<ModuleTypeResolverMaker const>> moduleTypeResolverMaker_;
     edm::propagate_const<std::unique_ptr<eventsetup::EventSetupsController>> espController_;
     edm::propagate_const<std::shared_ptr<eventsetup::EventSetupProvider>> esp_;
@@ -350,6 +358,8 @@ namespace edm {
     std::shared_ptr<std::recursive_mutex> sourceMutex_;
     PrincipalCache principalCache_;
     bool beginJobCalled_;
+    bool beginJobStartedModules_ = false;
+    bool beginJobSucceeded_ = false;
     bool shouldWeStop_;
     bool fileModeNoMerge_;
     std::string exceptionMessageFiles_;
@@ -369,7 +379,7 @@ namespace edm {
 
     bool printDependencies_ = false;
     bool deleteNonConsumedUnscheduledModules_ = true;
-    bool firstItemAfterLumiMerge_ = true;
+    bool needToCallNext_ = true;
   };  // class EventProcessor
 
   //--------------------------------------------------------------------

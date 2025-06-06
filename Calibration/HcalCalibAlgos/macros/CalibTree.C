@@ -50,12 +50,22 @@
 //                              applied: 0 no check; 1 only to events with
 //                              datatype not equal to 1; 2 to all (1)
 //  l1Cut           (double)  = Cut value for the closeness parameter (0.5)
-//  truncateFlag    (int)     = Flag to treat different depths differently (0)
-//                              both depths of ieta 15, 16 of HB as depth 1 (1)
-//                              all depths as depth 1 (2), all depths in HE
-//                              with values > 1 as depth 2 (3), all depths in
-//                              HB with values > 1 as depth 2 (4), all depths
-//                              in HB and HE with values > 1 as depth 2 (5)
+//  truncateFlag    (int)     = A two digit flag (dr) with the default value 0.
+//                              The digit *r* is used to treat depth values:
+//                              (0) treat each depth independently; (1) all
+//                              depths of ieta 15, 16 of HB as depth 1; (2)
+//                              all depths in HB and HE as depth 1; (3) ignore
+//                              depth index in HE (depth index set to 1); (4)
+//                              ignore depth index in HB (depth index set 1);
+//                              (5) all depths in HB and HE with values > 1
+//                              as depth 2; (6) for depth = 1 and 2, depth =
+//                              1, else depth = 2; (7) in case of HB, depths
+//                              1 and 2 are set to 1, else depth = 2; for HE
+//                              ignore depth index; (8) in case of HE, depths
+//                              1 and 2 are set to 1, else depth = 2; for HB
+//                              ignore depth index; (9) Assign all depth = 1
+//                              as depth = 2. The digit *d* is used if zside
+//                              is to be ignored (1) or not (0)
 //                              (Default 0)
 //  maxIter         (int)     = number of iterations (30)
 //  drForm          (int)     = type of threshold/dupFileName/rcorFileName (hdr)
@@ -63,11 +73,13 @@
 //                              (1) for depth dependent corrections; (2) for
 //                              RespCorr corrections; (3) use machine learning
 //                              method for pileup correction; (4) use results
-//                              from phi-symmetry.
+//                              from phi-symmetry; (5) use reults from several
+//                              phi-symmetry studies drive by run numeber.
 //                              For dupFileName d: (0) contains list of
 //                              duplicate entries; (1) depth dependent weights;
 //                              (2) list of  (ieta, iphi) of channels to be
-//                              selected.
+//                              selected; (3) list of run ranges and for each
+//                              range, ieta, depth where gain has changed.
 //                              For threshold h: the format for threshold
 //                              application, 0: no threshold; 1: 2022 prompt
 //                              data; 2: 2022 reco data; 3: 2023 prompt data.
@@ -102,7 +114,8 @@
 //  debug           (bool)    = To produce more debug printing on screen
 //                              (false)
 //  nmax            (Long64_t)= maximum number of entries to be processed,
-//                               if -1, all entries to be processed (-1)
+//                              if -1, all entries to be processed; -2 take
+//                              all odd entries; -3 take all even entries (-1)
 //
 //  doIt(inFileName, dupFileName)
 //  calls Run 5 times reducing # of events by a factor of 2 in each case
@@ -752,6 +765,7 @@ Double_t CalibTree::Loop(int loop,
   Long64_t nbytes(0), nb(0);
   Long64_t nentryTot = fChain->GetEntriesFast();
   Long64_t nentries = (fraction > 0.01 && fraction < 0.99) ? (Long64_t)(fraction * nentryTot) : nentryTot;
+  int32_t oddEven = (nmax == -2) ? 1 : ((nmax == -3) ? -1 : 0);
   if ((nentries > nmax) && (nmax > 0))
     nentries = nmax;
 
@@ -768,6 +782,12 @@ Double_t CalibTree::Loop(int loop,
     nbytes += nb;
     if (jentry % 1000000 == 0)
       std::cout << "Entry " << jentry << " Run " << t_Run << " Event " << t_Event << std::endl;
+    if (oddEven != 0) {
+      if ((oddEven < 0) && (jentry % 2 == 0))
+        continue;
+      else if ((oddEven > 0) && (jentry % 2 != 0))
+        continue;
+    }
     bool select = ((cDuplicate_ != nullptr) && (duplicate_ == 0)) ? (cDuplicate_->isDuplicate(jentry)) : true;
     if (!select)
       continue;
@@ -839,8 +859,13 @@ Double_t CalibTree::Loop(int loop,
                 hitEn = (*t_HitEnergies)[idet];
               if ((rcorForm_ != 3) && (rcorForm_ >= 0) && (cFactor_))
                 hitEn *= cFactor_->getCorr(t_Run, id);
-              if ((cDuplicate_ != nullptr) && (cDuplicate_->doCorr()))
+              if ((cDuplicate_ != nullptr) && (cDuplicate_->doCorr(1)))
                 hitEn *= cDuplicate_->getWeight(id);
+              if ((cDuplicate_ != nullptr) && (cDuplicate_->doCorr(3))) {
+                int subdet, zside, ieta, iphi, depth;
+                unpackDetId((*t_DetIds)[idet], subdet, zside, ieta, iphi, depth);
+                hitEn *= cDuplicate_->getCorr(t_Run, ieta, depth);
+              }
               double Wi = evWt * hitEn / en.Etot;
               double Fac = (inverse) ? (en.ehcal / (pmom - t_eMipDR)) : ((pmom - t_eMipDR) / en.ehcal);
               double Fac2 = Wi * Fac * Fac;
@@ -1051,6 +1076,7 @@ void CalibTree::getDetId(double fraction, int ietaTrack, bool debug, Long64_t nm
     Long64_t nbytes(0), nb(0), kprint(0);
     Long64_t nentryTot = fChain->GetEntriesFast();
     Long64_t nentries = (fraction > 0.01 && fraction < 0.99) ? (Long64_t)(fraction * nentryTot) : nentryTot;
+    int32_t oddEven = (nmax == -2) ? 1 : ((nmax == -3) ? -1 : 0);
     if ((nentries > nmax) && (nmax > 0))
       nentries = nmax;
 
@@ -1062,6 +1088,12 @@ void CalibTree::getDetId(double fraction, int ietaTrack, bool debug, Long64_t nm
       nbytes += nb;
       if (jentry % 1000000 == 0)
         std::cout << "Entry " << jentry << " Run " << t_Run << " Event " << t_Event << std::endl;
+      if (oddEven != 0) {
+        if ((oddEven < 0) && (jentry % 2 == 0))
+          continue;
+        else if ((oddEven > 0) && (jentry % 2 != 0))
+          continue;
+      }
       bool select = ((cDuplicate_ != nullptr) && (duplicate_ == 0)) ? (cDuplicate_->isDuplicate(jentry)) : true;
       if (!select)
         continue;
@@ -1278,6 +1310,7 @@ void CalibTree::makeplots(
     return;
   Long64_t nentryTot = fChain->GetEntriesFast();
   Long64_t nentries = (fraction > 0.01 && fraction < 0.99) ? (Long64_t)(fraction * nentryTot) : nentryTot;
+  int32_t oddEven = (nmax == -2) ? 1 : ((nmax == -3) ? -1 : 0);
   if ((nentries > nmax) && (nmax > 0))
     nentries = nmax;
 
@@ -1309,6 +1342,12 @@ void CalibTree::makeplots(
     nbytes += nb;
     if (ientry < 0)
       break;
+    if (oddEven != 0) {
+      if ((oddEven < 0) && (jentry % 2 == 0))
+        continue;
+      else if ((oddEven > 0) && (jentry % 2 != 0))
+        continue;
+    }
     bool select = ((cDuplicate_ != nullptr) && (duplicate_ == 0)) ? (cDuplicate_->isDuplicate(jentry)) : true;
     if (!select)
       continue;
@@ -1447,8 +1486,13 @@ CalibTree::energyCalor CalibTree::energyHcal(double pmom, const Long64_t &entry,
           hitEn = (*t_HitEnergies)[idet];
         if ((rcorForm_ != 3) && (rcorForm_ >= 0) && (cFactor_))
           hitEn *= cFactor_->getCorr(t_Run, id);
-        if ((cDuplicate_ != nullptr) && (cDuplicate_->doCorr()))
+        if ((cDuplicate_ != nullptr) && (cDuplicate_->doCorr(1)))
           hitEn *= cDuplicate_->getWeight(id);
+        if ((cDuplicate_ != nullptr) && (cDuplicate_->doCorr(3))) {
+          int subdet, zside, ieta, iphi, depth;
+          unpackDetId((*t_DetIds)[idet], subdet, zside, ieta, iphi, depth);
+          hitEn *= cDuplicate_->getCorr(t_Run, ieta, depth);
+        }
         etot += hitEn;
         etot2 += ((*t_HitEnergies)[idet]);
       }
@@ -1469,8 +1513,13 @@ CalibTree::energyCalor CalibTree::energyHcal(double pmom, const Long64_t &entry,
             hitEn = (*t_HitEnergies1)[idet];
           if ((rcorForm_ != 3) && (rcorForm_ >= 0) && (cFactor_))
             hitEn *= cFactor_->getCorr(t_Run, id);
-          if ((cDuplicate_ != nullptr) && (cDuplicate_->doCorr()))
+          if ((cDuplicate_ != nullptr) && (cDuplicate_->doCorr(1)))
             hitEn *= cDuplicate_->getWeight(id);
+          if ((cDuplicate_ != nullptr) && (cDuplicate_->doCorr(3))) {
+            int subdet, zside, ieta, iphi, depth;
+            unpackDetId((*t_DetIds1)[idet], subdet, zside, ieta, iphi, depth);
+            hitEn *= cDuplicate_->getCorr(t_Run, ieta, depth);
+          }
           etot1 += hitEn;
         }
       }
@@ -1487,8 +1536,13 @@ CalibTree::energyCalor CalibTree::energyHcal(double pmom, const Long64_t &entry,
             hitEn = (*t_HitEnergies3)[idet];
           if ((rcorForm_ != 3) && (rcorForm_ >= 0) && (cFactor_))
             hitEn *= cFactor_->getCorr(t_Run, id);
-          if ((cDuplicate_ != nullptr) && (cDuplicate_->doCorr()))
+          if ((cDuplicate_ != nullptr) && (cDuplicate_->doCorr(3)))
             hitEn *= cDuplicate_->getWeight(id);
+          if ((cDuplicate_ != nullptr) && (cDuplicate_->doCorr(3))) {
+            int subdet, zside, ieta, iphi, depth;
+            unpackDetId((*t_DetIds3)[idet], subdet, zside, ieta, iphi, depth);
+            hitEn *= cDuplicate_->getCorr(t_Run, ieta, depth);
+          }
           etot3 += hitEn;
         }
       }

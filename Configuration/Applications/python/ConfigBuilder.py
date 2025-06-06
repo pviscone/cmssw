@@ -71,8 +71,10 @@ defaultOptions.outputCommands = None
 defaultOptions.inputEventContent = ''
 defaultOptions.dropDescendant = False
 defaultOptions.relval = None
+defaultOptions.prefix = None
 defaultOptions.profile = None
 defaultOptions.heap_profile = None
+defaultOptions.maxmem_profile = None
 defaultOptions.isRepacked = False
 defaultOptions.restoreRNDSeeds = False
 defaultOptions.donotDropOnInput = ''
@@ -324,37 +326,13 @@ class ConfigBuilder(object):
         Function to add the jemalloc heap  profile service so that you can dump in the middle
         of the run.
         """
-        profileOpts = self._options.profile.split(':')
+        profileOpts = []
         profilerStart = 1
         profilerInterval = 100
-        profilerFormat = None
+        profilerFormat = "jeprof_%s.heap"
         profilerJobFormat = None
 
-        if len(profileOpts):
-            #type, given as first argument is unused here
-            profileOpts.pop(0)
-        if len(profileOpts):
-            startEvent = profileOpts.pop(0)
-            if not startEvent.isdigit():
-                raise Exception("%s is not a number" % startEvent)
-            profilerStart = int(startEvent)
-        if len(profileOpts):
-            eventInterval = profileOpts.pop(0)
-            if not eventInterval.isdigit():
-                raise Exception("%s is not a number" % eventInterval)
-            profilerInterval = int(eventInterval)
-        if len(profileOpts):
-            profilerFormat = profileOpts.pop(0)
 
-
-        if not profilerFormat:
-            profilerFormat = "%s___%s___%%I.heap" % (
-                self._options.evt_type.replace("_cfi", ""),
-                hashlib.md5(
-                    (str(self._options.step) + str(self._options.pileup) + str(self._options.conditions) +
-                    str(self._options.datatier) + str(self._options.profileTypeLabel)).encode('utf-8')
-                ).hexdigest()
-            )
         if not profilerJobFormat and profilerFormat.endswith(".heap"):
             profilerJobFormat = profilerFormat.replace(".heap", "_EndOfJob.heap")
         elif not profilerJobFormat:
@@ -771,6 +749,12 @@ class ConfigBuilder(object):
         if self._options.pileup:
             pileupSpec=self._options.pileup.split(',')[0]
 
+            #make sure there is a set of pileup files specified when needed
+            pileups_without_input=[defaultOptions.pileup,"Cosmics","default","HiMixNoPU",None]
+            if self._options.pileup not in pileups_without_input and self._options.pileup_input==None:
+                message = "Pileup scenerio requires input files. Please add an appropriate --pileup_input option"
+                raise Exception(message)
+
             # Does the requested pile-up scenario exist?
             from Configuration.StandardSequences.Mixing import Mixing,defineMixing
             if not pileupSpec in Mixing and '.' not in pileupSpec and 'file:' not in pileupSpec:
@@ -1012,6 +996,7 @@ class ConfigBuilder(object):
         self.DIGIDefaultCFF="Configuration/StandardSequences/Digi_cff"
         self.DIGI2RAWDefaultCFF="Configuration/StandardSequences/DigiToRaw_cff"
         self.L1EMDefaultCFF='Configuration/StandardSequences/SimL1Emulator_cff'
+        self.L1P2GTDefaultCFF = 'Configuration/StandardSequences/SimPhase2L1GlobalTriggerEmulator_cff'
         self.L1MENUDefaultCFF="Configuration/StandardSequences/L1TriggerDefaultMenu_cff"
         self.HLTDefaultCFF="Configuration/StandardSequences/HLTtable_cff"
         self.RAW2DIGIDefaultCFF="Configuration/StandardSequences/RawToDigi_Data_cff"
@@ -1022,7 +1007,6 @@ class ConfigBuilder(object):
         self.RECOSIMDefaultCFF="Configuration/StandardSequences/RecoSim_cff"
         self.PATDefaultCFF="Configuration/StandardSequences/PAT_cff"
         self.NANODefaultCFF="PhysicsTools/NanoAOD/nano_cff"
-        self.NANOGENDefaultCFF="PhysicsTools/NanoAOD/nanogen_cff"
         self.SKIMDefaultCFF="Configuration/StandardSequences/Skims_cff"
         self.POSTRECODefaultCFF="Configuration/StandardSequences/PostRecoGenerator_cff"
         self.VALIDATIONDefaultCFF="Configuration/StandardSequences/Validation_cff"
@@ -1050,6 +1034,7 @@ class ConfigBuilder(object):
         self.DIGI2RAWDefaultSeq='DigiToRaw'
         self.HLTDefaultSeq='GRun'
         self.L1DefaultSeq=None
+        self.L1P2GTDefaultSeq=None
         self.L1REPACKDefaultSeq='GT'
         self.HARVESTINGDefaultSeq=None
         self.ALCAHARVESTDefaultSeq=None
@@ -1071,7 +1056,6 @@ class ConfigBuilder(object):
         self.PATDefaultSeq='miniAOD'
         self.PATGENDefaultSeq='miniGEN'
         #TODO: Check based of file input
-        self.NANOGENDefaultSeq='nanogenSequence'
         self.NANODefaultSeq='nanoSequence'
         self.NANODefaultCustom='nanoAOD_customizeCommon'
 
@@ -1117,8 +1101,8 @@ class ConfigBuilder(object):
             self.VALIDATIONDefaultCFF="Configuration/StandardSequences/ValidationHeavyIons_cff"
             self.VALIDATIONDefaultSeq=''
             self.EVTCONTDefaultCFF="Configuration/EventContent/EventContentHeavyIons_cff"
-            self.RECODefaultCFF="Configuration/StandardSequences/ReconstructionHeavyIons_cff"
-            self.RECODefaultSeq='reconstructionHeavyIons'
+            self.RECODefaultCFF="Configuration/StandardSequences/Reconstruction_cff"
+            self.RECODefaultSeq='reconstruction'
             self.ALCADefaultCFF = "Configuration/StandardSequences/AlCaRecoStreamsHeavyIons_cff"
             self.DQMOFFLINEDefaultCFF="DQMOffline/Configuration/DQMOfflineHeavyIons_cff"
             self.DQMDefaultSeq='DQMOfflineHeavyIons'
@@ -1461,7 +1445,7 @@ class ConfigBuilder(object):
                     elif isinstance(theObject, cms.Sequence) or isinstance(theObject, cmstypes.ESProducer):
                         self._options.inlineObjects+=','+name
 
-            if stepSpec == self.GENDefaultSeq or stepSpec == 'pgen_genonly' or stepSpec == 'pgen_smear':
+            if stepSpec == self.GENDefaultSeq or stepSpec == 'pgen_genonly':
                 if 'ProductionFilterSequence' in genModules and ('generator' in genModules):
                     self.productionFilterSequence = 'ProductionFilterSequence'
                 elif 'generator' in genModules:
@@ -1492,7 +1476,7 @@ class ConfigBuilder(object):
         #register to the genstepfilter the name of the path (static right now, but might evolve)
         self.executeAndRemember('process.genstepfilter.triggerConditions=cms.vstring("generation_step")')
 
-        if 'reGEN' in self.stepMap:
+        if 'reGEN' in self.stepMap or stepSpec == 'pgen_smear':
             #stop here
             return
 
@@ -1571,6 +1555,40 @@ class ConfigBuilder(object):
         _,_repackSeq,_ = self.loadDefaultOrSpecifiedCFF(stepSpec,self.REPACKDefaultCFF)
         self.scheduleSequence(_repackSeq,'digi2repack_step')
         return
+
+    def loadPhase2GTMenu(self, menuFile: str):
+        import importlib
+        menuPath = f'L1Trigger.Configuration.Phase2GTMenus.{menuFile}'
+        menuModule = importlib.import_module(menuPath)
+        
+        theMenu = menuModule.menu
+        triggerPaths = [] #we get a list of paths in each of these files to schedule
+
+        for triggerPathFile in theMenu:
+            self.loadAndRemember(triggerPathFile) #this load and remember will set the algo variable of the algoblock later
+
+            triggerPathModule = importlib.import_module(triggerPathFile)
+            for objName in dir(triggerPathModule):
+                obj = getattr(triggerPathModule, objName)
+                objType = type(obj)
+                if objType == cms.Path:
+                    triggerPaths.append(objName)
+        
+        triggerScheduleList = [getattr(self.process, name) for name in sorted(triggerPaths)] #get the actual paths to put in the schedule
+        self.schedule.extend(triggerScheduleList) #put them in the schedule for later
+    
+    # create the L1 GT step
+    # We abuse the stepSpec a bit as a way to specify a menu
+    def prepare_L1P2GT(self, stepSpec=None):
+        """ Run the GT emulation sequence on top of the L1 emulation step """
+        self.loadAndRemember(self.L1P2GTDefaultCFF)
+        self.scheduleSequence('l1tGTProducerSequence', 'Phase2L1GTProducer')
+        self.scheduleSequence('l1tGTAlgoBlockProducerSequence', 'Phase2L1GTAlgoBlockProducer')
+        if stepSpec == None:
+            defaultMenuFile = "prototype_2023_v1_0_0"
+            self.loadPhase2GTMenu(menuFile = defaultMenuFile)
+        else:
+            self.loadPhase2GTMenu(menuFile = stepSpec)
 
     def prepare_L1(self, stepSpec = None):
         """ Enrich the schedule with the L1 simulation step"""
@@ -1776,12 +1794,17 @@ class ConfigBuilder(object):
     def prepare_NANO(self, stepSpec = '' ):
         print(f"in prepare_nano {stepSpec}")
         ''' Enrich the schedule with NANO '''
-        _,_nanoSeq,_nanoCff = self.loadDefaultOrSpecifiedCFF(stepSpec,self.NANODefaultCFF,self.NANODefaultSeq)
-        
-        # create full specified sequence using autoNANO 
+        if not '@' in stepSpec:
+            _,_nanoSeq,_nanoCff = self.loadDefaultOrSpecifiedCFF(stepSpec,self.NANODefaultCFF,self.NANODefaultSeq)
+        else:
+            _nanoSeq = stepSpec
+            _nanoCff = self.NANODefaultCFF
+
+        print(_nanoSeq)
+        # create full specified sequence using autoNANO
         from PhysicsTools.NanoAOD.autoNANO import autoNANO, expandNanoMapping
         # if not a autoNANO mapping, load an empty customization, which later will be converted into the default.
-        _nanoCustoms = _nanoSeq.split('+') if '@' in stepSpec else [''] 
+        _nanoCustoms = _nanoSeq.split('+') if '@' in stepSpec else ['']
         _nanoSeq = _nanoSeq.split('+')
         expandNanoMapping(_nanoSeq, autoNANO, 'sequence')
         expandNanoMapping(_nanoCustoms, autoNANO, 'customize')
@@ -1789,34 +1812,35 @@ class ConfigBuilder(object):
         _nanoSeq = list(sorted(set(_nanoSeq), key=_nanoSeq.index))
         _nanoCustoms = list(sorted(set(_nanoCustoms), key=_nanoCustoms.index))
         # replace empty sequence with default
-        _nanoSeq = [seq if seq!='' else self.NANODefaultSeq for seq in _nanoSeq]    
-        _nanoCustoms = [cust if cust!='' else self.NANODefaultCustom for cust in _nanoCustoms]   
+        _nanoSeq = [seq if seq!='' else f"{self.NANODefaultCFF}.{self.NANODefaultSeq}" for seq in _nanoSeq]
+        _nanoCustoms = [cust if cust!='' else self.NANODefaultCustom for cust in _nanoCustoms]
         # build and inject the sequence
         if len(_nanoSeq) < 1 and '@' in stepSpec:
-            raise Exception(f'The specified mapping: {stepSpec} generates an empty NANO sequence. Please provide a valid mappign')
-        self.scheduleSequence('+'.join(_nanoSeq), 'nanoAOD_step')
-        
+            raise Exception(f'The specified mapping: {stepSpec} generates an empty NANO sequence. Please provide a valid mapping')
+        _seqToSchedule = []
+        for _subSeq in _nanoSeq:
+            if '.' in _subSeq:
+                _cff,_seq = _subSeq.split('.')
+                print("NANO: scheduling:",_seq,"from",_cff)
+                self.loadAndRemember(_cff)
+                _seqToSchedule.append(_seq)
+            elif '/' in _subSeq:
+                self.loadAndRemember(_subSeq)
+                _seqToSchedule.append(self.NANODefaultSeq)
+            else:
+                print("NANO: scheduling:",_subSeq)
+                _seqToSchedule.append(_subSeq)
+        self.scheduleSequence('+'.join(_seqToSchedule), 'nanoAOD_step')
+
         # add the customisations
         for custom in _nanoCustoms:
-            custom_path = custom if '.' in custom else '.'.join([_nanoCff,custom]) 
+            custom_path = custom if '.' in custom else '.'.join([_nanoCff,custom])
             # customization order can be important for NANO, here later specified customise take precedence
             self._options.customisation_file.append(custom_path)
         if self._options.hltProcess:
             if len(self._options.customise_commands) > 1:
                 self._options.customise_commands = self._options.customise_commands + " \n"
             self._options.customise_commands = self._options.customise_commands + "process.unpackedPatTrigger.triggerResults= cms.InputTag( 'TriggerResults::"+self._options.hltProcess+"' )\n"
-
-    def prepare_NANOGEN(self, stepSpec = "nanoAOD"):
-        ''' Enrich the schedule with NANOGEN '''
-        # TODO: Need to modify this based on the input file type
-        fromGen = any([x in self.stepMap for x in ['LHE', 'GEN', 'AOD']])
-        _,_nanogenSeq,_nanogenCff = self.loadDefaultOrSpecifiedCFF(stepSpec,self.NANOGENDefaultCFF)
-        self.scheduleSequence(_nanogenSeq,'nanoAOD_step')
-        custom = "customizeNanoGEN" if fromGen else "customizeNanoGENFromMini"
-        if self._options.runUnscheduled:
-            self._options.customisation_file_unsch.insert(0, '.'.join([_nanogenCff, custom]))
-        else:
-            self._options.customisation_file.insert(0, '.'.join([_nanogenCff, custom]))
 
     def prepare_SKIM(self, stepSpec = "all"):
         ''' Enrich the schedule with skimming fragments'''

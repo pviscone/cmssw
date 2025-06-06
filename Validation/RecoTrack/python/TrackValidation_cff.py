@@ -393,7 +393,7 @@ for _eraName, _postfix, _era in _relevantEras:
                    locals()["_generalTracksHp"+_postfix],
                    "generalTracksPt09",
                    "cutsRecoTracksBtvLike",
-                   "cutsRecoTracksJetCoreRegionalStepByOriginalAlgo",
+                   "cutsRecoTracksJetCoreRegionalStepByOriginalAlgo"
                ]
     )
     _setForEra(trackValidator.histoProducerAlgoBlock, _eraName, _era, seedingLayerSets=locals()["_seedingLayerSets"+_postfix])
@@ -534,12 +534,12 @@ _trackValidatorSeedingBuilding = trackValidator.clone( # common for built tracks
     dodEdxPlots = False,
     doPVAssociationPlots = False,
     doSimPlots = False,
-    doResolutionPlotsForLabels = ["disabled"],
+    doResolutionPlotsForLabels = ["disabled"]
 )
 trackValidatorBuilding = _trackValidatorSeedingBuilding.clone(
     dirName = "Tracking/TrackBuilding/",
     doMVAPlots = True,
-    doResolutionPlotsForLabels = ['jetCoreRegionalStepTracks'],
+    doResolutionPlotsForLabels = ['jetCoreRegionalStepTracks']
 )
 trackValidatorBuildingPreSplitting = trackValidatorBuilding.clone(
     associators = ["quickTrackAssociatorByHitsPreSplitting"],
@@ -932,6 +932,7 @@ tracksValidationSeedSelectorsTrackingOnly.add(tracksValidationSeedSelectorsPreSp
 # MTV instances
 trackValidatorTrackingOnly = trackValidatorStandalone.clone(
     label = [ x for x in trackValidatorStandalone.label if x != "cutsRecoTracksAK4PFJets"],
+    doResolutionPlotsForLabels = trackValidatorStandalone.doResolutionPlotsForLabels + locals()["_selectorsByOriginalAlgo"+_postfix],
     cores = "highPtJetsForTrk"
  )
 
@@ -997,7 +998,7 @@ trackValidatorsTrackingOnly.replace(trackValidatorConversionStandalone, trackVal
 trackValidatorsTrackingOnly.remove(trackValidatorGsfTracksStandalone)
 trackValidatorsTrackingOnly.replace(trackValidatorBHadronStandalone, trackValidatorBHadronTrackingOnly)
 
-seedingDeepCore.toReplaceWith(trackValidatorsTrackingOnly, cms.Sequence(
+(seedingDeepCore & ~fastSim).toReplaceWith(trackValidatorsTrackingOnly, cms.Sequence(
             trackValidatorsTrackingOnly.copy()+
             trackValidatorJetCore+
             trackValidatorJetCoreSeedingTrackingOnly
@@ -1217,10 +1218,6 @@ tracksValidationLite = cms.Sequence(
 
 ## customization for timing
 from Configuration.Eras.Modifier_phase2_timing_layer_cff import phase2_timing_layer
-phase2_timing_layer.toModify( generalTracksFromPV, 
-                              timesTag  = cms.InputTag('tofPID:t0'), 
-                              timeResosTag = cms.InputTag('tofPID:sigmat0'),
-                              nSigmaDtVertex = cms.double(3) )
 phase2_timing_layer.toModify( trackValidatorStandalone,
                               label_vertex = cms.untracked.InputTag('offlinePrimaryVertices4D') )
 phase2_timing_layer.toModify( trackValidatorFromPVStandalone,

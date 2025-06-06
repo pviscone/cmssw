@@ -29,6 +29,7 @@ The model information from the server can be printed by enabling `verbose` outpu
 * `modelConfigPath`: path to `config.pbtxt` file for the model (using `edm::FileInPath`)
 * `preferredServer`: name of preferred server, for testing (see [Services](#services) below)
 * `timeout`: maximum allowed time for a request (disabled with 0)
+* `timeoutUnit`: seconds, milliseconds, or microseconds (default: seconds)
 * `outputs`: optional, specify which output(s) the server should send
 * `verbose`: enable verbose printouts (default: false)
 * `useSharedMemory`: enable use of shared memory (see [below](#shared-memory)) with local servers (default: true)
@@ -124,21 +125,26 @@ In a SONIC Triton producer, the basic flow should follow this pattern:
 
 ## Services
 
+### `cmsTriton`
+
 A script [`cmsTriton`](./scripts/cmsTriton) is provided to launch and manage local servers.
-The script has two operations (`start` and `stop`) and the following options:
+The script has three operations (`start`, `stop`, `check`) and the following options:
 * `-c`: don't cleanup temporary dir (for debugging)
+* `-C [dir]`: directory containing Nvidia compatibility drivers (checks CMSSW_BASE by default if available)
 * `-D`: dry run: print container commands rather than executing them
-* `-d`: use Docker instead of Apptainer
+* `-d [exe]`: container choice: apptainer, docker, podman, podman-hpc (default: apptainer)
+* `-E [path]`: include extra path(s) for executables (default: /cvmfs/oasis.opensciencegrid.org/mis/apptainer/current/bin)
 * `-f`: force reuse of (possibly) existing container instance
-* `-g`: use GPU instead of CPU
-* `-i` [name]`: server image name (default: fastml/triton-torchgeo:22.07-py3-geometric)
+* `-g [device]`: device choice: auto (try to detect GPU), CPU, GPU (default: auto)
+* `-i [name]`: server image name (default: fastml/triton-torchgeo:22.07-py3-geometric)
+* `-I [num]`: number of model instances (default: 0 -> means no local editing of config files)
 * `-M [dir]`: model repository (can be given more than once)
 * `-m [dir]`: specific model directory (can be given more than one)
 * `-n [name]`: name of container instance, also used for hidden temporary dir (default: triton_server_instance)
 * `-P [port]`: base port number for services (-1: automatically find an unused port range) (default: 8000)
 * `-p [pid]`: automatically shut down server when process w/ specified PID ends (-1: use parent process PID)
 * `-r [num]`: number of retries when starting container (default: 3)
-* `-s [dir]`: Apptainer sandbox directory (default: /cvmfs/unpacked.cern.ch/registry.hub.docker.com/fastml/triton-torchgeo:22.07-py3-geometric)
+* `-s [dir]`: apptainer sandbox directory (default: /cvmfs/unpacked.cern.ch/registry.hub.docker.com/fastml/triton-torchgeo:22.07-py3-geometric)
 * `-t [dir]`: non-default hidden temporary dir
 * `-v`: (verbose) start: activate server debugging info; stop: keep server logs
 * `-w [time]`: maximum time to wait for server to start (default: 300 seconds)
@@ -148,12 +154,31 @@ Additional details and caveats:
 * The `start` and `stop` operations for a given container instance should always be executed in the same directory
 if a relative path is used for the hidden temporary directory (including the default from the container instance name),
 in order to ensure that everything is properly cleaned up.
+* The `check` operation just checks if the server can run on the current system, based on driver compatibility.
 * A model repository is a folder that contains multiple model directories, while a model directory contains the files for a specific file.
 (In the example below, `$CMSSW_BASE/src/HeterogeneousCore/SonicTriton/data/models` is a model repository,
 while `$CMSSW_BASE/src/HeterogeneousCore/SonicTriton/data/models/resnet50_netdef` is a model directory.)
 If a model repository is provided, all of the models it contains will be provided to the server.
 * Older versions of Apptainer (Singularity) have a short timeout that may cause launching the server to fail the first time the command is executed.
 The `-r` (retry) flag exists to work around this issue.
+
+### `cmsTritonConfigTool`
+
+The `config.pbtxt` files used for model configuration are written in the protobuf text format.
+To ease modification of these files, a dedicated Python tool [`cmsTritonConfigTool`](./scripts/cmsTritonConfigTool) is provided.
+The tool has several modes of operation (each with its own options, which can be viewed using `--help`):
+* `schema`: displays all field names and types for the Triton ModelConfig message class.
+* `view`: displays the field values from a provided `config.pbtxt` file.
+* `edit`: allows changing any field value in a `config.pbtxt` file. Non-primitive types are specified using JSON format.
+* `checksum`: checks and updates checksums for model files (to enforce versioning).
+* `versioncheck`: checks and updates checksums for all `config.pbtxt` files in `$CMSSW_SEARCH_PATH`.
+* `threadcontrol`: adds job- and ML framework-specific thread control settings.
+
+The `edit` mode is intended for generic modifications, and only supports overwriting existing values
+(not modifying, removing, deleting, etc.).
+Additional dedicated modes, like `checksum` and `threadcontrol`, can easily be added for more complicated tasks.
+
+### `TritonService`
 
 A central `TritonService` is provided to keep track of all available servers and which models they can serve.
 The servers will automatically be assigned to clients at startup.
@@ -175,8 +200,8 @@ The fallback server has a separate set of options, mostly related to the invocat
 * `enable`: enable the fallback server
 * `debug`: enable debugging (equivalent to `-c` in `cmsTriton`)
 * `verbose`: enable verbose output in logs (equivalent to `-v` in `cmsTriton`)
-* `useDocker`: use Docker instead of Apptainer (equivalent to `-d` in `cmsTriton`)
-* `useGPU`: run on local GPU (equivalent to `-g` in `cmsTriton`)
+* `container`: container choice (equivalent to `-d` in `cmsTriton`)
+* `device`: device choice (equivalent to `-g` in `cmsTriton`)
 * `retries`: number of retries when starting container (passed to `-r [num]` in `cmsTriton` if >= 0; default: -1)
 * `wait`: maximum time to wait for server to start (passed to `-w time` in `cmsTriton` if >= 0; default: -1)
 * `instanceBaseName`: base name for server instance if random names are enabled (default: triton_server_instance)

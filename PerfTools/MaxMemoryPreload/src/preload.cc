@@ -26,6 +26,16 @@
 // static data member definitions
 //
 
+// Hooks the target application can be instrumented with to pause and
+// unpause the MaxMemoryPreload. Pausing the monitoring during a
+// multithreaded execution can result in unexpected results, because
+// the setting is global.
+namespace {
+  std::atomic<bool> paused = false;
+}
+void pauseMaxMemoryPreload() { paused = true; }
+void unpauseMaxMemoryPreload() { paused = false; }
+
 namespace {
   class MonitorAdaptor : public cms::perftools::AllocMonitorBase {
   public:
@@ -33,7 +43,10 @@ namespace {
     ~MonitorAdaptor() noexcept override { performanceReport(); }
 
   private:
-    void allocCalled(size_t iRequested, size_t iActual) final {
+    void allocCalled(size_t iRequested, size_t iActual, void const*) final {
+      if (paused)
+        return;
+
       nAllocations_.fetch_add(1, std::memory_order_acq_rel);
       requested_.fetch_add(iRequested, std::memory_order_acq_rel);
 
@@ -47,7 +60,10 @@ namespace {
         }
       }
     }
-    void deallocCalled(size_t iActual) final {
+    void deallocCalled(size_t iActual, void const*) final {
+      if (paused)
+        return;
+
       nDeallocations_.fetch_add(1, std::memory_order_acq_rel);
       auto present = presentActual_.load(std::memory_order_acquire);
       if (present >= iActual) {
@@ -62,10 +78,10 @@ namespace {
       auto allocs = nAllocations_.load(std::memory_order_acquire);
       auto deallocs = nDeallocations_.load(std::memory_order_acquire);
 
-      std::cerr << "Memory Report"
-                << "\n  total memory requested: " << finalRequested << "\n  max memory used: " << maxActual
-                << "\n  presently used: " << present << "\n  # allocations calls:   " << allocs
-                << "\n  # deallocations calls: " << deallocs << "\n";
+      std::cerr << "Memory Report: total memory requested: " << finalRequested
+                << "\nMemory Report:  max memory used: " << maxActual << "\nMemory Report:  presently used: " << present
+                << "\nMemory Report:  # allocations calls:   " << allocs
+                << "\nMemory Report:  # deallocations calls: " << deallocs << "\n";
     }
 
   private:

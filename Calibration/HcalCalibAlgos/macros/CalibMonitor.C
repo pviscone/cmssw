@@ -3,9 +3,9 @@
 // .L CalibMonitor.C+g
 //  CalibMonitor c1(fname, dirname, dupFileName, comFileName, outFileName,
 //                  prefix, corrFileName, rcorFileName, puCorr, flag, numb,
-//                  dataMC, truncateFlag, useGen, scale, useScale, etalo, etahi,
-//                  runlo, runhi, phimin, phimax, zside, nvxlo, nvxhi, rbxFile,
-//                  exclude, etamax);
+//                  isRealData, truncateFlag, useGen, scale, useScale, etalo,
+//                  etahi, runlo, runhi, phimin, phimax, zside, nvxlo, nvxhi,
+//                  rbxFile, exclude, etamax);
 //  c1.Loop(nmax, debug);
 //  c1.savePlot(histFileName,append,all);
 //
@@ -27,6 +27,7 @@
 //                               (use "HcalIsoTrkAnalyzer")
 //   dupFileName (char*)       = name of the file containing list of entries
 //                               of duplicate events or depth dependent weights
+//                               or weights coming due to change in gains
 //                               (driven by flag)
 //   comFileName (char*)       = name of the file with list of run and event
 //                               number to be selected
@@ -40,7 +41,7 @@
 //   rcorFileName (char*)      = name of the text file having the correction
 //                               factors as a function of run numbers or depth
 //                               or entry number to be used for raddam/depth/
-//                               pileup/phisym dependent correction
+//                               pileup/phisym/phisym(s) dependent correction
 //                               (default="", no correction)
 //   puCorr (int)              = PU correction to be applied or not: 0 no
 //                               correction; < 0 use eDelta; > 0 rho dependent
@@ -48,14 +49,18 @@
 //   flag (int)                = 8 digit integer (xymlthdo) with control
 //                               information (x=3/2/1/0 for having 1000/500/50/
 //                               100 bins for response distribution in (0:5);
-//                               y=2/1/0 containing list of ieta, iphi of
-//                               channels to be selected (2); list containing
-//                               depth dependent weights for each ieta (1);
-//                               list of duplicate entries (0) in dupFileName;
+//                               y=3/2/1/0 containing list of run ranges and
+//                               ieta, depth for gain changes (3): list of
+//                               ieta, iphi of channels to be selected (2);
+//                               list containing depth dependent weights for
+//                               each ieta (1); list of duplicate entries (0)
+//                               in the dupFileName;
 //                               m=1/0 for (not) making plots for each RBX;
-//                               l=4/3/2/1/0 for type of rcorFileName (4 for
-//                               using results from phi-symmetry; 3 for
-//                               pileup correction using machine learning
+//                               l=5/4/3/2/1/0 for type of rcorFileName (5
+//                               for run-dependent correctons using results
+//                               from several phi symmetry studies; 4 for
+//                               using results from one phi-symmetry study;
+//                               3 for pileup correction using machine learning
 //                               method; 2 for overall response corrections;
 //                               1 for depth dependence corrections;
 //                               0 for raddam corrections);
@@ -70,14 +75,24 @@
 //                               o = 0/1/2 for tight / loose / flexible
 //                               selection). Default = 1031
 //   numb   (int)              = number of eta bins (50 for -25:25)
-//   dataMC (bool)             = true/false for data/MC (default true)
-//   truncateFlag    (int)     = Flag to treat different depths differently (0)
-//                               both depths of ieta 15, 16 of HB as depth 1 (1)
-//                               all depths as depth 1 (2), all depths in HE
-//                               with values > 1 as depth 2 (3), all depths in
-//                               HB with values > 1 as depth 2 (4), all depths
-//                               in HB and HE with values > 1 as depth 2 (5)
-//                               (default = 0)
+//   isRealData (bool)         = true/false for data/MC (default true)
+//   truncateFlag    (int)     = A two digit flag (dr) with the default value 0.
+//                               The digit *r* is used to treat depth values:
+//                               (0) treat each depth independently; (1) all
+//                               depths of ieta 15, 16 of HB as depth 1; (2)
+//                               all depths in HB and HE as depth 1; (3) ignore
+//                               depth index in HE (depth index set to 1); (4)
+//                               ignore depth index in HB (depth index set 1);
+//                               (5) all depths in HB and HE with values > 1
+//                               as depth 2; (6) for depth = 1 and 2, depth =
+//                               1, else depth = 2; (7) in case of HB, depths
+//                               1 and 2 are set to 1, else depth = 2; for HE
+//                               ignore depth index; (8) in case of HE, depths
+//                               1 and 2 are set to 1, else depth = 2; for HB
+//                               ignore depth index; (9) Assign all depth = 1
+//                               as depth = 2. The digit *d* is used if zside
+//                               is to be ignored (1) or not (0)
+//                               (Default 0)
 //   useGen (bool)             = true/false to use generator level momentum
 //                               or reconstruction level momentum
 //                               (default = false)
@@ -114,8 +129,9 @@
 //                               corrFactor table, the corr-factor for the
 //                               corresponding zside, depth=1 and maximum ieta
 //                               in the table is taken (default = false)
-//   nmax            (Long64_t)= maximum number of entries to be processed,
-//                               if -1, all entries to be processed (-1)
+//  nmax             (Long64_t)= maximum number of entries to be processed,
+//                               if -1, all entries to be processed; -2 take
+//                               all odd entries; -3 take all even entries (-1)
 //   debug           (bool)    = Debug flag (false)
 //
 //   histFileName (std::string)= name of the file containing saved histograms
@@ -293,14 +309,14 @@ public:
   void correctEnergy(double &ener, const Long64_t &entry);
 
 private:
-  static const unsigned int npbin = 6, kp50 = 3;
+  static const unsigned int npbin = 7, kp50 = 3;
   CalibCorrFactor *corrFactor_;
   CalibCorr *cFactor_;
   CalibSelectRBX *cSelect_;
   CalibDuplicate *cDuplicate_;
   const std::string fname_, dirnm_, prefix_, outFileName_;
   const int corrPU_, flag_, numb_;
-  const bool dataMC_, useGen_;
+  const bool isRealData_, useGen_;
   const int truncateFlag_;
   const int etalo_, etahi_;
   int runlo_, runhi_;
@@ -319,6 +335,7 @@ private:
   std::vector<TProfile *> h_etaX[npbin];
   std::vector<TH1D *> h_etaR[npbin], h_nvxR[npbin], h_dL1R[npbin];
   std::vector<TH1D *> h_pp[npbin];
+  std::vector<TH1D *> h_p;
 };
 
 CalibMonitor::CalibMonitor(const char *fname,
@@ -332,7 +349,7 @@ CalibMonitor::CalibMonitor(const char *fname,
                            int puCorr,
                            int flag,
                            int numb,
-                           bool dataMC,
+                           bool isRealData,
                            int truncate,
                            bool useGen,
                            double scale,
@@ -360,7 +377,7 @@ CalibMonitor::CalibMonitor(const char *fname,
       corrPU_(puCorr),
       flag_(flag),
       numb_(numb),
-      dataMC_(dataMC),
+      isRealData_(isRealData),
       useGen_(useGen),
       truncateFlag_(truncate),
       etalo_(etalo),
@@ -593,7 +610,7 @@ void CalibMonitor::Init(TChain *tree, const char *comFileName, const char *outFi
       ++nbins;
     }
   }
-  int ipbin[npbin] = {10, 20, 30, 40, 60, 100};
+  int ipbin[npbin] = {10, 20, 30, 40, 60, 100, 500};
   for (unsigned int i = 0; i < npbin; ++i)
     ps_.push_back((double)(ipbin[i]));
   int npvtx[6] = {0, 7, 10, 13, 16, 100};
@@ -822,6 +839,12 @@ void CalibMonitor::Init(TChain *tree, const char *comFileName, const char *outFi
       h_rbx[j - 1]->Sumw2();
     }
   }
+  for (unsigned int j = 1; j < npbin; ++j) {
+    sprintf(name, "%sp%d", prefix_.c_str(), j);
+    sprintf(title, "Momentum (GeV) of selected track (p = %d:%d GeV)", ipbin[j], ipbin[j + 1]);
+    h_p.push_back(new TH1D(name, title, 100, ipbin[j], ipbin[j + 1]));
+    h_p[j - 1]->Sumw2();
+  }
 }
 
 Bool_t CalibMonitor::Notify() {
@@ -899,6 +922,7 @@ void CalibMonitor::Loop(Long64_t nmax, bool debug) {
   std::vector<int> kount3(20, 0);
   std::vector<int> kount4(20, 0);
   std::vector<int> kount5(20, 0);
+  int32_t oddEven = (nmax == -2) ? 1 : ((nmax == -3) ? -1 : 0);
   for (Long64_t jentry = 0; jentry < entries; jentry++) {
     //for (Long64_t jentry=0; jentry<200;jentry++) {
     Long64_t ientry = LoadTree(jentry);
@@ -908,6 +932,12 @@ void CalibMonitor::Loop(Long64_t nmax, bool debug) {
     nbytes += nb;
     if (jentry % 1000000 == 0)
       std::cout << "Entry " << jentry << " Run " << t_Run << " Event " << t_Event << std::endl;
+    if (oddEven != 0) {
+      if ((oddEven < 0) && (jentry % 2 == 0))
+        continue;
+      else if ((oddEven > 0) && (jentry % 2 != 0))
+        continue;
+    }
     double pmom = (useGen_ && (t_gentrackP > 0)) ? t_gentrackP : t_p;
     int kp(-1);
     for (unsigned int k = 1; k < ps_.size(); ++k) {
@@ -1130,8 +1160,13 @@ void CalibMonitor::Loop(Long64_t nmax, bool debug) {
           }
           if ((cFactor_ != nullptr) && (ifDepth_ != 3) && (ifDepth_ > 0))
             cfac *= cFactor_->getCorr(t_Run, (*t_DetIds)[k]);
-          if ((cDuplicate_ != nullptr) && (cDuplicate_->doCorr()))
+          if ((cDuplicate_ != nullptr) && (cDuplicate_->doCorr(1)))
             cfac *= cDuplicate_->getWeight((*t_DetIds)[k]);
+          if ((cDuplicate_ != nullptr) && (cDuplicate_->doCorr(3))) {
+            int subdet, zside, ieta, iphi, depth;
+            unpackDetId((*t_DetIds)[k], subdet, zside, ieta, iphi, depth);
+            cfac *= cDuplicate_->getCorr(t_Run, ieta, depth);
+          }
           eHcal += (cfac * ((*t_HitEnergies)[k]));
           if (debug) {
             int subdet, zside, ieta, iphi, depth;
@@ -1320,6 +1355,11 @@ void CalibMonitor::Loop(Long64_t nmax, bool debug) {
         }
       }
       if (rat > rcut) {
+        if (debug)
+          std::cout << "kp " << kp << " " << h_p[kp - 1]->GetName() << " p " << pmom << " wt " << t_EventWeight
+                    << std::endl;
+        if (kp > 0)
+          h_p[kp - 1]->Fill(pmom, t_EventWeight);
         if (p4060)
           ++kount50[15];
         if (kp == 0) {
@@ -1369,7 +1409,7 @@ void CalibMonitor::Loop(Long64_t nmax, bool debug) {
             runSum[t_Run] = knt;
           }
         }
-        if ((!dataMC_) || (t_mindR1 > 0.5) || (t_DataType == 1)) {
+        if ((!isRealData_) || (t_mindR1 > 0.5) || (t_DataType == 1)) {
           if (p4060)
             ++kount50[16];
           if (kp == 0) {
@@ -1695,6 +1735,12 @@ void CalibMonitor::savePlot(const std::string &theName, bool append, bool all) {
       }
     }
   }
+  for (unsigned int k = 0; k < h_p.size(); ++k) {
+    if (h_p[k] != 0) {
+      TH1D *h1 = (TH1D *)h_p[k]->Clone();
+      h1->Write();
+    }
+  }
   std::cout << "All done" << std::endl;
   theFile->Close();
 }
@@ -1720,8 +1766,13 @@ void CalibMonitor::correctEnergy(double &eHcal, const Long64_t &entry) {
           double cfac = corrFactor_->getCorr(id);
           if ((cFactor_ != 0) && (ifDepth_ != 3) && (ifDepth_ > 0))
             cfac *= cFactor_->getCorr(t_Run, (*t_DetIds1)[idet]);
-          if ((cDuplicate_ != nullptr) && (cDuplicate_->doCorr()))
+          if ((cDuplicate_ != nullptr) && (cDuplicate_->doCorr(1)))
             cfac *= cDuplicate_->getWeight((*t_DetIds1)[idet]);
+          if ((cDuplicate_ != nullptr) && (cDuplicate_->doCorr(3))) {
+            int subdet, zside, ieta, iphi, depth;
+            unpackDetId((*t_DetIds1)[idet], subdet, zside, ieta, iphi, depth);
+            cfac *= cDuplicate_->getCorr(t_Run, ieta, depth);
+          }
           double hitEn = cfac * (*t_HitEnergies1)[idet];
           Etot1 += hitEn;
         }
@@ -1734,8 +1785,13 @@ void CalibMonitor::correctEnergy(double &eHcal, const Long64_t &entry) {
           double cfac = corrFactor_->getCorr(id);
           if ((cFactor_ != 0) && (ifDepth_ != 3) && (ifDepth_ > 0))
             cfac *= cFactor_->getCorr(t_Run, (*t_DetIds3)[idet]);
-          if ((cDuplicate_ != nullptr) && (cDuplicate_->doCorr()))
+          if ((cDuplicate_ != nullptr) && (cDuplicate_->doCorr(1)))
             cfac *= cDuplicate_->getWeight((*t_DetIds3)[idet]);
+          if ((cDuplicate_ != nullptr) && (cDuplicate_->doCorr(3))) {
+            int subdet, zside, ieta, iphi, depth;
+            unpackDetId((*t_DetIds3)[idet], subdet, zside, ieta, iphi, depth);
+            cfac *= cDuplicate_->getCorr(t_Run, ieta, depth);
+          }
           double hitEn = cfac * (*t_HitEnergies3)[idet];
           Etot3 += hitEn;
         }
@@ -1960,7 +2016,7 @@ void GetEntries::Loop(Long64_t nmax) {
   //      Root > t.Show(16);     // Read and show values of entry 16
   //      Root > t.Loop();       // Loop on all entries
   //
-
+  //
   //     This is the loop skeleton where:
   //    jentry is the global entry number in the chain
   //    ientry is the entry number in the current Tree
@@ -1986,12 +2042,19 @@ void GetEntries::Loop(Long64_t nmax) {
   int looseHLT[3] = {0, 0, 0};
   int tightHLT[3] = {0, 0, 0};
   Long64_t entries = (nmax > 0) ? nmax : nentries;
+  int32_t oddEven = (nmax == -2) ? 1 : ((nmax == -3) ? -1 : 0);
   for (Long64_t jentry = 0; jentry < entries; jentry++) {
     Long64_t ientry = LoadTree(jentry);
     if (ientry < 0)
       break;
     nb = fChain->GetEntry(jentry);
     nbytes += nb;
+    if (oddEven != 0) {
+      if ((oddEven < 0) && (jentry % 2 == 0))
+        continue;
+      else if ((oddEven > 0) && (jentry % 2 != 0))
+        continue;
+    }
     bool select = (std::find(entries_.begin(), entries_.end(), jentry) == entries_.end());
     if (!select) {
       ++duplicate;

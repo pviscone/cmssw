@@ -19,7 +19,6 @@
 // USER INCLUDES
 #include "DataFormats/Common/interface/DetSetVector.h"
 #include "DataFormats/Common/interface/Handle.h"
-#include "DataFormats/Common/interface/OwnVector.h"
 #include "DataFormats/Common/interface/Ref.h"
 #include "DataFormats/DetId/interface/DetId.h"
 #include "DataFormats/SiPixelCluster/interface/SiPixelCluster.h"
@@ -46,7 +45,6 @@
 #include "Geometry/Records/interface/TrackerDigiGeometryRecord.h"
 #include "Geometry/Records/interface/TrackerTopologyRcd.h"
 #include "Geometry/TrackerGeometryBuilder/interface/PixelTopologyBuilder.h"
-#include "Geometry/TrackerGeometryBuilder/interface/RectangularPixelTopology.h"
 #include "Geometry/TrackerGeometryBuilder/interface/TrackerGeometry.h"
 #include "MagneticField/Engine/interface/MagneticField.h"
 #include "SimDataFormats/Track/interface/SimTrack.h"
@@ -261,8 +259,8 @@ void StdHitNtuplizer::analyze(const edm::Event& e, const edm::EventSetup& es) {
           }  // end of simhit loop
           closest_simhit = closestit;
         }  // end matched emtpy
-           /////comment out begin
-           /*
+        /////comment out begin
+        /*
 	unsigned int subdetId = detId.subdetId();
 	int layerNumber=0;
 	int ringNumber = 0;
@@ -312,7 +310,7 @@ void StdHitNtuplizer::analyze(const edm::Event& e, const edm::EventSetup& es) {
                   << geomDet->surface().toGlobal(iterRecHit->localPosition()).z() << " " 
                   << geomDet->surface().toGlobal(iterRecHit->localPosition()).perp() << std::endl;
 */
-           //comment out end
+        //comment out end
         unsigned int subid = detId.subdetId();
         int layer_num = 0;
         if ((subid == 1) || (subid == 2)) {
@@ -344,8 +342,8 @@ void StdHitNtuplizer::analyze(const edm::Event& e, const edm::EventSetup& es) {
 */
         }
       }  // end of rechit loop
-    }    // end of detid loop
-  }      // end of loop test on recHitColl size
+    }  // end of detid loop
+  }  // end of loop test on recHitColl size
 
   // Now loop over recotracks
 
@@ -442,7 +440,7 @@ void StdHitNtuplizer::analyze(const edm::Event& e, const edm::EventSetup& es) {
       }
       delete hit;
     }  //end of loop on tracking rechits
-  }    // end of loop on recotracks
+  }  // end of loop on recotracks
 
   // now for strip rechits
   edm::Handle<SiStripRecHit2DCollection> rechitsrphi;
@@ -540,8 +538,8 @@ void StdHitNtuplizer::analyze(const edm::Event& e, const edm::EventSetup& es) {
         striptree_->Fill();
         init();
       }  // end of rechit loop
-    }    // end of detid loop
-  }      // end of loop test on rechit size
+    }  // end of detid loop
+  }  // end of loop test on rechit size
 
   // now stereo hits
   if (rechitsstereo.product()->dataSize() > 0) {
@@ -629,15 +627,12 @@ void StdHitNtuplizer::analyze(const edm::Event& e, const edm::EventSetup& es) {
         striptree_->Fill();
         init();
       }  // end of rechit loop
-    }    // end of detid loop
-  }      // end of loop test on rechit size
+    }  // end of detid loop
+  }  // end of loop test on rechit size
 
   // now matched hits
   if (rechitsmatched.product()->dataSize() > 0) {
     //Loop over all rechits in RPHI collection (can also loop only over DetId)
-    //SiStripMatchedRecHit2DCollectionOld::const_iterator theRecHitRangeIteratorBegin = rechitsmatched->begin();
-    //SiStripMatchedRecHit2DCollectionOld::const_iterator theRecHitRangeIteratorEnd   = rechitsmatched->end();
-    //SiStripMatchedRecHit2DCollectionOld::const_iterator iterRecHit;
     SiStripMatchedRecHit2DCollection::const_iterator recHitIdIterator = (rechitsmatched.product())->begin();
     SiStripMatchedRecHit2DCollection::const_iterator recHitIdIteratorEnd = (rechitsmatched.product())->end();
 
@@ -720,8 +715,8 @@ void StdHitNtuplizer::analyze(const edm::Event& e, const edm::EventSetup& es) {
         striptree_->Fill();
         init();
       }  // end of rechit loop
-    }    // end of detidt loop
-  }      // end of loop test on rechit size
+    }  // end of detidt loop
+  }  // end of loop test on rechit size
 
 }  // end analyze function
 

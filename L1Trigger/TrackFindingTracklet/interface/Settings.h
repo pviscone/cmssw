@@ -58,8 +58,10 @@ namespace trklet {
     Settings() {
       //Comment out to run tracklet-only algorithm
 #ifdef CMSSW_GIT_HASH
+#ifndef CMS_DICT_IMPL  // Don't print message if genreflex being run.
 #ifndef USEHYBRID
 #pragma message "USEHYBRID is undefined, so Hybrid L1 tracking disabled."
+#endif
 #endif
 #endif
     }
@@ -265,6 +267,13 @@ namespace trklet {
 
     bool extended() const { return extended_; }
     void setExtended(bool extended) { extended_ = extended; }
+    bool duplicateMPs() const { return duplicateMPs_; }
+    const std::array<bool, N_LAYER + N_DISK>& layersDisksDuplicatedEqualProjBalance() const {
+      return layersDisksDuplicatedEqualProjBalance_;
+    }
+    const std::array<bool, N_LAYER + N_DISK>& layersDisksDuplicatedWeightedProjBalance() const {
+      return layersDisksDuplicatedWeightedProjBalance_;
+    }
     bool combined() const { return combined_; }
     void setCombined(bool combined) { combined_ = combined; }
     bool reduced() const { return reduced_; }
@@ -290,12 +299,16 @@ namespace trklet {
     void setStripLength_2S(double stripLength_2S) { stripLength_2S_ = stripLength_2S; }
 
     //Following functions are used for duplicate removal
-    //Function which gets the value corresponding to the overlap size for the overlap rinv bins in DR
-    double overlapSize() const { return overlapSize_; }
-    //Function which gets the value corresponding to the number of tracks that are compared to all the other tracks per rinv bin
+    //Function which returns the value corresponding to the overlap size for the overlap rinv bins in DR
+    double rinvOverlapSize() const { return rinvOverlapSize_; }
+    //Function which returns the value corresponding to the overlap size for the overlap phi bins in DR
+    double phiOverlapSize() const { return phiOverlapSize_; }
+    //Function which returns the value corresponding to the number of tracks that are compared to all the other tracks per rinv bin
     unsigned int numTracksComparedPerBin() const { return numTracksComparedPerBin_; }
-    //Grabs the bin edges you need for duplicate removal bins
-    const std::vector<double> varRInvBins() const { return varRInvBins_; }
+    //Returns the rinv bin edges you need for duplicate removal bins
+    const std::vector<double>& rinvBins() const { return rinvBins_; }
+    //Returns the phi bin edges you need for duplicate removal bins
+    const std::vector<double>& phiBins() const { return phiBins_; }
 
     std::string skimfile() const { return skimfile_; }
     void setSkimfile(std::string skimfile) { skimfile_ = skimfile; }
@@ -434,15 +447,15 @@ namespace trklet {
     //have the factor if 2
     double krprojshiftdisk() const { return 2 * kr(); }
 
-    double benddecode(int ibend, int layerdisk, bool isPSmodule) const {
+    double benddecode(unsigned int ibend, unsigned int layerdisk, bool isPSmodule) const {
       if (layerdisk >= N_LAYER && (!isPSmodule))
-        layerdisk += (N_LAYER - 1);
+        layerdisk += N_DISK;
       double bend = benddecode_[layerdisk][ibend];
       assert(bend < 99.0);
       return bend;
     }
 
-    double bendcut(int ibend, int layerdisk, bool isPSmodule) const {
+    double bendcut(unsigned int ibend, unsigned int layerdisk, bool isPSmodule) const {
       if (layerdisk >= N_LAYER && (!isPSmodule))
         layerdisk += N_DISK;
       double bendcut = bendcut_[layerdisk][ibend];
@@ -884,10 +897,13 @@ namespace trklet {
         {"TB", 108},
         {"MP", 108},
         {"TP", 108},
+        {"TPD", 108},
         {"TRE", 108},
         {"DR", 108}};  //Specifies how many tracks allowed per bin in DR
 
-    // If set to true this will generate debub printout in text files
+    // If set to true this creates txt files, which the ROOT macros in
+    // https://github.com/cms-L1TK/TrackPerf/tree/master/PatternReco
+    // can then use to study truncation of individual algo steps within tracklet chain.
     std::unordered_map<std::string, bool> writeMonitorData_{{"IL", false},
                                                             {"TE", false},
                                                             {"CT", false},
@@ -1018,13 +1034,35 @@ namespace trklet {
     unsigned int nHelixPar_{4};  // 4 or 5 param helix fit
     bool extended_{false};       // turn on displaced tracking
     bool reduced_{false};        // use reduced (Summer Chain) config
-    bool inventStubs_{true};     // invent seeding stub coordinates based on tracklet traj
+    bool inventStubs_{false};    // invent seeding stub coordinates based on tracklet traj
 
-    // Use combined TP (TE+TC) and MP (PR+ME+MC) configuration (with prompt tracking)
-    bool combined_{false};
-    // N.B. To use combined modules with extended tracking, edit
-    // Tracklet_cfi.py to refer to *_hourglassExtendedCombined.dat,
-    // but leave combined_=false.
+    // Use combined TP (TE+TC) & MP (PR+ME+MC) config (with prompt tracking)
+    bool combined_{true};
+    // N.B. For extended tracking, this combined_ is overridden by python cfg
+    // to false, but combined modules are nonetheless used by default.
+    // If you don't want them, edit l1tTTTracksFromTrackletEmulation_cfi.py
+    // to refer to *_hourglassExtended.dat .
+
+    // Use chain with duplicated MPs for L3,L4 to reduce truncation issue
+    // Balances load from projections roughly in half for each of the two MPs
+    bool duplicateMPs_{false};
+
+    // Determines which layers, disks the MatchProcessor is duplicated for
+    // (note: in TCB by default always duplicated for phi B, C as truncation is significantly worse than A, D)
+    // All layers, disks disabled by default, also is overwritten by above duplicateMPs bool
+
+    // EqualProjBalancing is for layers for which the projections to each duplicated MP are split in half sequentially
+    std::array<bool, N_LAYER + N_DISK> layersDisksDuplicatedEqualProjBalance_{
+        {false, false, false, false, false, false, false, false, false, false, false}};
+
+    // Weighted proj balancing is for specifically L4, L5 where the split of the projections is weighted to account for
+    // Higher occupancy in the L1L2 seed to minimize truncation
+    std::array<bool, N_LAYER + N_DISK> layersDisksDuplicatedWeightedProjBalance_{
+        {false, false, false, false, false, false, false, false, false, false, false}};
+
+    // Example use where for L3, L4, L5, D2, D3, the layers/disks where truncation is worst
+    //std::array<bool, N_LAYER + N_DISK> layersDisksDuplicatedEqualProjBalance_{{0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 0}};
+    //std::array<bool, N_LAYER + N_DISK> layersDisksDuplicatedWeightedProjBalance_{{0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0}};
 
     std::string skimfile_{""};  //if not empty events will be written out in ascii format to this file
 
@@ -1040,13 +1078,18 @@ namespace trklet {
     double stripLength_PS_{0.1467};
     double stripLength_2S_{5.0250};
 
+    // The DR binning below disabled, as doesn't match latest FW.
+
     //Following values are used for duplicate removal
-    //Variable bin edges for 6 bins.
-    std::vector<double> varRInvBins_{-rinvcut(), -0.004968, -0.003828, 0, 0.003828, 0.004968, rinvcut()};
+    //Only one bin currently used.
+    std::vector<double> rinvBins_{-rinvcut(), rinvcut()};
+    std::vector<double> phiBins_{0, dphisectorHG()};
     //Overlap size for the overlap rinv bins in DR
-    double overlapSize_{0.0004};
+    double rinvOverlapSize_{0.0004};
+    //Overlap size for the overlap phi bins in DR
+    double phiOverlapSize_{M_PI / 360};
     //The maximum number of tracks that are compared to all the other tracks per rinv bin
-    int numTracksComparedPerBin_{64};
+    int numTracksComparedPerBin_{9999};
 
     double sensorSpacing_2S_{0.18};
   };

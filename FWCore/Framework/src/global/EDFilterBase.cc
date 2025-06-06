@@ -55,12 +55,12 @@ namespace edm {
     bool EDFilterBase::doEvent(EventTransitionInfo const& info,
                                ActivityRegistry* act,
                                ModuleCallingContext const* mcc) {
+      EventSignalsSentry sentry(act, mcc);
       Event e(info, moduleDescription_, mcc);
       e.setConsumer(this);
       const auto streamIndex = e.streamID().value();
       e.setProducer(
           this, &previousParentages_[streamIndex], hasAcquire() ? &gotBranchIDsFromAcquire_[streamIndex] : nullptr);
-      EventSignalsSentry sentry(act, mcc);
       ESParentContext parentC(mcc);
       const EventSetup c{
           info, static_cast<unsigned int>(Transition::Event), esGetTokenIndices(Transition::Event), parentC};
@@ -73,11 +73,11 @@ namespace edm {
                                  ActivityRegistry* act,
                                  ModuleCallingContext const* mcc,
                                  WaitingTaskWithArenaHolder& holder) {
+      EventAcquireSignalsSentry sentry(act, mcc);
       Event e(info, moduleDescription_, mcc);
       e.setConsumer(this);
       const auto streamIndex = e.streamID().value();
       e.setProducerForAcquire(this, nullptr, gotBranchIDsFromAcquire_[streamIndex]);
-      EventAcquireSignalsSentry sentry(act, mcc);
       ESParentContext parentC(mcc);
       const EventSetup c{
           info, static_cast<unsigned int>(Transition::Event), esGetTokenIndices(Transition::Event), parentC};
@@ -87,19 +87,20 @@ namespace edm {
     void EDFilterBase::doTransformAsync(WaitingTaskHolder iTask,
                                         size_t iTransformIndex,
                                         EventPrincipal const& iEvent,
-                                        ActivityRegistry*,
-                                        ModuleCallingContext const* iMCC,
-                                        ServiceWeakToken const& iToken) {
+                                        ActivityRegistry* iAct,
+                                        ModuleCallingContext iMCC,
+                                        ServiceWeakToken const& iToken) noexcept {
       EventForTransformer ev(iEvent, iMCC);
-      transformAsync_(iTask, iTransformIndex, ev, iToken);
+      transformAsync_(iTask, iTransformIndex, ev, iAct, iToken);
     }
 
-    size_t EDFilterBase::transformIndex_(edm::BranchDescription const& iBranch) const { return -1; }
-    ProductResolverIndex EDFilterBase::transformPrefetch_(std::size_t iIndex) const { return 0; }
+    size_t EDFilterBase::transformIndex_(edm::BranchDescription const& iBranch) const noexcept { return -1; }
+    ProductResolverIndex EDFilterBase::transformPrefetch_(std::size_t iIndex) const noexcept { return 0; }
     void EDFilterBase::transformAsync_(WaitingTaskHolder iTask,
                                        std::size_t iIndex,
                                        edm::EventForTransformer& iEvent,
-                                       ServiceWeakToken const& iToken) const {}
+                                       edm::ActivityRegistry* iAct,
+                                       ServiceWeakToken const& iToken) const noexcept {}
 
     void EDFilterBase::doPreallocate(PreallocationConfiguration const& iPrealloc) {
       const auto nStreams = iPrealloc.numberOfStreams();

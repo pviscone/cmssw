@@ -108,7 +108,7 @@ void MuonPathAssociator::correlateMPaths(edm::Handle<DTDigiCollection> dtdigis,
             SL3metaPrimitives.push_back(metaprimitiveIt);
         }
 
-        if (SL1metaPrimitives.empty() or SL3metaPrimitives.empty())
+        if (SL1metaPrimitives.empty() and SL3metaPrimitives.empty())
           continue;
 
         if (debug_)
@@ -119,12 +119,12 @@ void MuonPathAssociator::correlateMPaths(edm::Handle<DTDigiCollection> dtdigis,
         bool at_least_one_SL1_confirmation = false;
         bool at_least_one_SL3_confirmation = false;
 
-        vector<bool> useFitSL1;
+        bool useFitSL1[SL1metaPrimitives.size()];
         for (unsigned int i = 0; i < SL1metaPrimitives.size(); i++)
-          useFitSL1.push_back(false);
-        vector<bool> useFitSL3;
+          useFitSL1[i] = false;
+        bool useFitSL3[SL3metaPrimitives.size()];
         for (unsigned int i = 0; i < SL3metaPrimitives.size(); i++)
-          useFitSL3.push_back(false);
+          useFitSL3[i] = false;
 
         //SL1-SL3
         vector<metaPrimitive> chamberMetaPrimitives;
@@ -133,7 +133,7 @@ void MuonPathAssociator::correlateMPaths(edm::Handle<DTDigiCollection> dtdigis,
         int sl1 = 0;
         int sl3 = 0;
         for (auto SL1metaPrimitive = SL1metaPrimitives.begin(); SL1metaPrimitive != SL1metaPrimitives.end();
-             ++SL1metaPrimitive, sl1++, sl3 = 0) {
+             ++SL1metaPrimitive, sl1++, sl3 = -1) {
           if (clean_chi2_correlation_)
             at_least_one_correlation = false;
           for (auto SL3metaPrimitive = SL3metaPrimitives.begin(); SL3metaPrimitive != SL3metaPrimitives.end();
@@ -412,13 +412,19 @@ void MuonPathAssociator::correlateMPaths(edm::Handle<DTDigiCollection> dtdigis,
                     next_tdc = best_tdc;
                     next_layer = best_layer;
                     next_lat = best_lat;
-                    matched_digis++;
-                  }
-                  best_wire = (*digiIt).wire();
-                  best_tdc = (*digiIt).time();
-                  best_layer = dtLId.layer();
-                  best_lat = lat;
 
+                    best_wire = (*digiIt).wire();
+                    best_tdc = (*digiIt).time();
+                    best_layer = dtLId.layer();
+                    best_lat = lat;
+                    matched_digis++;
+                  } else if (dtLId.layer() ==
+                             best_layer) {  // same layer than stored, just substituting the hit, no matched_digis++;
+                    best_wire = (*digiIt).wire();
+                    best_tdc = (*digiIt).time();
+                    best_layer = dtLId.layer();
+                    best_lat = lat;
+                  }
                 } else if ((std::abs(x_inSL3 - x_wire) >= minx) && (std::abs(x_inSL3 - x_wire) < min2x)) {
                   // same layer than the stored in best, no hit added
                   if (dtLId.layer() == best_layer)
@@ -427,7 +433,8 @@ void MuonPathAssociator::correlateMPaths(edm::Handle<DTDigiCollection> dtdigis,
                   // buggy, as we could have stored as next LayerX -> LayerY -> LayerX, and this should
                   // count only as 2 hits. However, as we confirm with at least 2 hits, having 2 or more
                   // makes no difference
-                  matched_digis++;
+                  else if (dtLId.layer() != next_layer)
+                    matched_digis++;
                   // whether the layer is the same for this hit and the stored in next, we substitute
                   // the one stored and modify the min distance
                   min2x = std::abs(x_inSL3 - x_wire);
@@ -582,7 +589,7 @@ void MuonPathAssociator::correlateMPaths(edm::Handle<DTDigiCollection> dtdigis,
         sl3 = 0;
         for (auto SL3metaPrimitive = SL3metaPrimitives.begin(); SL3metaPrimitive != SL3metaPrimitives.end();
              ++SL3metaPrimitive, sl3++) {
-          if (useFitSL3[sl3])
+          [[clang::suppress]] if (useFitSL3[sl3])
             continue;
           if ((at_least_one_correlation == false || clean_chi2_correlation_) &&
               allow_confirmation_) {  //no correlation was found, trying with pairs of two digis in the other SL
@@ -640,12 +647,19 @@ void MuonPathAssociator::correlateMPaths(edm::Handle<DTDigiCollection> dtdigis,
                     next_tdc = best_tdc;
                     next_layer = best_layer;
                     next_lat = best_lat;
+
+                    best_wire = (*digiIt).wire();
+                    best_tdc = (*digiIt).time();
+                    best_layer = dtLId.layer();
+                    best_lat = lat;
                     matched_digis++;
+                  } else if (dtLId.layer() ==
+                             best_layer) {  // same layer than stored, just substituting the hit, no matched_digis++;
+                    best_wire = (*digiIt).wire();
+                    best_tdc = (*digiIt).time();
+                    best_layer = dtLId.layer();
+                    best_lat = lat;
                   }
-                  best_wire = (*digiIt).wire();
-                  best_tdc = (*digiIt).time();
-                  best_layer = dtLId.layer();
-                  best_lat = lat;
                 } else if ((std::abs(x_inSL1 - x_wire) >= minx) && (std::abs(x_inSL1 - x_wire) < min2x)) {
                   // same layer than the stored in best, no hit added
                   if (dtLId.layer() == best_layer)
@@ -654,7 +668,8 @@ void MuonPathAssociator::correlateMPaths(edm::Handle<DTDigiCollection> dtdigis,
                   // buggy, as we could have stored as next LayerX -> LayerY -> LayerX, and this should
                   // count only as 2 hits. However, as we confirm with at least 2 hits, having 2 or more
                   // makes no difference
-                  matched_digis++;
+                  else if (dtLId.layer() != next_layer)
+                    matched_digis++;
                   // whether the layer is the same for this hit and the stored in next, we substitute
                   // the one stored and modify the min distance
                   min2x = std::abs(x_inSL1 - x_wire);
@@ -826,7 +841,7 @@ void MuonPathAssociator::correlateMPaths(edm::Handle<DTDigiCollection> dtdigis,
             sl1 = 0;
             for (auto SL1metaPrimitive = SL1metaPrimitives.begin(); SL1metaPrimitive != SL1metaPrimitives.end();
                  ++SL1metaPrimitive, sl1++) {
-              if (useFitSL1[sl1])
+              [[clang::suppress]] if (useFitSL1[sl1])
                 continue;
 
               DTSuperLayerId SLId(SL1metaPrimitive->rawId);
@@ -887,7 +902,7 @@ void MuonPathAssociator::correlateMPaths(edm::Handle<DTDigiCollection> dtdigis,
             sl3 = 0;
             for (auto SL3metaPrimitive = SL3metaPrimitives.begin(); SL3metaPrimitive != SL3metaPrimitives.end();
                  ++SL3metaPrimitive, sl3++) {
-              if (useFitSL3[sl3])
+              [[clang::suppress]] if (useFitSL3[sl3])
                 continue;
               DTSuperLayerId SLId(SL3metaPrimitive->rawId);
               DTChamberId(SLId.wheel(), SLId.station(), SLId.sector());
@@ -986,19 +1001,19 @@ void MuonPathAssociator::correlateMPaths(edm::Handle<DTDigiCollection> dtdigis,
 }
 
 void MuonPathAssociator::removeSharingFits(vector<metaPrimitive> &chamberMPaths, vector<metaPrimitive> &allMPaths) {
-  vector<bool> useFit;
+  bool useFit[chamberMPaths.size()];
   for (unsigned int i = 0; i < chamberMPaths.size(); i++) {
-    useFit.push_back(true);
+    useFit[i] = true;
   }
   for (unsigned int i = 0; i < chamberMPaths.size(); i++) {
     if (debug_)
       LogDebug("MuonPathAssociator") << "Looking at prim" << i;
-    if (!useFit[i])
+    [[clang::suppress]] if (!useFit[i])
       continue;
     for (unsigned int j = i + 1; j < chamberMPaths.size(); j++) {
       if (debug_)
         LogDebug("MuonPathAssociator") << "Comparing with prim " << j;
-      if (!useFit[j])
+      [[clang::suppress]] if (!useFit[j])
         continue;
       metaPrimitive first = chamberMPaths[i];
       metaPrimitive second = chamberMPaths[j];

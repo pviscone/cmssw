@@ -8,21 +8,24 @@
 
 // TTStubAssociationMap.h forgets to two needed files, so must include them here ...
 #include "SimDataFormats/TrackingAnalysis/interface/TrackingParticle.h"
-#include "SimTracker/TrackTriggerAssociation/interface/TTClusterAssociationMap.h"
-#include "SimTracker/TrackTriggerAssociation/interface/TTStubAssociationMap.h"
+#include "SimDataFormats/Associations/interface/TTClusterAssociationMap.h"
+#include "SimDataFormats/Associations/interface/TTStubAssociationMap.h"
 
 namespace l1tVertexFinder {
 
   //! Simple wrapper class for TTTrack
   class L1Track {
   public:
-    L1Track(const edm::Ptr<TTTrack<Ref_Phase2TrackerDigi_>>& aTrack) : track_(aTrack){};
-    ~L1Track(){};
+    L1Track(const edm::Ptr<TTTrack<Ref_Phase2TrackerDigi_>>& aTrack) : track_(aTrack) {}
+    ~L1Track() {}
 
     float eta() const { return track_->momentum().eta(); };
     float phi0() const { return track_->momentum().phi(); };
     float pt() const { return track_->momentum().transverse(); };
     float z0() const { return track_->POCA().z(); };
+    float weight() const { return weight_; };
+    void setWeight(float w) { weight_ = w; };
+    double MVA1() const { return track_->trkMVA1(); };  //Track Quality BDT
 
     // FIXME: Double check nPar=4 is correct
     float chi2dof() const { return track_->chi2Red(); };
@@ -33,6 +36,7 @@ namespace l1tVertexFinder {
 
   private:
     edm::Ptr<TTTrack<Ref_Phase2TrackerDigi_>> track_;
+    float weight_;
   };
 
 }  // namespace l1tVertexFinder

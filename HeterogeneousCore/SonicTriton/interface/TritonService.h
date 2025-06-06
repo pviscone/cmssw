@@ -10,6 +10,7 @@
 #include <string>
 #include <functional>
 #include <utility>
+#include <atomic>
 
 #include "grpc_client.h"
 
@@ -35,8 +36,8 @@ public:
         : enable(pset.getUntrackedParameter<bool>("enable")),
           debug(pset.getUntrackedParameter<bool>("debug")),
           verbose(pset.getUntrackedParameter<bool>("verbose")),
-          useDocker(pset.getUntrackedParameter<bool>("useDocker")),
-          useGPU(pset.getUntrackedParameter<bool>("useGPU")),
+          container(pset.getUntrackedParameter<std::string>("container")),
+          device(pset.getUntrackedParameter<std::string>("device")),
           retries(pset.getUntrackedParameter<int>("retries")),
           wait(pset.getUntrackedParameter<int>("wait")),
           instanceName(pset.getUntrackedParameter<std::string>("instanceName")),
@@ -53,8 +54,8 @@ public:
     bool enable;
     bool debug;
     bool verbose;
-    bool useDocker;
-    bool useGPU;
+    std::string container;
+    std::string device;
     int retries;
     int wait;
     std::string instanceName;
@@ -88,6 +89,7 @@ public:
     std::unordered_set<std::string> models;
     static const std::string fallbackName;
     static const std::string fallbackAddress;
+    static const std::string siteconfName;
   };
   struct Model {
     Model(const std::string& path_ = "") : path(path_) {}
@@ -112,6 +114,7 @@ public:
   void addModel(const std::string& modelName, const std::string& path);
   Server serverInfo(const std::string& model, const std::string& preferred = "") const;
   const std::string& pid() const { return pid_; }
+  void notifyCallStatus(bool status) const;
 
   static void fillDescriptions(edm::ConfigurationDescriptions& descriptions);
 
@@ -132,6 +135,7 @@ private:
   unsigned currentModuleId_;
   bool allowAddModel_;
   bool startedFallback_;
+  mutable std::atomic<int> callFails_;
   std::string pid_;
   std::unordered_map<std::string, Model> unservedModels_;
   //this represents a many:many:many map

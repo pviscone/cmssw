@@ -59,10 +59,10 @@ namespace l1t {
 
     void setuGtB(const GlobalBoard*);
 
-    //get / set AXOL1TL model version
-    inline const std::string gtModelVerion() const { return m_AXOL1TLmodelversion; }
+    /// get/set score value
+    void setScore(const float scoreval) const;
 
-    void setModelVersion(const std::string modelversionname);
+    inline float getScore() const { return m_savedscore; }
 
   private:
     /// copy function for copy constructor and operator=
@@ -74,8 +74,8 @@ namespace l1t {
     /// pointer to uGt GlobalBoard, to be able to get the trigger objects
     const GlobalBoard* m_gtGTB;
 
-    //to set modelversion from globalboard<-globalproducer<-config
-    std::string m_AXOL1TLmodelversion = "NONE";
+    ///axo score for possible score saving
+    mutable float m_savedscore;
   };
 
 }  // namespace l1t

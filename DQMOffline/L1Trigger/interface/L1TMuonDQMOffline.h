@@ -188,7 +188,8 @@ class MuonGmtPair {
 public:
   MuonGmtPair(const reco::Muon* muon, const l1t::Muon* regMu, const PropagateToMuon& propagator, bool useAtVtxCoord);
   MuonGmtPair(const MuonGmtPair& muonGmtPair);
-  ~MuonGmtPair(){};
+  MuonGmtPair& operator=(const MuonGmtPair& muonGmtPair) = default;
+  ~MuonGmtPair() {}
 
   double dR();
   double pt() const { return m_muon->pt(); };

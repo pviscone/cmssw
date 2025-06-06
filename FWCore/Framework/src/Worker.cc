@@ -17,72 +17,64 @@
 
 namespace edm {
   namespace {
-    class ModuleBeginJobSignalSentry {
+    class ModuleBeginJobTraits {
     public:
-      ModuleBeginJobSignalSentry(ActivityRegistry* a, ModuleDescription const& md) : a_(a), md_(&md) {
-        if (a_)
-          a_->preModuleBeginJobSignal_(*md_);
+      using Context = GlobalContext;
+      static void preModuleSignal(ActivityRegistry* activityRegistry,
+                                  GlobalContext const*,
+                                  ModuleCallingContext const* moduleCallingContext) {
+        activityRegistry->preModuleBeginJobSignal_(*moduleCallingContext->moduleDescription());
       }
-      ~ModuleBeginJobSignalSentry() {
-        if (a_)
-          a_->postModuleBeginJobSignal_(*md_);
+      static void postModuleSignal(ActivityRegistry* activityRegistry,
+                                   GlobalContext const*,
+                                   ModuleCallingContext const* moduleCallingContext) {
+        activityRegistry->postModuleBeginJobSignal_(*moduleCallingContext->moduleDescription());
       }
-
-    private:
-      ActivityRegistry* a_;  // We do not use propagate_const because the registry itself is mutable.
-      ModuleDescription const* md_;
     };
 
-    class ModuleEndJobSignalSentry {
+    class ModuleEndJobTraits {
     public:
-      ModuleEndJobSignalSentry(ActivityRegistry* a, ModuleDescription const& md) : a_(a), md_(&md) {
-        if (a_)
-          a_->preModuleEndJobSignal_(*md_);
+      using Context = GlobalContext;
+      static void preModuleSignal(ActivityRegistry* activityRegistry,
+                                  GlobalContext const*,
+                                  ModuleCallingContext const* moduleCallingContext) {
+        activityRegistry->preModuleEndJobSignal_(*moduleCallingContext->moduleDescription());
       }
-      ~ModuleEndJobSignalSentry() {
-        if (a_)
-          a_->postModuleEndJobSignal_(*md_);
+      static void postModuleSignal(ActivityRegistry* activityRegistry,
+                                   GlobalContext const*,
+                                   ModuleCallingContext const* moduleCallingContext) {
+        activityRegistry->postModuleEndJobSignal_(*moduleCallingContext->moduleDescription());
       }
-
-    private:
-      ActivityRegistry* a_;  // We do not use propagate_const because the registry itself is mutable.
-      ModuleDescription const* md_;
     };
 
-    class ModuleBeginStreamSignalSentry {
+    class ModuleBeginStreamTraits {
     public:
-      ModuleBeginStreamSignalSentry(ActivityRegistry* a, StreamContext const& sc, ModuleCallingContext const& mcc)
-          : a_(a), sc_(sc), mcc_(mcc) {
-        if (a_)
-          a_->preModuleBeginStreamSignal_(sc_, mcc_);
+      using Context = StreamContext;
+      static void preModuleSignal(ActivityRegistry* activityRegistry,
+                                  StreamContext const* streamContext,
+                                  ModuleCallingContext const* moduleCallingContext) {
+        activityRegistry->preModuleBeginStreamSignal_(*streamContext, *moduleCallingContext);
       }
-      ~ModuleBeginStreamSignalSentry() {
-        if (a_)
-          a_->postModuleBeginStreamSignal_(sc_, mcc_);
+      static void postModuleSignal(ActivityRegistry* activityRegistry,
+                                   StreamContext const* streamContext,
+                                   ModuleCallingContext const* moduleCallingContext) {
+        activityRegistry->postModuleBeginStreamSignal_(*streamContext, *moduleCallingContext);
       }
-
-    private:
-      ActivityRegistry* a_;  // We do not use propagate_const because the registry itself is mutable.
-      StreamContext const& sc_;
-      ModuleCallingContext const& mcc_;
     };
 
-    class ModuleEndStreamSignalSentry {
+    class ModuleEndStreamTraits {
     public:
-      ModuleEndStreamSignalSentry(ActivityRegistry* a, StreamContext const& sc, ModuleCallingContext const& mcc)
-          : a_(a), sc_(sc), mcc_(mcc) {
-        if (a_)
-          a_->preModuleEndStreamSignal_(sc_, mcc_);
+      using Context = StreamContext;
+      static void preModuleSignal(ActivityRegistry* activityRegistry,
+                                  StreamContext const* streamContext,
+                                  ModuleCallingContext const* moduleCallingContext) {
+        activityRegistry->preModuleEndStreamSignal_(*streamContext, *moduleCallingContext);
       }
-      ~ModuleEndStreamSignalSentry() {
-        if (a_)
-          a_->postModuleEndStreamSignal_(sc_, mcc_);
+      static void postModuleSignal(ActivityRegistry* activityRegistry,
+                                   StreamContext const* streamContext,
+                                   ModuleCallingContext const* moduleCallingContext) {
+        activityRegistry->postModuleEndStreamSignal_(*streamContext, *moduleCallingContext);
       }
-
-    private:
-      ActivityRegistry* a_;  // We do not use propagate_const because the registry itself is mutable.
-      StreamContext const& sc_;
-      ModuleCallingContext const& mcc_;
     };
 
   }  // namespace
@@ -120,7 +112,7 @@ namespace edm {
   bool Worker::shouldRethrowException(std::exception_ptr iPtr,
                                       ParentContext const& parentContext,
                                       bool isEvent,
-                                      bool shouldTryToContinue) const {
+                                      bool shouldTryToContinue) const noexcept {
     // NOTE: the warning printed as a result of ignoring or failing
     // a module will only be printed during the full true processing
     // pass of this module
@@ -156,26 +148,40 @@ namespace edm {
                                          WaitingTask* successTask,
                                          ServiceToken const& token,
                                          StreamID id,
-                                         EventPrincipal const* iPrincipal) {
+                                         EventPrincipal const* iPrincipal) noexcept {
     successTask->increment_ref_count();
 
     ServiceWeakToken weakToken = token;
     auto choiceTask =
         edm::make_waiting_task([id, successTask, iPrincipal, this, weakToken, &group](std::exception_ptr const*) {
           ServiceRegistry::Operate guard(weakToken.lock());
-          // There is no reasonable place to rethrow, and implDoPrePrefetchSelection() should not throw in the first place.
-          CMS_SA_ALLOW try {
-            if (not implDoPrePrefetchSelection(id, *iPrincipal, &moduleCallingContext_)) {
-              timesRun_.fetch_add(1, std::memory_order_relaxed);
-              setPassed<true>();
-              waitingTasks_.doneWaiting(nullptr);
-              //TBB requires that destroyed tasks have count 0
-              if (0 == successTask->decrement_ref_count()) {
-                TaskSentry s(successTask);
+          try {
+            bool selected = convertException::wrap([&]() {
+              if (not implDoPrePrefetchSelection(id, *iPrincipal, &moduleCallingContext_)) {
+                timesRun_.fetch_add(1, std::memory_order_relaxed);
+                setPassed<true>();
+                waitingTasks_.doneWaiting(nullptr);
+                //TBB requires that destroyed tasks have count 0
+                if (0 == successTask->decrement_ref_count()) {
+                  TaskSentry s(successTask);
+                }
+                return false;
               }
+              return true;
+            });
+            if (not selected) {
               return;
             }
-          } catch (...) {
+
+          } catch (cms::Exception& e) {
+            edm::exceptionContext(e, moduleCallingContext_);
+            setException<true>(std::current_exception());
+            waitingTasks_.doneWaiting(std::current_exception());
+            //TBB requires that destroyed tasks have count 0
+            if (0 == successTask->decrement_ref_count()) {
+              TaskSentry s(successTask);
+            }
+            return;
           }
           if (0 == successTask->decrement_ref_count()) {
             group.run([successTask]() {
@@ -193,7 +199,8 @@ namespace edm {
     for (auto const& item : items) {
       ProductResolverIndex productResolverIndex = item.productResolverIndex();
       bool skipCurrentProcess = item.skipCurrentProcess();
-      if (productResolverIndex != ProductResolverIndexAmbiguous) {
+      if (productResolverIndex != ProductResolverIndexAmbiguous and
+          productResolverIndex != ProductResolverIndexInvalid) {
         iPrincipal->prefetchAsync(
             choiceHolder, productResolverIndex, skipCurrentProcess, token, &moduleCallingContext_);
       }
@@ -204,7 +211,7 @@ namespace edm {
   void Worker::esPrefetchAsync(WaitingTaskHolder iTask,
                                EventSetupImpl const& iImpl,
                                Transition iTrans,
-                               ServiceToken const& iToken) {
+                               ServiceToken const& iToken) noexcept {
     if (iTrans >= edm::Transition::NumberOfEventSetupTransitions) {
       return;
     }
@@ -226,7 +233,9 @@ namespace edm {
     }
   }
 
-  void Worker::edPrefetchAsync(WaitingTaskHolder iTask, ServiceToken const& token, Principal const& iPrincipal) const {
+  void Worker::edPrefetchAsync(WaitingTaskHolder iTask,
+                               ServiceToken const& token,
+                               Principal const& iPrincipal) const noexcept {
     // Prefetch products the module declares it consumes
     std::vector<ProductResolverIndexAndSkipBit> const& items = itemsToGetFrom(iPrincipal.branchType());
 
@@ -241,34 +250,37 @@ namespace edm {
 
   void Worker::setEarlyDeleteHelper(EarlyDeleteHelper* iHelper) { earlyDeleteHelper_ = iHelper; }
 
-  size_t Worker::transformIndex(edm::BranchDescription const&) const { return -1; }
+  size_t Worker::transformIndex(edm::BranchDescription const&) const noexcept { return -1; }
   void Worker::doTransformAsync(WaitingTaskHolder iTask,
                                 size_t iTransformIndex,
                                 EventPrincipal const& iPrincipal,
                                 ServiceToken const& iToken,
                                 StreamID,
                                 ModuleCallingContext const& mcc,
-                                StreamContext const*) {
+                                StreamContext const*) noexcept {
     ServiceWeakToken weakToken = iToken;
 
     //Need to make the services available early so other services can see them
-    auto task = make_waiting_task([this, iTask, weakToken, &iPrincipal, iTransformIndex, parent = mcc.parent()](
-                                      std::exception_ptr const* iExcept) mutable {
-      if (iExcept) {
-        iTask.doneWaiting(*iExcept);
-        return;
-      }
-      implDoTransformAsync(iTask, iTransformIndex, iPrincipal, parent, weakToken);
-    });
+    auto task = make_waiting_task(
+        [this, iTask, weakToken, &iPrincipal, iTransformIndex, mcc](std::exception_ptr const* iExcept) mutable {
+          //post prefetch signal
+          actReg_->postModuleTransformPrefetchingSignal_.emit(*mcc.getStreamContext(), mcc);
+          if (iExcept) {
+            iTask.doneWaiting(*iExcept);
+            return;
+          }
+          implDoTransformAsync(iTask, iTransformIndex, iPrincipal, mcc.parent(), weakToken);
+        });
 
-    //NOTE: need different ModuleCallingContext. The ProductResolver will copy the context in order to get
-    // a longer lifetime than this function call.
+    //pre prefetch signal
+    actReg_->preModuleTransformPrefetchingSignal_.emit(*mcc.getStreamContext(), mcc);
     iPrincipal.prefetchAsync(
         WaitingTaskHolder(*iTask.group(), task), itemToGetForTransform(iTransformIndex), false, iToken, &mcc);
   }
 
   void Worker::resetModuleDescription(ModuleDescription const* iDesc) {
     ModuleCallingContext temp(iDesc,
+                              0,
                               moduleCallingContext_.state(),
                               moduleCallingContext_.parent(),
                               moduleCallingContext_.previousModuleOnThread());
@@ -277,84 +289,83 @@ namespace edm {
     checkForShouldTryToContinue(*iDesc);
   }
 
-  void Worker::beginJob() {
+  void Worker::beginJob(GlobalContext const& globalContext) {
+    ParentContext parentContext(&globalContext);
+    ModuleContextSentry moduleContextSentry(&moduleCallingContext_, parentContext);
+    ModuleSignalSentry<ModuleBeginJobTraits> sentry(activityRegistry(), &globalContext, &moduleCallingContext_);
+
     try {
-      convertException::wrap([&]() {
-        ModuleBeginJobSignalSentry cpp(actReg_.get(), *description());
+      convertException::wrap([this, &sentry]() {
+        beginSucceeded_ = false;
+        sentry.preModuleSignal();
         implBeginJob();
+        sentry.postModuleSignal();
+        beginSucceeded_ = true;
       });
     } catch (cms::Exception& ex) {
-      state_ = Exception;
-      std::ostringstream ost;
-      ost << "Calling beginJob for module " << description()->moduleName() << "/'" << description()->moduleLabel()
-          << "'";
-      ex.addContext(ost.str());
+      exceptionContext(ex, moduleCallingContext_);
       throw;
     }
   }
 
-  void Worker::endJob() {
+  void Worker::endJob(GlobalContext const& globalContext) {
+    if (beginSucceeded_) {
+      beginSucceeded_ = false;
+
+      ParentContext parentContext(&globalContext);
+      ModuleContextSentry moduleContextSentry(&moduleCallingContext_, parentContext);
+      ModuleSignalSentry<ModuleEndJobTraits> sentry(activityRegistry(), &globalContext, &moduleCallingContext_);
+
+      try {
+        convertException::wrap([this, &sentry]() {
+          sentry.preModuleSignal();
+          implEndJob();
+          sentry.postModuleSignal();
+        });
+      } catch (cms::Exception& ex) {
+        exceptionContext(ex, moduleCallingContext_);
+        throw;
+      }
+    }
+  }
+
+  void Worker::beginStream(StreamID streamID, StreamContext const& streamContext) {
+    ParentContext parentContext(&streamContext);
+    ModuleContextSentry moduleContextSentry(&moduleCallingContext_, parentContext);
+    ModuleSignalSentry<ModuleBeginStreamTraits> sentry(activityRegistry(), &streamContext, &moduleCallingContext_);
+
     try {
-      convertException::wrap([&]() {
-        ModuleDescription const* desc = description();
-        assert(desc != nullptr);
-        ModuleEndJobSignalSentry cpp(actReg_.get(), *desc);
-        implEndJob();
+      convertException::wrap([this, &sentry, streamID]() {
+        beginSucceeded_ = false;
+        sentry.preModuleSignal();
+        implBeginStream(streamID);
+        sentry.postModuleSignal();
+        beginSucceeded_ = true;
       });
     } catch (cms::Exception& ex) {
-      state_ = Exception;
-      std::ostringstream ost;
-      ost << "Calling endJob for module " << description()->moduleName() << "/'" << description()->moduleLabel() << "'";
-      ex.addContext(ost.str());
+      exceptionContext(ex, moduleCallingContext_);
       throw;
     }
   }
 
-  void Worker::beginStream(StreamID id, StreamContext& streamContext) {
-    try {
-      convertException::wrap([&]() {
-        streamContext.setTransition(StreamContext::Transition::kBeginStream);
-        streamContext.setEventID(EventID(0, 0, 0));
-        streamContext.setRunIndex(RunIndex::invalidRunIndex());
-        streamContext.setLuminosityBlockIndex(LuminosityBlockIndex::invalidLuminosityBlockIndex());
-        streamContext.setTimestamp(Timestamp());
-        ParentContext parentContext(&streamContext);
-        ModuleContextSentry moduleContextSentry(&moduleCallingContext_, parentContext);
-        moduleCallingContext_.setState(ModuleCallingContext::State::kRunning);
-        ModuleBeginStreamSignalSentry beginSentry(actReg_.get(), streamContext, moduleCallingContext_);
-        implBeginStream(id);
-      });
-    } catch (cms::Exception& ex) {
-      state_ = Exception;
-      std::ostringstream ost;
-      ost << "Calling beginStream for module " << description()->moduleName() << "/'" << description()->moduleLabel()
-          << "'";
-      ex.addContext(ost.str());
-      throw;
-    }
-  }
+  void Worker::endStream(StreamID id, StreamContext const& streamContext) {
+    if (beginSucceeded_) {
+      beginSucceeded_ = false;
 
-  void Worker::endStream(StreamID id, StreamContext& streamContext) {
-    try {
-      convertException::wrap([&]() {
-        streamContext.setTransition(StreamContext::Transition::kEndStream);
-        streamContext.setEventID(EventID(0, 0, 0));
-        streamContext.setRunIndex(RunIndex::invalidRunIndex());
-        streamContext.setLuminosityBlockIndex(LuminosityBlockIndex::invalidLuminosityBlockIndex());
-        streamContext.setTimestamp(Timestamp());
-        ParentContext parentContext(&streamContext);
-        ModuleContextSentry moduleContextSentry(&moduleCallingContext_, parentContext);
-        moduleCallingContext_.setState(ModuleCallingContext::State::kRunning);
-        ModuleEndStreamSignalSentry endSentry(actReg_.get(), streamContext, moduleCallingContext_);
-        implEndStream(id);
-      });
-    } catch (cms::Exception& ex) {
-      state_ = Exception;
-      std::ostringstream ost;
-      ost << "Calling endStream for module " << description()->moduleName() << "/'" << description()->moduleLabel()
-          << "'";
-      ex.addContext(ost.str());
-      throw;
+      ParentContext parentContext(&streamContext);
+      ModuleContextSentry moduleContextSentry(&moduleCallingContext_, parentContext);
+      ModuleSignalSentry<ModuleEndStreamTraits> sentry(activityRegistry(), &streamContext, &moduleCallingContext_);
+
+      try {
+        convertException::wrap([this, &sentry, id]() {
+          sentry.preModuleSignal();
+          implEndStream(id);
+          sentry.postModuleSignal();
+        });
+      } catch (cms::Exception& ex) {
+        exceptionContext(ex, moduleCallingContext_);
+        throw;
+      }
     }
   }
 
@@ -400,7 +411,7 @@ namespace edm {
   void Worker::runAcquireAfterAsyncPrefetch(std::exception_ptr iEPtr,
                                             EventTransitionInfo const& eventTransitionInfo,
                                             ParentContext const& parentContext,
-                                            WaitingTaskWithArenaHolder holder) {
+                                            WaitingTaskWithArenaHolder holder) noexcept {
     ranAcquireWithoutException_ = false;
     std::exception_ptr exceptionPtr;
     if (iEPtr) {
@@ -421,7 +432,8 @@ namespace edm {
     holder.doneWaiting(exceptionPtr);
   }
 
-  std::exception_ptr Worker::handleExternalWorkException(std::exception_ptr iEPtr, ParentContext const& parentContext) {
+  std::exception_ptr Worker::handleExternalWorkException(std::exception_ptr iEPtr,
+                                                         ParentContext const& parentContext) noexcept {
     if (ranAcquireWithoutException_) {
       try {
         convertException::wrap([iEPtr]() { std::rethrow_exception(iEPtr); });
@@ -437,7 +449,7 @@ namespace edm {
   Worker::HandleExternalWorkExceptionTask::HandleExternalWorkExceptionTask(Worker* worker,
                                                                            oneapi::tbb::task_group* group,
                                                                            WaitingTask* runModuleTask,
-                                                                           ParentContext const& parentContext)
+                                                                           ParentContext const& parentContext) noexcept
       : m_worker(worker), m_runModuleTask(runModuleTask), m_group(group), m_parentContext(parentContext) {}
 
   void Worker::HandleExternalWorkExceptionTask::execute() {

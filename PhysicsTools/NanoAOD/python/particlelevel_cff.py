@@ -91,13 +91,9 @@ tautagger = cms.EDProducer("GenJetTauTaggerProducer",
 
 rivetMetTable = simpleSingletonCandidateFlatTableProducer.clone(
     src = cms.InputTag("particleLevel:mets"),
-    name = cms.string("MET"),
+    name = cms.string("FiducialMET"),
     doc = cms.string("MET from Rivet-based ParticleLevelProducer in fiducial volume abs(eta)<5"),
-    extension = cms.bool(True),
-    variables = cms.PSet(
-       fiducialGenPt  = Var("pt",  float, precision=10),
-       fiducialGenPhi = Var("phi", float, precision=10),
-    ),
+    variables = cms.PSet(PTVars),
 )
 
 HTXSCategoryTable = simpleHTXSFlatTableProducer.clone(
@@ -120,6 +116,11 @@ HTXSCategoryTable = simpleHTXSFlatTableProducer.clone(
         Higgs_y = Var("higgs.Rapidity()",float, doc="rapidity of the Higgs boson as identified in HTXS", precision=12),
         njets30 = Var("jets30.size()","uint8", doc="number of jets with pt>30 GeV as identified in HTXS"),
         njets25 = Var("jets25.size()","uint8", doc="number of jets with pt>25 GeV as identified in HTXS"),
+        # Temporary fix: add variables to perform STXS 1.3 classification with nanoAOD on-the-fly
+        V_pt = Var("V_pt",float, doc="pt of the vector boson as identified in HTXS", precision=14),
+        Mjj = Var("Mjj",float, doc="invariant mass of the dijet (pt>30) system as identified in HTXS", precision=14),
+        ptHjj = Var("ptHjj",float, doc="pt of the dijet(pt>30)-plus-higgs system as identified in HTXS", precision=14),
+        dPhijj = Var("dPhijj",float, doc="DeltaPhi between jets (pt>30) in dijet system as identified in HTXS", precision=12),
    )
 )
 

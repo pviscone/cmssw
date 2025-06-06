@@ -30,8 +30,8 @@ pp_on_PbPb_run3.toModify(hltMerged2highPurity,
 
 from Configuration.Eras.Modifier_phase2_tracker_cff import phase2_tracker
 phase2_tracker.toModify(hltMerged2highPurity,
-                        monitoredTrack           = cms.InputTag("generalTracks","","HLT"),
-                        monitoredPrimaryVertices = cms.InputTag("offlinePrimaryVertices","","HLT"))
+                        monitoredTrack           = cms.InputTag("hltGeneralTracks"),
+                        monitoredPrimaryVertices = cms.InputTag("hltOfflinePrimaryVertices"))
 
 hltMerged2highPurityPV = TrackToTrackComparisonHists.clone(
     dzWRTPvCut               = 0.1,
@@ -51,11 +51,47 @@ pp_on_PbPb_run3.toModify(hltMerged2highPurityPV,
 
 from Configuration.Eras.Modifier_phase2_tracker_cff import phase2_tracker
 phase2_tracker.toModify(hltMerged2highPurityPV,
-                        monitoredTrack           = cms.InputTag("generalTracks","","HLT"),
-                        monitoredPrimaryVertices = cms.InputTag("offlinePrimaryVertices","","HLT"))
+                        monitoredTrack           = cms.InputTag("hltGeneralTracks"),
+                        monitoredPrimaryVertices = cms.InputTag("hltOfflinePrimaryVertices"))
+
+#
+# E/gamma monitoring
+#
+
+hltEgammaGsfTracksVsOffline = TrackToTrackComparisonHists.clone(
+    monitoredTrack           = "hltEgammaGsfTracks",
+    referenceTrack           = "electronGsfTracks",
+    monitoredBeamSpot        = "hltOnlineBeamSpot",
+    referenceBeamSpot        = "offlineBeamSpot",
+    topDirName               = "HLT/EGM/Tracking/ValidationWRTOffline/hltEgammaGsfTracks",
+    referencePrimaryVertices = "offlinePrimaryVertices",
+    monitoredPrimaryVertices = "hltVerticesPFSelector"
+)
+
+hltEgammaGsfTracksVsOfflinePV = TrackToTrackComparisonHists.clone(
+    dzWRTPvCut               = 0.1,
+    monitoredTrack           = "hltEgammaGsfTracks",
+    referenceTrack           = "electronGsfTracks",
+    monitoredBeamSpot        = "hltOnlineBeamSpot",
+    referenceBeamSpot        = "offlineBeamSpot",
+    topDirName               = "HLT/EGM/Tracking/ValidationWRTOffline/hltEgammaGsfTracksPV",
+    referencePrimaryVertices = "offlinePrimaryVertices",
+    monitoredPrimaryVertices = "hltVerticesPFSelector"
+)
+
+from Configuration.Eras.Modifier_phase2_common_cff import phase2_common
+phase2_common.toModify(hltEgammaGsfTracksVsOffline,
+                       monitoredTrack           = cms.InputTag("hltEgammaGsfTracksL1Seeded"),
+                       monitoredPrimaryVertices = cms.InputTag("hltOfflinePrimaryVertices"))
+
+phase2_common.toModify(hltEgammaGsfTracksVsOfflinePV,
+                       monitoredTrack           = cms.InputTag("hltEgammaGsfTracksL1Seeded"),
+                       monitoredPrimaryVertices = cms.InputTag("hltOfflinePrimaryVertices"))
 
 hltToOfflineTrackValidatorSequence = cms.Sequence(
     cms.ignore(highPurityTracks)
     + hltMerged2highPurity
     + hltMerged2highPurityPV
+    + hltEgammaGsfTracksVsOffline
+    + hltEgammaGsfTracksVsOfflinePV
 )

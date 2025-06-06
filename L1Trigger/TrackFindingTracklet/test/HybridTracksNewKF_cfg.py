@@ -12,8 +12,8 @@ import FWCore.ParameterSet.Config as cms
 process = cms.Process( "Demo" )
 process.load( 'FWCore.MessageService.MessageLogger_cfi' )
 process.load( 'Configuration.EventContent.EventContent_cff' )
-process.load( 'Configuration.Geometry.GeometryExtended2026D88Reco_cff' ) 
-process.load( 'Configuration.Geometry.GeometryExtended2026D88_cff' )
+process.load( 'Configuration.Geometry.GeometryExtendedRun4D88Reco_cff' ) 
+process.load( 'Configuration.Geometry.GeometryExtendedRun4D88_cff' )
 process.load( 'Configuration.StandardSequences.MagneticField_cff' )
 process.load( 'Configuration.StandardSequences.FrontierConditions_GlobalTag_cff' )
 process.load( 'L1Trigger.TrackTrigger.TrackTrigger_cff' )
@@ -39,8 +39,8 @@ process.load( 'L1Trigger.TrackFindingTracklet.Producer_cff' )
 # load and configure TrackTriggerAssociation
 process.load( 'SimTracker.TrackTriggerAssociation.TrackTriggerAssociator_cff' )
 process.TTTrackAssociatorFromPixelDigis.TTTracks = cms.VInputTag( cms.InputTag(
-  process.TrackFindingTrackletProducer_params.LabelTT.value(),
-  process.TrackFindingTrackletProducer_params.BranchAcceptedTracks.value()
+  process.TrackFindingTrackletProducer_params.LabelKFout.value(),
+  process.TrackFindingTrackletProducer_params.BranchAcceptedTTTracks.value()
 ) )
 
 # build schedule
@@ -48,11 +48,12 @@ process.mc = cms.Sequence( process.StubAssociator )
 process.dtc = cms.Sequence( process.TrackerDTCProducer + process.TrackerDTCAnalyzer )
 process.tracklet = cms.Sequence( process.L1THybridTracks + process.TrackFindingTrackletAnalyzerTracklet )
 process.TBout = cms.Sequence( process.TrackFindingTrackletProducerTBout + process.TrackFindingTrackletAnalyzerTBout )
-process.interIn = cms.Sequence( process.TrackFindingTrackletProducerKFin + process.TrackFindingTrackletAnalyzerKFin )
+process.drin = cms.Sequence( process.TrackFindingTrackletProducerDRin + process.TrackFindingTrackletAnalyzerDRin )
+process.dr = cms.Sequence( process.TrackFindingTrackletProducerDR + process.TrackFindingTrackletAnalyzerDR )
+process.kfin = cms.Sequence( process.TrackFindingTrackletProducerKFin + process.TrackFindingTrackletAnalyzerKFin )
 process.kf = cms.Sequence( process.TrackFindingTrackletProducerKF + process.TrackFindingTrackletAnalyzerKF )
-process.TTTracks = cms.Sequence( process.TrackFindingTrackletProducerTT + process.TrackFindingTrackletProducerAS + process.TrackTriggerAssociatorTracks )
-process.interOut = cms.Sequence( process.TrackFindingTrackletProducerKFout + process.TrackFindingTrackletAnalyzerKFout )
-process.tt = cms.Path( process.mc + process.dtc + process.tracklet + process.TBout + process.interIn + process.kf + process.TTTracks + process.interOut )
+process.kfout = cms.Sequence( process.TrackFindingTrackletProducerKFout + process.TrackFindingTrackletAnalyzerKFout )
+process.tt = cms.Path( process.mc + process.dtc + process.tracklet + process.TBout + process.drin + process.dr + process.kfin + process.kf + process.kfout)
 process.schedule = cms.Schedule( process.tt )
 
 # create options
@@ -61,11 +62,9 @@ options = VarParsing.VarParsing( 'analysis' )
 # specify input MC
 #from MCsamples.Scripts.getCMSdata_cfi import *
 #from MCsamples.Scripts.getCMSlocaldata_cfi import *
-#from MCsamples.RelVal_1130_D76.PU200_TTbar_14TeV_cfi import *
+#from MCsamples.RelVal_1260_D88.PU200_TTbar_14TeV_cfi import *
 #inputMC = getCMSdataFromCards()
-inputMC = [
-'/store/mc/CMSSW_12_6_0/RelValTTbar_14TeV/GEN-SIM-DIGI-RAW/PU_125X_mcRun4_realistic_v5_2026D88PU200RV183v2-v1/30000/0959f326-3f52-48d8-9fcf-65fc41de4e27.root'
-]
+inputMC = ["/store/mc/CMSSW_12_6_0/RelValTTbar_14TeV/GEN-SIM-DIGI-RAW/PU_125X_mcRun4_realistic_v5_2026D88PU200RV183v2-v1/30000/0959f326-3f52-48d8-9fcf-65fc41de4e27.root"]
 options.register( 'inputMC', inputMC, VarParsing.VarParsing.multiplicity.singleton, VarParsing.VarParsing.varType.string, "Files to be processed" )
 # specify number of events to process.
 options.register( 'Events',100,VarParsing.VarParsing.multiplicity.singleton, VarParsing.VarParsing.varType.int, "Number of Events to analyze" )

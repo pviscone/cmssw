@@ -10,7 +10,7 @@ displacedMuons = cms.EDProducer("MuonProducer",
                        FillTimingInfo = cms.bool(True),
                        
                        FillDetectorBasedIsolation = cms.bool(True),
-                       EcalIsoDeposits  = cms.InputTag("muIsoDepositCalByAssociatorTowersDisplaced","ecal"),
+                       EcalIsoDeposits  = cms.InputTag("muIsoDepositCalByAssociatorHitsDisplaced","ecal"),
                        HcalIsoDeposits  = cms.InputTag("muIsoDepositCalByAssociatorTowersDisplaced","hcal"),
                        HoIsoDeposits    = cms.InputTag("muIsoDepositCalByAssociatorTowersDisplaced","ho"),
                        TrackIsoDeposits = cms.InputTag("muIsoDepositTkDisplaced"),

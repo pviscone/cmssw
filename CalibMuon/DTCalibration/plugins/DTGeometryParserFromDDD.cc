@@ -24,16 +24,14 @@ DTGeometryParserFromDDD::DTGeometryParserFromDDD(
   } catch (const cms::Exception& e) {
     std::cerr << "DTGeometryParserFromDDD::build() : DDD Exception: something went wrong during XML parsing!"
               << std::endl
-              << "  Message: " << e << std::endl
-              << "  Terminating execution ... " << std::endl;
+              << "  Message: " << e << std::endl;
     throw;
   } catch (const exception& e) {
     std::cerr << "DTGeometryParserFromDDD::build() : an unexpected exception occured: " << e.what() << std::endl;
     throw;
   } catch (...) {
-    std::cerr << "DTGeometryParserFromDDD::build() : An unexpected exception occured!" << std::endl
-              << "  Terminating execution ... " << std::endl;
-    std::unexpected();
+    std::cerr << "DTGeometryParserFromDDD::build() : An unexpected exception occured!" << std::endl;
+    throw;
   }
 }
 
@@ -57,15 +55,15 @@ void DTGeometryParserFromDDD::parseGeometry(DDFilteredView& fv,
 
         fv.parent();
         doL = fv.nextSibling();  // go to next layer
-      }                          // layers
+      }  // layers
 
       fv.parent();
       doSL = fv.nextSibling();  // go to next SL
-    }                           // sls
+    }  // sls
 
     fv.parent();
     doChamber = fv.nextSibling();  // go to next chamber
-  }                                // chambers
+  }  // chambers
 }
 
 void DTGeometryParserFromDDD::buildLayer(DDFilteredView& fv,

@@ -28,7 +28,6 @@ namespace tmtt {
 
   namespace {
     std::once_flag printOnce;
-    std::once_flag callOnce;
   }  // namespace
 
   std::unique_ptr<GlobalCacheTMTT> TMTrackProducer::initializeGlobalCache(edm::ParameterSet const& iConfig) {
@@ -105,8 +104,7 @@ namespace tmtt {
 
     std::stringstream text;
     text << "\n--- B field = " << bField << " Tesla ---\n";
-    std::call_once(
-        printOnce, [](string t) { PrintL1trk() << t; }, text.str());
+    std::call_once(printOnce, [](string t) { PrintL1trk() << t; }, text.str());
 
     // Get tracker geometry
     trackerGeometry_ = &(iSetup.getData(trackerGeometryToken_));

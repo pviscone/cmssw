@@ -114,5 +114,88 @@ namespace mkfit {
                              MPlexQF& outChi2,
                              const int N_proc);
 
+  //------------------------------------------------------------------------------
+
+  void kalmanUpdatePlane(const MPlexLS& psErr,
+                         const MPlexLV& psPar,
+                         const MPlexQI& Chg,
+                         const MPlexHS& msErr,
+                         const MPlexHV& msPar,
+                         const MPlexHV& plNrm,
+                         const MPlexHV& plDir,
+                         const MPlexHV& plPnt,
+                         MPlexLS& outErr,
+                         MPlexLV& outPar,
+                         const int N_proc);
+
+  void kalmanPropagateAndUpdatePlane(const MPlexLS& psErr,
+                                     const MPlexLV& psPar,
+                                     MPlexQI& Chg,
+                                     const MPlexHS& msErr,
+                                     const MPlexHV& msPar,
+                                     const MPlexHV& plNrm,
+                                     const MPlexHV& plDir,
+                                     const MPlexHV& plPnt,
+                                     MPlexLS& outErr,
+                                     MPlexLV& outPar,
+                                     MPlexQI& outFailFlag,
+                                     const int N_proc,
+                                     const PropagationFlags& propFlags,
+                                     const bool propToHit);
+
+  void kalmanComputeChi2Plane(const MPlexLS& psErr,
+                              const MPlexLV& psPar,
+                              const MPlexQI& inChg,
+                              const MPlexHS& msErr,
+                              const MPlexHV& msPar,
+                              const MPlexHV& plNrm,
+                              const MPlexHV& plDir,
+                              const MPlexHV& plPnt,
+                              MPlexQF& outChi2,
+                              const int N_proc);
+
+  void kalmanPropagateAndComputeChi2Plane(const MPlexLS& psErr,
+                                          const MPlexLV& psPar,
+                                          const MPlexQI& inChg,
+                                          const MPlexHS& msErr,
+                                          const MPlexHV& msPar,
+                                          const MPlexHV& plNrm,
+                                          const MPlexHV& plDir,
+                                          const MPlexHV& plPnt,
+                                          MPlexQF& outChi2,
+                                          MPlexLV& propPar,
+                                          MPlexQI& outFailFlag,
+                                          const int N_proc,
+                                          const PropagationFlags& propFlags,
+                                          const bool propToHit);
+
+  void kalmanOperationPlane(const int kfOp,
+                            const MPlexLS& psErr,
+                            const MPlexLV& psPar,
+                            const MPlexQI& Chg,
+                            const MPlexHS& msErr,
+                            const MPlexHV& msPar,
+                            const MPlexHV& plNrm,
+                            const MPlexHV& plDir,
+                            const MPlexHV& plPnt,
+                            MPlexLS& outErr,
+                            MPlexLV& outPar,
+                            MPlexQF& outChi2,
+                            const int N_proc);
+
+  void kalmanOperationPlaneLocal(const int kfOp,
+                                 const MPlexLS& psErr,
+                                 const MPlexLV& psPar,
+                                 const MPlexQI& Chg,
+                                 const MPlexHS& msErr,
+                                 const MPlexHV& msPar,
+                                 const MPlexHV& plNrm,
+                                 const MPlexHV& plDir,
+                                 const MPlexHV& plPnt,
+                                 MPlexLS& outErr,
+                                 MPlexLV& outPar,
+                                 MPlexQF& outChi2,
+                                 const int N_proc);
+
 }  // end namespace mkfit
 #endif

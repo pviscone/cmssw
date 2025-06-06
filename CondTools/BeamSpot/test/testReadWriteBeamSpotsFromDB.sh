@@ -30,6 +30,9 @@ cmsRun ${SCRAM_TEST_PATH}/BeamSpotOnlineRecordsWriter_cfg.py unitTest=True input
 printf "TESTING Writing SimBeamSpotObjectsRcd DB object ...\n\n"
 cmsRun ${SCRAM_TEST_PATH}/BeamProfile2DBWriter_cfg.py unitTest=True || die "Failure writing payload for SimBeamSpotObjectsRcd" $?
 
+printf "TESTING Writing SimBeamSpotHLLHCObjectsRcd DB object ...\n\n"
+cmsRun ${SCRAM_TEST_PATH}/BeamProfileHLLHC2DBWriter_cfg.py unitTest=True || die "Failure writing payload for SimBeamSpotHLLHCObjectsRcd" $?
+
 # test read
 printf "TESTING Reading BeamSpotOnlineLegacyObjectsRcd DB object ...\n\n"
 cmsRun ${SCRAM_TEST_PATH}/BeamSpotOnlineRecordsReader_cfg.py unitTest=True inputRecord=BeamSpotOnlineLegacyObjectsRcd || die "Failure reading payload for BeamSpotOnlineLegacyObjectsRcd" $?
@@ -38,7 +41,8 @@ printf "TESTING Reading BeamSpotOnlineHLTObjectsRcd DB object ...\n\n"
 cmsRun ${SCRAM_TEST_PATH}/BeamSpotOnlineRecordsReader_cfg.py unitTest=True inputRecord=BeamSpotOnlineHLTObjectsRcd || die "Failure reading payload for BeamSpotOnlineHLTObjectsRcd" $?
 
 printf "TESTING reading BeamSpotObjectRcd DB object ...\n\n"
-cmsRun ${SCRAM_TEST_PATH}/BeamSpotRcdPrinter_cfg.py || die "Failure running BeamSpotRcdPrinter" $?
+cmsRun ${SCRAM_TEST_PATH}/BeamSpotRcdPrinter_cfg.py startIOV=1406713458589700 endIOV=1614147494085159 verbose=False || die "Failure running BeamSpotRcdPrinter" $?
+cmsRun ${SCRAM_TEST_PATH}/BeamSpotRcdRead_cfg.py || die "Failure running BeamSpotRcdRead" $?
 
 printf "TESTING converting BeamSpotOnlineObjects from BeamSpotObjects ...\n\n"
 cmsRun ${SCRAM_TEST_PATH}/BeamSpotOnlineFromOfflineConverter_cfg.py unitTest=True startRun=325172 startLumi=458 || die "Failure running single-IOV BeamSpotOnlineFromOfflineConverter" $?
@@ -46,3 +50,6 @@ cmsRun ${SCRAM_TEST_PATH}/BeamSpotOnlineFromOfflineConverter_cfg.py unitTest=Tru
 
 printf "TESTING Reading SimBeamSpotObjectsRcd DB object ...\n\n"
 cmsRun ${SCRAM_TEST_PATH}/BeamProfile2DBReader_cfg.py unitTest=True || die "Failure reading payload for SimBeamSpotObjectsRcd" $?
+
+printf "TESTING Reading SimBeamSpotHLLHCObjectsRcd DB object ...\n\n"
+cmsRun ${SCRAM_TEST_PATH}/BeamProfileHLLHC2DBReader_cfg.py unitTest=True || die "Failure reading payload for SimBeamSpotHLLHCObjectsRcd" $?

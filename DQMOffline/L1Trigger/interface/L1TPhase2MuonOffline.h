@@ -137,7 +137,8 @@ class GenMuonGMTPair {
 public:
   GenMuonGMTPair(const reco::GenParticle* mu, const l1t::L1Candidate* gmtmu);
   GenMuonGMTPair(const GenMuonGMTPair& muongmtPair);
-  ~GenMuonGMTPair(){};
+  GenMuonGMTPair& operator=(const GenMuonGMTPair& muongmtPair) = default;
+  ~GenMuonGMTPair() {}
 
   float dR2();
   float pt() const { return mu_->pt(); };

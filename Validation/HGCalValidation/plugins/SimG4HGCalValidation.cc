@@ -31,8 +31,8 @@
 #include "G4NavigationHistory.hh"
 #include "G4TouchableHistory.hh"
 
-#include "CLHEP/Units/GlobalSystemOfUnits.h"
-#include "CLHEP/Units/GlobalPhysicalConstants.h"
+#include <CLHEP/Units/SystemOfUnits.h>
+#include <CLHEP/Units/GlobalPhysicalConstants.h>
 
 #include <cmath>
 #include <iostream>
@@ -281,8 +281,8 @@ void SimG4HGCalValidation::update(const G4Step* aStep) {
           }
         }
       }  // it is right type of SD
-    }    // it is in a SD
-  }      //if aStep!=NULL
+    }  // it is in a SD
+  }  //if aStep!=NULL
 }  //end update aStep
 
 //================================================================ End of EVENT

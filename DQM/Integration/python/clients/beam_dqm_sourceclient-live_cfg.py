@@ -17,12 +17,10 @@ else:
   from Configuration.Eras.Era_Run3_cff import Run3
   process = cms.Process("BeamMonitorLegacy", Run3)
 
-process.MessageLogger = cms.Service("MessageLogger",
-    debugModules = cms.untracked.vstring('*'),
-    cerr = cms.untracked.PSet(
-        threshold = cms.untracked.string('WARNING')
-    ),
-    destinations = cms.untracked.vstring('cerr')
+process.load('FWCore.MessageService.MessageLogger_cfi')
+process.MessageLogger.debugModules = cms.untracked.vstring('*')
+process.MessageLogger.cerr = cms.untracked.PSet(
+    threshold = cms.untracked.string('WARNING')
 )
 
 # switch
@@ -58,8 +56,8 @@ process.load("DQM.Integration.config.environment_cfi")
 process.dqmEnv.subSystemFolder = 'BeamMonitorLegacy'
 process.dqmSaver.tag           = 'BeamMonitorLegacy'
 process.dqmSaver.runNumber     = options.runNumber
-process.dqmSaverPB.tag         = 'BeamMonitorLegacy'
-process.dqmSaverPB.runNumber   = options.runNumber
+# process.dqmSaverPB.tag         = 'BeamMonitorLegacy'
+# process.dqmSaverPB.runNumber   = options.runNumber
 
 process.dqmEnvPixelLess = process.dqmEnv.clone(
   subSystemFolder = 'BeamMonitor_PixelLess'
@@ -254,7 +252,7 @@ process.dqmTKStatus = cms.EDAnalyzer("TKStatus",
 
 #
 process.dqmcommon = cms.Sequence(process.dqmEnv
-                               * process.dqmSaver*process.dqmSaverPB)
+                               * process.dqmSaver)#*process.dqmSaverPB)
 
 #
 process.monitor = cms.Sequence(process.dqmBeamMonitor
@@ -309,7 +307,7 @@ else:
 process.castorDigis.InputLabel           = rawDataInputTag
 process.csctfDigis.producer              = rawDataInputTag 
 process.dttfDigis.DTTF_FED_Source        = rawDataInputTag
-process.ecalDigis.cpu.InputLabel         = rawDataInputTag
+process.ecalDigisCPU.InputLabel          = rawDataInputTag
 process.ecalPreshowerDigis.sourceTag     = rawDataInputTag
 process.gctDigis.inputLabel              = rawDataInputTag
 process.gtDigis.DaqGtInputTag            = rawDataInputTag
@@ -338,7 +336,7 @@ process.dqmBeamMonitor.PVFitter.errorScale = 1.2
 
 #----------------------------
 # Pixel tracks/vertices reco
-process.load("RecoTracker.Configuration.RecoPixelVertexing_cff")
+process.load("RecoVertex.Configuration.RecoPixelVertexing_cff")
 from RecoVertex.PrimaryVertexProducer.OfflinePixel3DPrimaryVertices_cfi import *
 process.pixelVertices = pixelVertices.clone(
   TkFilterParameters = dict( minPt = process.pixelTracksTrackingRegions.RegionPSet.ptMin)

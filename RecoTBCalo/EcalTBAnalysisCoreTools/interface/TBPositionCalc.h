@@ -20,7 +20,7 @@
 #include "Geometry/EcalTestBeam/interface/EcalTBCrystalMap.h"
 
 #include "FWCore/MessageLogger/interface/MessageLogger.h"
-#include "CLHEP/Units/GlobalSystemOfUnits.h"
+#include <CLHEP/Units/SystemOfUnits.h>
 
 class TBPositionCalc {
 public:
@@ -28,7 +28,7 @@ public:
                  const std::string& mapFile,
                  const CaloSubdetectorGeometry* passedGeometry);
 
-  TBPositionCalc(){};
+  TBPositionCalc() {}
 
   ~TBPositionCalc();
 

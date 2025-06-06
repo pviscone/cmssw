@@ -1,24 +1,23 @@
 import FWCore.ParameterSet.Config as cms
 from PhysicsTools.NanoAOD.common_cff import *
 from PhysicsTools.NanoAOD.nano_eras_cff import *
-from PhysicsTools.NanoAOD.simpleCandidateFlatTableProducer_cfi import simpleCandidateFlatTableProducer
+from PhysicsTools.NanoAOD.simplePATTauFlatTableProducer_cfi import simplePATTauFlatTableProducer
 
 ##################### Import reusable funtions and objects from std taus ########
 from PhysicsTools.NanoAOD.taus_cff import _tauIdWPMask, tausMCMatchLepTauForTable, tausMCMatchHadTauForTable,tauMCTable
-
 ##################### User floats producers, selectors ##########################
 
 
 finalBoostedTaus = cms.EDFilter("PATTauRefSelector",
     src = cms.InputTag("slimmedTausBoosted"),
-    cut = cms.string("pt > 40 && tauID('decayModeFindingNewDMs') && (tauID('byVVLooseIsolationMVArun2DBoldDMwLT') || tauID('byVVLooseIsolationMVArun2DBnewDMwLT'))")
+    cut = cms.string("pt > 25 && tauID('decayModeFindingNewDMs') && (tauID('byVVLooseIsolationMVArun2DBoldDMwLT') || tauID('byVVLooseIsolationMVArun2DBnewDMwLT') || tauID('byBoostedDeepTau20161718v2p0VSjetraw') > {})".format(0.82))
 )
 run2_nanoAOD_106Xv2.toModify(
     finalBoostedTaus,
-    cut = "pt > 40 && tauID('decayModeFindingNewDMs') && (tauID('byVVLooseIsolationMVArun2017v2DBoldDMwLT2017') || tauID('byVVLooseIsolationMVArun2017v2DBoldDMdR0p3wLT2017') || tauID('byVVLooseIsolationMVArun2017v2DBnewDMwLT2017'))"
+    cut = "pt > 25 && tauID('decayModeFindingNewDMs') && (tauID('byVVLooseIsolationMVArun2DBoldDMwLT') || tauID('byVVLooseIsolationMVArun2DBoldDMdR0p3wLT') || tauID('byVVLooseIsolationMVArun2DBnewDMwLT') || tauID('byBoostedDeepTau20161718v2p0VSjetraw') > {})".format(0.82)
 )
 
-boostedTauTable = simpleCandidateFlatTableProducer.clone(
+boostedTauTable = simplePATTauFlatTableProducer.clone(
     src = cms.InputTag("linkedObjects", "boostedTaus"),
     name= cms.string("boostedTau"),
     doc = cms.string("slimmedBoostedTaus after basic selection (" + finalBoostedTaus.cut.value()+")"),
@@ -49,8 +48,8 @@ _boostedTauVarsMVAIso = cms.PSet(
 )
 #MVA 2017 v2 dR<0.3 variables
 _boostedTauVarsMVAIsoDr03 = cms.PSet(
-       rawMVAoldDMdR032017v2 = Var("tauID('byIsolationMVArun2017v2DBoldDMdR0p3wLTraw2017')",float,doc='byIsolationMVArun2DBoldDMdR0p3wLT raw output discriminator (2017v2)'),
-       idMVAoldDMdR032017v2 = _tauIdWPMask("by%sIsolationMVArun2017v2DBoldDMdR0p3wLT2017",choices=("VVLoose","VLoose","Loose","Medium","Tight","VTight","VVTight"),doc="IsolationMVArun2DBoldDMdR0p3wLT ID working point (2017v2)")
+       rawMVAoldDMdR032017v2 = Var("tauID('byIsolationMVArun2DBoldDMdR0p3wLTraw')",float,doc='byIsolationMVArun2DBoldDMdR0p3wLT raw output discriminator (2017v2)'),
+       idMVAoldDMdR032017v2 = _tauIdWPMask("by%sIsolationMVArun2DBoldDMdR0p3wLT",choices=("VVLoose","VLoose","Loose","Medium","Tight","VTight","VVTight"),doc="IsolationMVArun2DBoldDMdR0p3wLT ID working point (2017v2)")
 )
 #AntiEle MVA 2018 variables
 _boostedTauVarsAntiEleMVA = cms.PSet(
@@ -59,29 +58,29 @@ _boostedTauVarsAntiEleMVA = cms.PSet(
        idAntiEle2018 = _tauIdWPMask("againstElectron%sMVA6", choices=("VLoose","Loose","Medium","Tight","VTight"), doc= "Anti-electron MVA discriminator V6 (2018)")
 )
 
+#DeepBoostedTau ID raw score branches 
+_boostedDeepTauRunIIv2p0Vars = cms.PSet(
+    rawBoostedDeepTauRunIIv2p0VSe = Var("tauID('byBoostedDeepTau20161718v2p0VSeraw')", float, doc="BoostedDeepTau(v2p0) tagger for boostedTaus raw scores Vs e", precision=10),
+    rawBoostedDeepTauRunIIv2p0VSmu = Var("tauID('byBoostedDeepTau20161718v2p0VSmuraw')", float, doc="BoostedDeepTau(v2p0) tagger for boostedTaus raw scores Vs mu", precision=10),
+    rawBoostedDeepTauRunIIv2p0VSjet = Var("tauID('byBoostedDeepTau20161718v2p0VSjetraw')", float, doc="BoostedDeepTau(v2p0) tagger for boostedTaus raw scores Vs jet", precision=10)
+)
+
 boostedTauTable.variables = cms.PSet(
     _boostedTauVarsBase,
     _boostedTauVarsMVAIso,
-    _boostedTauVarsAntiEleMVA
+    _boostedTauVarsAntiEleMVA,
+    _boostedDeepTauRunIIv2p0Vars
 )
 _boostedTauVarsWithDr03 = cms.PSet(
     _boostedTauVarsBase,
     _boostedTauVarsMVAIso,
     _boostedTauVarsMVAIsoDr03,
-    _boostedTauVarsAntiEleMVA
+    _boostedTauVarsAntiEleMVA,
+    _boostedDeepTauRunIIv2p0Vars
 )
 run2_nanoAOD_106Xv2.toModify(
     boostedTauTable,
     variables = _boostedTauVarsWithDr03
-).toModify(
-    boostedTauTable.variables,
-    rawMVAoldDM2017v2 = Var("tauID('byIsolationMVArun2017v2DBoldDMwLTraw2017')",float, doc="byIsolationMVArun2DBoldDMwLT raw output discriminator (2017v2)",precision=10),
-    rawMVAnewDM2017v2 = Var("tauID('byIsolationMVArun2017v2DBnewDMwLTraw2017')",float,doc='byIsolationMVArun2DBnewDMwLT raw output discriminator (2017v2)',precision=10),
-    idMVAnewDM2017v2 = _tauIdWPMask("by%sIsolationMVArun2017v2DBnewDMwLT2017", choices=("VVLoose","VLoose","Loose","Medium","Tight","VTight","VVTight"),doc="IsolationMVArun2DBnewDMwLT ID working point (2017v2)"),
-    idMVAoldDM2017v2 = _tauIdWPMask("by%sIsolationMVArun2017v2DBoldDMwLT2017",choices=("VVLoose","VLoose","Loose","Medium","Tight","VTight","VVTight"),doc="IsolationMVArun2DBoldDMwLT ID working point (2017v2)"),
-    rawAntiEle2018 = Var("tauID('againstElectronMVA6Raw2018')", float, doc= "Anti-electron MVA discriminator V6 raw output discriminator (2018)", precision=10),
-    rawAntiEleCat2018 = Var("tauID('againstElectronMVA6category2018')", "int16", doc="Anti-electron MVA discriminator V6 category (2018)"),
-    idAntiEle2018 = _tauIdWPMask("againstElectron%sMVA62018", choices=("VLoose","Loose","Medium","Tight","VTight"), doc= "Anti-electron MVA discriminator V6 (2018)")
 )
 
 boostedTausMCMatchLepTauForTable = tausMCMatchLepTauForTable.clone(
@@ -104,12 +103,3 @@ boostedTauMCTable = tauMCTable.clone(
 boostedTauTask = cms.Task(finalBoostedTaus)
 boostedTauTablesTask = cms.Task(boostedTauTable)
 boostedTauMCTask = cms.Task(boostedTausMCMatchLepTauForTable,boostedTausMCMatchHadTauForTable,boostedTauMCTable)
-
-#remove boosted tau from previous eras
-(run3_nanoAOD_122).toReplaceWith(
-    boostedTauTask,cms.Task()
-).toReplaceWith(
-    boostedTauTablesTask,cms.Task()
-).toReplaceWith(
-    boostedTauMCTask,cms.Task()
-)

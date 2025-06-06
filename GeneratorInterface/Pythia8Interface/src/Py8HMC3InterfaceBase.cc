@@ -20,13 +20,18 @@ namespace gen {
     pythiaHepMCVerbosity = ps.getUntrackedParameter<bool>("pythiaHepMCVerbosity", false);
     pythiaHepMCVerbosityParticles = ps.getUntrackedParameter<bool>("pythiaHepMCVerbosityParticles", false);
     maxEventsToPrint = ps.getUntrackedParameter<int>("maxEventsToPrint", 0);
+    p8RndmEngine_ = std::make_shared<P8RndmEngine>();
 
     //if (pythiaHepMCVerbosityParticles)
     //  ascii_io = new HepMC::IO_AsciiParticles("cout", std::ios::out);
 
     if (ps.exists("useEvtGenPlugin")) {
       useEvtGen = true;
-      string evtgenpath(std::getenv("EVTGENDATA"));
+      auto env = std::getenv("EVTGENDATA");
+      if (not env) {
+        throw cms::Exception("EvtGenMissingEnv") << "The environment variable EVTGENDATA must be defined";
+      }
+      string evtgenpath(env);
       evtgenDecFile = evtgenpath + string("/DECAY_2010.DEC");
       evtgenPdlFile = evtgenpath + string("/evt.pdl");
 
@@ -109,8 +114,8 @@ namespace gen {
     fMasterGen->settings.addFlag("POWHEG:bb4l:FSREmission:pTpythiaVeto", false);
     fMasterGen->settings.addParm("POWHEG:bb4l:pTminVeto", 10.0, true, true, 0.0, 10.);
 
-    fMasterGen->setRndmEnginePtr(&p8RndmEngine_);
-    fDecayer->setRndmEnginePtr(&p8RndmEngine_);
+    fMasterGen->setRndmEnginePtr(p8RndmEngine_);
+    fDecayer->setRndmEnginePtr(p8RndmEngine_);
 
     fMasterGen->readString("Next:numberShowEvent = 0");
     fDecayer->readString("Next:numberShowEvent = 0");

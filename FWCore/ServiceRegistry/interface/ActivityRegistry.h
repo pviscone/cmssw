@@ -1,11 +1,11 @@
+// -*- C++ -*-
 #ifndef FWCore_ServiceRegistry_ActivityRegistry_h
 #define FWCore_ServiceRegistry_ActivityRegistry_h
-// -*- C++ -*-
 //
 // Package:     ServiceRegistry
 // Class  :     ActivityRegistry
 //
-/**\class ActivityRegistry ActivityRegistry.h FWCore/ServiceRegistry/interface/ActivityRegistry.h
+/**\class edm::ActivityRegistry
 
  Description: Registry holding the signals that Services can subscribe to
 
@@ -28,11 +28,27 @@ to this file that go beyond the obvious cut and paste type of edits.
   1. The number at the end of the AR_WATCH_USING_METHOD_X macro definition
   is the number of function arguments. It will not compile if you use the
   wrong number there.
-  2. Use connect or connect_front depending on whether the callback function
+  2. Inside the watch function definition, choose either connect or
+  connect_front depending on whether the callback function
   should be called for different services in the order the Services were
-  constructed or in reverse order. Begin signals are usually forward and
-  End signals in reverse, but if the service does not depend on other services
-  and vice versa this does not matter.
+  constructed or in reverse order (actually the code base allows establishing
+  an order different from construction order, but in practice it is
+  usually the construction order). This only matters for services that
+  both depend on one another and where this dependence relies on the order
+  the services execute a particular transition. If a service does not
+  depend on another service, this choice does not matter (most services
+  fall in this category). Most transition signals are implemented with
+  the Pre signals forward and the Post signals in reverse order.
+  The transition level signals for BeginJob and EndJob are implemented with
+  the Begin signals forward and End signals in reverse order. As far as I
+  know, no one has ever carefully surveyed existing services to determine
+  which services depend on this ordering. My suspicion is that for most services
+  and most transitions it does not matter which ordering has been implemented.
+  If you are implementing a new transition, then the choice could only matter
+  for the services that start watching that transition. Unless there is some
+  reason to do otherwise, the recommended choice is following the pattern of
+  Pre transitions forward and Post transitions in reverse. If you make another
+  choice, please document your reasoning with comments in the code.
   3. The signal needs to be added to either connectGlobals or connectLocals
   in the ActivityRegistry.cc file, depending on whether a signal is seen
   by children or parents when there are SubProcesses. For example, source
@@ -181,6 +197,26 @@ namespace edm {
     void watchPostEndJob(PostEndJob::slot_type const& iSlot) { postEndJobSignal_.connect_front(iSlot); }
     AR_WATCH_USING_METHOD_0(watchPostEndJob)
 
+    typedef signalslot::Signal<void(StreamContext const&)> PreBeginStream;
+    PreBeginStream preBeginStreamSignal_;
+    void watchPreBeginStream(PreBeginStream::slot_type const& iSlot) { preBeginStreamSignal_.connect(iSlot); }
+    AR_WATCH_USING_METHOD_1(watchPreBeginStream)
+
+    typedef signalslot::Signal<void(StreamContext const&)> PostBeginStream;
+    PostBeginStream postBeginStreamSignal_;
+    void watchPostBeginStream(PostBeginStream::slot_type const& iSlot) { postBeginStreamSignal_.connect_front(iSlot); }
+    AR_WATCH_USING_METHOD_1(watchPostBeginStream)
+
+    typedef signalslot::Signal<void(StreamContext const&)> PreEndStream;
+    PreEndStream preEndStreamSignal_;
+    void watchPreEndStream(PreEndStream::slot_type const& iSlot) { preEndStreamSignal_.connect(iSlot); }
+    AR_WATCH_USING_METHOD_1(watchPreEndStream)
+
+    typedef signalslot::Signal<void(StreamContext const&)> PostEndStream;
+    PostEndStream postEndStreamSignal_;
+    void watchPostEndStream(PostEndStream::slot_type const& iSlot) { postEndStreamSignal_.connect_front(iSlot); }
+    AR_WATCH_USING_METHOD_1(watchPostEndStream)
+
     typedef signalslot::Signal<void()> JobFailure;
     /// signal is emitted if event processing or end-of-job
     /// processing fails with an uncaught exception.
@@ -188,6 +224,22 @@ namespace edm {
     ///convenience function for attaching to signal
     void watchJobFailure(JobFailure::slot_type const& iSlot) { jobFailureSignal_.connect_front(iSlot); }
     AR_WATCH_USING_METHOD_0(watchJobFailure)
+
+    /// signal is emitted before the source is requested to find the next transition
+    typedef signalslot::Signal<void()> PreSourceNextTransition;
+    PreSourceNextTransition preSourceNextTransitionSignal_;
+    void watchPreSourceNextTransition(PreSourceNextTransition::slot_type const& iSlot) {
+      preSourceNextTransitionSignal_.connect(iSlot);
+    }
+    AR_WATCH_USING_METHOD_0(watchPreSourceNextTransition)
+
+    /// signal is emitted after the source has returned the next transition
+    typedef signalslot::Signal<void()> PostSourceNextTransition;
+    PostSourceNextTransition postSourceNextTransitionSignal_;
+    void watchPostSourceNextTransition(PostSourceNextTransition::slot_type const& iSlot) {
+      postSourceNextTransitionSignal_.connect_front(iSlot);
+    }
+    AR_WATCH_USING_METHOD_0(watchPostSourceNextTransition)
 
     /// signal is emitted before the source starts creating an Event
     typedef signalslot::Signal<void(StreamID)> PreSourceEvent;
@@ -502,6 +554,18 @@ namespace edm {
     void watchPostEvent(PostEvent::slot_type const& iSlot) { postEventSignal_.connect_front(iSlot); }
     AR_WATCH_USING_METHOD_1(watchPostEvent)
 
+    typedef signalslot::Signal<void(StreamContext const&)> PreClearEvent;
+    /// signal is emitted before the data products in the Event are cleared
+    PreClearEvent preClearEventSignal_;
+    void watchPreClearEvent(PreClearEvent::slot_type const& iSlot) { preClearEventSignal_.connect(iSlot); }
+    AR_WATCH_USING_METHOD_1(watchPreClearEvent)
+
+    typedef signalslot::Signal<void(StreamContext const&)> PostClearEvent;
+    /// signal is emitted after all data products in the Event have been cleared
+    PostClearEvent postClearEventSignal_;
+    void watchPostClearEvent(PostClearEvent::slot_type const& iSlot) { postClearEventSignal_.connect_front(iSlot); }
+    AR_WATCH_USING_METHOD_1(watchPostClearEvent)
+
     /// signal is emitted before starting to process a Path for an event
     typedef signalslot::Signal<void(StreamContext const&, PathContext const&)> PrePathEvent;
     PrePathEvent prePathEventSignal_;
@@ -621,9 +685,9 @@ namespace edm {
 	       Unlike the case in the Run, Lumi, and Event loops,
 	       the Module descriptor (often passed by pointer or reference
 	       as an argument named desc) in the construction phase is NOT
-	       at some permanent fixed address during the construction phase.  
-	       Therefore, any optimization of caching the module name keying 
-	       off of address of the descriptor will NOT be valid during 
+	       at some permanent fixed address during the construction phase.
+	       Therefore, any optimization of caching the module name keying
+	       off of address of the descriptor will NOT be valid during
                such functions.  mf / cj 9/11/09
 	*/
 
@@ -734,6 +798,54 @@ namespace edm {
       postModuleEventAcquireSignal_.connect_front(iSlot);
     }
     AR_WATCH_USING_METHOD_2(watchPostModuleEventAcquire)
+
+    /// signal is emitted before the module starts a transform during the Event and before prefetching for the transform has started
+    typedef signalslot::Signal<void(StreamContext const&, ModuleCallingContext const&)> PreModuleTransformPrefetching;
+    PreModuleTransformPrefetching preModuleTransformPrefetchingSignal_;
+    void watchPreModuleTransformPrefetching(PreModuleTransformPrefetching::slot_type const& iSlot) {
+      preModuleTransformPrefetchingSignal_.connect(iSlot);
+    }
+    AR_WATCH_USING_METHOD_2(watchPreModuleTransformPrefetching)
+
+    /// signal is emitted before the module starts a transform during the Event and after prefetching for the transform has finished
+    typedef signalslot::Signal<void(StreamContext const&, ModuleCallingContext const&)> PostModuleTransformPrefetching;
+    PostModuleTransformPrefetching postModuleTransformPrefetchingSignal_;
+    void watchPostModuleTransformPrefetching(PostModuleTransformPrefetching::slot_type const& iSlot) {
+      postModuleTransformPrefetchingSignal_.connect_front(iSlot);
+    }
+    AR_WATCH_USING_METHOD_2(watchPostModuleTransformPrefetching)
+
+    /// signal is emitted before the module starts a transform during the Event
+    typedef signalslot::Signal<void(StreamContext const&, ModuleCallingContext const&)> PreModuleTransform;
+    PreModuleTransform preModuleTransformSignal_;
+    void watchPreModuleTransform(PreModuleTransform::slot_type const& iSlot) {
+      preModuleTransformSignal_.connect(iSlot);
+    }
+    AR_WATCH_USING_METHOD_2(watchPreModuleTransform)
+
+    /// signal is emitted after the module finished a transform during  the Event
+    typedef signalslot::Signal<void(StreamContext const&, ModuleCallingContext const&)> PostModuleTransform;
+    PostModuleTransform postModuleTransformSignal_;
+    void watchPostModuleTransform(PostModuleTransform::slot_type const& iSlot) {
+      postModuleTransformSignal_.connect_front(iSlot);
+    }
+    AR_WATCH_USING_METHOD_2(watchPostModuleTransform)
+
+    /// signal is emitted before the module starts the acquire method for a transform during the Event
+    typedef signalslot::Signal<void(StreamContext const&, ModuleCallingContext const&)> PreModuleTransformAcquiring;
+    PreModuleTransformAcquiring preModuleTransformAcquiringSignal_;
+    void watchPreModuleTransformAcquiring(PreModuleTransformAcquiring::slot_type const& iSlot) {
+      preModuleTransformAcquiringSignal_.connect(iSlot);
+    }
+    AR_WATCH_USING_METHOD_2(watchPreModuleTransformAcquiring)
+
+    /// signal is emitted after the module finishes the acquire method for a transform during the Event
+    typedef signalslot::Signal<void(StreamContext const&, ModuleCallingContext const&)> PostModuleTransformAcquiring;
+    PostModuleTransformAcquiring postModuleTransformAcquiringSignal_;
+    void watchPostModuleTransformAcquiring(PostModuleTransformAcquiring::slot_type const& iSlot) {
+      postModuleTransformAcquiringSignal_.connect_front(iSlot);
+    }
+    AR_WATCH_USING_METHOD_2(watchPostModuleTransformAcquiring)
 
     /// signal is emitted after the module starts processing the Event and before a delayed get has started
     typedef signalslot::Signal<void(StreamContext const&, ModuleCallingContext const&)> PreModuleEventDelayedGet;

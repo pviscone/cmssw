@@ -85,12 +85,14 @@ private:
       tree.Branch("luminosityBlock", &m_luminosityBlock, "luminosityBlock/i");
       tree.Branch("event", &m_event, "event/l");
       tree.Branch("bunchCrossing", &m_bunchCrossing, "bunchCrossing/i");
+      tree.Branch("orbitNumber", &m_orbitNumber, "orbitNumber/i");
     }
     void fill(const edm::EventAuxiliary& aux) {
       m_run = aux.id().run();
       m_luminosityBlock = aux.id().luminosityBlock();
       m_event = aux.id().event();
       m_bunchCrossing = aux.bunchCrossing();
+      m_orbitNumber = aux.orbitNumber();
     }
 
   private:
@@ -98,6 +100,7 @@ private:
     UInt_t m_luminosityBlock;
     ULong64_t m_event;
     UInt_t m_bunchCrossing;
+    UInt_t m_orbitNumber;
   } m_commonBranches;
 
   class CommonLumiBranches {
@@ -296,13 +299,13 @@ void NanoAODOutputModule::openFile(edm::FileBlock const&) {
                                    std::vector<std::string>());
 
   if (m_compressionAlgorithm == std::string("ZLIB")) {
-    m_file->SetCompressionAlgorithm(ROOT::kZLIB);
+    m_file->SetCompressionAlgorithm(ROOT::RCompressionSetting::EAlgorithm::kZLIB);
   } else if (m_compressionAlgorithm == std::string("LZMA")) {
-    m_file->SetCompressionAlgorithm(ROOT::kLZMA);
+    m_file->SetCompressionAlgorithm(ROOT::RCompressionSetting::EAlgorithm::kLZMA);
   } else if (m_compressionAlgorithm == std::string("ZSTD")) {
-    m_file->SetCompressionAlgorithm(ROOT::kZSTD);
+    m_file->SetCompressionAlgorithm(ROOT::RCompressionSetting::EAlgorithm::kZSTD);
   } else if (m_compressionAlgorithm == std::string("LZ4")) {
-    m_file->SetCompressionAlgorithm(ROOT::kLZ4);
+    m_file->SetCompressionAlgorithm(ROOT::RCompressionSetting::EAlgorithm::kLZ4);
   } else {
     throw cms::Exception("Configuration")
         << "NanoAODOutputModule configured with unknown compression algorithm '" << m_compressionAlgorithm << "'\n"

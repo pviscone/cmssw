@@ -127,23 +127,6 @@ namespace edm {
     initialize_();
   }
 
-  FileInPath::FileInPath(FileInPath const& other)
-      : relativePath_(other.relativePath_),
-        canonicalFilename_(other.canonicalFilename_),
-        location_(other.location_),
-        localTop_(other.localTop_),
-        releaseTop_(other.releaseTop_),
-        dataTop_(other.dataTop_),
-        searchPath_(other.searchPath_) {}
-
-  FileInPath::~FileInPath() {}
-
-  FileInPath& FileInPath::operator=(FileInPath const& other) {
-    FileInPath temp(other);
-    this->swap(temp);
-    return *this;
-  }
-
   void FileInPath::swap(FileInPath& other) {
     relativePath_.swap(other.relativePath_);
     canonicalFilename_.swap(other.canonicalFilename_);
@@ -154,15 +137,19 @@ namespace edm {
     searchPath_.swap(other.searchPath_);
   }
 
-  std::string FileInPath::relativePath() const { return relativePath_; }
+  const std::string& FileInPath::relativePath() const { return relativePath_; }
 
   FileInPath::LocationCode FileInPath::location() const { return location_; }
 
-  std::string FileInPath::fullPath() const { return canonicalFilename_; }
+  const std::string& FileInPath::fullPath() const { return canonicalFilename_; }
 
   void FileInPath::write(std::ostream& os) const {
     if (location_ == Unknown) {
-      os << version << ' ' << relativePath_ << ' ' << location_;
+      if (relativePath_.empty()) {
+        os << version << " @ " << location_;
+      } else {
+        os << version << ' ' << relativePath_ << ' ' << location_;
+      }
     } else if (location_ == Local) {
       // Guarantee a site independent value by stripping $LOCALTOP.
       if (localTop_.empty()) {
@@ -221,8 +208,11 @@ namespace edm {
       int loc;
       is >> relname >> loc;
       location_ = static_cast<FileInPath::LocationCode>(loc);
-      if (location_ != Unknown)
+      if (location_ != Unknown) {
         is >> canFilename;
+      } else if (relname == "@") {
+        relname = "";
+      }
     }
 #else
     is >> vsn >> relname >> loc >> canFilename;
@@ -289,8 +279,11 @@ namespace edm {
       int loc;
       is >> relname >> loc;
       location_ = static_cast<FileInPath::LocationCode>(loc);
-      if (location_ != Unknown)
+      if (location_ != Unknown) {
         is >> canFilename;
+      } else if (relname == "@") {
+        relname = "";
+      }
     }
     if (!is)
       return;

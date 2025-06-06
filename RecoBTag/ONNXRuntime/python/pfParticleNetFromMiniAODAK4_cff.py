@@ -26,7 +26,7 @@ pfParticleNetFromMiniAODAK4CHSForwardTagInfos = ParticleNetFeatureEvaluator.clon
 pfParticleNetFromMiniAODAK4PuppiCentralTagInfos = ParticleNetFeatureEvaluator.clone(
     jets = "slimmedJetsPuppi",
     jet_radius = 0.4,
-    min_jet_pt = 15,
+    min_jet_pt = 0.,
     min_jet_eta = 0.,
     max_jet_eta = 2.5,
 )
@@ -34,9 +34,9 @@ pfParticleNetFromMiniAODAK4PuppiCentralTagInfos = ParticleNetFeatureEvaluator.cl
 pfParticleNetFromMiniAODAK4PuppiForwardTagInfos = ParticleNetFeatureEvaluator.clone(
     jets = "slimmedJetsPuppi",
     jet_radius = 0.4,
-    min_jet_pt = 15,
+    min_jet_pt = 0.,
     min_jet_eta = 2.5,
-    max_jet_eta = 4.7,
+    max_jet_eta = 5.0,
 )
 
 
@@ -163,3 +163,29 @@ _pfParticleNetFromMiniAODAK4CHSCentralJetTagsAll = _pfParticleNetFromMiniAODAK4C
 _pfParticleNetFromMiniAODAK4CHSForwardJetTagsAll = _pfParticleNetFromMiniAODAK4CHSForwardJetTagsProbs + _pfParticleNetFromMiniAODAK4CHSForwardJetTagsMetaDiscr
 _pfParticleNetFromMiniAODAK4PuppiCentralJetTagsAll = _pfParticleNetFromMiniAODAK4PuppiCentralJetTagsProbs + _pfParticleNetFromMiniAODAK4PuppiCentralJetTagsMetaDiscr
 _pfParticleNetFromMiniAODAK4PuppiForwardJetTagsAll = _pfParticleNetFromMiniAODAK4PuppiForwardJetTagsProbs + _pfParticleNetFromMiniAODAK4PuppiForwardJetTagsMetaDiscr
+
+
+# === Negative tags ===
+pfNegativeParticleNetFromMiniAODAK4CHSCentralTagInfos = pfParticleNetFromMiniAODAK4CHSCentralTagInfos.clone(
+    flip_ip_sign = True,
+    max_sip3dsig_for_flip = 10,
+    secondary_vertices = 'inclusiveCandidateNegativeSecondaryVertices',
+)
+pfNegativeParticleNetFromMiniAODAK4PuppiCentralTagInfos = pfParticleNetFromMiniAODAK4PuppiCentralTagInfos.clone(
+    flip_ip_sign = True,
+    max_sip3dsig_for_flip = 10,
+    secondary_vertices = 'inclusiveCandidateNegativeSecondaryVertices',
+)
+
+pfNegativeParticleNetFromMiniAODAK4CHSCentralJetTags = pfParticleNetFromMiniAODAK4CHSCentralJetTags.clone(
+    src = 'pfNegativeParticleNetFromMiniAODAK4CHSCentralTagInfos',
+)
+pfNegativeParticleNetFromMiniAODAK4PuppiCentralJetTags = pfParticleNetFromMiniAODAK4PuppiCentralJetTags.clone(
+    src = 'pfNegativeParticleNetFromMiniAODAK4PuppiCentralTagInfos',
+)
+
+# probs
+_pfNegativeParticleNetFromMiniAODAK4CHSCentralJetTagsProbs = ['pfNegativeParticleNetFromMiniAODAK4CHSCentralJetTags:' + flav_name
+                                 for flav_name in pfParticleNetFromMiniAODAK4CHSCentralJetTags.flav_names]
+_pfNegativeParticleNetFromMiniAODAK4PuppiCentralJetTagsProbs = ['pfNegativeParticleNetFromMiniAODAK4PuppiCentralJetTags:' + flav_name
+                                 for flav_name in pfParticleNetFromMiniAODAK4PuppiCentralJetTags.flav_names]

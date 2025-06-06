@@ -35,14 +35,14 @@ using namespace edm;
 class DQMGenericClient : public DQMEDHarvester {
 public:
   DQMGenericClient(const edm::ParameterSet& pset);
-  ~DQMGenericClient() override{};
+  ~DQMGenericClient() override {}
 
   void dqmEndLuminosityBlock(DQMStore::IBooker& ibooker,
                              DQMStore::IGetter& igetter,
                              const edm::LuminosityBlock& lumiSeg,
                              const edm::EventSetup& c) override;
   void dqmEndRun(DQMStore::IBooker&, DQMStore::IGetter&, edm::Run const&, edm::EventSetup const&) override;
-  void dqmEndJob(DQMStore::IBooker&, DQMStore::IGetter&) override{};
+  void dqmEndJob(DQMStore::IBooker&, DQMStore::IGetter&) override {}
 
   enum class EfficType { none = 0, efficiency, fakerate, simpleratio };
 
@@ -158,7 +158,7 @@ public:
     // ... create your hists
     TH2F* h = me->getTH2F();
     TF1 fgaus("fgaus", "gaus", h->GetYaxis()->GetXmin(), h->GetYaxis()->GetXmax(), TF1::EAddToList::kNo);
-    h->FitSlicesY(&fgaus, 0, -1, 0, "QNRL SERIAL");
+    h->FitSlicesY(&fgaus, 0, -1, 0, "QNR SERIAL");
     string name(h->GetName());
     h0 = (TH1*)gDirectory->Get((name + "_0").c_str());
     h1 = (TH1*)gDirectory->Get((name + "_1").c_str());

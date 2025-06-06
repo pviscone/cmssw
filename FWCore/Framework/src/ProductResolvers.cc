@@ -159,13 +159,12 @@ namespace edm {
   }
 
   namespace {
-    cms::Exception& extendException(cms::Exception& e, BranchDescription const& bd, ModuleCallingContext const* mcc) {
+    void extendException(cms::Exception& e, BranchDescription const& bd, ModuleCallingContext const* mcc) {
       e.addContext(std::string("While reading from source ") + bd.className() + " " + bd.moduleLabel() + " '" +
                    bd.productInstanceName() + "' " + bd.processName());
       if (mcc) {
         edm::exceptionContext(e, *mcc);
       }
-      return e;
     }
   }  // namespace
   ProductResolverBase::Resolution DelayedReaderInputProductResolver::resolveProduct_(
@@ -197,10 +196,12 @@ namespace edm {
             //another thread could have beaten us here
             setProduct(reader->getProduct(branchDescription().branchID(), &principal, mcc));
           } catch (cms::Exception& e) {
-            throw extendException(e, branchDescription(), mcc);
+            extendException(e, branchDescription(), mcc);
+            throw;
           } catch (std::exception const& e) {
             auto newExcept = edm::Exception(errors::StdException) << e.what();
-            throw extendException(newExcept, branchDescription(), mcc);
+            extendException(newExcept, branchDescription(), mcc);
+            throw newExcept;
           }
         }
       }
@@ -272,7 +273,7 @@ namespace edm {
                                                          bool skipCurrentProcess,
                                                          ServiceToken const& token,
                                                          SharedResourcesAcquirer* sra,
-                                                         ModuleCallingContext const* mcc) const {
+                                                         ModuleCallingContext const* mcc) const noexcept {
     //need to try changing m_prefetchRequested before adding to m_waitingTasks
     bool expected = false;
     bool prefetchRequested = m_prefetchRequested.compare_exchange_strong(expected, true);
@@ -299,10 +300,12 @@ namespace edm {
                   //another thread could have finished this while we were waiting
                   setProduct(reader->getProduct(branchDescription().branchID(), &principal, mcc));
                 } catch (cms::Exception& e) {
-                  throw extendException(e, branchDescription(), mcc);
+                  extendException(e, branchDescription(), mcc);
+                  throw;
                 } catch (std::exception const& e) {
                   auto newExcept = edm::Exception(errors::StdException) << e.what();
-                  throw extendException(newExcept, branchDescription(), mcc);
+                  extendException(newExcept, branchDescription(), mcc);
+                  throw newExcept;
                 }
               }
             }
@@ -370,7 +373,7 @@ namespace edm {
                                                      bool skipCurrentProcess,
                                                      ServiceToken const& token,
                                                      SharedResourcesAcquirer* sra,
-                                                     ModuleCallingContext const* mcc) const {}
+                                                     ModuleCallingContext const* mcc) const noexcept {}
 
   void PutOnReadInputProductResolver::putOrMergeProduct(std::unique_ptr<WrapperBase> edp) const {
     setOrMergeProduct(std::move(edp), nullptr);
@@ -392,7 +395,7 @@ namespace edm {
                                                bool skipCurrentProcess,
                                                ServiceToken const& token,
                                                SharedResourcesAcquirer* sra,
-                                               ModuleCallingContext const* mcc) const {
+                                               ModuleCallingContext const* mcc) const noexcept {
     if (not skipCurrentProcess) {
       if (branchDescription().branchType() == InProcess &&
           mcc->parent().globalContext()->transition() == GlobalContext::Transition::kAccessInputProcessBlock) {
@@ -444,14 +447,11 @@ namespace edm {
                                                   bool skipCurrentProcess,
                                                   ServiceToken const& token,
                                                   SharedResourcesAcquirer* sra,
-                                                  ModuleCallingContext const* mcc) const {
+                                                  ModuleCallingContext const* mcc) const noexcept {
     if (skipCurrentProcess) {
       return;
     }
-    if (worker_ == nullptr) {
-      throw cms::Exception("LogicError") << "UnscheduledProductResolver::prefetchAsync_()  called with null worker_. "
-                                            "This should not happen, please contact framework developers.";
-    }
+    assert(worker_);
     //need to try changing prefetchRequested_ before adding to waitingTasks_
     bool expected = false;
     bool prefetchRequested = prefetchRequested_.compare_exchange_strong(expected, true);
@@ -532,14 +532,11 @@ namespace edm {
                                                    bool skipCurrentProcess,
                                                    ServiceToken const& token,
                                                    SharedResourcesAcquirer* sra,
-                                                   ModuleCallingContext const* mcc) const {
+                                                   ModuleCallingContext const* mcc) const noexcept {
     if (skipCurrentProcess) {
       return;
     }
-    if (worker_ == nullptr) {
-      throw cms::Exception("LogicError") << "TransformingProductResolver::prefetchAsync_()  called with null worker_. "
-                                            "This should not happen, please contact framework developers.";
-    }
+    assert(worker_ != nullptr);
     //need to try changing prefetchRequested_ before adding to waitingTasks_
     bool expected = false;
     bool prefetchRequested = prefetchRequested_.compare_exchange_strong(expected, true);
@@ -566,7 +563,8 @@ namespace edm {
 
       //This gives a lifetime greater than this call
       ParentContext parent(mcc);
-      mcc_ = ModuleCallingContext(worker_->description(), ModuleCallingContext::State::kPrefetching, parent, nullptr);
+      mcc_ = ModuleCallingContext(
+          worker_->description(), index_ + 1, ModuleCallingContext::State::kPrefetching, parent, nullptr);
 
       EventTransitionInfo const& info = aux_->eventTransitionInfo();
       worker_->doTransformAsync(WaitingTaskHolder(*waitTask.group(), t),
@@ -782,7 +780,7 @@ namespace edm {
                                                      bool skipCurrentProcess,
                                                      ServiceToken const& token,
                                                      SharedResourcesAcquirer* sra,
-                                                     ModuleCallingContext const* mcc) const {
+                                                     ModuleCallingContext const* mcc) const noexcept {
     if (skipCurrentProcess) {
       return;
     }
@@ -855,7 +853,7 @@ namespace edm {
                                                   bool skipCurrentProcess,
                                                   ServiceToken const& token,
                                                   SharedResourcesAcquirer* sra,
-                                                  ModuleCallingContext const* mcc) const {
+                                                  ModuleCallingContext const* mcc) const noexcept {
     if (skipCurrentProcess) {
       return;
     }
@@ -992,7 +990,7 @@ namespace edm {
                                                 bool skipCurrentProcess,
                                                 ServiceToken const& token,
                                                 SharedResourcesAcquirer* sra,
-                                                ModuleCallingContext const* mcc) const {
+                                                ModuleCallingContext const* mcc) const noexcept {
     bool timeToMakeAtEnd = true;
     if (madeAtEnd_ and mcc) {
       timeToMakeAtEnd = mcc->parent().isAtEndTransition();
@@ -1041,7 +1039,7 @@ namespace edm {
                                  ModuleCallingContext const* iMCC,
                                  bool iSkipCurrentProcess,
                                  ServiceToken iToken,
-                                 oneapi::tbb::task_group* iGroup)
+                                 oneapi::tbb::task_group* iGroup) noexcept
           : resolver_(iResolver),
             principal_(iPrincipal),
             sra_(iSRA),
@@ -1105,7 +1103,7 @@ namespace edm {
                                                           SharedResourcesAcquirer* sra,
                                                           ModuleCallingContext const* mcc,
                                                           ServiceToken token,
-                                                          oneapi::tbb::task_group* group) const {
+                                                          oneapi::tbb::task_group* group) const noexcept {
     std::vector<unsigned int> const& lookupProcessOrder = principal.lookupProcessOrder();
     auto index = iProcessingIndex;
 
@@ -1234,7 +1232,7 @@ namespace edm {
                                                             bool skipCurrentProcess,
                                                             ServiceToken const& token,
                                                             SharedResourcesAcquirer* sra,
-                                                            ModuleCallingContext const* mcc) const {
+                                                            ModuleCallingContext const* mcc) const noexcept {
     principal.getProductResolverByIndex(realResolverIndex_)
         ->prefetchAsync(waitTask, principal, skipCurrentProcess, token, sra, mcc);
   }

@@ -66,12 +66,12 @@ namespace edm {
       // Warning: the returned moduleDescription will be invalid during construction
       ModuleDescription const& moduleDescription() const { return moduleDescription_; }
 
-      virtual bool wantsProcessBlocks() const = 0;
-      virtual bool wantsInputProcessBlocks() const = 0;
-      virtual bool wantsGlobalRuns() const = 0;
-      virtual bool wantsGlobalLuminosityBlocks() const = 0;
-      virtual bool wantsStreamRuns() const = 0;
-      virtual bool wantsStreamLuminosityBlocks() const = 0;
+      virtual bool wantsProcessBlocks() const noexcept = 0;
+      virtual bool wantsInputProcessBlocks() const noexcept = 0;
+      virtual bool wantsGlobalRuns() const noexcept = 0;
+      virtual bool wantsGlobalLuminosityBlocks() const noexcept = 0;
+      virtual bool wantsStreamRuns() const noexcept = 0;
+      virtual bool wantsStreamLuminosityBlocks() const noexcept = 0;
 
     private:
       bool doEvent(EventTransitionInfo const&, ActivityRegistry*, ModuleCallingContext const*);
@@ -83,12 +83,12 @@ namespace edm {
                             size_t iTransformIndex,
                             EventPrincipal const& iEvent,
                             ActivityRegistry*,
-                            ModuleCallingContext const*,
-                            ServiceWeakToken const&);
+                            ModuleCallingContext,
+                            ServiceWeakToken const&) noexcept;
       //For now this is a placeholder
       /*virtual*/ void preActionBeforeRunEventAsync(WaitingTaskHolder iTask,
                                                     ModuleCallingContext const& iModuleCallingContext,
-                                                    Principal const& iPrincipal) const {}
+                                                    Principal const& iPrincipal) const noexcept {}
 
       void doPreallocate(PreallocationConfiguration const&);
       void doBeginJob();
@@ -157,16 +157,17 @@ namespace edm {
       virtual void doBeginLuminosityBlockProduce_(LuminosityBlock& lbp, EventSetup const& c);
       virtual void doEndLuminosityBlockProduce_(LuminosityBlock& lbp, EventSetup const& c);
 
-      virtual size_t transformIndex_(edm::BranchDescription const& iBranch) const;
-      virtual ProductResolverIndex transformPrefetch_(std::size_t iIndex) const;
+      virtual size_t transformIndex_(edm::BranchDescription const& iBranch) const noexcept;
+      virtual ProductResolverIndex transformPrefetch_(std::size_t iIndex) const noexcept;
       virtual void transformAsync_(WaitingTaskHolder iTask,
                                    std::size_t iIndex,
                                    edm::EventForTransformer& iEvent,
-                                   ServiceWeakToken const& iToken) const;
+                                   edm::ActivityRegistry* iAct,
+                                   ServiceWeakToken const& iToken) const noexcept;
 
       virtual void clearInputProcessBlockCaches();
-      virtual bool hasAcquire() const { return false; }
-      bool hasAccumulator() const { return false; }
+      virtual bool hasAcquire() const noexcept { return false; }
+      bool hasAccumulator() const noexcept { return false; }
 
       virtual void doAcquire_(StreamID, Event const&, edm::EventSetup const&, WaitingTaskWithArenaHolder&);
 

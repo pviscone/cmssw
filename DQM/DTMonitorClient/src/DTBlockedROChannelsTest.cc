@@ -89,9 +89,9 @@ void DTBlockedROChannelsTest::fillChamberMap(DQMStore::IGetter& igetter, const E
                 << " not in the mapping!" << endl;
           }
         }  //loop on links
-      }    //loop on mapSlots
-    }      //loop on crates
-  }        //checkUros
+      }  //loop on mapSlots
+    }  //loop on crates
+  }  //checkUros
   else {
     // fill the map of the robs per chamber
     // //FIXME: monitoring only real used FEDs
@@ -154,7 +154,8 @@ void DTBlockedROChannelsTest::dqmEndLuminosityBlock(DQMStore::IBooker& ibooker,
     }
 
     if (!offlineMode) {
-      hSystFractionVsLS = new DTTimeEvolutionHisto(ibooker, "EnabledROChannelsVsLS", "% RO channels", 500, 5, true, 3);
+      hSystFractionVsLS =
+          new DTTimeEvolutionHisto(ibooker, "EnabledROChannelsVsLS", "Fraction of RO channels", 500, 5, true, 3);
     }
   }  // end attempt to make these bookings only once!
 
@@ -248,7 +249,7 @@ void DTBlockedROChannelsTest::performClientDiagnostic(DQMStore::IGetter& igetter
         // Fill the summary
         summaryHisto->Fill(sectorForPlot, chId.wheel(), 0.25 * scale * chPercent);
       }
-    }       //Uros case
+    }  //Uros case
     else {  //Legacy case
       // loop over all chambers and fill the wheel plots
       for (map<DTChamberId, DTRobBinsMap>::iterator chAndRobs = chamberMap.begin(); chAndRobs != chamberMap.end();
@@ -274,7 +275,7 @@ void DTBlockedROChannelsTest::performClientDiagnostic(DQMStore::IGetter& igetter
         summaryHisto->Fill(sectorForPlot, chId.wheel(), 0.25 * scale * chPercent);
       }
     }  //Legacy case
-  }    //nevents != 0
+  }  //nevents != 0
 
   if (!offlineMode) {  // fill trend histo only in online
     hSystFractionVsLS->accumulateValueTimeSlot(totalPerc);

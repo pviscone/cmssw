@@ -14,6 +14,7 @@ for testing purposes only.
 #include <tuple>
 #include <unistd.h>
 #include <vector>
+#include <chrono>
 
 #include "FWCore/Framework/interface/CacheHandle.h"
 #include "FWCore/Framework/interface/stream/EDProducer.h"
@@ -105,7 +106,7 @@ namespace edmtest {
       }
     };
 
-    class RunIntProducer : public edm::stream::EDProducer<edm::RunCache<Cache>> {
+    class RunIntProducer : public edm::stream::EDProducer<edm::RunCache<Cache>, edm::stream::WatchRuns> {
     public:
       static std::atomic<unsigned int> m_count;
       unsigned int trans_;
@@ -160,7 +161,8 @@ namespace edmtest {
       }
     };
 
-    class LumiIntProducer : public edm::stream::EDProducer<edm::LuminosityBlockCache<Cache>> {
+    class LumiIntProducer
+        : public edm::stream::EDProducer<edm::LuminosityBlockCache<Cache>, edm::stream::WatchLuminosityBlocks> {
     public:
       static std::atomic<unsigned int> m_count;
       unsigned int trans_;
@@ -229,8 +231,9 @@ namespace edmtest {
       }
     };
 
-    class RunSummaryIntProducer
-        : public edm::stream::EDProducer<edm::RunCache<Cache>, edm::RunSummaryCache<SummaryCache>> {
+    class RunSummaryIntProducer : public edm::stream::EDProducer<edm::RunCache<Cache>,
+                                                                 edm::RunSummaryCache<SummaryCache>,
+                                                                 edm::stream::WatchRuns> {
     public:
       static std::atomic<unsigned int> m_count;
       unsigned int trans_;
@@ -315,7 +318,8 @@ namespace edmtest {
     };
 
     class LumiSummaryIntProducer : public edm::stream::EDProducer<edm::LuminosityBlockCache<Cache>,
-                                                                  edm::LuminosityBlockSummaryCache<SummaryCache>> {
+                                                                  edm::LuminosityBlockSummaryCache<SummaryCache>,
+                                                                  edm::stream::WatchLuminosityBlocks> {
     public:
       static std::atomic<unsigned int> m_count;
       unsigned int trans_;
@@ -972,7 +976,7 @@ namespace edmtest {
         }
         // Force events to be processed concurrently
         if (sleepTime_ > 0) {
-          usleep(sleepTime_);
+          std::this_thread::sleep_for(std::chrono::microseconds(sleepTime_));
         }
       }
 
@@ -1123,7 +1127,7 @@ namespace edmtest {
 
         // Force events to be processed concurrently
         if (testGlobalCache->sleepTime_ > 0) {
-          usleep(testGlobalCache->sleepTime_);
+          std::this_thread::sleep_for(std::chrono::microseconds(testGlobalCache->sleepTime_));
         }
       }
 

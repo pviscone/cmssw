@@ -35,7 +35,7 @@ def runSelected(opt):
     ret = 0
     if opt.show:
         mrd.show(opt.testList, opt.extended, opt.cafVeto)
-        if opt.testList : print('testListected items:', opt.testList)
+        if opt.testList : print('selected items:', opt.testList)
     else:
         mRunnerHi = MatrixRunner(mrd.workFlows, opt.nProcs, opt.nThreads)
         ret = mRunnerHi.runTests(opt)
@@ -58,55 +58,84 @@ if __name__ == '__main__':
 
     #this can get out of here
     predefinedSet={
-        'limited' : [5.1, #FastSim ttbar
-                     7.3, #CosmicsSPLoose_UP17
-                     8, #BH/Cosmic MC
-                     25, #MC ttbar
-                     4.22, #cosmic data
-                     4.53, #run1 data + miniAOD
-                     9.0, #Higgs200 charged taus
-                     1000, #data+prompt
-                     1001, #data+express
-                     101.0, #SingleElectron120E120EHCAL
-                     136.731, #2016B Photon data
-                     136.7611, #2016E JetHT reMINIAOD from 80X legacy
-                     136.8311, #2017F JetHT reMINIAOD from 94X reprocessing
-                     136.88811,#2018D JetHT reMINIAOD from UL processing
-                     136.793, #2017C DoubleEG
-                     136.874, #2018C EGamma
-                     138.4, #2021 MinimumBias prompt reco
-                     138.5, #2021 MinimumBias express
-                     139.001, #2021 MinimumBias offline with HLT step
-                     140.53, #2011 HI data
-                     140.56, #2018 HI data
-                     158.01, #reMiniAOD of 2018 HI MC with pp-like reco
-                     312.0, #2021/Run3 HI MC Pyquen_ZeemumuJets_pt10 with pp-like reco
-                     1306.0, #SingleMu Pt1 UP15
-                     2500.4, #test NanoAOD from existing MINI
-                     1330, #Run2 2015/2016 MC Zmm
-                     135.4, #Run 2 2015/2016 Zee ttbar fastsim
-                     10042.0, #2017 ZMM
-                     10024.0, #2017 ttbar
-                     10824.0, #2018 ttbar
-                     2018.1, #2018 ttbar fastsim
-                     11634.911, #2021 DD4hep ttbar reading geometry from XML
-                     11634.914, #2021 DDD ttbar reading geometry from the DB
-                     11634.0, #2021 ttbar (switching to DD4hep by default)
-                     13234.0, #2021 ttbar fastsim
-                     12434.0, #2023 ttbar
-                     12634.0, #2023 ttbar PU
-                     12434.7, #2023 ttbar mkFit
-                     14034.0, #2023 ttbar fastsim
-                     14234.0, #2023 ttbar PU fastsim
-                     24834.0, #2026D98 ttbar (Phase-2 baseline)
-                     24834.911, #2026D98 ttbar DD4hep XML
-                     25034.999, #2026D98 ttbar premixing stage1+stage2, PU50
-                     24896.0, #CE_E_Front_120um D98
-                     24900.0, #CE_H_Coarse_Scint D98
-                     23234.0, #2026D94 ttbar (exercise with HFNose)
-                     25202.0, #2016 ttbar UP15 PU
-                     250202.181, #2018 ttbar stage1 + stage2 premix
-                     141.044 # 2023D JetMET PD
+        'limited' : [
+                    # See README for further details
+                    ###### MC (generated from scratch or from RelVals)
+                    ### FullSim
+                    # Run1 
+                    5.1,        # TTbar_8TeV_TuneCUETP8M1       FastSim                                 
+                    8,          # RelValBeamHalo                Cosmics
+                    9.0,        # RelValHiggs200ChargedTaus             
+                    25,         # RelValTTbar                           
+                    101.0,      # SingleElectronE120EHCAL       + ECALHCAL.customise + fullMixCustomize_cff.setCrossingFrameOn
+                    
+                    # Run2
+                    7.3,        # UndergroundCosmicSPLooseMu            
+                    1306.0,     # RelValSingleMuPt1_UP15                
+                    1330,       # RelValZMM_13                          
+                    135.4,      # ZEE_13TeV_TuneCUETP8M1                
+                    25202.0,    # RelValTTbar_13                PU = AVE_35_BX_25ns
+                    250202.181, # RelValTTbar_13                PREMIX   
+
+                    # Run3
+                    11634.0,    # TTbar_14TeV                   2021
+                    13234.0,    # RelValTTbar_14TeV             2021 FastsSim
+                    12434.0,    # RelValTTbar_14TeV             2023
+                    12834.0,    # RelValTTbar_14TeV             2024
+                    12846.0,    # RelValZEE_13                  2024
+                    13034.0,    # RelValTTbar_14TeV             2024 PU = Run3_Flat55To75_PoissonOOTPU
+                    12834.7,    # RelValTTbar_14TeV             2024 mkFit
+                    16834.0,    # RelValTTbar_14TeV             2025
+                    14034.0,    # RelValTTbar_14TeV             Run3_2023_FastSim 
+                    14234.0,    # RelValTTbar_14TeV             Run3_2023_FastSim   PU = Run3_Flat55To75_PoissonOOTPU
+                    2500.201,   # RelValTTbar_14TeV             NanoAOD from existing MINI
+
+                    # Phase2
+                    29634.0,    # RelValTTbar_14TeV                     phase2_realistic_T33        ExtendedRun4D110         (Phase-2 baseline)
+                    24834.911,  # Previous DD4hep baseline for monitoring the stability of DD4hep workflow
+                    29634.911,  # TTbar_14TeV_TuneCP5                   phase2_realistic_T33        DD4hepExtendedRun4D110   DD4Hep (HLLHC14TeV BeamSpot) 
+                    29834.999,  # RelValTTbar_14TeV (PREMIX)            phase2_realistic_T33        ExtendedRun4D110         AVE_50_BX_25ns_m3p3     
+                    29696.0,    # RelValCloseByPGun_CE_E_Front_120um    phase2_realistic_T33        ExtendedRun4D110
+                    29700.0,    # RelValCloseByPGun_CE_H_Coarse_Scint   phase2_realistic_T33        ExtendedRun4D110  
+                    #23234.0,   # Need new workflow with HFNose
+                    29634.75,   # RelValTTbar_14TeV                     phase2_realistic_T33        ExtendedRun4D110         (Phase-2 baseline -  but using timing menu, and only up to step 2)
+
+                    ###### pp Data
+                    ## Run1
+                    4.22,       # Run2011A  Cosmics 
+                    4.53,       # Run2012B  Photon                      miniAODs
+                    1000,       # Run2011A  MinimumBias Prompt          RecoTLR.customisePrompt
+                    1001,       # Run2011A  MinimumBias                 Data+Express
+                    ## Run2
+                    136.731,    # Run2016B SinglePhoton  
+                    136.793,    # Run2017C DoubleEG                      
+                    136.874,    # Run2018C EGamma
+                     
+                    ## Run3
+                    # 2021
+                    139.001,    # Run2021  MinimumBias                  Commissioning2021   
+                    
+                    # 2022
+                    2022.002001,    # Run2022C ZeroBias
+                    2022.000001,    # Run2022C JetHT
+
+                    # 2023
+                    2023.002001,    # Run2023D ZeroBias
+                    2023.002001,    # Run2023D MuonEG
+
+                    # 2024
+                    2024.000001,      # Run2024B ZeroBias
+                    2024.101001,      # Run2024C BTagMu 
+                    2024.202001,      # Run2024D JetMET0
+                    2024.303001,      # Run2024E DisplacedJet
+                    
+                    ###### Heavy Ions
+                    ## Data
+                    # Run2   
+                    140.56,    # HIRun2018A HIHardProbes                    Run2_2018_pp_on_AA 
+                    ## MC
+                    312.0,     # Pyquen_ZeemumuJets_pt10_2760GeV            PU : HiMixGEN 
+
                      ],
         'jetmc': [5.1, 13, 15, 25, 38, 39], #MC
         'metmc' : [5.1, 15, 25, 37, 38, 39], #MC
@@ -402,28 +431,7 @@ if __name__ == '__main__':
             opt.testList = ','.join(rerunthese)
 
     if opt.IBEos:
-      from subprocess import getstatusoutput as run_cmd
-
-      ibeos_cache = os.path.join(os.getenv("LOCALRT"), "ibeos_cache.txt")
-      if not os.path.exists(ibeos_cache):
-        err, out = run_cmd("curl -L -s -o %s https://raw.githubusercontent.com/cms-sw/cms-sw.github.io/master/das_queries/ibeos.txt" % ibeos_cache)
-        if err:
-          run_cmd("rm -f %s" % ibeos_cache)
-          print("Error: Unable to download ibeos cache information")
-          print(out)
-          sys.exit(err)
-
-      for cmssw_env in [ "CMSSW_BASE", "CMSSW_RELEASE_BASE" ]:
-        cmssw_base = os.getenv(cmssw_env,None)
-        if not cmssw_base: continue
-        cmssw_base = os.path.join(cmssw_base,"src/Utilities/General/ibeos")
-        if os.path.exists(cmssw_base):
-          os.environ["PATH"]=cmssw_base+":"+os.getenv("PATH")
-          os.environ["CMS_PATH"]="/cvmfs/cms-ib.cern.ch"
-          os.environ["SITECONFIG_PATH"]="/cvmfs/cms-ib.cern.ch/SITECONF/local"
-          os.environ["CMSSW_USE_IBEOS"]="true"
-          print(">> WARNING: You are using SITECONF from /cvmfs/cms-ib.cern.ch")
-          break
+      os.environ["CMSSW_USE_IBEOS"]="true"
     if opt.restricted:
         print('Deprecated, please use -l limited')
         if opt.testList:            opt.testList+=',limited'

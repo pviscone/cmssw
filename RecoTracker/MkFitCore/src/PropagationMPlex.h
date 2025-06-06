@@ -10,10 +10,12 @@ namespace mkfit {
   inline void squashPhiMPlex(MPlexLV& par, const int N_proc) {
 #pragma omp simd
     for (int n = 0; n < NN; ++n) {
-      if (par(n, 4, 0) >= Const::PI)
-        par(n, 4, 0) -= Const::TwoPI;
-      if (par(n, 4, 0) < -Const::PI)
-        par(n, 4, 0) += Const::TwoPI;
+      if (n < N_proc) {
+        if (par(n, 4, 0) >= Const::PI)
+          par(n, 4, 0) -= Const::TwoPI;
+        if (par(n, 4, 0) < -Const::PI)
+          par(n, 4, 0) += Const::TwoPI;
+      }
     }
   }
 
@@ -23,6 +25,8 @@ namespace mkfit {
       par(n, 4, 0) -= std::floor(0.5f * Const::InvPI * (par(n, 4, 0) + Const::PI)) * Const::TwoPI;
     }
   }
+
+  // Barrel / R: PropagationMPlex.cc
 
   void propagateLineToRMPlex(const MPlexLS& psErr,
                              const MPlexLV& psPar,
@@ -60,6 +64,8 @@ namespace mkfit {
                                 const int N_proc,
                                 const PropagationFlags& pflags);
 
+  // Endcap / Z: PropagationMPlexEndcap.cc
+
   void propagateHelixToZMPlex(const MPlexLS& inErr,
                               const MPlexLV& inPar,
                               const MPlexQI& inChg,
@@ -80,13 +86,43 @@ namespace mkfit {
                 const int N_proc,
                 const PropagationFlags& pflags);
 
+  // Plane: PropagationMPlexPlane.cc
+
+  void helixAtPlane(const MPlexLV& inPar,
+                    const MPlexQI& inChg,
+                    const MPlexHV& plPnt,
+                    const MPlexHV& plNrm,
+                    MPlexQF& pathL,
+                    MPlexLV& outPar,
+                    MPlexLL& errorProp,
+                    MPlexQI& outFailFlag,
+                    const int N_proc,
+                    const PropagationFlags& pflags);
+
+  void propagateHelixToPlaneMPlex(const MPlexLS& inErr,
+                                  const MPlexLV& inPar,
+                                  const MPlexQI& inChg,
+                                  const MPlexHV& plPnt,
+                                  const MPlexHV& plNrm,
+                                  MPlexLS& outErr,
+                                  MPlexLV& outPar,
+                                  MPlexQI& outFailFlag,
+                                  const int N_proc,
+                                  const PropagationFlags& pflags,
+                                  const MPlexQI* noMatEffPtr = nullptr);
+
+  // Common functions: PropagationMPlexCommon.cc
+
   void applyMaterialEffects(const MPlexQF& hitsRl,
                             const MPlexQF& hitsXi,
                             const MPlexQF& propSign,
+                            const MPlexHV& plNrm,
                             MPlexLS& outErr,
                             MPlexLV& outPar,
-                            const int N_proc,
-                            const bool isBarrel);
+                            const int N_proc);
+
+  void MultHelixPropFull(const MPlexLL& A, const MPlexLS& B, MPlexLL& C);
+  void MultHelixPropTranspFull(const MPlexLL& A, const MPlexLL& B, MPlexLS& C);
 
 }  // end namespace mkfit
 #endif
