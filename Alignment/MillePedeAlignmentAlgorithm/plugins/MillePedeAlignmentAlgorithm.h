@@ -32,6 +32,9 @@
 #include "CondFormats/PCLConfig/interface/AlignPCLThresholdsHG.h"
 #include "CondFormats/DataRecord/interface/AlignPCLThresholdsHGRcd.h"
 
+#include "CondFormats/SiPixelObjects/interface/SiPixelQuality.h"
+#include "CondFormats/DataRecord/interface/SiPixelQualityFromDbRcd.h"
+
 #include <vector>
 #include <string>
 #include <memory>
@@ -115,9 +118,6 @@ public:
 
   /// called at end of luminosity block
   void endLuminosityBlock(const edm::EventSetup &) override;
-
-  /*   virtual void beginLuminosityBlock(const edm::EventSetup &setup) {} */
-  /*   virtual void endLuminosityBlock(const edm::EventSetup &setup) {} */
 
   /// Called in order to pass parameters to alignables for a specific run
   /// range in case the algorithm supports run range dependent alignment.
@@ -278,6 +278,7 @@ private:
 
   const edm::ESGetToken<TrackerTopology, TrackerTopologyRcd> topoToken_;
   const edm::ESGetToken<AlignPCLThresholdsHG, AlignPCLThresholdsHGRcd> aliThrToken_;
+  const edm::ESGetToken<SiPixelQuality, SiPixelQualityFromDbRcd> siPixelQualityToken_;
   const edm::ESGetToken<TrackerGeometry, TrackerDigiGeometryRecord> geomToken_;
 
   enum EModeBit { myMilleBit = 1 << 0, myPedeRunBit = 1 << 1, myPedeSteerBit = 1 << 2, myPedeReadBit = 1 << 3 };
@@ -300,6 +301,7 @@ private:
   std::vector<IntegratedCalibrationBase *> theCalibrations;
   std::shared_ptr<AlignPCLThresholdsHG> theThresholds;
   std::shared_ptr<PixelTopologyMap> pixelTopologyMap;
+  std::shared_ptr<SiPixelQuality> pixelQuality;
   unsigned int theMinNumHits;
   double theMaximalCor2D;  /// maximal correlation allowed for 2D hit in TID/TEC.
                            /// If larger, the 2D measurement gets diagonalized!!!

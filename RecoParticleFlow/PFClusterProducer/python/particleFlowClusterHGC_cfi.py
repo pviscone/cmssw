@@ -60,6 +60,7 @@ _hgcalTracksterMapper_HGCal = cms.PSet(
 particleFlowClusterHGCal = cms.EDProducer(
     "PFClusterProducer",
     recHitsSource = cms.InputTag("particleFlowRecHitHGC"),
+    usePFThresholdsFromDB = cms.bool(False),
     recHitCleaners = cms.VPSet(),
     seedCleaners   = cms.VPSet(),
     seedFinder = _passThruSeeds_HGCal,
@@ -72,3 +73,6 @@ particleFlowClusterHGCal = cms.EDProducer(
 particleFlowClusterHGCalFromSimCl = particleFlowClusterHGCal.clone(
     initialClusteringStep = _simClusterMapper_HGCal
 )
+
+from Configuration.ProcessModifiers.ticl_v5_cff import ticl_v5
+ticl_v5.toModify(particleFlowClusterHGCal.initialClusteringStep, tracksterSrc = "ticlCandidate")

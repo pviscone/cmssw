@@ -14,7 +14,7 @@
 
 #include "RecoTracker/MkFitCore/standalone/Event.h"
 
-#ifndef NO_ROOT
+#ifdef WITH_ROOT
 #include "RecoTracker/MkFitCore/standalone/Validation.h"
 #include "RecoTracker/MkFitCore/standalone/RntDumper/RntDumper.h"
 #endif
@@ -40,13 +40,6 @@
 using namespace mkfit;
 
 //==============================================================================
-
-std::vector<DeadVec> deadvectors;
-
-void init_deadvectors() {
-  deadvectors.resize(Config::TrkInfo.n_layers());
-#include "RecoTracker/MkFitCMS/standalone/deadmodules.h"
-}
 
 void initGeom() {
   std::cout << "Constructing geometry '" << Config::geomPlugin << "'\n";
@@ -113,10 +106,6 @@ void initGeom() {
   }
 
   Config::ItrInfo.setupStandardFunctionsFromNames();
-
-  // We always initialize the dead modules. Actual loading into each event is
-  // controlled via Config::useDeadModules.
-  init_deadvectors();
 
   // Test functions for ConfigJsonPatcher
   // cj.test_Direct (Config::ItrInfo[0]);
@@ -282,7 +271,7 @@ void test_standard() {
   int events_per_thread = (Config::nEvents + Config::numThreadsEvents - 1) / Config::numThreadsEvents;
 
   arena.execute([&]() {
-    tbb::parallel_for(
+    TBB_PARALLEL_FOR(
         tbb::blocked_range<int>(0, Config::numThreadsEvents, 1),
         [&](const tbb::blocked_range<int>& threads) {
           int thisthread = threads.begin();
@@ -321,7 +310,7 @@ void test_standard() {
             StdSeq::loadHitsAndBeamSpot(ev, eoh);
 
             if (Config::useDeadModules) {
-              StdSeq::loadDeads(eoh, deadvectors);
+              StdSeq::loadDeads(eoh, mkfit::internal::deadvectors);
             }
 
             double t_best[NT] = {0}, t_cur[NT] = {0};
@@ -436,6 +425,10 @@ void test_standard() {
     for (int i = 0; i < Config::nItersCMSSW; ++i)
       std::cout << " Iteration " << i << " build time (event > 1) = " << t_skip_iter[i] << " \n";
     printf("================================================================\n");
+  }
+  if (Config::quality_val) {
+    printf("Sum up of quality-val:\n");
+    StdSeq::Quality::s_quality_sum.quality_print();
   }
   if (g_operation == "read") {
     data_file.close();
@@ -575,6 +568,8 @@ int main(int argc, const char* argv[]) {
           "                           (def: do search if backward-fit is enabled and available in given iteration)\n"
           "  --include-pca            do the backward fit to point of closest approach, does not imply "
           "'--backward-fit' (def: %s)\n"
+          "  --use-p2p <0|1>          use prop-to-plane (def: %d)\n"
+          "  --use-ptms <0|1>         use pT multiple scattering (def: %d)\n"
           "\n----------------------------------------------------------------------------------------------------------"
           "\n\n"
           "Validation options\n\n"
@@ -719,6 +714,8 @@ int main(int argc, const char* argv[]) {
           b2a(Config::kludgeCmsHitErrors),
           b2a(Config::backwardFit),
           b2a(Config::includePCA),
+          int(Config::usePropToPlane),
+          int(Config::usePtMultScat),
 
           b2a(Config::quality_val),
           b2a(Config::dumpForPlots),
@@ -813,6 +810,10 @@ int main(int argc, const char* argv[]) {
     } else if (*i == "--loop-over-file") {
       Config::loopOverFile = true;
     } else if (*i == "--shell") {
+#ifndef WITH_ROOT
+      std::cerr << "--shell option is only supported when compiled with ROOT.\n";
+      exit(1);
+#endif
       run_shell = true;
     } else if (*i == "--num-tracks") {
       next_arg_or_die(mArgs, i);
@@ -889,6 +890,12 @@ int main(int argc, const char* argv[]) {
       Config::backwardSearch = false;
     } else if (*i == "--include-pca") {
       Config::includePCA = true;
+    } else if (*i == "--use-p2p") {
+      next_arg_or_die(mArgs, i);
+      Config::usePropToPlane = (bool)atoi(i->c_str());
+    } else if (*i == "--use-ptms") {
+      next_arg_or_die(mArgs, i);
+      Config::usePtMultScat = (bool)atoi(i->c_str());
     } else if (*i == "--quality-val") {
       Config::quality_val = true;
     } else if (*i == "--dump-for-plots") {
@@ -1014,18 +1021,28 @@ int main(int argc, const char* argv[]) {
          MPT_SIZE, Config::numThreadsEvents, Config::numThreadsFinder,
          sizeof(Track), sizeof(Hit), sizeof(SVector3), sizeof(SMatrixSym33), sizeof(MCHitInfo));
 
+#ifdef WITH_ROOT
+  Shell *shell = nullptr;
+#endif
   if (run_shell) {
+#ifdef WITH_ROOT
     tbb::global_control global_limit(tbb::global_control::max_allowed_parallelism, Config::numThreadsFinder);
 
     initGeom();
-    Shell s(deadvectors, g_input_file, g_start_event);
-    s.Run();
+    shell = new Shell(mkfit::internal::deadvectors, g_input_file, g_start_event);
+    shell->Run();
+#else
+    std::cerr << "shell selected on a non-ROOT build.\n";
+#endif
   } else {
     test_standard();
   }
 
-#ifndef NO_ROOT
+#ifdef WITH_ROOT
   RntDumper::FinalizeAll();
+  if (run_shell) {
+    delete shell;
+  }
 #endif
 
   // clang-format on

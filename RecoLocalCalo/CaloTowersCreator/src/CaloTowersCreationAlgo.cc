@@ -353,6 +353,11 @@ CaloTowersCreationAlgo::CaloTowersCreationAlgo(double EBthreshold,
   // nalgo=N;
 }
 
+void CaloTowersCreationAlgo::setThresFromDB(const EcalPFRecHitThresholds* EcalCuts, const HcalPFCuts* HcalCuts) {
+  ecalCuts = EcalCuts;
+  hcalCuts = HcalCuts;
+}
+
 void CaloTowersCreationAlgo::setGeometry(const CaloTowerTopology* cttopo,
                                          const CaloTowerConstituentsMap* ctmap,
                                          const HcalTopology* htopo,
@@ -627,7 +632,7 @@ void CaloTowersCreationAlgo::assignHitHcal(const CaloRecHit* recHit) {
       tower28.E_outer += e28;
       tower29.E_outer += e29;
     }  // not a "bad" hit
-  }    // end of special case
+  }  // end of special case
 
   else {
     HcalDetId hcalDetId(detId);
@@ -1007,7 +1012,7 @@ void CaloTowersCreationAlgo::convert(const CaloTowerDetId& id, const MetaTower& 
     case 0: {  // Simple 4-momentum assignment
       GlobalPoint p = theTowerGeometry->getGeometry(id)->getPosition();
       towerP4 = p.basicVector().unit();
-      towerP4[3] = 1.f;  // energy
+      towerP4.mathVector()[3] = 1.f;  // energy
       towerP4 *= E;
 
       // double pf=1.0/cosh(p.eta());
@@ -1024,7 +1029,7 @@ void CaloTowersCreationAlgo::convert(const CaloTowerDetId& id, const MetaTower& 
         if (E_em > 0) {
           emPoint = emShwrPos(metaContains, momEmDepth, E_em);
           emP4 = emPoint.basicVector().unit();
-          emP4[3] = 1.f;  // energy
+          emP4.mathVector()[3] = 1.f;  // energy
           towerP4 = emP4 * E_em;
 
           // double emPf = 1.0/cosh(emPoint.eta());
@@ -1034,7 +1039,7 @@ void CaloTowersCreationAlgo::convert(const CaloTowerDetId& id, const MetaTower& 
           massless = (E_em <= 0);
           hadPoint = hadShwrPos(id, momHadDepth);
           auto lP4 = hadPoint.basicVector().unit();
-          lP4[3] = 1.f;  // energy
+          lP4.mathVector()[3] = 1.f;  // energy
           if (!massless) {
             auto diff = lP4 - emP4;
             mass2 = std::sqrt(E_em * E_had_tot * diff.mag2());
@@ -1055,7 +1060,7 @@ void CaloTowersCreationAlgo::convert(const CaloTowerDetId& id, const MetaTower& 
       } else {  // forward detector: use the CaloTower position
         GlobalPoint p = theTowerGeometry->getGeometry(id)->getPosition();
         towerP4 = p.basicVector().unit();
-        towerP4[3] = 1.f;  // energy
+        towerP4.mathVector()[3] = 1.f;  // energy
         towerP4 *= E;
         // double pf=1.0/cosh(p.eta());
         // if (E>0) towerP4 = CaloTower::PolarLorentzVector(E*pf, p.eta(), p.phi(), 0);  // simple momentum assignment, same position
@@ -1072,7 +1077,7 @@ void CaloTowersCreationAlgo::convert(const CaloTowerDetId& id, const MetaTower& 
         else
           emPoint = theTowerGeometry->getGeometry(id)->getPosition();
         towerP4 = emPoint.basicVector().unit();
-        towerP4[3] = 1.f;  // energy
+        towerP4.mathVector()[3] = 1.f;  // energy
         towerP4 *= E;
 
         // double sumPf = 1.0/cosh(emPoint.eta());
@@ -1082,7 +1087,7 @@ void CaloTowersCreationAlgo::convert(const CaloTowerDetId& id, const MetaTower& 
       } else {  // forward detector: use the CaloTower position
         GlobalPoint p = theTowerGeometry->getGeometry(id)->getPosition();
         towerP4 = p.basicVector().unit();
-        towerP4[3] = 1.f;  // energy
+        towerP4.mathVector()[3] = 1.f;  // energy
         towerP4 *= E;
 
         // double pf=1.0/cosh(p.eta());
@@ -1251,14 +1256,22 @@ void CaloTowersCreationAlgo::getThresholdAndWeight(const DetId& detId, double& t
 
     EcalSubdetector subdet = (EcalSubdetector)(detId.subdetId());
     if (subdet == EcalBarrel) {
-      threshold = theEBthreshold;
+      if (ecalCuts == nullptr) {  // this means that ecalRecHitThresh_ is false
+        threshold = theEBthreshold;
+      } else {
+        threshold = (*ecalCuts)[detId];
+      }
       weight = theEBweight;
       if (weight <= 0.) {
         ROOT::Math::Interpolator my(theEBGrid, theEBWeights, ROOT::Math::Interpolation::kAKIMA);
         weight = my.Eval(theEBEScale);
       }
     } else if (subdet == EcalEndcap) {
-      threshold = theEEthreshold;
+      if (ecalCuts == nullptr) {
+        threshold = theEEthreshold;
+      } else {
+        threshold = (*ecalCuts)[detId];
+      }
       weight = theEEweight;
       if (weight <= 0.) {
         ROOT::Math::Interpolator my(theEEGrid, theEEWeights, ROOT::Math::Interpolation::kAKIMA);
@@ -1271,7 +1284,12 @@ void CaloTowersCreationAlgo::getThresholdAndWeight(const DetId& detId, double& t
     int depth = hcalDetId.depth();
 
     if (subdet == HcalBarrel) {
-      threshold = (depth == 1) ? theHBthreshold1 : (depth == 2) ? theHBthreshold2 : theHBthreshold;
+      if (hcalCuts == nullptr) {  // this means cutsFromDB is false
+        threshold = (depth == 1) ? theHBthreshold1 : (depth == 2) ? theHBthreshold2 : theHBthreshold;
+      } else {  // hcalCuts is not nullptr, i.e. cutsFromDB is true
+        const HcalPFCut* item = hcalCuts->getValues(hcalDetId.rawId());
+        threshold = item->noiseThreshold();
+      }
       weight = theHBweight;
       if (weight <= 0.) {
         ROOT::Math::Interpolator my(theHBGrid, theHBWeights, ROOT::Math::Interpolation::kAKIMA);
@@ -1282,14 +1300,24 @@ void CaloTowersCreationAlgo::getThresholdAndWeight(const DetId& detId, double& t
     else if (subdet == HcalEndcap) {
       // check if it's single or double tower
       if (hcalDetId.ietaAbs() < theHcalTopology->firstHEDoublePhiRing()) {
-        threshold = (depth == 1) ? theHESthreshold1 : theHESthreshold;
+        if (hcalCuts == nullptr) {  // this means cutsFromDB is false
+          threshold = (depth == 1) ? theHESthreshold1 : theHESthreshold;
+        } else {  // hcalCuts is not nullptr, i.e. cutsFromDB is true
+          const HcalPFCut* item = hcalCuts->getValues(hcalDetId.rawId());
+          threshold = item->noiseThreshold();
+        }
         weight = theHESweight;
         if (weight <= 0.) {
           ROOT::Math::Interpolator my(theHESGrid, theHESWeights, ROOT::Math::Interpolation::kAKIMA);
           weight = my.Eval(theHESEScale);
         }
       } else {
-        threshold = (depth == 1) ? theHEDthreshold1 : theHEDthreshold;
+        if (hcalCuts == nullptr) {  // this means cutsFromDB is false
+          threshold = (depth == 1) ? theHEDthreshold1 : theHEDthreshold;
+        } else {  // hcalCuts is not nullptr, i.e. cutsFromDB is true
+          const HcalPFCut* item = hcalCuts->getValues(hcalDetId.rawId());
+          threshold = item->noiseThreshold();
+        }
         weight = theHEDweight;
         if (weight <= 0.) {
           ROOT::Math::Interpolator my(theHEDGrid, theHEDWeights, ROOT::Math::Interpolation::kAKIMA);

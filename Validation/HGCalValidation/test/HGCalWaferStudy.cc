@@ -35,11 +35,11 @@
 #include "SimDataFormats/CaloTest/interface/HGCalTestNumbering.h"
 #include "SimDataFormats/CaloHit/interface/PCaloHit.h"
 
-#include "CLHEP/Geometry/Point3D.h"
-#include "CLHEP/Geometry/Transform3D.h"
-#include "CLHEP/Geometry/Vector3D.h"
-#include "CLHEP/Units/GlobalSystemOfUnits.h"
-#include "CLHEP/Units/GlobalPhysicalConstants.h"
+#include <CLHEP/Geometry/Point3D.h>
+#include <CLHEP/Geometry/Transform3D.h>
+#include <CLHEP/Geometry/Vector3D.h>
+#include <CLHEP/Units/SystemOfUnits.h>
+#include <CLHEP/Units/GlobalPhysicalConstants.h>
 
 #include "TH2D.h"
 
@@ -166,15 +166,33 @@ void HGCalWaferStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& i
           layer = detId.layer();
           zside = detId.zside();
           wvtype = hgcons_[k]->waferVirtual(layer, detId.waferU(), detId.waferV());
-          xy = hgcons_[k]->locateCell(
-              zside, layer, detId.waferU(), detId.waferV(), detId.cellU(), detId.cellV(), false, true, false, false);
+          xy = hgcons_[k]->locateCell(zside,
+                                      layer,
+                                      detId.waferU(),
+                                      detId.waferV(),
+                                      detId.cellU(),
+                                      detId.cellV(),
+                                      false,
+                                      true,
+                                      false,
+                                      false,
+                                      false);
         } else if (hgcons_[k]->waferHexagon8()) {
           HGCSiliconDetId detId = HGCSiliconDetId(id);
           layer = detId.layer();
           zside = detId.zside();
           wvtype = hgcons_[k]->waferVirtual(layer, detId.waferU(), detId.waferV());
-          xy = hgcons_[k]->locateCell(
-              zside, layer, detId.waferU(), detId.waferV(), detId.cellU(), detId.cellV(), false, true, false, false);
+          xy = hgcons_[k]->locateCell(zside,
+                                      layer,
+                                      detId.waferU(),
+                                      detId.waferV(),
+                                      detId.cellU(),
+                                      detId.cellV(),
+                                      false,
+                                      true,
+                                      false,
+                                      false,
+                                      false);
         } else {
           int subdet, sector, type, cell;
           HGCalTestNumbering::unpackHexagonIndex(id, subdet, zside, layer, sector, type, cell);

@@ -44,6 +44,12 @@ namespace mkfit {
       m_fitters.populate(n_thr - m_fitters.size());
       m_finders.populate(n_thr - m_finders.size());
     }
+
+    void clear() {
+      m_cloners.clear();
+      m_fitters.clear();
+      m_finders.clear();
+    }
   };
 
   CMS_SA_ALLOW ExecutionContext g_exe_ctx;
@@ -155,6 +161,11 @@ namespace {
     return mkfit::sortByScoreTrackCand(cand1, cand2);
   }
 
+#ifdef RNT_DUMP_MkF_SelHitIdcs
+  constexpr bool alwaysUseHitSelectionV2 = true;
+#else
+  constexpr bool alwaysUseHitSelectionV2 = false;
+#endif
 }  // end unnamed namespace
 
 //------------------------------------------------------------------------------
@@ -166,6 +177,7 @@ namespace mkfit {
   std::unique_ptr<MkBuilder> MkBuilder::make_builder(bool silent) { return std::make_unique<MkBuilder>(silent); }
 
   void MkBuilder::populate() { g_exe_ctx.populate(Config::numThreadsFinder); }
+  void MkBuilder::clear() { g_exe_ctx.clear(); }
 
   std::pair<int, int> MkBuilder::max_hits_layer(const EventOfHits &eoh) const {
     int maxN = 0;
@@ -405,7 +417,7 @@ namespace mkfit {
   //------------------------------------------------------------------------------
 
   void MkBuilder::seed_post_cleaning(TrackVec &tv) {
-    if (Const::nan_n_silly_check_seeds) {
+    if constexpr (Const::nan_n_silly_check_seeds) {
       int count = 0;
 
       for (int i = 0; i < (int)tv.size(); ++i) {
@@ -414,7 +426,7 @@ namespace mkfit {
                                           "Post-cleaning seed silly value check and fix");
         if (silly) {
           ++count;
-          if (Const::nan_n_silly_remove_bad_seeds) {
+          if constexpr (Const::nan_n_silly_remove_bad_seeds) {
             // XXXX MT
             // Could do somethin smarter here: set as Stopped ?  check in seed cleaning ?
             tv.erase(tv.begin() + i);
@@ -456,7 +468,7 @@ namespace mkfit {
 
     TrackVec &cands = m_tracks;
 
-    tbb::parallel_for_each(m_job->regions_begin(), m_job->regions_end(), [&](int region) {
+    TBB_PARALLEL_FOR_EACH(m_job->regions_begin(), m_job->regions_end(), [&](int region) {
       if (iteration_dir == SteeringParams::IT_BkwSearch && !m_job->steering_params(region).has_bksearch_plan()) {
         printf("No backward search plan for region %d\n", region);
         return;
@@ -473,7 +485,7 @@ namespace mkfit {
 
       const RegionOfSeedIndices rosi(m_seedEtaSeparators, region);
 
-      tbb::parallel_for(rosi.tbb_blk_rng_vec(), [&](const tbb::blocked_range<int> &blk_rng) {
+      TBB_PARALLEL_FOR(rosi.tbb_blk_rng_vec(), [&](const tbb::blocked_range<int> &blk_rng) {
         auto mkfndr = g_exe_ctx.m_finders.makeOrGet();
 
         RangeOfSeedIndices rng = rosi.seed_rng(blk_rng);
@@ -662,7 +674,7 @@ namespace mkfit {
             seed_cand_vec.push_back(std::pair<int, int>(iseed, ic));
             ccand[ic].resetOverlaps();
 
-            if (Const::nan_n_silly_check_cands_every_layer) {
+            if constexpr (Const::nan_n_silly_check_cands_every_layer) {
               if (ccand[ic].hasSillyValues(Const::nan_n_silly_print_bad_cands_every_layer,
                                            Const::nan_n_silly_fixup_bad_cands_every_layer,
                                            "Per layer silly check"))
@@ -676,7 +688,7 @@ namespace mkfit {
       }
     }
 
-    if (Const::nan_n_silly_check_cands_every_layer && silly_count > 0) {
+    if constexpr (Const::nan_n_silly_check_cands_every_layer && silly_count > 0) {
       m_nan_n_silly_per_layer_count += silly_count;
     }
 
@@ -748,7 +760,7 @@ namespace mkfit {
 
     EventOfCombCandidates &eoccs = m_event_of_comb_cands;
 
-    tbb::parallel_for_each(m_job->regions_begin(), m_job->regions_end(), [&](int region) {
+    TBB_PARALLEL_FOR_EACH(m_job->regions_begin(), m_job->regions_end(), [&](int region) {
       if (iteration_dir == SteeringParams::IT_BkwSearch && !m_job->steering_params(region).has_bksearch_plan()) {
         printf("No backward search plan for region %d\n", region);
         return;
@@ -767,7 +779,7 @@ namespace mkfit {
       dprint("adaptiveSPT " << adaptiveSPT << " fill " << rosi.count() << "/" << eoccs.size() << " region " << region);
 
       // loop over seeds
-      tbb::parallel_for(rosi.tbb_blk_rng_std(adaptiveSPT), [&](const tbb::blocked_range<int> &seeds) {
+      TBB_PARALLEL_FOR(rosi.tbb_blk_rng_std(adaptiveSPT), [&](const tbb::blocked_range<int> &seeds) {
         auto mkfndr = g_exe_ctx.m_finders.makeOrGet();
 
         const int start_seed = seeds.begin();
@@ -855,7 +867,11 @@ namespace mkfit {
             dcall(post_prop_print(curr_layer, mkfndr.get()));
 
             dprint("now get hit range");
-            mkfndr->selectHitIndices(layer_of_hits, end - itrack);
+
+            if (alwaysUseHitSelectionV2 || iter_params.useHitSelectionV2)
+              mkfndr->selectHitIndicesV2(layer_of_hits, end - itrack);
+            else
+              mkfndr->selectHitIndices(layer_of_hits, end - itrack);
 
             find_tracks_handle_missed_layers(
                 mkfndr.get(), layer_info, tmp_cands, seed_cand_idx, region, start_seed, itrack, end);
@@ -934,7 +950,7 @@ namespace mkfit {
 
     EventOfCombCandidates &eoccs = m_event_of_comb_cands;
 
-    tbb::parallel_for_each(m_job->regions_begin(), m_job->regions_end(), [&](int region) {
+    TBB_PARALLEL_FOR_EACH(m_job->regions_begin(), m_job->regions_end(), [&](int region) {
       if (iteration_dir == SteeringParams::IT_BkwSearch && !m_job->steering_params(region).has_bksearch_plan()) {
         printf("No backward search plan for region %d\n", region);
         return;
@@ -947,7 +963,7 @@ namespace mkfit {
           Config::numThreadsEvents * eoccs.size() / Config::numThreadsFinder + 1, 4, Config::numSeedsPerTask);
       dprint("adaptiveSPT " << adaptiveSPT << " fill " << rosi.count() << "/" << eoccs.size() << " region " << region);
 
-      tbb::parallel_for(rosi.tbb_blk_rng_std(adaptiveSPT), [&](const tbb::blocked_range<int> &seeds) {
+      TBB_PARALLEL_FOR(rosi.tbb_blk_rng_std(adaptiveSPT), [&](const tbb::blocked_range<int> &seeds) {
         auto cloner = g_exe_ctx.m_cloners.makeOrGet();
         auto mkfndr = g_exe_ctx.m_finders.makeOrGet();
 
@@ -979,15 +995,16 @@ namespace mkfit {
     const int n_seeds = end_seed - start_seed;
 
     std::vector<std::pair<int, int>> seed_cand_idx;
-    std::vector<UpdateIndices> seed_cand_update_idx;
+    std::vector<UpdateIndices> seed_cand_update_idx, seed_cand_overlap_idx;
     seed_cand_idx.reserve(n_seeds * params.maxCandsPerSeed);
     seed_cand_update_idx.reserve(n_seeds * params.maxCandsPerSeed);
+    seed_cand_overlap_idx.reserve(n_seeds * params.maxCandsPerSeed);
 
     std::vector<std::vector<TrackCand>> extra_cands(n_seeds);
     for (int ii = 0; ii < n_seeds; ++ii)
       extra_cands[ii].reserve(params.maxCandsPerSeed);
 
-    cloner.begin_eta_bin(&eoccs, &seed_cand_update_idx, &extra_cands, start_seed, n_seeds);
+    cloner.begin_eta_bin(&eoccs, &seed_cand_update_idx, &seed_cand_overlap_idx, &extra_cands, start_seed, n_seeds);
 
     // Loop over layers, starting from after the seed.
 
@@ -1087,7 +1104,10 @@ namespace mkfit {
 
         dprint("now get hit range");
 
-        mkfndr->selectHitIndices(layer_of_hits, end - itrack);
+        if (alwaysUseHitSelectionV2 || iter_params.useHitSelectionV2)
+          mkfndr->selectHitIndicesV2(layer_of_hits, end - itrack);
+        else
+          mkfndr->selectHitIndices(layer_of_hits, end - itrack);
 
         find_tracks_handle_missed_layers(
             mkfndr, layer_info, extra_cands, seed_cand_idx, region, start_seed, itrack, end);
@@ -1097,6 +1117,11 @@ namespace mkfit {
         // this requires change to propagation flags used in MkFinder::updateWithLastHit()
         // from intra-layer to inter-layer.
         // mkfndr->copyOutParErr(eoccs.refCandidates_nc(), end - itrack, true);
+
+        // For prop-to-plane propagate from the last hit, not layer center.
+        if /*constexpr*/ (Config::usePropToPlane) {
+          mkfndr->inputTracksAndHitIdx(eoccs.refCandidates(), seed_cand_idx, itrack, end, false);
+        }
 
         dprint("make new candidates");
         cloner.begin_iteration();
@@ -1110,6 +1135,9 @@ namespace mkfit {
 
       // Update loop of best candidates. CandCloner prepares the list of those
       // that need update (excluding all those with negative last hit index).
+      // This is split into two sections - candidates without overlaps and with overlaps.
+      // On CMS PU-50 the ratio of those is ~ 65 : 35 over all iterations.
+      // Note, overlap recheck is only enabled for some iterations, e.g. pixelLess.
 
       const int theEndUpdater = seed_cand_update_idx.size();
 
@@ -1118,10 +1146,47 @@ namespace mkfit {
 
         mkfndr->inputTracksAndHits(eoccs.refCandidates(), layer_of_hits, seed_cand_update_idx, itrack, end, true);
 
-        mkfndr->updateWithLoadedHit(end - itrack, fnd_foos);
+        mkfndr->updateWithLoadedHit(end - itrack, layer_of_hits, fnd_foos);
 
         // copy_out the updated track params, errors only (hit-idcs and chi2 already set)
         mkfndr->copyOutParErr(eoccs.refCandidates_nc(), end - itrack, false);
+      }
+
+      const int theEndOverlapper = seed_cand_overlap_idx.size();
+
+      for (int itrack = 0; itrack < theEndOverlapper; itrack += NN) {
+        const int end = std::min(itrack + NN, theEndOverlapper);
+
+        mkfndr->inputTracksAndHits(eoccs.refCandidates(), layer_of_hits, seed_cand_overlap_idx, itrack, end, true);
+
+        mkfndr->updateWithLoadedHit(end - itrack, layer_of_hits, fnd_foos);
+
+        mkfndr->copyOutParErr(eoccs.refCandidates_nc(), end - itrack, false);
+
+        mkfndr->inputOverlapHits(layer_of_hits, seed_cand_overlap_idx, itrack, end);
+
+        // XXXX Could also be calcChi2AndUpdate(), then copy-out would have to be done
+        // below, choosing appropriate slot (with or without the overlap hit).
+        // Probably in a dedicated MkFinder copyOutXyzz function.
+        mkfndr->chi2OfLoadedHit(end - itrack, fnd_foos);
+
+        for (int ii = itrack; ii < end; ++ii) {
+          const int fi = ii - itrack;
+          TrackCand &tc = eoccs[seed_cand_overlap_idx[ii].seed_idx][seed_cand_overlap_idx[ii].cand_idx];
+
+          // XXXX For now we DO NOT use chi2 as this was how things were done before the post-update
+          // chi2 check. To use it we should retune scoring function (might be even simpler).
+          auto chi2Ovlp = mkfndr->m_Chi2[fi];
+          if (mkfndr->m_FailFlag[fi] == 0 && chi2Ovlp >= 0.0f && chi2Ovlp <= 60.0f) {
+            auto scoreCand =
+                getScoreCand(st_par.m_track_scorer, tc, true /*penalizeTailMissHits*/, true /*inFindCandidates*/);
+            tc.addHitIdx(seed_cand_overlap_idx[ii].ovlp_idx, curr_layer, chi2Ovlp);
+            tc.incOverlapCount();
+            auto scoreCandOvlp = getScoreCand(st_par.m_track_scorer, tc, true, true);
+            if (scoreCand > scoreCandOvlp)
+              tc.popOverlap();
+          }
+        }
       }
 
       // Check if cands are sorted, as expected.
@@ -1172,10 +1237,10 @@ namespace mkfit {
 #endif
 
   void MkBuilder::backwardFitBH() {
-    tbb::parallel_for_each(m_job->regions_begin(), m_job->regions_end(), [&](int region) {
+    TBB_PARALLEL_FOR_EACH(m_job->regions_begin(), m_job->regions_end(), [&](int region) {
       const RegionOfSeedIndices rosi(m_seedEtaSeparators, region);
 
-      tbb::parallel_for(rosi.tbb_blk_rng_vec(), [&](const tbb::blocked_range<int> &blk_rng) {
+      TBB_PARALLEL_FOR(rosi.tbb_blk_rng_vec(), [&](const tbb::blocked_range<int> &blk_rng) {
         auto mkfndr = g_exe_ctx.m_finders.makeOrGet();
 
         RangeOfSeedIndices rng = rosi.seed_rng(blk_rng);
@@ -1270,7 +1335,7 @@ namespace mkfit {
   void MkBuilder::backwardFit() {
     EventOfCombCandidates &eoccs = m_event_of_comb_cands;
 
-    tbb::parallel_for_each(m_job->regions_begin(), m_job->regions_end(), [&](int region) {
+    TBB_PARALLEL_FOR_EACH(m_job->regions_begin(), m_job->regions_end(), [&](int region) {
       const RegionOfSeedIndices rosi(m_seedEtaSeparators, region);
 
       // adaptive seeds per task based on the total estimated amount of work to divide among all threads
@@ -1278,7 +1343,7 @@ namespace mkfit {
           Config::numThreadsEvents * eoccs.size() / Config::numThreadsFinder + 1, 4, Config::numSeedsPerTask);
       dprint("adaptiveSPT " << adaptiveSPT << " fill " << rosi.count() << "/" << eoccs.size() << " region " << region);
 
-      tbb::parallel_for(rosi.tbb_blk_rng_std(adaptiveSPT), [&](const tbb::blocked_range<int> &cands) {
+      TBB_PARALLEL_FOR(rosi.tbb_blk_rng_std(adaptiveSPT), [&](const tbb::blocked_range<int> &cands) {
         auto mkfndr = g_exe_ctx.m_finders.makeOrGet();
 
         fit_cands(mkfndr.get(), cands.begin(), cands.end(), region);

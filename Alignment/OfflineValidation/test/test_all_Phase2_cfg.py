@@ -81,7 +81,7 @@ process.load('Configuration.StandardSequences.MagneticField_cff')
 # Standard loads
 ###################################################################
 #process.load("Configuration.Geometry.GeometryRecoDB_cff")
-process.load('Configuration.Geometry.GeometryExtended2026D88Reco_cff')
+process.load('Configuration.Geometry.GeometryExtendedRun4D110Reco_cff')
 
 ####################################################################
 # Get the BeamSpot
@@ -258,7 +258,7 @@ FilteringParams = offlinePrimaryVertices.TkFilterParameters.clone(
 )
 
 ## MM 04.05.2017 (use settings as in: https://github.com/cms-sw/cmssw/pull/18330)
-from RecoVertex.PrimaryVertexProducer.TkClusParameters_cff import DA_vectParameters
+from RecoVertex.PrimaryVertexProducer.OfflinePrimaryVertices_cfi import DA_vectParameters
 DAClusterizationParams = DA_vectParameters.clone()
 
 GapClusterizationParams = cms.PSet(algorithm   = cms.string('gap'),

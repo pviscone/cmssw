@@ -1,15 +1,14 @@
-
-
 #include "IOMC/EventVertexGenerators/interface/GaussEvtVtxGenerator.h"
+#include "FWCore/ParameterSet/interface/ParameterSet.h"
 #include "FWCore/Utilities/interface/Exception.h"
 
-#include "FWCore/ParameterSet/interface/ParameterSet.h"
-
-#include "CLHEP/Random/RandGaussQ.h"
-#include "CLHEP/Units/GlobalSystemOfUnits.h"
-#include "CLHEP/Units/GlobalPhysicalConstants.h"
-//#include "CLHEP/Vector/ThreeVector.h"
+#include <CLHEP/Random/RandGaussQ.h>
+#include <CLHEP/Units/SystemOfUnits.h>
+#include <CLHEP/Units/GlobalPhysicalConstants.h>
 #include "HepMC/SimpleVector.h"
+
+using CLHEP::cm;
+using CLHEP::ns;
 
 GaussEvtVtxGenerator::GaussEvtVtxGenerator(const edm::ParameterSet& p) : BaseEvtVtxGenerator(p) {
   readDB_ = p.getParameter<bool>("readDB");
@@ -94,4 +93,18 @@ void GaussEvtVtxGenerator::sigmaZ(double s) {
     throw cms::Exception("LogicError") << "Error in GaussEvtVtxGenerator::sigmaZ: "
                                        << "Illegal resolution in Z (negative)";
   }
+}
+
+void GaussEvtVtxGenerator::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
+  edm::ParameterSetDescription desc;
+  desc.add<double>("MeanX", 0.0)->setComment("in cm");
+  desc.add<double>("MeanY", 0.0)->setComment("in cm");
+  desc.add<double>("MeanZ", 0.0)->setComment("in cm");
+  desc.add<double>("SigmaX", 0.0)->setComment("in cm");
+  desc.add<double>("SigmaY", 0.0)->setComment("in cm");
+  desc.add<double>("SigmaZ", 0.0)->setComment("in cm");
+  desc.add<double>("TimeOffset", 0.0)->setComment("in ns");
+  desc.add<edm::InputTag>("src");
+  desc.add<bool>("readDB");
+  descriptions.add("GaussEvtVtxGenerator", desc);
 }

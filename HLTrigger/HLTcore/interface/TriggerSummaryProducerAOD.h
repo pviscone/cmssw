@@ -43,6 +43,7 @@
 #include "DataFormats/L1Trigger/interface/L1JetParticleFwd.h"
 #include "DataFormats/L1Trigger/interface/L1EtMissParticleFwd.h"
 #include "DataFormats/L1Trigger/interface/L1HFRingsFwd.h"
+#include "DataFormats/L1Trigger/interface/P2GTCandidate.h"
 #include "DataFormats/JetReco/interface/PFJetCollection.h"
 #include "DataFormats/TauReco/interface/PFTauFwd.h"
 
@@ -96,7 +97,7 @@ private:
   /// InputTag ordering class
   struct OrderInputTag {
     bool ignoreProcess_;
-    OrderInputTag(bool ignoreProcess) : ignoreProcess_(ignoreProcess){};
+    OrderInputTag(bool ignoreProcess) : ignoreProcess_(ignoreProcess) {}
     inline bool operator()(const edm::InputTag& l, const edm::InputTag& r) const {
       int c = l.label().compare(r.label());
       if (0 == c) {
@@ -217,5 +218,6 @@ private:
   edm::GetterOfProducts<l1t::PFTauCollection> getL1TPFTauCollection_;
   edm::GetterOfProducts<l1t::HPSPFTauCollection> getL1THPSPFTauCollection_;
   edm::GetterOfProducts<l1t::PFTrackCollection> getL1TPFTrackCollection_;
+  edm::GetterOfProducts<l1t::P2GTCandidateCollection> getL1TP2GTCandCollection_;
 };
 #endif

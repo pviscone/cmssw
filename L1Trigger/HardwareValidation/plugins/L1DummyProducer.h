@@ -310,19 +310,16 @@ inline void L1DummyProducer::SimpleDigi(int,
   Phi_Container tracks(ntrk);
   int ubx, uwh, usc, ust, uphr, uphb, uqua, utag, ucnt;
   for (int i = 0; i < ntrk; i++) {
-    ubx = 0;   //bxNum()  - bx
-    uwh = 0;   //whNum()  - wheel
-    usc = 0;   //scNum()  - sector
-    ust = 0;   //stNum()  - station
-    uphr = 0;  //phi()    - radialAngle
-    uphb = 0;  //phiB()   - bendingAngle
-    uqua = 0;  //code()   - qualityCode
-    utag = 0;  //Ts2Tag() - Ts2TagCode
-    ucnt = 0;  //BxCnt()  - BxCntCode
-    uwh = (int)(-2 + 5 * engine->flat());
-    usc = (int)(12 * engine->flat());
-    ust = (int)(1. + 4 * engine->flat());
-    uqua = (int)(8 * engine->flat());
+    ubx = 0;                               //bxNum()  - bx
+    uwh = (int)(-2 + 5 * engine->flat());  //whNum()  - wheel
+    usc = (int)(12 * engine->flat());      //scNum()  - sector
+    ust = (int)(1. + 4 * engine->flat());  //stNum()  - station
+    uphr = 0;                              //phi()    - radialAngle
+    uphb = 0;                              //phiB()   - bendingAngle
+    uqua = (int)(8 * engine->flat());      //code()   - qualityCode
+    utag = 0;                              //Ts2Tag() - Ts2TagCode
+    ucnt = 0;                              //BxCnt()  - BxCntCode
+
     L1MuDTChambPhDigi cand(ubx, uwh, usc, ust, uphr, uphb, uqua, utag, ucnt);
     tracks.push_back(cand);
   }
@@ -504,8 +501,9 @@ inline void L1DummyProducer::SimpleDigi(int,
   //tbd: set non-trivial random values
   dg.clear();  // set contents to zero
   //CSCDetId( int iendcap, int istation, int iring, int ichamber, int ilayer = 0 );
-  enum eMinNum { MIN_ENDCAP = 1, MIN_STATION = 1, MIN_RING = 1, MIN_CHAMBER = 1, MIN_LAYER = 1 };
-  enum eMaxNum { MAX_ENDCAP = 2, MAX_STATION = 4, MAX_RING = 4, MAX_CHAMBER = 36, MAX_LAYER = 6 };
+  static constexpr int MIN_ENDCAP = 1, MIN_STATION = 1, MIN_RING = 1, MIN_CHAMBER = 1, MIN_LAYER = 1;
+  static constexpr int MAX_ENDCAP = 2, MAX_STATION = 4, MAX_RING = 4, MAX_CHAMBER = 36, MAX_LAYER = 6;
+
   float rnd = engine->flat();
   int ec = (int)(MIN_ENDCAP + (MAX_ENDCAP - MIN_ENDCAP) * rnd + 1);
   int st = (int)(MIN_STATION + (MAX_STATION - MIN_STATION) * rnd + 1);

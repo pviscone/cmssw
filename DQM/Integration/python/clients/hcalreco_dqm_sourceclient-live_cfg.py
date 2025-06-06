@@ -64,8 +64,8 @@ process.load('DQM.Integration.config.environment_cfi')
 process.dqmEnv.subSystemFolder = subsystem
 process.dqmSaver.tag = "HcalReco" # to have a file saved as DQM_V..._HcalReco...
 process.dqmSaver.runNumber = options.runNumber
-process.dqmSaverPB.tag = "HcalReco"
-process.dqmSaverPB.runNumber = options.runNumber
+# process.dqmSaverPB.tag = "HcalReco"
+# process.dqmSaverPB.runNumber = options.runNumber
 process = customise(process)
 process.DQMStore.verbose = 0
 if not unitTest and not useFileInput:
@@ -116,8 +116,8 @@ process.hcalDigis.InputLabel = rawTag
 #	Hcal DQM Tasks and Clients import
 #	New Style
 #-------------------------------------
-process.load('DQM.HcalTasks.RecHitTask')
-process.load('DQM.HcalTasks.HcalOnlineHarvesting')
+process.load('DQM.HcalTasks.RecHitTask_cfi')
+process.load('DQM.HcalTasks.HcalOnlineHarvesting_cfi')
 
 #-------------------------------------
 #	To force using uTCA
@@ -175,7 +175,7 @@ process.recoPath = cms.Path(
 process.dqmPath = cms.Path(
 		process.dqmEnv
 		*process.dqmSaver
-		*process.dqmSaverPB
+		#*process.dqmSaverPB
 )
 
 process.schedule = cms.Schedule(

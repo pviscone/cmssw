@@ -23,10 +23,8 @@ process = cms.Process("OnlineBeamMonitor", Run3)
 #    destinations = cms.untracked.vstring('cerr'),
 #)
 
+unitTest = 'unitTest=True' in sys.argv
 
-unitTest=False
-if 'unitTest=True' in sys.argv:
-  unitTest=True
 #-----------------------------
 if unitTest:
   import FWCore.ParameterSet.VarParsing as VarParsing
@@ -97,16 +95,11 @@ if unitTest:
   process.source.firstRun = cms.untracked.uint32(options.runNumber)
   process.source.firstLuminosityBlock = cms.untracked.uint32(1)
   process.source.numberEventsInLuminosityBlock = cms.untracked.uint32(2)
-  process.maxEvents = cms.untracked.PSet(
-              input = cms.untracked.int32(100)
-)
+  process.maxEvents = cms.untracked.PSet(input = cms.untracked.int32(100))
 
 else:
   process.load("DQM.Integration.config.inputsource_cfi")
   from DQM.Integration.config.inputsource_cfi import options
-  # for live online DQM in P5
-  # new stream label
-  #process.source.streamLabel = cms.untracked.string('streamDQMOnlineBeamspot')
 
 #ESProducer
 process.load("CondCore.CondDB.CondDB_cfi")
@@ -119,8 +112,8 @@ process.load("DQM.Integration.config.environment_cfi")
 process.dqmEnv.subSystemFolder = 'OnlineBeamMonitor'
 process.dqmSaver.tag           = 'OnlineBeamMonitor'
 process.dqmSaver.runNumber     = options.runNumber
-process.dqmSaverPB.tag         = 'OnlineBeamMonitor'
-process.dqmSaverPB.runNumber   = options.runNumber
+# process.dqmSaverPB.tag         = 'OnlineBeamMonitor'
+# process.dqmSaverPB.runNumber   = options.runNumber
 
 # for running offline enhance the time validity of the online beamspot in DB
 if (unitTest or process.isDqmPlayback.value):
@@ -159,7 +152,7 @@ process.GlobalTag.toGet = cms.VPSet(
 )
 
 process.dqmcommon = cms.Sequence(process.dqmEnv
-                               * process.dqmSaver * process.dqmSaverPB)
+                               * process.dqmSaver )#* process.dqmSaverPB)
 
 process.monitor = cms.Sequence(process.dqmOnlineBeamMonitor)
 
@@ -168,7 +161,6 @@ process.monitor = cms.Sequence(process.dqmOnlineBeamMonitor)
 from DQM.Integration.config.online_customizations_cfi import *
 process = customise(process)
 
+process.p = cms.Path( process.dqmcommon * process.monitor )
 
-process.p = cms.Path( process.dqmcommon
-                        * process.monitor )
 print("Final Source settings:", process.source)

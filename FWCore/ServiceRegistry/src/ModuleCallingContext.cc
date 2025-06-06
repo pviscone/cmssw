@@ -11,27 +11,33 @@
 
 namespace edm {
 
-  ModuleCallingContext::ModuleCallingContext(ModuleDescription const* moduleDescription)
-      : previousModuleOnThread_(nullptr), moduleDescription_(moduleDescription), parent_(), state_(State::kInvalid) {}
+  ModuleCallingContext::ModuleCallingContext(ModuleDescription const* moduleDescription) noexcept
+      : previousModuleOnThread_(nullptr),
+        moduleDescription_(moduleDescription),
+        parent_(),
+        id_(0),
+        state_(State::kInvalid) {}
 
   ModuleCallingContext::ModuleCallingContext(ModuleDescription const* moduleDescription,
+                                             std::uintptr_t id,
                                              State state,
                                              ParentContext const& parent,
-                                             ModuleCallingContext const* previousOnThread)
+                                             ModuleCallingContext const* previousOnThread) noexcept
       : previousModuleOnThread_(previousOnThread),
         moduleDescription_(moduleDescription),
         parent_(parent),
+        id_(id),
         state_(state) {}
 
   void ModuleCallingContext::setContext(State state,
                                         ParentContext const& parent,
-                                        ModuleCallingContext const* previousOnThread) {
+                                        ModuleCallingContext const* previousOnThread) noexcept {
     state_ = state;
     parent_ = parent;
     previousModuleOnThread_ = previousOnThread;
   }
 
-  StreamContext const* ModuleCallingContext::getStreamContext() const {
+  StreamContext const* ModuleCallingContext::getStreamContext() const noexcept(false) {
     ModuleCallingContext const* mcc = getTopModuleCallingContext();
     if (mcc->type() == ParentContext::Type::kPlaceInPath) {
       return mcc->placeInPathContext()->pathContext()->streamContext();
@@ -42,7 +48,7 @@ namespace edm {
     return mcc->streamContext();
   }
 
-  GlobalContext const* ModuleCallingContext::getGlobalContext() const {
+  GlobalContext const* ModuleCallingContext::getGlobalContext() const noexcept(false) {
     ModuleCallingContext const* mcc = getTopModuleCallingContext();
     if (mcc->type() != ParentContext::Type::kGlobal) {
       throw Exception(errors::LogicError)
@@ -51,7 +57,7 @@ namespace edm {
     return mcc->globalContext();
   }
 
-  ModuleCallingContext const* ModuleCallingContext::getTopModuleCallingContext() const {
+  ModuleCallingContext const* ModuleCallingContext::getTopModuleCallingContext() const noexcept {
     ModuleCallingContext const* mcc = this;
     while (mcc->type() == ParentContext::Type::kModule) {
       mcc = mcc->moduleCallingContext();
@@ -65,7 +71,7 @@ namespace edm {
     return mcc;
   }
 
-  unsigned ModuleCallingContext::depth() const {
+  unsigned ModuleCallingContext::depth() const noexcept {
     unsigned depth = 0;
     ModuleCallingContext const* mcc = this;
     while (mcc->type() == ParentContext::Type::kModule) {

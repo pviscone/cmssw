@@ -42,8 +42,8 @@ process.load("DQM.Integration.config.environment_cfi")
 process.dqmEnv.subSystemFolder = "BeamPixel"
 process.dqmSaver.tag = "BeamPixel"
 process.dqmSaver.runNumber = options.runNumber
-process.dqmSaverPB.tag = 'BeamPixel'
-process.dqmSaverPB.runNumber = options.runNumber
+# process.dqmSaverPB.tag = 'BeamPixel'
+# process.dqmSaverPB.runNumber = options.runNumber
 
 #----------------------------
 # Conditions
@@ -67,7 +67,7 @@ process.load("Configuration.StandardSequences.RawToDigi_Data_cff")
 #----------------------------
 # Define Sequences
 #----------------------------
-process.dqmModules  = cms.Sequence(process.dqmEnv + process.dqmSaver + process.dqmSaverPB)
+process.dqmModules  = cms.Sequence(process.dqmEnv + process.dqmSaver )#+ process.dqmSaverPB)
 process.physTrigger = cms.Sequence(process.hltTriggerTypeFilter)
 
 
@@ -93,7 +93,7 @@ process.load("TrackingTools.TransientTrack.TransientTrackBuilder_cfi")
 from RecoTracker.PixelLowPtUtilities.siPixelClusterShapeCache_cfi import *
 process.siPixelClusterShapeCachePreSplitting = siPixelClusterShapeCache.clone(src = 'siPixelClustersPreSplitting')
 process.load("RecoLocalTracker.SiPixelRecHits.PixelCPEGeneric_cfi")
-process.load("RecoTracker.Configuration.RecoPixelVertexing_cff")
+process.load("RecoVertex.Configuration.RecoPixelVertexing_cff")
 from RecoVertex.PrimaryVertexProducer.OfflinePixel3DPrimaryVertices_cfi import *
 process.pixelVertices = pixelVertices.clone(
     TkFilterParameters = dict(
@@ -121,7 +121,7 @@ if (process.runType.getRunType() == process.runType.pp_run or process.runType.ge
     process.castorDigis.InputLabel           = "rawDataCollector"
     process.csctfDigis.producer              = "rawDataCollector"
     process.dttfDigis.DTTF_FED_Source        = "rawDataCollector"
-    process.ecalDigis.cpu.InputLabel         = "rawDataCollector"
+    process.ecalDigisCPU.InputLabel          = "rawDataCollector"
     process.ecalPreshowerDigis.sourceTag     = "rawDataCollector"
     process.gctDigis.inputLabel              = "rawDataCollector"
     process.gtDigis.DaqGtInputTag            = "rawDataCollector"
@@ -174,7 +174,7 @@ if (process.runType.getRunType() == process.runType.hi_run):
     process.castorDigis.InputLabel           = "rawDataRepacker"
     process.csctfDigis.producer              = "rawDataRepacker"
     process.dttfDigis.DTTF_FED_Source        = "rawDataRepacker"
-    process.ecalDigis.cpu.InputLabel         = "rawDataRepacker"
+    process.ecalDigisCPU.InputLabel          = "rawDataRepacker"
     process.ecalPreshowerDigis.sourceTag     = "rawDataRepacker"
     process.gctDigis.inputLabel              = "rawDataRepacker"
     process.gtDigis.DaqGtInputTag            = "rawDataRepacker"

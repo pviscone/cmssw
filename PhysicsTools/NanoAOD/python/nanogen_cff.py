@@ -7,12 +7,15 @@ from PhysicsTools.NanoAOD.particlelevel_cff import *
 from PhysicsTools.NanoAOD.genWeightsTable_cfi import *
 from PhysicsTools.NanoAOD.genVertex_cff import *
 from PhysicsTools.NanoAOD.common_cff import Var,CandVars
+from PhysicsTools.NanoAOD.simpleSingletonCandidateFlatTableProducer_cfi import simpleSingletonCandidateFlatTableProducer
 
 nanoMetadata = cms.EDProducer("UniqueStringProducer",
     strings = cms.PSet(
         tag = cms.string("untagged"),
     )
 )
+
+
 
 nanogenSequence = cms.Sequence(
     nanoMetadata+
@@ -21,11 +24,13 @@ nanogenSequence = cms.Sequence(
     patJetPartonsNano+
     genJetFlavourAssociation+
     genJetFlavourTable+
+    genSubJetAK8Table+
     genJetAK8Table+
     genJetAK8FlavourAssociation+
     genJetAK8FlavourTable+
     cms.Sequence(genTauTask)+
     genTable+
+    genIso+
     genFilterTable+
     cms.Sequence(genParticleTablesTask)+
     cms.Sequence(genVertexTablesTask)+
@@ -55,6 +60,10 @@ def nanoGenCommonCustomize(process):
     setGenPhiPrecision(process, CandVars.phi.precision)
     setGenMassPrecision(process, CandVars.mass.precision)
 
+    for output in ("NANOEDMAODSIMoutput", "NANOAODSIMoutput"):
+        if hasattr(process, output):
+            getattr(process, output).outputCommands.append("drop edmTriggerResults_*_*_*")
+
 def customizeNanoGENFromMini(process):
     process.nanogenSequence.insert(0, process.genParticles2HepMCHiggsVtx)
     process.nanogenSequence.insert(0, process.genParticles2HepMC)
@@ -69,6 +78,7 @@ def customizeNanoGENFromMini(process):
     process.genParticleTable.src = "prunedGenParticles"
     process.patJetPartonsNano.particles = "prunedGenParticles"
     process.particleLevel.src = "genParticles2HepMC:unsmeared"
+    process.genIso.genPart = "prunedGenParticles"
 
     process.genJetTable.src = "slimmedGenJets"
     process.genJetAK8Table.src = "slimmedGenJetsAK8"
@@ -80,23 +90,37 @@ def customizeNanoGENFromMini(process):
     return process
 
 def customizeNanoGEN(process):
-    process.metMCTable.src = "genMetTrue"
-    process.metMCTable.variables = cms.PSet(PTVars)
+    process.metMCTable = simpleSingletonCandidateFlatTableProducer.clone(
+        src = "genMetTrue",
+        name = process.metMCTable.name,
+        doc = process.metMCTable.doc,
+        variables = cms.PSet(PTVars)
+    )
 
-    process.rivetProducerHTXS.HepMCCollection = "generatorSmeared"
+    process.nanogenSequence.insert(0, process.genParticles2HepMCHiggsVtx)
+    process.nanogenSequence.insert(0, process.genParticles2HepMC)
+    process.genParticles2HepMCHiggsVtx.genParticles = "genParticles"
+    process.genParticles2HepMC.genParticles = "genParticles"
+
+    process.rivetProducerHTXS.HepMCCollection = "genParticles2HepMCHiggsVtx:unsmeared"
     process.genParticleTable.src = "genParticles"
     process.patJetPartonsNano.particles = "genParticles"
-    process.particleLevel.src = "generatorSmeared"
+    process.particleLevel.src = "genParticles2HepMC:unsmeared"
 
     process.genJetTable.src = "ak4GenJetsNoNu"
     process.genJetAK8Table.src = "ak8GenJetsNoNu"
     process.tauGenJetsForNano.GenParticles = "genParticles"
     process.genVisTaus.srcGenParticles = "genParticles"
-
+    process.load("RecoJets.JetProducers.ak8GenJets_cfi")
+    process.ak8GenJetsNoNuConstituents =  process.ak8GenJetsConstituents.clone(src='ak8GenJetsNoNu')
+    process.ak8GenJetsNoNuSoftDrop = process.ak8GenJetsSoftDrop.clone(src=cms.InputTag('ak8GenJetsNoNuConstituents', 'constituents'))
+    process.genSubJetAK8Table.src = "ak8GenJetsNoNuSoftDrop"
+    process.nanogenSequence.insert(0, process.ak8GenJetsNoNuSoftDrop)
+    process.nanogenSequence.insert(0, process.ak8GenJetsNoNuConstituents)
     # In case customizeNanoGENFromMini has already been called
-    process.nanogenSequence.remove(process.genParticles2HepMCHiggsVtx)
-    process.nanogenSequence.remove(process.genParticles2HepMC)
     process.nanogenSequence.remove(process.mergedGenParticles)
+    process.nanogenSequence.remove(process.genIso)
+    delattr(process.genParticleTable.externalVariables,"iso")
     nanoGenCommonCustomize(process)
     return process
 

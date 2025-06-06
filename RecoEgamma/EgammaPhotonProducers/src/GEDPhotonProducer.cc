@@ -53,6 +53,9 @@
 #include "RecoEgamma/EgammaIsolationAlgos/interface/HcalPFClusterIsolation.h"
 #include "CondFormats/GBRForest/interface/GBRForest.h"
 #include "CommonTools/MVAUtils/interface/GBRForestTools.h"
+#include "CondFormats/DataRecord/interface/HcalPFCutsRcd.h"
+#include "CondTools/Hcal/interface/HcalPFCutsHandler.h"
+#include "Geometry/CaloTopology/interface/HcalTopology.h"
 
 class CacheData {
 public:
@@ -89,11 +92,15 @@ public:
   void produce(edm::Event& evt, const edm::EventSetup& es) override;
 
   static std::unique_ptr<CacheData> initializeGlobalCache(const edm::ParameterSet&);
-  static void globalEndJob(const CacheData*){};
+  static void globalEndJob(const CacheData*) {}
 
   void endStream() override;
 
 private:
+  edm::ESGetToken<HcalPFCuts, HcalPFCutsRcd> hcalCutsToken_;
+  bool cutsFromDB_;
+  HcalPFCuts const* hcalCuts_ = nullptr;
+
   class RecoStepInfo {
   public:
     enum FlagBits { kOOT = 0x1, kFinal = 0x2 };
@@ -194,9 +201,9 @@ private:
   CaloGeometry const* caloGeom_ = nullptr;
 
   //MIP
-  std::unique_ptr<PhotonMIPHaloTagger> photonMIPHaloTagger_ = nullptr;
+  std::unique_ptr<const PhotonMIPHaloTagger> photonMIPHaloTagger_ = nullptr;
   //MVA based Halo tagger for the EE photons
-  std::unique_ptr<PhotonMVABasedHaloTagger> photonMVABasedHaloTagger_ = nullptr;
+  std::unique_ptr<const PhotonMVABasedHaloTagger> photonMVABasedHaloTagger_ = nullptr;
 
   std::vector<double> preselCutValuesBarrel_;
   std::vector<double> preselCutValuesEndcap_;
@@ -280,6 +287,12 @@ GEDPhotonProducer::GEDPhotonProducer(const edm::ParameterSet& config, const Cach
       ecalPFRechitThresholdsToken_{esConsumes()},
       hcalHelperCone_(nullptr),
       hcalHelperBc_(nullptr) {
+  //Retrieve HCAL PF thresholds - from config or from DB
+  cutsFromDB_ = config.getParameter<bool>("usePFThresholdsFromDB");
+  if (cutsFromDB_) {
+    hcalCutsToken_ = esConsumes<HcalPFCuts, HcalPFCutsRcd>(edm::ESInputTag("", "withTopo"));
+  }
+
   if (recoStep_.isFinal()) {
     photonProducerT_ = consumes(photonProducer_);
     pfCandidates_ = consumes(config.getParameter<edm::InputTag>("pfCandidates"));
@@ -413,17 +426,15 @@ GEDPhotonProducer::GEDPhotonProducer(const edm::ParameterSet& config, const Cach
 
   //moved from beginRun to here, I dont see how this could cause harm as its just reading in the exactly same parameters each run
   if (!recoStep_.isFinal()) {
-    photonIsoCalculator_ = std::make_unique<PhotonIsolationCalculator>();
     edm::ParameterSet isolationSumsCalculatorSet = config.getParameter<edm::ParameterSet>("isolationSumsCalculatorSet");
-    photonIsoCalculator_->setup(isolationSumsCalculatorSet,
-                                flagsexclEB_,
-                                flagsexclEE_,
-                                severitiesexclEB_,
-                                severitiesexclEE_,
-                                consumesCollector());
-    photonMIPHaloTagger_ = std::make_unique<PhotonMIPHaloTagger>();
+    photonIsoCalculator_ = std::make_unique<PhotonIsolationCalculator>(isolationSumsCalculatorSet,
+                                                                       flagsexclEB_,
+                                                                       flagsexclEE_,
+                                                                       severitiesexclEB_,
+                                                                       severitiesexclEE_,
+                                                                       consumesCollector());
     edm::ParameterSet mipVariableSet = config.getParameter<edm::ParameterSet>("mipVariableSet");
-    photonMIPHaloTagger_->setup(mipVariableSet, consumesCollector());
+    photonMIPHaloTagger_ = std::make_unique<PhotonMIPHaloTagger>(mipVariableSet, consumesCollector());
   }
 
   if (recoStep_.isFinal() && runMVABasedHaloTagger_) {
@@ -484,6 +495,10 @@ void GEDPhotonProducer::endStream() {
 
 void GEDPhotonProducer::produce(edm::Event& theEvent, const edm::EventSetup& eventSetup) {
   using namespace edm;
+
+  if (cutsFromDB_) {
+    hcalCuts_ = &eventSetup.getData(hcalCutsToken_);
+  }
 
   auto outputPhotonCollection_p = std::make_unique<reco::PhotonCollection>();
   edm::ValueMap<reco::PhotonRef> pfEGCandToPhotonMap;
@@ -799,7 +814,7 @@ void GEDPhotonProducer::fillPhotonCollection(edm::Event& evt,
     reco::Photon::FiducialFlags fiducialFlags;
     reco::Photon::IsolationVariables isolVarR03, isolVarR04;
     if (!EcalTools::isHGCalDet(thedet)) {
-      photonIsoCalculator_->calculate(&newCandidate, evt, es, fiducialFlags, isolVarR04, isolVarR03);
+      photonIsoCalculator_->calculate(&newCandidate, evt, es, fiducialFlags, isolVarR04, isolVarR03, hcalCuts_);
     }
     newCandidate.setFiducialVolumeFlags(fiducialFlags);
     newCandidate.setIsolationVariables(isolVarR04, isolVarR03);
@@ -815,10 +830,10 @@ void GEDPhotonProducer::fillPhotonCollection(edm::Event& evt,
     showerShape.sigmaIetaIeta = sigmaIetaIeta;
     for (uint id = 0; id < showerShape.hcalOverEcal.size(); ++id) {
       showerShape.hcalOverEcal[id] =
-          (hcalHelperCone != nullptr) ? hcalHelperCone->hcalESum(*scRef, id + 1) / scRef->energy() : 0.f;
+          (hcalHelperCone != nullptr) ? hcalHelperCone->hcalESum(*scRef, id + 1, hcalCuts_) / scRef->energy() : 0.f;
 
       showerShape.hcalOverEcalBc[id] =
-          (hcalHelperBc != nullptr) ? hcalHelperBc->hcalESum(*scRef, id + 1) / scRef->energy() : 0.f;
+          (hcalHelperBc != nullptr) ? hcalHelperBc->hcalESum(*scRef, id + 1, hcalCuts_) / scRef->energy() : 0.f;
     }
     showerShape.invalidHcal = (hcalHelperBc != nullptr) ? !hcalHelperBc->hasActiveHcal(*scRef) : false;
     if (hcalHelperBc != nullptr)
@@ -930,9 +945,9 @@ void GEDPhotonProducer::fillPhotonCollection(edm::Event& evt,
     full5x5_showerShape.effSigmaRR = sigmaRR;
     for (uint id = 0; id < full5x5_showerShape.hcalOverEcal.size(); ++id) {
       full5x5_showerShape.hcalOverEcal[id] =
-          (hcalHelperCone != nullptr) ? hcalHelperCone->hcalESum(*scRef, id + 1) / full5x5_e5x5 : 0.f;
+          (hcalHelperCone != nullptr) ? hcalHelperCone->hcalESum(*scRef, id + 1, hcalCuts_) / full5x5_e5x5 : 0.f;
       full5x5_showerShape.hcalOverEcalBc[id] =
-          (hcalHelperBc != nullptr) ? hcalHelperBc->hcalESum(*scRef, id + 1) / full5x5_e5x5 : 0.f;
+          (hcalHelperBc != nullptr) ? hcalHelperBc->hcalESum(*scRef, id + 1, hcalCuts_) / full5x5_e5x5 : 0.f;
     }
     full5x5_showerShape.pre7DepthHcal = false;
     newCandidate.full5x5_setShowerShapeVariables(full5x5_showerShape);
@@ -993,9 +1008,8 @@ void GEDPhotonProducer::fillPhotonCollection(edm::Event& evt,
     }
 
     // fill MIP Vairables for Halo: Block for MIP are filled from PhotonMIPHaloTagger
-    reco::Photon::MIPVariables mipVar;
     if (subdet == EcalBarrel && runMIPTagger_) {
-      photonMIPHaloTagger_->MIPcalculate(&newCandidate, evt, es, mipVar);
+      auto mipVar = photonMIPHaloTagger_->mipCalculate(newCandidate, evt, es);
       newCandidate.setMIPVariables(mipVar);
     }
 

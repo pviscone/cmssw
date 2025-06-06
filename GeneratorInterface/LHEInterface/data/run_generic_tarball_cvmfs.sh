@@ -69,6 +69,8 @@ tar -xaf ${path}
 # and fallback to /tmp
 export TMPDIR=${TMPDIR:-${_CONDOR_SCRATCH_DIR:-/tmp}}
 
+
+
 #generate events
 ./runcmsgrid.sh $nevt $rnum $ncpu ${@:5}
 

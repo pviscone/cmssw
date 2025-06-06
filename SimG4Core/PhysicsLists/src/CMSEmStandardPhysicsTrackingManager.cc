@@ -36,7 +36,7 @@
 #include "G4LossTableManager.hh"
 
 #include "G4EmParameters.hh"
-#include "G4SystemOfUnits.hh"
+#include <CLHEP/Units/SystemOfUnits.h>
 
 #include "G4Electron.hh"
 #include "G4Gamma.hh"
@@ -418,7 +418,7 @@ void CMSEmStandardPhysicsTrackingManager::TrackElectron(G4Track *aTrack) {
           particleChange = electron.ioni->PostStepDoIt(track, step);
           break;
       }
-
+      assert(particleChange);
       particleChange->UpdateStepForPostStep(&step);
       step.UpdateTrack();
 
@@ -588,7 +588,7 @@ void CMSEmStandardPhysicsTrackingManager::TrackPositron(G4Track *aTrack) {
           particleChange = positron.ioni->PostStepDoIt(track, step);
           break;
       }
-
+      assert(particleChange);
       particleChange->UpdateStepForPostStep(&step);
       step.UpdateTrack();
 

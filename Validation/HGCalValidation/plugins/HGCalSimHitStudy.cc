@@ -29,8 +29,8 @@
 #include "SimDataFormats/CaloHit/interface/PCaloHitContainer.h"
 #include "SimDataFormats/CaloHit/interface/PCaloHit.h"
 
-#include "CLHEP/Units/GlobalSystemOfUnits.h"
-#include "CLHEP/Units/GlobalPhysicalConstants.h"
+#include <CLHEP/Units/SystemOfUnits.h>
+#include <CLHEP/Units/GlobalPhysicalConstants.h>
 
 #include "TH1D.h"
 #include "TH2D.h"
@@ -169,7 +169,7 @@ void HGCalSimHitStudy::analyzeHits(int ih, std::string const& name, std::vector<
       type = detId.type();
       layer = detId.layer();
       zside = detId.zside();
-      xy = hgcons_[ih]->locateCell(zside, layer, sector, sector2, cell, cell2, false, true, false, false);
+      xy = hgcons_[ih]->locateCell(zside, layer, sector, sector2, cell, cell2, false, true, false, false, false);
       h_W2_[ih]->Fill(sector2);
       h_C2_[ih]->Fill(cell2);
     } else if (hgcons_[ih]->waferHexagon8()) {
@@ -182,7 +182,7 @@ void HGCalSimHitStudy::analyzeHits(int ih, std::string const& name, std::vector<
       type = detId.type();
       layer = detId.layer();
       zside = detId.zside();
-      xy = hgcons_[ih]->locateCell(zside, layer, sector, sector2, cell, cell2, false, true, false, false);
+      xy = hgcons_[ih]->locateCell(zside, layer, sector, sector2, cell, cell2, false, true, false, false, false);
       h_W2_[ih]->Fill(sector2);
       h_C2_[ih]->Fill(cell2);
     } else if (hgcons_[ih]->tileTrapezoid()) {

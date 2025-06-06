@@ -43,8 +43,11 @@
 #include "Math/GenVector/RotationX.h"
 #include "Math/GenVector/RotationZ.h"
 
-#include "CLHEP/Units/GlobalSystemOfUnits.h"
+#include <CLHEP/Units/SystemOfUnits.h>
 #include <cmath>
+
+using CLHEP::cm;
+using CLHEP::deg;
 
 class TGeoMgrFromDdd : public edm::ESProducer {
 public:
@@ -138,8 +141,8 @@ TGeoMgrFromDdd::ReturnType TGeoMgrFromDdd::produce(const DisplayGeomRecord& iRec
     gGeoIdentity = new TGeoIdentity("Identity");
   }
 
-  std::cout << "about to initialize the DDCompactView walker"
-            << " with a root node " << viewH->root() << std::endl;
+  edm::LogVerbatim("TGeoMgrFromDdd") << "about to initialize the DDCompactView walker with a root node "
+                                     << viewH->root() << std::endl;
 
   auto walker = viewH->walker();
   auto info = walker.current();
@@ -170,10 +173,10 @@ TGeoMgrFromDdd::ReturnType TGeoMgrFromDdd::produce(const DisplayGeomRecord& iRec
     auto info = walker.current();
 
     if (m_verbose) {
-      std::cout << "parentStack of size " << parentStack.size() << std::endl;
+      edm::LogVerbatim("TGeoMgrFromDdd") << "parentStack of size " << parentStack.size();
       auto num = (info.second != nullptr) ? info.second->copyno() : 0;
-      std::cout << info.first.name() << " " << num << " " << DDSolidShapesName::name(info.first.solid().shape())
-                << std::endl;
+      edm::LogVerbatim("TGeoMgrFromDdd") << info.first.name() << " " << num << " "
+                                         << DDSolidShapesName::name(info.first.solid().shape());
     }
 
     std::string name = m_fullname ? info.first.name().fullname() : info.first.name().name();
@@ -614,18 +617,22 @@ TGeoVolume* TGeoMgrFromDdd::createVolume(const std::string& iName, const DDSolid
 
 TGeoMaterial* TGeoMgrFromDdd::createMaterial(const DDMaterial& iMaterial) {
   std::string mat_name = m_fullname ? iMaterial.name().fullname() : iMaterial.name().name();
-  edm::LogVerbatim("TGeoMgrFromDdd") << "createMateriale with name: " << mat_name;
+  edm::LogVerbatim("TGeoMgrFromDdd") << "createMaterial with name: " << mat_name;
   TGeoMaterial* mat = nameToMaterial_[mat_name];
 
   if (mat == nullptr) {
     if (iMaterial.noOfConstituents() > 0) {
-      TGeoMixture* mix = new TGeoMixture(mat_name.c_str(), iMaterial.noOfConstituents(), iMaterial.density() * cm3 / g);
+      TGeoMixture* mix =
+          new TGeoMixture(mat_name.c_str(), iMaterial.noOfConstituents(), iMaterial.density() * CLHEP::cm3 / CLHEP::g);
       for (int i = 0; i < iMaterial.noOfConstituents(); ++i) {
         mix->AddElement(createMaterial(iMaterial.constituent(i).first), iMaterial.constituent(i).second);
       }
       mat = mix;
     } else {
-      mat = new TGeoMaterial(mat_name.c_str(), iMaterial.a() * mole / g, iMaterial.z(), iMaterial.density() * cm3 / g);
+      mat = new TGeoMaterial(mat_name.c_str(),
+                             iMaterial.a() * CLHEP::mole / CLHEP::g,
+                             iMaterial.z(),
+                             iMaterial.density() * CLHEP::cm3 / CLHEP::g);
     }
     nameToMaterial_[mat_name] = mat;
   }

@@ -63,9 +63,9 @@ namespace {
           // looping over the EB channels, via the dense-index, mapped into EBDetId's
           if (payload->barrelItems().empty())
             return false;
-          // set to -1 for ieta 0 (no crystal)
+          // set to 1 for ieta 0 (no crystal)
           for (int iphi = MIN_IPHI; iphi < MAX_IPHI + 1; iphi++)
-            fillWithValue(iphi, 0, -1);
+            fillWithValue(iphi, 0, 1);
 
           for (int cellid = EBDetId::MIN_HASH; cellid < EBDetId::kSizeForDenseIndexing; ++cellid) {
             uint32_t rawid = EBDetId::unhashIndex(cellid);
@@ -80,8 +80,8 @@ namespace {
             // fill the Histogram2D here
             fillWithValue((EBDetId(rawid)).iphi(), (EBDetId(rawid)).ieta(), weight);
           }  // loop over cellid
-        }    // if payload.get()
-      }      // loop over IOV's (1 in this case)
+        }  // if payload.get()
+      }  // loop over IOV's (1 in this case)
 
       return true;
 
@@ -136,10 +136,10 @@ namespace {
               else
                 fillWithValue(myEEId.ix() + IX_MAX + EEhistSplit, myEEId.iy(), weight);
             }  // validDetId
-          }    // loop over cellid
+          }  // loop over cellid
 
         }  // payload
-      }    // loop over IOV's (1 in this case)
+      }  // loop over IOV's (1 in this case)
       return true;
     }  // fill method
   };
@@ -263,7 +263,7 @@ namespace {
           fillEEMap_TwoIOVs<EcalLaserAlphas>(payload, endc_m, endc_p, irun, pEE, pEEmin, pEEmax, method);
 
         }  // payload
-      }    // loop over IOVs
+      }  // loop over IOVs
 
       gStyle->SetPalette(1);
       gStyle->SetOptStat(0);
@@ -312,7 +312,7 @@ namespace {
       canvas.SaveAs(ImageName.c_str());
       return true;
     }  // fill method
-  };   // class EcalLaserAlphasDiffBase
+  };  // class EcalLaserAlphasDiffBase
   using EcalLaserAlphasDiffOneTag = EcalLaserAlphasBase<cond::payloadInspector::SINGLE_IOV, 1, 0>;
   using EcalLaserAlphasDiffTwoTags = EcalLaserAlphasBase<cond::payloadInspector::SINGLE_IOV, 2, 0>;
   using EcalLaserAlphasRatioOneTag = EcalLaserAlphasBase<cond::payloadInspector::SINGLE_IOV, 1, 1>;

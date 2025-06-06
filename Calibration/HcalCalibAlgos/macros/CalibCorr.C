@@ -34,6 +34,17 @@
 //        double getCorr(entry): Entry # (in the file) dependent correction
 //        bool absent(entry) : if correction factor absent
 //        bool present(entry): or present (relevant for ML motivated)
+//        double getPhiCorr(unsigned int id): correction factor from phi
+//                                            symmery studies
+//        double getPhiCorrs(int run, unsigned int id): era-dependent correction
+//                                            factor from phi symmetry studies
+//      *infile* is the name of the input file
+//      *flag* can have a value between 0:5 specifying the type of correction
+//             5 for run-dependent correctons using results from several phi
+//             symmetry studies; 4 for using results from one phi-symmetry
+//             study; 3 for pileup correction using machine learning method;
+//             2 for overall response corrections; 1 for depth dependence
+//             corrections; 0 for raddam corrections)
 // CalibSelectRBX(rbxFile, debug)
 //      A class for selecting a given set of Read Out Box's and provides
 //        bool isItRBX(detId): if it/they is in the chosen RBXs
@@ -42,12 +53,24 @@
 //      A class for either rejecting duplicate entries or giving depth
 //        dependent weight. flag is 0 for keeping a list of duplicate
 //        emtries; 1 is to keep depth dependent weight for each ieta;
-//        2 is to keep a list of ieta, iphi for channels to be selected.
+//        2 is to keep a list of ieta, iphi for channels to be selected;
+//        3 is to read the gain correction file
 //        bool isDuplicate(entry): if it is a duplicate entry
 //        double getWeight(ieta, depth): get the dependent weight
 //        bool select(int ieta, int iphi): channels to be selected
+//        double getCorr(int run, int ieta, int depth): correction factor
+//        to modify the rechit energy due to change in gain fctor
 // void CalibCorrTest(infile, flag)
 //      Tests a file which contains correction factors used by CalibCorr
+//      if *flag* is >= 0; for negative values it initializes CalibDuplicate
+//      with -flag and *debug* = tue
+// void CalibCorrScale(infile, oufile, scale)
+//      Scales all contents of correction factors by "scale" from "infile"
+//      to "outfile"
+// void CalibCorrScale2(infile, oufile, scaleB, scaleT, scaleE)
+//      Scales all contents of correction factors in the barrel, transition and
+//      endcap regions by "scaleB", "scaleT", "scaleE" from "infile" and writes
+//      them to "outfile"
 //////////////////////////////////////////////////////////////////////////////
 #ifndef CalibrationHcalCalibAlgosCalibCorr_h
 #define CalibrationHcalCalibAlgosCalibCorr_h
@@ -112,30 +135,62 @@ unsigned int truncateId(unsigned int detId, int truncateFlag, bool debug = false
   if (debug) {
     std::cout << "Truncate 1 " << std::hex << detId << " " << id << std::dec << " Flag " << truncateFlag << std::endl;
   }
+  int truncate0 = ((truncateFlag / 1) % 10);
+  int truncate1 = ((truncateFlag / 10) % 10);
   int subdet, depth, zside, ieta, iphi;
   unpackDetId(detId, subdet, zside, ieta, iphi, depth);
-  if (truncateFlag == 1) {
+  if (truncate1 == 1)
+    zside = 1;
+  if (truncate0 == 1) {
     //Ignore depth index of ieta values of 15 and 16 of HB
     if ((subdet == 1) && (ieta > 14))
       depth = 1;
-  } else if (truncateFlag == 2) {
+  } else if (truncate0 == 2) {
     //Ignore depth index of all ieta values
     depth = 1;
-  } else if (truncateFlag == 3) {
-    //Ignore depth index for depth > 1 in HE
-    if ((subdet == 2) && (depth > 1))
-      depth = 2;
-    else
+  } else if (truncate0 == 3) {
+    //Ignore depth index for HE
+    if (subdet == 2)
       depth = 1;
-  } else if (truncateFlag == 4) {
-    //Ignore depth index for depth > 1 in HB
-    if ((subdet == 1) && (depth > 1))
-      depth = 2;
-    else
+  } else if (truncate0 == 4) {
+    //Ignore depth index for HB
+    if (subdet == 1)
       depth = 1;
-  } else if (truncateFlag == 5) {
+  } else if (truncate0 == 5) {
     //Ignore depth index for depth > 1 in HB and HE
     if (depth > 1)
+      depth = 2;
+  } else if (truncate0 == 6) {
+    //Ignore depth index for depth > 2 in HB and HE; depths 1, 2 considered as 1
+    if (depth <= 2)
+      depth = 1;
+    else
+      depth = 2;
+  } else if (truncate0 == 7) {
+    //Ignore depth index for HB; depth 1, 2 considered as 1; deepth > 2 as 2
+    //Ignore depth index for depth > 2 in HE; all depths considered as 1
+    if (subdet == 1) {
+      if (depth <= 2)
+        depth = 1;
+      else
+        depth = 2;
+    } else {
+      depth = 1;
+    }
+  } else if (truncate0 == 8) {
+    //Ignore depth index for HE; depth 1, 2 considered as 1; deepth > 2 as 2
+    //Ignore depth index for depth > 2 in HB; all depths considered as 1
+    if (subdet == 2) {
+      if (depth <= 2)
+        depth = 1;
+      else
+        depth = 2;
+    } else {
+      depth = 1;
+    }
+  } else if (truncate0 == 9) {
+    //Depths 1 and 2 considered as depth = 2; rest of the depths are kept as it is
+    if (depth <= 2)
       depth = 2;
   }
   id = (subdet << 25) | (0x1000000) | ((depth & 0xF) << 20) | ((zside > 0) ? (0x80000 | (ieta << 10)) : (ieta << 10));
@@ -174,16 +229,17 @@ unsigned int repackId(int subdet, int ieta, int iphi, int depth) {
 bool ifHB(int ieta, int depth) { return ((std::abs(ieta) < 16) || ((std::abs(ieta) == 16) && (depth != 4))); }
 
 int truncateDepth(int ieta, int depth, int truncateFlag) {
+  int truncate0 = ((truncateFlag / 1) % 10);
   int d(depth);
-  if (truncateFlag == 5) {
+  if (truncate0 == 5) {
     d = (depth == 1) ? 1 : 2;
-  } else if (truncateFlag == 4) {
+  } else if (truncate0 == 4) {
     d = ifHB(ieta, depth) ? ((depth == 1) ? 1 : 2) : depth;
-  } else if (truncateFlag == 3) {
+  } else if (truncate0 == 3) {
     d = (!ifHB(ieta, depth)) ? ((depth == 1) ? 1 : 2) : depth;
-  } else if (truncateFlag == 2) {
+  } else if (truncate0 == 2) {
     d = 1;
-  } else if (truncateFlag == 1) {
+  } else if (truncate0 == 1) {
     d = ((std::abs(ieta) == 15) || (std::abs(ieta) == 16)) ? 1 : depth;
   }
   return d;
@@ -547,16 +603,19 @@ public:
   double getCorr(const Long64_t& entry);
   double getTrueCorr(const Long64_t& entry);
   double getPhiCorr(unsigned int id);
+  double getPhiCorrs(int run, unsigned int id);
   bool absent(const Long64_t& entry);
   bool absent() { return (good_ == 0); }
   bool present(const Long64_t& entry);
 
 private:
+  unsigned int runId(const int& run);
   unsigned int readCorrRun(const char* infile);
   unsigned int readCorrDepth(const char* infile);
   unsigned int readCorrResp(const char* infile);
   unsigned int readCorrPU(const char* infile);
   unsigned int readCorrPhi(const char* infile);
+  unsigned int readCorrPhis(const char* infile);
   unsigned int getDetIdHE(int ieta, int iphi, int depth);
   unsigned int getDetId(int subdet, int ieta, int iphi, int depth);
   unsigned int correctDetId(const unsigned int& detId);
@@ -569,6 +628,8 @@ private:
   std::map<Long64_t, double> cfactors_;
   std::vector<int> runlow_;
   std::map<unsigned int, double> corrPhiSym_;
+  std::vector<std::pair<int, int> > runs_, ids_;
+  std::map<std::pair<unsigned int, unsigned int>, double> corrPhiSyms_;
 };
 
 class CalibSelectRBX {
@@ -592,15 +653,22 @@ public:
 
   bool isDuplicate(long entry);
   double getWeight(const unsigned int);
-  bool doCorr() { return ((flag_ == 1) && ok_); }
+  bool doCorr() { return (((flag_ == 1) || (flag_ == 3)) && ok_); }
+  bool doCorr(int flag) { return ((flag_ == flag) && ok_); }
   bool select(int ieta, int iphi);
+  double getCorr(int run, int ieta, int depth);
 
 private:
+  bool readCorrFactor(const char* fName);
+  unsigned int runId(const int& run);
+
   int flag_;
   double debug_, ok_;
   std::vector<Long64_t> entries_;
   std::map<int, std::vector<double> > weights_;
   std::vector<std::pair<int, int> > etaphi_;
+  std::vector<std::pair<int, int> > runs_, ids_;
+  std::map<std::pair<int, int>, std::vector<double> > corrs_;
 };
 
 CalibCorrFactor::CalibCorrFactor(const char* infile, int useScale, double scale, bool etamax, bool marina, bool debug)
@@ -714,6 +782,8 @@ CalibCorr::CalibCorr(const char* infile, int flag, bool debug) : flag_(flag), de
     good_ = readCorrPU(infile);
   else if (flag == 4)
     good_ = readCorrPhi(infile);
+  else if (flag == 5)
+    good_ = readCorrPhis(infile);
   else
     good_ = readCorrRun(infile);
 }
@@ -732,9 +802,9 @@ float CalibCorr::getCorr(int run, unsigned int id) {
     if (itr != corrFacResp_.end())
       cfac = itr->second;
   } else if (flag_ == 4) {
-    std::map<unsigned int, double>::iterator itr = corrPhiSym_.find(idx);
-    if (itr != corrPhiSym_.end())
-      cfac = itr->second;
+    cfac = getPhiCorr(idx);
+  } else if (flag_ == 5) {
+    cfac = getPhiCorrs(run, idx);
   } else {
     int ip(-1);
     for (unsigned int k = 0; k < runlow_.size(); ++k) {
@@ -794,6 +864,24 @@ double CalibCorr::getPhiCorr(unsigned int idx) {
     unpackDetId(idx, subdet, zside, ieta, iphi, depth);
     std::cout << "ID " << std::hex << idx << std::dec << " (Sub " << subdet << " eta " << zside * ieta << " phi "
               << iphi << " depth " << depth << ")  Factor " << cfac << std::endl;
+  }
+  return cfac;
+}
+
+double CalibCorr::getPhiCorrs(int run, unsigned int idx) {
+  double cfac(1.0);
+  if (good_ == 0)
+    return cfac;
+  unsigned int runid = runId(run);
+  std::map<std::pair<unsigned int, unsigned int>, double>::iterator itr =
+      corrPhiSyms_.find(std::pair<unsigned int, unsigned int>(runid, idx));
+  if (itr != corrPhiSyms_.end())
+    cfac = itr->second;
+  if (debug_) {
+    int subdet, zside, ieta, iphi, depth;
+    unpackDetId(idx, subdet, zside, ieta, iphi, depth);
+    std::cout << "Run " << run << " ID " << runid << ":" << std::hex << idx << std::dec << " (Sub " << subdet << " eta "
+              << zside * ieta << " phi " << iphi << " depth " << depth << ")  Factor " << cfac << std::endl;
   }
   return cfac;
 }
@@ -1013,6 +1101,82 @@ unsigned int CalibCorr::readCorrPhi(const char* infile) {
   return good;
 }
 
+unsigned int CalibCorr::readCorrPhis(const char* infile0) {
+  std::cout << "Enters readCorrPhis for " << infile0 << std::endl;
+  unsigned int all(0), good(0);
+  std::ifstream fIn(infile0);
+  if (!fIn.good()) {
+    std::cout << "Cannot open file " << infile0 << std::endl;
+  } else {
+    char buffer0[1024];
+    while (fIn.getline(buffer0, 1024)) {
+      std::string bufferString0(buffer0);
+      if (bufferString0.substr(0, 1) == "#") {
+        continue;  //ignore other comments
+      } else {
+        std::vector<std::string> item = splitString(bufferString0);
+        if (item.size() > 2) {
+          int run1 = std::atoi(item[0].c_str());
+          int run2 = std::atoi(item[1].c_str());
+          std::string infile(item[2]);
+          unsigned int runid = runs_.size();
+          runs_.push_back(std::pair<int, int>(run1, run2));
+          std::ifstream fInput(infile.c_str());
+          if (!fInput.good()) {
+            std::cout << "Cannot open file " << infile << std::endl;
+          } else {
+            char buffer[1024];
+            while (fInput.getline(buffer, 1024)) {
+              ++all;
+              std::string bufferString(buffer);
+              if (bufferString.substr(0, 1) == "#") {
+                continue;  //ignore other comments
+              } else {
+                std::vector<std::string> items = splitString(bufferString);
+                if (items.size() < 5) {
+                  std::cout << "Ignore  line: " << buffer << " Size " << items.size();
+                  for (unsigned int k = 0; k < items.size(); ++k)
+                    std::cout << " [" << k << "] : " << items[k];
+                  std::cout << std::endl;
+                } else {
+                  ++good;
+                  int subdet = std::atoi(items[0].c_str());
+                  int ieta = std::atoi(items[1].c_str());
+                  int iphi = std::atoi(items[2].c_str());
+                  int depth = std::atoi(items[3].c_str());
+                  double corrf = std::atof(items[4].c_str());
+                  unsigned int id = packDetId(subdet, ieta, iphi, depth);
+                  corrPhiSyms_[std::pair<int, int>(runid, id)] = corrf;
+                  if (debug_)
+                    std::cout << "ID " << runid << ":" << std::hex << id << std::dec << ":" << id << " (subdet "
+                              << subdet << " eta " << ieta << " phi " << iphi << " depth " << depth << ") "
+                              << corrPhiSym_[id] << std::endl;
+                }
+              }
+            }
+            fInput.close();
+          }
+        }
+      }
+    }
+    fIn.close();
+    std::cout << "Reads total of " << all << " and " << good << " good records of phi-symmetry factors from "
+              << runs_.size() << " files as given in " << infile0 << std::endl;
+  }
+  return good;
+}
+
+unsigned int CalibCorr::runId(const int& run) {
+  unsigned int id(runs_.size());
+  for (unsigned int k = 0; k < runs_.size(); ++k) {
+    if ((run >= runs_[k].first) && (run <= runs_[k].second)) {
+      id = k;
+      break;
+    }
+  }
+  return id;
+}
+
 unsigned int CalibCorr::getDetIdHE(int ieta, int iphi, int depth) { return getDetId(2, ieta, iphi, depth); }
 
 unsigned int CalibCorr::getDetId(int subdet, int ieta, int iphi, int depth) {
@@ -1212,6 +1376,8 @@ CalibDuplicate::CalibDuplicate(const char* fname, int flag, bool debug) : flag_(
           ok_ = true;
       }
     }
+  } else if (flag_ == 3) {
+    ok_ = readCorrFactor(fname);
   } else {
     flag_ = 2;
     if (strcmp(fname, "") != 0) {
@@ -1286,21 +1452,188 @@ bool CalibDuplicate::select(int ieta, int iphi) {
   return flag;
 }
 
+double CalibDuplicate::getCorr(int run, int ieta, int depth) {
+  std::map<std::pair<int, int>, std::vector<double> >::const_iterator itr =
+      corrs_.find(std::pair<int, int>(ieta, depth));
+  double corr(1.0);
+  if (itr != corrs_.end()) {
+    unsigned int irun = runId(run);
+    corr = (itr->second)[irun];
+  }
+  return corr;
+}
+
+bool CalibDuplicate::readCorrFactor(const char* infile) {
+  bool flag(false);
+  std::ifstream fInput(infile);
+  if (!fInput.good()) {
+    std::cout << "CalibDuplicate::readCorrFactor:Cannot open file " << infile << std::endl;
+  } else {
+    int nrun, neta;
+    fInput >> nrun >> neta;
+    int indx, run1, run2;
+    for (int k = 0; k < nrun; ++k) {
+      fInput >> indx >> run1 >> run2;
+      runs_.push_back(std::pair<int, int>(run1, run2));
+    }
+    int eta, depth;
+    double corr;
+    for (int k = 0; k < neta; ++k) {
+      fInput >> eta >> depth;
+      std::vector<double> corrs;
+      for (int i = 0; i < nrun; ++i) {
+        fInput >> corr;
+        corrs.push_back(corr);
+      }
+      corrs_[std::pair<int, int>(eta, depth)] = corrs;
+    }
+    fInput.close();
+    std::cout << "CalibDuplicate::readCorrFactor:Reads information of " << runs_.size() << " runs and " << corrs_.size()
+              << " channels from " << infile << std::endl;
+    flag = true;
+    if (debug_) {
+      for (unsigned int k = 0; k < runs_.size(); ++k)
+        std::cout << "Run range[" << k << "] " << runs_[k].first << ":" << runs_[k].second << std::endl;
+      std::map<std::pair<int, int>, std::vector<double> >::const_iterator itr;
+      for (itr = corrs_.begin(); itr != corrs_.end(); ++itr) {
+        std::cout << "eta:depth [" << (itr->first).first << ":" << (itr->first).second << "]";
+        for (unsigned int i = 0; i < (itr->second).size(); ++i)
+          std::cout << " " << (itr->second)[i];
+        std::cout << std::endl;
+      }
+    }
+  }
+  return flag;
+}
+
+unsigned int CalibDuplicate::runId(const int& run) {
+  unsigned int id(runs_.size());
+  for (unsigned int k = 0; k < runs_.size(); ++k) {
+    if ((run >= runs_[k].first) && (run <= runs_[k].second)) {
+      id = k;
+      break;
+    }
+  }
+  return id;
+}
+
 void CalibCorrTest(const char* infile, int flag) {
-  CalibCorr* c1 = new CalibCorr(infile, flag, true);
-  for (int ieta = 1; ieta < 29; ++ieta) {
-    int subdet = (ieta > 16) ? 2 : 1;
-    int depth = (ieta > 16) ? 2 : 1;
-    unsigned int id1 = ((4 << 28) | ((subdet & 0x7) << 25));
-    id1 |= ((0x1000000) | ((depth & 0xF) << 20) | (ieta << 10) | 1);
-    c1->getCorr(0, id1);
-    id1 |= (0x80000);
-    c1->getCorr(0, id1);
+  if (flag >= 0) {
+    CalibCorr* c1 = new CalibCorr(infile, flag, true);
+    for (int ieta = 1; ieta < 29; ++ieta) {
+      int subdet = (ieta > 16) ? 2 : 1;
+      int depth = (ieta > 16) ? 2 : 1;
+      unsigned int id1 = ((4 << 28) | ((subdet & 0x7) << 25));
+      id1 |= ((0x1000000) | ((depth & 0xF) << 20) | (ieta << 10) | 1);
+      c1->getCorr(0, id1);
+      id1 |= (0x80000);
+      c1->getCorr(0, id1);
+    }
+    delete c1;
+  } else {
+    CalibDuplicate* c1 = new CalibDuplicate(infile, -flag, true);
+    delete c1;
   }
 }
 
 unsigned int stringTest(const std::string& str) {
   std::cout << str << " has " << str.size() << " characters\n";
   return str.size();
+}
+
+void CalibCorrScale(const char* infile, const char* outfile, double scale) {
+  std::ofstream myfile;
+  myfile.open(outfile);
+  if (!myfile.is_open()) {
+    std::cout << "** ERROR: Can't open '" << outfile << std::endl;
+  } else {
+    if (std::string(infile) != "") {
+      std::ifstream fInput(infile);
+      if (!fInput.good()) {
+        std::cout << "Cannot open file " << infile << std::endl;
+      } else {
+        char buffer[1024];
+        unsigned int all(0), good(0), comment(0);
+        while (fInput.getline(buffer, 1024)) {
+          ++all;
+          if (buffer[0] == '#') {
+            myfile << buffer << std::endl;
+            ++comment;
+            continue;  //ignore comment
+          }
+          std::vector<std::string> items = splitString(std::string(buffer));
+          if (items.size() != 5) {
+            std::cout << "Ignore  line: " << buffer << std::endl;
+          } else {
+            ++good;
+            int ieta = std::atoi(items[1].c_str());
+            int depth = std::atoi(items[2].c_str());
+            float corrf = scale * std::atof(items[3].c_str());
+            float dcorr = scale * std::atof(items[4].c_str());
+            myfile << std::setw(10) << items[0] << std::setw(10) << std::dec << ieta << std::setw(10) << depth
+                   << std::setw(10) << corrf << " " << std::setw(10) << dcorr << std::endl;
+          }
+        }
+        fInput.close();
+        std::cout << "Reads total of " << all << ", " << comment << " and " << good << " good records from " << infile
+                  << " and copied to " << outfile << std::endl;
+      }
+    }
+    myfile.close();
+  }
+}
+
+void CalibCorrScale2(const char* infile, const char* outfile, double scaleB, double scaleT, double scaleE) {
+  int ietasL[3] = {0, 13, 17};
+  int ietasH[3] = {14, 18, 29};
+  double scale[3] = {scaleB, scaleT, scaleE};
+  std::ofstream myfile;
+  myfile.open(outfile);
+  if (!myfile.is_open()) {
+    std::cout << "** ERROR: Can't open '" << outfile << std::endl;
+  } else {
+    if (std::string(infile) != "") {
+      std::ifstream fInput(infile);
+      if (!fInput.good()) {
+        std::cout << "Cannot open file " << infile << std::endl;
+      } else {
+        char buffer[1024];
+        unsigned int all(0), good(0), comment(0);
+        while (fInput.getline(buffer, 1024)) {
+          ++all;
+          if (buffer[0] == '#') {
+            myfile << buffer << std::endl;
+            ++comment;
+            continue;  //ignore comment
+          }
+          std::vector<std::string> items = splitString(std::string(buffer));
+          if (items.size() != 5) {
+            std::cout << "Ignore  line: " << buffer << std::endl;
+          } else {
+            ++good;
+            int ieta = std::atoi(items[1].c_str());
+            int depth = std::atoi(items[2].c_str());
+            int jp(-1);
+            for (int j = 0; j < 3; ++j) {
+              if (std::abs(ieta) > ietasL[j] && std::abs(ieta) <= ietasH[j]) {
+                if (jp < 0)
+                  jp = j;
+              }
+            }
+            if (jp < 0)
+              jp = 2;
+            float corrf = scale[jp] * std::atof(items[3].c_str());
+            float dcorr = scale[jp] * std::atof(items[4].c_str());
+            myfile << std::setw(10) << items[0] << std::setw(10) << std::dec << ieta << std::setw(10) << depth
+                   << std::setw(10) << corrf << " " << std::setw(10) << dcorr << std::endl;
+          }
+        }
+        fInput.close();
+        std::cout << "Reads total of " << all << ", " << comment << " and " << good << " good records from " << infile
+                  << " and copied to " << outfile << std::endl;
+      }
+    }
+    myfile.close();
+  }
 }
 #endif

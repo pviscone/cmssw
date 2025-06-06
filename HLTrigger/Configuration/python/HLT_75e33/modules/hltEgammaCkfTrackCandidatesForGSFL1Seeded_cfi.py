@@ -1,11 +1,9 @@
 import FWCore.ParameterSet.Config as cms
 
 hltEgammaCkfTrackCandidatesForGSFL1Seeded = cms.EDProducer("CkfTrackCandidateMaker",
-    # MeasurementTrackerEvent = cms.InputTag("MeasurementTrackerEvent"),
+    MeasurementTrackerEvent = cms.InputTag("hltMeasurementTrackerEvent"),
     NavigationSchool = cms.string('SimpleNavigationSchool'),
     RedundantSeedCleaner = cms.string('CachingSeedCleanerBySharedInput'),
-    # SimpleMagneticField = cms.string(''),
-    # TrajectoryBuilder = cms.string(''),
     TrajectoryBuilderPSet = cms.PSet(
         refToPSet_ = cms.string('HLTPSetTrajectoryBuilderForGsfElectrons')
     ),

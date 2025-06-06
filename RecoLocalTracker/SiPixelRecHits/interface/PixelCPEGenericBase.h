@@ -1,13 +1,14 @@
 #ifndef RecoLocalTracker_SiPixelRecHits_PixelCPEGenericBase_H
 #define RecoLocalTracker_SiPixelRecHits_PixelCPEGenericBase_H
 
-#include "PixelCPEBase.h"
 #include <vector>
+
+#include "RecoLocalTracker/SiPixelRecHits/interface/PixelCPEBase.h"
 
 class PixelCPEGenericBase : public PixelCPEBase {
 public:
   struct ClusterParamGeneric : ClusterParam {
-    ClusterParamGeneric(){};
+    ClusterParamGeneric() {}
     ClusterParamGeneric(const SiPixelCluster& cl) : ClusterParam(cl) {}
     // The truncation value pix_maximum is an angle-dependent cutoff on the
     // individual pixel signals. It should be applied to all pixels in the

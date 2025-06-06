@@ -21,41 +21,47 @@ errorstr     = "### PixelDQM::cfg::ERROR:"
 useOfflineGT = False
 useFileInput = False
 useMap       = False
-
-unitTest = False
-if 'unitTest=True' in sys.argv:
-	unitTest=True
-	useFileInput=False
+unitTest     = 'unitTest=True' in sys.argv
 
 #-------------------------------------
 #	Central DQM Stuff imports
 #-------------------------------------
 from DQM.Integration.config.online_customizations_cfi import *
+
 if useOfflineGT:
-        process.load("Configuration.StandardSequences.FrontierConditions_GlobalTag_cff")
-        process.GlobalTag.globaltag = autoCond['run3_data_prompt'] 
+    process.load("Configuration.StandardSequences.FrontierConditions_GlobalTag_cff")
+    process.GlobalTag.globaltag = autoCond['run3_data_prompt']
 else:
-	process.load('DQM.Integration.config.FrontierCondition_GT_cfi')
+    process.load('DQM.Integration.config.FrontierCondition_GT_cfi')
+
 if unitTest:
-	process.load("DQM.Integration.config.unitteststreamerinputsource_cfi")
-	from DQM.Integration.config.unitteststreamerinputsource_cfi import options
+    process.load("DQM.Integration.config.unitteststreamerinputsource_cfi")
+    from DQM.Integration.config.unitteststreamerinputsource_cfi import options
 elif useFileInput:
-	process.load("DQM.Integration.config.fileinputsource_cfi")
-	from DQM.Integration.config.fileinputsource_cfi import options
+    process.load("DQM.Integration.config.fileinputsource_cfi")
+    from DQM.Integration.config.fileinputsource_cfi import options
 else:
-	process.load('DQM.Integration.config.inputsource_cfi')
-	from DQM.Integration.config.inputsource_cfi import options
+    process.load('DQM.Integration.config.inputsource_cfi')
+    from DQM.Integration.config.inputsource_cfi import options
+
 process.load('DQM.Integration.config.environment_cfi')
 
 #-------------------------------------
 #	Central DQM Customization
 #-------------------------------------
-process.source.streamLabel = cms.untracked.string("streamDQMGPUvsCPU")
+
+if not useFileInput:
+    # stream label
+    if process.runType.getRunType() == process.runType.hi_run:
+        process.source.streamLabel = "streamHIDQMGPUvsCPU"
+    else:
+        process.source.streamLabel = "streamDQMGPUvsCPU"
+
 process.dqmEnv.subSystemFolder = subsystem
 process.dqmSaver.tag = 'PixelGPU'
 process.dqmSaver.runNumber = options.runNumber
-process.dqmSaverPB.tag = 'PixelGPU'
-process.dqmSaverPB.runNumber = options.runNumber
+# process.dqmSaverPB.tag = 'PixelGPU'
+# process.dqmSaverPB.runNumber = options.runNumber
 process = customise(process)
 process.DQMStore.verbose = 0
 if not unitTest and not useFileInput :
@@ -81,16 +87,22 @@ cmssw			= os.getenv("CMSSW_VERSION").split("_")
 #	Pixel DQM Tasks and Harvesters import
 #-------------------------------------
 process.load('DQM.SiPixelHeterogeneous.SiPixelHeterogenousDQM_FirstStep_cff')
+process.load('DQM.SiPixelHeterogeneous.SiPixelHeterogenousDQMHarvesting_cff')
+process.siPixelTrackComparisonHarvesterAlpaka.topFolderName = cms.string('SiPixelHeterogeneous/PixelTrackCompareGPUvsCPU')
 
 #-------------------------------------
 #	Some Settings before Finishing up
 #-------------------------------------
 if process.runType.getRunType() == process.runType.hi_run:
-    process.siPixelPhase1RawDataErrorComparator.pixelErrorSrcGPU = 'hltSiPixelDigisFromSoAPPOnAA'
-    process.siPixelPhase1RawDataErrorComparator.pixelErrorSrcCPU = 'hltSiPixelDigisLegacyPPOnAA'
+    process.siPixelPhase1MonitorRawDataASerial.src = 'hltSiPixelDigiErrorsPPOnAASerialSync'
+    process.siPixelPhase1MonitorRawDataADevice.src = 'hltSiPixelDigiErrorsPPOnAA'
+    process.siPixelPhase1RawDataErrorComparator.pixelErrorSrcGPU = 'hltSiPixelDigiErrorsPPOnAA'
+    process.siPixelPhase1RawDataErrorComparator.pixelErrorSrcCPU = 'hltSiPixelDigiErrorsPPOnAASerialSync'
 else:
-    process.siPixelPhase1RawDataErrorComparator.pixelErrorSrcGPU = 'hltSiPixelDigisFromSoA'
-    process.siPixelPhase1RawDataErrorComparator.pixelErrorSrcCPU = 'hltSiPixelDigisLegacy'
+    process.siPixelPhase1MonitorRawDataASerial.src = 'hltSiPixelDigiErrorsSerialSync'
+    process.siPixelPhase1MonitorRawDataADevice.src = 'hltSiPixelDigiErrors'
+    process.siPixelPhase1RawDataErrorComparator.pixelErrorSrcGPU = 'hltSiPixelDigiErrors'
+    process.siPixelPhase1RawDataErrorComparator.pixelErrorSrcCPU = 'hltSiPixelDigiErrorsSerialSync'
 #-------------------------------------
 #       Some Debug
 #-------------------------------------
@@ -100,13 +112,17 @@ process.dumpPath = cms.Path(process.dump)
 #-------------------------------------
 #	Hcal DQM Tasks/Clients Sequences Definition
 #-------------------------------------
-process.tasksPath = cms.Path(process.siPixelPhase1RawDataErrorComparator)
+process.tasksPath = cms.Path(process.siPixelPhase1MonitorRawDataASerial *
+                             process.siPixelPhase1MonitorRawDataADevice *
+                             process.siPixelPhase1RawDataErrorComparator *
+                             process.siPixelHeterogeneousDQMComparisonHarvestingAlpaka
+                             )
 
 #-------------------------------------
 #	Paths/Sequences Definitions
 #-------------------------------------
 process.dqmPath = cms.EndPath(process.dqmEnv)
-process.dqmPath1 = cms.EndPath(process.dqmSaver*process.dqmSaverPB)
+process.dqmPath1 = cms.EndPath(process.dqmSaver)#*process.dqmSaverPB)
 process.schedule = cms.Schedule(process.tasksPath,
                                 #process.dumpPath,  # for debug
                                 process.dqmPath,

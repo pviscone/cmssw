@@ -5,6 +5,7 @@
 #include "RecoTracker/MkFitCore/interface/MatrixSTypes.h"
 #include "RecoTracker/MkFitCore/interface/FunctionTypes.h"
 #include "RecoTracker/MkFitCore/interface/Hit.h"
+#include "RecoTracker/MkFitCore/interface/IdxChi2List.h"
 #include "RecoTracker/MkFitCore/interface/TrackerInfo.h"
 
 #include <vector>
@@ -29,21 +30,6 @@ namespace mkfit {
                              const float hit2_y) {
     return ((hit2_y - hit0_y) * (hit2_x - hit1_x) > (hit2_y - hit1_y) * (hit2_x - hit0_x) ? 1 : -1);
   }
-
-  struct IdxChi2List {
-  public:
-    int trkIdx;           // candidate index
-    int hitIdx;           // hit index
-    unsigned int module;  // module id
-    int nhits;            // number of hits (used for sorting)
-    int ntailholes;       // number of holes at the end of the track (used for sorting)
-    int noverlaps;        // number of overlaps (used for sorting)
-    int nholes;           // number of holes (used for sorting)
-    float pt;             // pt (used for sorting)
-    float chi2;           // total chi2 (used for sorting)
-    float chi2_hit;       // chi2 of the added hit
-    float score;          // score used for candidate ranking
-  };
 
   //==============================================================================
   // TrackState
@@ -392,8 +378,6 @@ namespace mkfit {
 
     Track(int charge, const SVector3& position, const SVector3& momentum, const SMatrixSym66& errors, float chi2)
         : TrackBase(charge, position, momentum, errors, chi2) {}
-
-    Track(const Track& t) : TrackBase(t), hitsOnTrk_(t.hitsOnTrk_) {}
 
     // This function is very inefficient, use only for debug and validation!
     HitVec hitsVector(const std::vector<HitVec>& globalHitVec) const {

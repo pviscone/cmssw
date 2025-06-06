@@ -4,6 +4,8 @@
 #include <utility>
 #include <variant>
 
+#include "CondFormats/DataRecord/interface/HcalPFCutsRcd.h"
+#include "CondTools/Hcal/interface/HcalPFCutsHandler.h"
 #include "DataFormats/EcalDetId/interface/EcalSubdetector.h"
 #include "FWCore/ParameterSet/interface/ConfigurationDescriptions.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
@@ -16,6 +18,9 @@
 #include "Geometry/Records/interface/CaloGeometryRecord.h"
 #include "Geometry/Records/interface/HcalRecNumberingRecord.h"
 #include "HeterogeneousCore/AlpakaCore/interface/alpaka/ESProducer.h"
+#include "RecoParticleFlow/PFRecHitProducer/interface/PFRecHitParamsRecord.h"
+#include "RecoParticleFlow/PFRecHitProducer/interface/PFRecHitTopologyRecord.h"
+
 #include "CalorimeterDefinitions.h"
 
 namespace ALPAKA_ACCELERATOR_NAMESPACE {
@@ -24,15 +29,22 @@ namespace ALPAKA_ACCELERATOR_NAMESPACE {
   template <typename CAL>
   class PFRecHitTopologyESProducer : public ESProducer {
   public:
-    PFRecHitTopologyESProducer(edm::ParameterSet const& iConfig) : ESProducer(iConfig) {
+    PFRecHitTopologyESProducer(edm::ParameterSet const& iConfig)
+        : ESProducer(iConfig), cutsFromDB_(iConfig.getParameter<bool>("usePFThresholdsFromDB")) {
       auto cc = setWhatProduced(this);
       geomToken_ = cc.consumes();
-      if constexpr (std::is_same_v<CAL, HCAL>)
+      if constexpr (std::is_same_v<CAL, HCAL>) {
         hcalToken_ = cc.consumes();
+        hcalCutsToken_ = cc.consumes();
+      }
     }
 
     static void fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
       edm::ParameterSetDescription desc;
+      if constexpr (std::is_same_v<CAL, HCAL>)
+        desc.add<bool>("usePFThresholdsFromDB", true);
+      else  // only needs to be true for HBHE
+        desc.add<bool>("usePFThresholdsFromDB", false);
       descriptions.addWithDefaultLabel(desc);
     }
 
@@ -40,7 +52,6 @@ namespace ALPAKA_ACCELERATOR_NAMESPACE {
       const auto& geom = iRecord.get(geomToken_);
       auto product = std::make_unique<typename CAL::TopologyTypeHost>(CAL::kSize, cms::alpakatools::host());
       auto view = product->view();
-
       const int calEnums[2] = {CAL::kSubdetectorBarrelId, CAL::kSubdetectorEndcapId};
       for (const auto subdet : calEnums) {
         // Construct topology
@@ -61,6 +72,20 @@ namespace ALPAKA_ACCELERATOR_NAMESPACE {
           const uint32_t denseId = CAL::detId2denseId(detId);
           assert(denseId < CAL::kSize);
 
+          // Fill SoA members with HCAL PF Thresholds from GT
+          if constexpr (std::is_same_v<CAL, HCAL>) {
+            view.cutsFromDB() = false;
+            if (cutsFromDB_) {
+              view.cutsFromDB() = true;
+              const HcalPFCuts& pfCuts = iRecord.get(hcalCutsToken_);
+              const HcalTopology& htopo = iRecord.get(hcalToken_);
+              std::unique_ptr<HcalPFCuts> prod = std::make_unique<HcalPFCuts>(pfCuts);
+              prod->setTopo(&htopo);
+              view.noiseThreshold(denseId) = prod->getValues(detId.rawId())->noiseThreshold();
+              view.seedThreshold(denseId) = prod->getValues(detId.rawId())->seedThreshold();
+            }
+          }
+
           const GlobalPoint pos = geo->getGeometry(detId)->getPosition();
           view.positionX(denseId) = pos.x();
           view.positionY(denseId) = pos.y();
@@ -71,7 +96,7 @@ namespace ALPAKA_ACCELERATOR_NAMESPACE {
             if (CAL::detIdInRange(neighDetId))
               view.neighbours(denseId)(n) = CAL::detId2denseId(neighDetId);
             else
-              view.neighbours(denseId)(n) = 0xffffffff;
+              view.neighbours(denseId)(n) = CAL::kInvalidDenseId;
           }
         }
       }
@@ -82,11 +107,13 @@ namespace ALPAKA_ACCELERATOR_NAMESPACE {
           for (auto const detId : geom.getValidDetIds(CAL::kDetectorId, subdet)) {
             const uint32_t denseId = CAL::detId2denseId(detId);
             for (uint32_t n = 0; n < 8; n++) {
+              if (view.neighbours(denseId)[n] == CAL::kInvalidDenseId)
+                continue;
               const ::reco::PFRecHitsTopologyNeighbours& neighboursOfNeighbour =
                   view.neighbours(view.neighbours(denseId)[n]);
               if (std::find(neighboursOfNeighbour.begin(), neighboursOfNeighbour.end(), denseId) ==
                   neighboursOfNeighbour.end())
-                view.neighbours(denseId)[n] = 0xffffffff;
+                view.neighbours(denseId)[n] = CAL::kInvalidDenseId;
             }
           }
       }
@@ -119,6 +146,8 @@ namespace ALPAKA_ACCELERATOR_NAMESPACE {
   private:
     edm::ESGetToken<CaloGeometry, CaloGeometryRecord> geomToken_;
     edm::ESGetToken<HcalTopology, HcalRecNumberingRecord> hcalToken_;
+    edm::ESGetToken<HcalPFCuts, HcalPFCutsRcd> hcalCutsToken_;
+    const bool cutsFromDB_;
 
     // specialised for HCAL/ECAL, because non-nearest neighbours are defined differently
     uint32_t getNeighbourDetId(const uint32_t detId, const uint32_t direction, const CaloSubdetectorTopology& topo);

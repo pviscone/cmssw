@@ -71,10 +71,6 @@ import EventFilter.HcalRawToDigi.HcalRawToDigi_cfi
 unpackHcal = EventFilter.HcalRawToDigi.HcalRawToDigi_cfi.hcalDigis.clone(
     InputLabel = cms.InputTag( 'rawDataCollector', processName=cms.InputTag.skipCurrentProcess()))
 
-import EventFilter.L1TXRawToDigi.caloLayer1Stage2Digis_cfi
-unpackLayer1 = EventFilter.L1TXRawToDigi.caloLayer1Stage2Digis_cfi.l1tCaloLayer1Digis.clone(
-    fedRawDataLabel = cms.InputTag( 'rawDataCollector', processName=cms.InputTag.skipCurrentProcess()))
-
 # Second, Re-Emulate the entire L1T
 
 from SimCalorimetry.HcalTrigPrimProducers.hcaltpdigi_cff import *
@@ -128,9 +124,12 @@ stage2L1Trigger_2017.toModify(simOmtfDigis,
 simEmtfDigis.CSCInput            = "unpackEmtf"
 simEmtfDigis.RPCInput            = 'unpackRPC'
 
+# Calo Layer-1
 simCaloStage2Layer1Digis.ecalToken = 'unpackEcal:EcalTriggerPrimitives'
-simCaloStage2Layer1Digis.hcalToken = 'unpackLayer1'
+simCaloStage2Layer1Digis.hcalToken = 'unpackHcal'
 
+# ZDC EtSums
+l1tZDCEtSums.hcalTPDigis = 'unpackHcal'
 
 ## GT
 stage2L1Trigger_2017.toModify(simGtExtFakeStage2Digis,
@@ -160,7 +159,6 @@ rawDataCollector = EventFilter.RawDataCollector.rawDataCollectorByLabel_cfi.rawD
 
 SimL1EmulatorTask = cms.Task()
 stage2L1Trigger.toReplaceWith(SimL1EmulatorTask, cms.Task(unpackEcal,unpackHcal,unpackCSC,unpackDT,unpackRPC,unpackRPCTwinMux,unpackTwinMux,unpackOmtf,unpackEmtf,unpackCsctf,unpackBmtf
-                                                          ,unpackLayer1
                                                           ,unpackTcds
                                                           ,SimL1EmulatorCoreTask,packCaloStage2
                                                           ,packGmtStage2,packGtStage2,rawDataCollector))

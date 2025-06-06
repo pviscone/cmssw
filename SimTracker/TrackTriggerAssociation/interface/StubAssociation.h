@@ -1,7 +1,7 @@
 #ifndef SimTracker_TrackTriggerAssociation_StubAssociation_h
 #define SimTracker_TrackTriggerAssociation_StubAssociation_h
 
-#include "SimTracker/TrackTriggerAssociation/interface/TTTypes.h"
+#include "SimDataFormats/Associations/interface/TTTypes.h"
 #include "L1Trigger/TrackTrigger/interface/Setup.h"
 
 #include <vector>
@@ -21,7 +21,6 @@ namespace tt {
     StubAssociation() { setup_ = nullptr; }
     StubAssociation(const Setup* setup) : setup_(setup) {}
     ~StubAssociation() {}
-
     // insert a TPPtr and its associated collection of TTstubRefs into the underlayering maps
     void insert(const TPPtr& tpPtr, const std::vector<TTStubRef>& ttSTubRefs);
     // returns map containing TTStubRef and their associated collection of TPPtrs

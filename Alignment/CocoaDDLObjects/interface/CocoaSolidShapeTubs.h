@@ -9,7 +9,7 @@
 
 #include "Alignment/CocoaDDLObjects/interface/CocoaSolidShape.h"
 #include "Alignment/CocoaUtilities/interface/CocoaGlobals.h"
-#include "CLHEP/Units/GlobalSystemOfUnits.h"
+#include <CLHEP/Units/SystemOfUnits.h>
 
 class CocoaSolidShapeTubs : public CocoaSolidShape {
 public:
@@ -18,9 +18,9 @@ public:
                       ALIfloat pRMin,
                       ALIfloat pRMax,
                       ALIfloat pDz,
-                      ALIfloat pSPhi = 0. * deg,
-                      ALIfloat pDPhi = 360. * deg);
-  ~CocoaSolidShapeTubs() override{};
+                      ALIfloat pSPhi = 0. * CLHEP::deg,
+                      ALIfloat pDPhi = 360. * CLHEP::deg);
+  ~CocoaSolidShapeTubs() override {}
   ALIfloat getInnerRadius() const { return theInnerRadius; }
   ALIfloat getOuterRadius() const { return theOuterRadius; }
   ALIfloat getZHalfLength() const { return theZHalfLength; }

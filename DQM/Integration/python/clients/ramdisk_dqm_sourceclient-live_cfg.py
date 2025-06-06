@@ -16,8 +16,8 @@ process.load('DQM.Integration.config.environment_cfi')
 process.dqmEnv.subSystemFolder = subsystem
 process.dqmSaver.tag = subsystem
 process.dqmSaver.runNumber = options.runNumber
-process.dqmSaverPB.tag = subsystem
-process.dqmSaverPB.runNumber = options.runNumber
+# process.dqmSaverPB.tag = subsystem
+# process.dqmSaverPB.runNumber = options.runNumber
 
 from DQMServices.Core.DQMEDAnalyzer import DQMEDAnalyzer
 process.analyzer = DQMEDAnalyzer('RamdiskMonitor',
@@ -29,6 +29,10 @@ process.analyzer = DQMEDAnalyzer('RamdiskMonitor',
         "streamDQMCalibration",
     )
 )
+
+# stream label
+if process.runType.getRunType() == process.runType.hi_run:
+    process.analyzer.streamLabels[0] = "streamHIDQM"
 
 process.p = cms.Path(process.analyzer)
 process.dqmsave_step = cms.Path(process.dqmEnv * process.dqmSaver)

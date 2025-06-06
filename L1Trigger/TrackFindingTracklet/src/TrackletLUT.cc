@@ -9,7 +9,8 @@
 using namespace std;
 using namespace trklet;
 
-TrackletLUT::TrackletLUT(const Settings& settings) : settings_(settings), setup_(settings.setup()) {}
+TrackletLUT::TrackletLUT(const Settings& settings)
+    : settings_(settings), setup_(settings.setup()), nbits_(0), positive_(true) {}
 
 std::vector<const tt::SensorModule*> TrackletLUT::getSensorModules(
     unsigned int layerdisk, bool isPS, std::array<double, 2> tan_range, unsigned int nzbins, unsigned int zbin) {
@@ -237,33 +238,43 @@ void TrackletLUT::initmatchcut(unsigned int layerdisk, MatchType type, unsigned 
   name_ = settings_.combined() ? "MP_" : "MC_";
 
   if (type == barrelphi) {
+    nbits_ = 10;
     name_ += TrackletConfigBuilder::LayerName(layerdisk) + "PHI" + cregion + "_phicut.tab";
   }
   if (type == barrelz) {
+    nbits_ = 9;
     name_ += TrackletConfigBuilder::LayerName(layerdisk) + "PHI" + cregion + "_zcut.tab";
   }
   if (type == diskPSphi) {
+    nbits_ = 19;
     name_ += TrackletConfigBuilder::LayerName(layerdisk) + "PHI" + cregion + "_PSphicut.tab";
   }
   if (type == disk2Sphi) {
+    nbits_ = 19;
     name_ += TrackletConfigBuilder::LayerName(layerdisk) + "PHI" + cregion + "_2Sphicut.tab";
   }
   if (type == disk2Sr) {
+    nbits_ = 7;
     name_ += TrackletConfigBuilder::LayerName(layerdisk) + "PHI" + cregion + "_2Srcut.tab";
   }
   if (type == diskPSr) {
+    nbits_ = 2;
     name_ += TrackletConfigBuilder::LayerName(layerdisk) + "PHI" + cregion + "_PSrcut.tab";
   }
   if (type == alphainner) {
+    nbits_ = 8;
     name_ += TrackletConfigBuilder::LayerName(layerdisk) + "PHI" + cregion + "_alphainner.tab";
   }
   if (type == alphaouter) {
+    nbits_ = 8;
     name_ += TrackletConfigBuilder::LayerName(layerdisk) + "PHI" + cregion + "_alphaouter.tab";
   }
   if (type == rSSinner) {
+    nbits_ = 15;
     name_ += TrackletConfigBuilder::LayerName(layerdisk) + "PHI" + cregion + "_rDSSinner.tab";
   }
   if (type == rSSouter) {
+    nbits_ = 15;
     name_ += TrackletConfigBuilder::LayerName(layerdisk) + "PHI" + cregion + "_rDSSouter.tab";
   }
 
@@ -472,9 +483,8 @@ void TrackletLUT::initTPlut(bool fillInner,
     }
   }
 
-  nbits_ = 8;
-
   positive_ = false;
+  nbits_ = 1;
   char cTP = 'A' + iTP;
 
   name_ = "TP_" + TrackletConfigBuilder::LayerName(layerdisk1) + TrackletConfigBuilder::LayerName(layerdisk2) + cTP;
@@ -537,6 +547,7 @@ void TrackletLUT::initTPregionlut(unsigned int iSeed,
   }
 
   positive_ = false;
+  nbits_ = 8;
   char cTP = 'A' + iTP;
 
   name_ = "TP_" + TrackletConfigBuilder::LayerName(layerdisk1) + TrackletConfigBuilder::LayerName(layerdisk2) + cTP +
@@ -768,6 +779,7 @@ void TrackletLUT::initteptlut(bool fillInner,
   }
 
   positive_ = false;
+  nbits_ = 1;
 
   if (fillTEMem) {
     if (fillInner) {
@@ -832,6 +844,7 @@ void TrackletLUT::initProjectionBend(double k_phider,
   }
 
   positive_ = false;
+  nbits_ = 5;
   name_ = settings_.combined() ? "MP_" : "PR_";
   name_ += "ProjectionBend_" + TrackletConfigBuilder::LayerName(N_LAYER + idisk) + ".tab";
 
@@ -975,13 +988,14 @@ void TrackletLUT::initBendMatch(unsigned int layerdisk) {
   }
 
   positive_ = false;
+  nbits_ = 1;
 
   name_ = "METable_" + TrackletConfigBuilder::LayerName(layerdisk) + ".tab";
 
   writeTable();
 }
 
-void TrackletLUT::initVMRTable(unsigned int layerdisk, VMRTableType type, int region) {
+void TrackletLUT::initVMRTable(unsigned int layerdisk, VMRTableType type, int region, bool combined) {
   unsigned int zbits = settings_.vmrlutzbits(layerdisk);
   unsigned int rbits = settings_.vmrlutrbits(layerdisk);
 
@@ -1012,7 +1026,12 @@ void TrackletLUT::initVMRTable(unsigned int layerdisk, VMRTableType type, int re
       double r = rmin + (irbin + 0.5) * dr;
       double z = zmin + (izbin + 0.5) * dz;
 
-      if (settings_.combined()) {
+      // The extra "combined" flag is used to disable the flag from settings_
+      // in special cases. In particular, in the case of the triplet seeds, the
+      // VMRouterCM and TrackletProcessorDisplaced currently use the older LUTs
+      // that were used with the non-combined modules. Once these modules are
+      // updated, this extra flag can be removed.
+      if (settings_.combined() && combined) {
         int iznew = izbin - (1 << (zbits - 1));
         if (iznew < 0)
           iznew += (1 << zbits);
@@ -1100,7 +1119,12 @@ void TrackletLUT::initVMRTable(unsigned int layerdisk, VMRTableType type, int re
     }
   }
 
-  if (settings_.combined()) {
+  // The extra "combined" flag is used to disable the flag from settings_ in
+  // special cases. In particular, in the case of the triplet seeds, the
+  // VMRouterCM and TrackletProcessorDisplaced currently use the older LUTs
+  // that were used with the non-combined modules. Once these modules are
+  // updated, this extra flag can be removed.
+  if (settings_.combined() && combined) {
     if (type == VMRTableType::me) {
       nbits_ = 2 * settings_.NLONGVMBITS();
       positive_ = false;
@@ -1129,6 +1153,7 @@ void TrackletLUT::initVMRTable(unsigned int layerdisk, VMRTableType type, int re
       //This if a hack where the same memory is used in both ME and TE modules
       if (layerdisk == LayerDisk::L2 || layerdisk == LayerDisk::L3 || layerdisk == LayerDisk::L4 ||
           layerdisk == LayerDisk::L6) {
+        nbits_ = 6;
         positive_ = false;
         name_ = "VMTableOuter" + TrackletConfigBuilder::LayerName(layerdisk) + ".tab";
         writeTable();
@@ -1137,23 +1162,27 @@ void TrackletLUT::initVMRTable(unsigned int layerdisk, VMRTableType type, int re
       assert(region >= 0);
       char cregion = 'A' + region;
       name_ = "VMR_" + TrackletConfigBuilder::LayerName(layerdisk) + "PHI" + cregion + "_finebin.tab";
+      nbits_ = 6;
       positive_ = false;
     }
 
     if (type == VMRTableType::inner) {
       positive_ = false;
+      nbits_ = 10;
       name_ = "VMTableInner" + TrackletConfigBuilder::LayerName(layerdisk) +
               TrackletConfigBuilder::LayerName(layerdisk + 1) + ".tab";
     }
 
     if (type == VMRTableType::inneroverlap) {
       positive_ = false;
+      nbits_ = 10;
       name_ = "VMTableInner" + TrackletConfigBuilder::LayerName(layerdisk) + TrackletConfigBuilder::LayerName(N_LAYER) +
               ".tab";
     }
 
     if (type == VMRTableType::disk) {
       positive_ = false;
+      nbits_ = 10;
       name_ = "VMTableOuter" + TrackletConfigBuilder::LayerName(layerdisk) + ".tab";
     }
   }
@@ -1378,11 +1407,15 @@ int TrackletLUT::getphiCorrValue(
 
 // Write LUT table.
 void TrackletLUT::writeTable() const {
-  if (!settings_.writeTable()) {
+  if (name_.empty()) {
     return;
   }
 
-  if (name_.empty()) {
+  if (nbits_ == 0) {
+    throw cms::Exception("LogicError") << "Error in " << __FILE__ << " nbits_ == 0 ";
+  }
+
+  if (!settings_.writeTable()) {
     return;
   }
 
@@ -1431,6 +1464,10 @@ void TrackletLUT::writeTable() const {
 }
 
 int TrackletLUT::lookup(unsigned int index) const {
+  if (index >= table_.size()) {
+    throw cms::Exception("LogicError") << "Error in " << __FILE__ << " index >= size " << index << " " << table_.size()
+                                       << " in " << name_;
+  }
   assert(index < table_.size());
   return table_[index];
 }

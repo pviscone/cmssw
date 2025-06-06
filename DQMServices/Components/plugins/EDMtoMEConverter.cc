@@ -41,12 +41,10 @@
 #include <vector>
 #include <map>
 #include <tuple>
+#include <filesystem>
 
 #include "TString.h"
 #include "TList.h"
-
-#include "classlib/utils/StringList.h"
-#include "classlib/utils/StringOps.h"
 
 class EDMtoMEConverter : public edm::one::EDProducer<edm::one::WatchRuns,
                                                      edm::one::WatchLuminosityBlocks,
@@ -60,11 +58,11 @@ public:
   explicit EDMtoMEConverter(const edm::ParameterSet &);
   ~EDMtoMEConverter() override = default;
 
-  void beginRun(const edm::Run &, const edm::EventSetup &) final{};
-  void endRun(const edm::Run &, const edm::EventSetup &) final{};
-  void beginLuminosityBlock(const edm::LuminosityBlock &, const edm::EventSetup &) final{};
-  void endLuminosityBlock(const edm::LuminosityBlock &, const edm::EventSetup &) final{};
-  void produce(edm::Event &, edm::EventSetup const &) final{};
+  void beginRun(const edm::Run &, const edm::EventSetup &) final {}
+  void endRun(const edm::Run &, const edm::EventSetup &) final {}
+  void beginLuminosityBlock(const edm::LuminosityBlock &, const edm::EventSetup &) final {}
+  void endLuminosityBlock(const edm::LuminosityBlock &, const edm::EventSetup &) final {}
+  void produce(edm::Event &, edm::EventSetup const &) final {}
 
   void endLuminosityBlockProduce(edm::LuminosityBlock &, edm::EventSetup const &) override;
   void endRunProduce(edm::Run &run, edm::EventSetup const &setup) override;
@@ -476,17 +474,12 @@ void EDMtoMEConverter::getData(DQMStore::IBooker &iBooker, DQMStore::IGetter &iG
       if (verbosity > 0)
         std::cout << pathname << std::endl;
 
-      std::string dir;
-
       // deconstruct path from fullpath
-      StringList fulldir = StringOps::split(pathname, "/");
-      std::string name = *(fulldir.end() - 1);
-
-      for (unsigned j = 0; j < fulldir.size() - 1; ++j) {
-        dir += fulldir[j];
-        if (j != fulldir.size() - 2)
-          dir += "/";
-      }
+      std::filesystem::path fulldir(pathname);
+      std::string name = fulldir.filename();
+      std::string dir = fulldir.parent_path();
+      if (dir == "/")
+        dir = "";
 
       // define new monitor element
       adjustScope(iBooker, iGetFrom, reScope);

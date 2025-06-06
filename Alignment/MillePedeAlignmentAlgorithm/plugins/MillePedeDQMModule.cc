@@ -29,14 +29,15 @@ MillePedeDQMModule ::MillePedeDQMModule(const edm::ParameterSet& config)
     : tTopoToken_(esConsumes<edm::Transition::BeginRun>()),
       gDetToken_(esConsumes<edm::Transition::BeginRun>()),
       ptpToken_(esConsumes<edm::Transition::BeginRun>()),
+      ptitpToken_(esConsumes<edm::Transition::BeginRun>()),
       aliThrToken_(esConsumes<edm::Transition::BeginRun>()),
+      siPixelQualityToken_(esConsumes<edm::Transition::BeginRun>()),
       geomToken_(esConsumes<edm::Transition::BeginRun>()),
+      outputFolder_(config.getParameter<std::string>("outputFolder")),
       mpReaderConfig_(config.getParameter<edm::ParameterSet>("MillePedeFileReader")),
       isHG_(mpReaderConfig_.getParameter<bool>("isHG")) {
   consumes<AlignmentToken, edm::InProcess>(config.getParameter<edm::InputTag>("alignmentTokenSrc"));
 }
-
-MillePedeDQMModule ::~MillePedeDQMModule() {}
 
 //=============================================================================
 //===   INTERFACE IMPLEMENTATION                                            ===
@@ -47,7 +48,12 @@ void MillePedeDQMModule ::bookHistograms(DQMStore::IBooker& booker) {
 
   booker.cd();
   if (!isHG_) {
-    booker.setCurrentFolder("AlCaReco/SiPixelAli/");
+    if (outputFolder_.find("HG") != std::string::npos) {
+      throw cms::Exception("LogicError")
+          << "MillePedeDQMModule is configured as Low Granularity but the outputfolder is for High Granularity";
+    }
+
+    booker.setCurrentFolder(outputFolder_);
     h_xPos = booker.book1D("Xpos", "Alignment fit #DeltaX;;#mum", 36, 0., 36.);
     h_xRot = booker.book1D("Xrot", "Alignment fit #Delta#theta_{X};;#murad", 36, 0., 36.);
     h_yPos = booker.book1D("Ypos", "Alignment fit #DeltaY;;#mum", 36, 0., 36.);
@@ -56,7 +62,12 @@ void MillePedeDQMModule ::bookHistograms(DQMStore::IBooker& booker) {
     h_zRot = booker.book1D("Zrot", "Alignment fit #Delta#theta_{Z};;#murad", 36, 0., 36.);
     statusResults = booker.book2D("statusResults", "Status of SiPixelAli PCL workflow;;", 6, 0., 6., 1, 0., 1.);
   } else {
-    booker.setCurrentFolder("AlCaReco/SiPixelAliHG/");
+    if (outputFolder_.find("HG") == std::string::npos) {
+      throw cms::Exception("LogicError")
+          << "MillePedeDQMModule is configured as High Granularity but the outputfolder is for Low Granularity";
+    }
+
+    booker.setCurrentFolder(outputFolder_);
 
     layerVec = {{"Layer1", pixelTopologyMap_->getPXBLadders(1)},
                 {"Layer2", pixelTopologyMap_->getPXBLadders(2)},
@@ -148,8 +159,8 @@ void MillePedeDQMModule ::dqmEndJob(DQMStore::IBooker& booker, DQMStore::IGetter
       } else {
         vetoStr = "N/A";
       }  // if the alignment exceeds the cutoffs
-    }    // LG case
-  }      // if the alignment was not stored
+    }  // LG case
+  }  // if the alignment was not stored
 
   exitCode->Fill(exitCodeStr);
   isVetoed->Fill(vetoStr);
@@ -166,7 +177,13 @@ void MillePedeDQMModule ::beginRun(const edm::Run&, const edm::EventSetup& setup
   const TrackerTopology* const tTopo = &setup.getData(tTopoToken_);
   const GeometricDet* geometricDet = &setup.getData(gDetToken_);
   const PTrackerParameters* ptp = &setup.getData(ptpToken_);
+  const PTrackerAdditionalParametersPerDet* ptitp = &setup.getData(ptitpToken_);
   const TrackerGeometry* geom = &setup.getData(geomToken_);
+
+  // Retrieve the SiPixelQuality object from setup
+  const SiPixelQuality& qual = setup.getData(siPixelQualityToken_);
+  // Create a new SiPixelQuality object on the heap using the copy constructor
+  pixelQuality_ = std::make_shared<SiPixelQuality>(qual);
 
   pixelTopologyMap_ = std::make_shared<PixelTopologyMap>(geom, tTopo);
 
@@ -179,7 +196,7 @@ void MillePedeDQMModule ::beginRun(const edm::Run&, const edm::EventSetup& setup
 
   TrackerGeomBuilderFromGeometricDet builder;
 
-  const auto trackerGeometry = builder.build(geometricDet, *ptp, tTopo);
+  const auto trackerGeometry = builder.build(geometricDet, ptitp, *ptp, tTopo);
   tracker_ = std::make_unique<AlignableTracker>(trackerGeometry, tTopo);
 
   const std::string labelerPlugin{"PedeLabeler"};
@@ -190,8 +207,11 @@ void MillePedeDQMModule ::beginRun(const edm::Run&, const edm::EventSetup& setup
   std::shared_ptr<PedeLabelerBase> pedeLabeler{PedeLabelerPluginFactory::get()->create(
       labelerPlugin, PedeLabelerBase::TopLevelAlignables(tracker_.get(), nullptr, nullptr), labelerConfig)};
 
-  mpReader_ = std::make_unique<MillePedeFileReader>(
-      mpReaderConfig_, pedeLabeler, std::shared_ptr<const AlignPCLThresholdsHG>(myThresholds), pixelTopologyMap_);
+  mpReader_ = std::make_unique<MillePedeFileReader>(mpReaderConfig_,
+                                                    pedeLabeler,
+                                                    std::shared_ptr<const AlignPCLThresholdsHG>(myThresholds),
+                                                    pixelTopologyMap_,
+                                                    pixelQuality_);
 }
 
 void MillePedeDQMModule ::fillStatusHisto(MonitorElement* statusHisto) {
@@ -476,7 +496,7 @@ void MillePedeDQMModule ::fillExpertHisto_HG(std::map<std::string, MonitorElemen
     // always scale so the cutoff is visible
     max_ = std::max(cut[detIndex] * 1.2, max_);
 
-    histo_0->SetMinimum(-(max_)*1.2);
+    histo_0->SetMinimum(-(max_) * 1.2);
     histo_0->SetMaximum(max_ * 1.2);
 
     currentStart += layer.second;
@@ -517,4 +537,16 @@ int MillePedeDQMModule ::getIndexFromString(const std::string& alignableId) {
     throw cms::Exception("LogicError") << "@SUB=MillePedeDQMModule::getIndexFromString\n"
                                        << "Retrieving conversion for not supported Alignable partition" << alignableId;
   }
+}
+
+void MillePedeDQMModule::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
+  edm::ParameterSetDescription desc;
+  desc.add<std::string>("outputFolder", "AlCaReco/SiPixelAli");
+  {
+    edm::ParameterSetDescription mpFileReaderPSet;
+    MillePedeFileReader::fillPSetDescription(mpFileReaderPSet);
+    desc.add<edm::ParameterSetDescription>("MillePedeFileReader", mpFileReaderPSet);
+  }
+  desc.add<edm::InputTag>("alignmentTokenSrc", edm::InputTag("SiPixelAliPedeAlignmentProducer"));
+  descriptions.addWithDefaultLabel(desc);
 }

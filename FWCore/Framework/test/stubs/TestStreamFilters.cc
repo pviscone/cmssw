@@ -14,6 +14,7 @@ for testing purposes only.
 #include <tuple>
 #include <unistd.h>
 #include <vector>
+#include <chrono>
 
 #include "FWCore/Framework/interface/CacheHandle.h"
 #include "FWCore/Framework/interface/stream/EDFilter.h"
@@ -106,7 +107,7 @@ namespace edmtest {
       }
     };
 
-    class RunIntFilter : public edm::stream::EDFilter<edm::RunCache<Cache>> {
+    class RunIntFilter : public edm::stream::EDFilter<edm::RunCache<Cache>, edm::stream::WatchRuns> {
     public:
       static std::atomic<unsigned int> m_count;
       unsigned int trans_;
@@ -163,7 +164,8 @@ namespace edmtest {
       }
     };
 
-    class LumiIntFilter : public edm::stream::EDFilter<edm::LuminosityBlockCache<Cache>> {
+    class LumiIntFilter
+        : public edm::stream::EDFilter<edm::LuminosityBlockCache<Cache>, edm::stream::WatchLuminosityBlocks> {
     public:
       static std::atomic<unsigned int> m_count;
       unsigned int trans_;
@@ -235,7 +237,8 @@ namespace edmtest {
       }
     };
 
-    class RunSummaryIntFilter : public edm::stream::EDFilter<edm::RunCache<Cache>, edm::RunSummaryCache<SummaryCache>> {
+    class RunSummaryIntFilter
+        : public edm::stream::EDFilter<edm::RunCache<Cache>, edm::RunSummaryCache<SummaryCache>, edm::stream::WatchRuns> {
     public:
       static std::atomic<unsigned int> m_count;
       unsigned int trans_;
@@ -321,8 +324,9 @@ namespace edmtest {
       }
     };
 
-    class LumiSummaryIntFilter
-        : public edm::stream::EDFilter<edm::LuminosityBlockCache<Cache>, edm::LuminosityBlockSummaryCache<SummaryCache>> {
+    class LumiSummaryIntFilter : public edm::stream::EDFilter<edm::LuminosityBlockCache<Cache>,
+                                                              edm::LuminosityBlockSummaryCache<SummaryCache>,
+                                                              edm::stream::WatchLuminosityBlocks> {
     public:
       static std::atomic<unsigned int> m_count;
       unsigned int trans_;
@@ -928,7 +932,7 @@ namespace edmtest {
         }
         // Force events to be processed concurrently
         if (sleepTime_ > 0) {
-          usleep(sleepTime_);
+          std::this_thread::sleep_for(std::chrono::microseconds(sleepTime_));
         }
         return true;
       }
@@ -1080,7 +1084,7 @@ namespace edmtest {
 
         // Force events to be processed concurrently
         if (testGlobalCache->sleepTime_ > 0) {
-          usleep(testGlobalCache->sleepTime_);
+          std::this_thread::sleep_for(std::chrono::microseconds(testGlobalCache->sleepTime_));
         }
         return true;
       }

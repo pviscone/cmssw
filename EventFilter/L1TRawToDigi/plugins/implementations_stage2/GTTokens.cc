@@ -13,8 +13,10 @@ namespace l1t {
       auto jettag = cfg.getParameter<edm::InputTag>("JetInputTag");
       auto tautag = cfg.getParameter<edm::InputTag>("TauInputTag");
       auto etsumtag = cfg.getParameter<edm::InputTag>("EtSumInputTag");
+      auto etsumzdctag = cfg.getParameter<edm::InputTag>("EtSumZDCInputTag");
       auto muontag = cfg.getParameter<edm::InputTag>("MuonInputTag");
       auto muonshowertag = cfg.getParameter<edm::InputTag>("ShowerInputLabel");
+      auto cicadascoretag = cfg.getParameter<edm::InputTag>("CICADAScoreInputTag");
 
       //cout << "DEBUG:  GmtInputTag" <<  muontag << "\n";
 
@@ -22,10 +24,12 @@ namespace l1t {
       muonShowerToken_ = cc.consumes<MuonShowerBxCollection>(muonshowertag);
       egammaToken_ = cc.consumes<EGammaBxCollection>(egammatag);
       etSumToken_ = cc.consumes<EtSumBxCollection>(etsumtag);
+      etSumZDCToken_ = cc.consumes<EtSumBxCollection>(etsumzdctag);
       jetToken_ = cc.consumes<JetBxCollection>(jettag);
       tauToken_ = cc.consumes<TauBxCollection>(tautag);
       algToken_ = cc.consumes<GlobalAlgBlkBxCollection>(gttag);
       extToken_ = cc.consumes<GlobalExtBlkBxCollection>(exttag);
+      cicadaToken_ = cc.consumes<CICADABxCollection>(cicadascoretag);
     }
   }  // namespace stage2
 }  // namespace l1t

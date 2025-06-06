@@ -101,7 +101,7 @@ namespace edm {
                          EventSetupRecordImpl const* iRecord,
                          EventSetupImpl const* iEventSetupImpl,
                          ServiceToken const& token,
-                         ESParentContext const& iParent) {
+                         ESParentContext const& iParent) noexcept {
         return Base::prefetchAsyncImpl(
             [this](auto&& group, auto&& token, auto&& record, auto&& es) {
               constexpr bool emitPostPrefetchingSignal = false;
@@ -172,13 +172,13 @@ namespace edm {
                         try {
                           convertException::wrap([this, &holder, &serviceToken, &record, &eventSetupImpl] {
                             ESModuleCallingContext const& context = Base::callingContext();
-                            auto proxies = Base::getTokenIndices();
+                            auto resolvers = Base::getTokenIndices();
                             if (Base::postMayGetResolvers()) {
-                              proxies = &((*Base::postMayGetResolvers()).front());
+                              resolvers = &((*Base::postMayGetResolvers()).front());
                             }
                             TRecord rec;
                             edm::ESParentContext pc{&context};
-                            rec.setImpl(record, Base::transitionID(), proxies, eventSetupImpl, &pc);
+                            rec.setImpl(record, Base::transitionID(), resolvers, eventSetupImpl, &pc);
                             ServiceRegistry::Operate operate(serviceToken.lock());
                             record->activityRegistry()->preESModuleAcquireSignal_.emit(record->key(), context);
                             struct EndGuard {

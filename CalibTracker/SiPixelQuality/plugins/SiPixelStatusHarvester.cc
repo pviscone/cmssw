@@ -23,9 +23,6 @@
 #include "CondFormats/DataRecord/interface/SiPixelFedCablingMapRcd.h"
 // Condition Format
 #include "CondFormats/DataRecord/interface/SiPixelQualityRcd.h"
-// LHCinfo
-//#include "CondFormats/RunInfo/interface/LHCInfo.h"
-//#include "CondFormats/DataRecord/interface/LHCInfoRcd.h"
 
 // CondOutput
 #include "CondCore/DBOutputService/interface/PoolDBOutputService.h"
@@ -503,7 +500,7 @@ void SiPixelStatusHarvester::dqmEndRun(const edm::Run& iRun, const edm::EventSet
               histo[PROMPTBADROC].fill(detId, nullptr, column, row);  //, 1.0/nLumiBlock_);
             }
           }  // if bad
-        }    // loop over all ROCs
+        }  // loop over all ROCs
 
         // errorType 0 means the full module is bad
         if (BadRocListPrompt.size() == sensorSize_[detid])

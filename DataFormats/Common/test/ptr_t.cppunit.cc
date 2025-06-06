@@ -206,6 +206,12 @@ void testPtr::constructTest() {
     Ptr<Dummy> copyPtr(dummy2Ptr);
     CPPUNIT_ASSERT(dummy2Ptr.key() == copyPtr.key());
     CPPUNIT_ASSERT(dummy2Ptr.get() == static_cast<const Dummy*>(dummy2Ptr.get()));
+
+    Ptr<Dummy> copyCtrPtr(copyPtr);
+    CPPUNIT_ASSERT(copyPtr.key() == copyCtrPtr.key());
+
+    Ptr<Dummy> movePtr(std::move(copyPtr));
+    CPPUNIT_ASSERT(dummy2Ptr.key() == movePtr.key());
   }
 }
 

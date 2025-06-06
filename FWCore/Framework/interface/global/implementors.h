@@ -50,6 +50,7 @@ namespace edm {
 
   class WaitingTaskWithArenaHolder;
   class ServiceWeakToken;
+  class ActivityRegistry;
 
   namespace global {
     namespace impl {
@@ -155,7 +156,7 @@ namespace edm {
         RunCacheHolder() = default;
         RunCacheHolder(RunCacheHolder<T, C> const&) = delete;
         RunCacheHolder<T, C>& operator=(RunCacheHolder<T, C> const&) = delete;
-        ~RunCacheHolder() noexcept(false) override{};
+        ~RunCacheHolder() noexcept(false) override {}
 
       protected:
         void preallocRuns(unsigned int iNRuns) final { caches_.reset(new std::shared_ptr<C>[iNRuns]); }
@@ -180,7 +181,7 @@ namespace edm {
         LuminosityBlockCacheHolder() = default;
         LuminosityBlockCacheHolder(LuminosityBlockCacheHolder<T, C> const&) = delete;
         LuminosityBlockCacheHolder<T, C>& operator=(LuminosityBlockCacheHolder<T, C> const&) = delete;
-        ~LuminosityBlockCacheHolder() noexcept(false) override{};
+        ~LuminosityBlockCacheHolder() noexcept(false) override {}
 
       protected:
         void preallocLumis(unsigned int iNLumis) final { caches_.reset(new std::shared_ptr<C>[iNLumis]); }
@@ -211,7 +212,7 @@ namespace edm {
         RunSummaryCacheHolder() = default;
         RunSummaryCacheHolder(RunSummaryCacheHolder<T, C> const&) = delete;
         RunSummaryCacheHolder<T, C>& operator=(RunSummaryCacheHolder<T, C> const&) = delete;
-        ~RunSummaryCacheHolder() noexcept(false) override{};
+        ~RunSummaryCacheHolder() noexcept(false) override {}
 
       private:
         void preallocRunsSummary(unsigned int iNRuns) final { caches_.reset(new std::shared_ptr<C>[iNRuns]); }
@@ -251,7 +252,7 @@ namespace edm {
         LuminosityBlockSummaryCacheHolder() = default;
         LuminosityBlockSummaryCacheHolder(LuminosityBlockSummaryCacheHolder<T, C> const&) = delete;
         LuminosityBlockSummaryCacheHolder<T, C>& operator=(LuminosityBlockSummaryCacheHolder<T, C> const&) = delete;
-        ~LuminosityBlockSummaryCacheHolder() noexcept(false) override{};
+        ~LuminosityBlockSummaryCacheHolder() noexcept(false) override {}
 
       private:
         void preallocLumisSummary(unsigned int iNLumis) final { caches_.reset(new std::shared_ptr<C>[iNLumis]); }
@@ -308,7 +309,7 @@ namespace edm {
         BeginProcessBlockProducer() = default;
         BeginProcessBlockProducer(BeginProcessBlockProducer const&) = delete;
         BeginProcessBlockProducer& operator=(BeginProcessBlockProducer const&) = delete;
-        ~BeginProcessBlockProducer() noexcept(false) override{};
+        ~BeginProcessBlockProducer() noexcept(false) override {}
 
       private:
         void doBeginProcessBlockProduce_(ProcessBlock&) final;
@@ -322,7 +323,7 @@ namespace edm {
         EndProcessBlockProducer() = default;
         EndProcessBlockProducer(EndProcessBlockProducer const&) = delete;
         EndProcessBlockProducer& operator=(EndProcessBlockProducer const&) = delete;
-        ~EndProcessBlockProducer() noexcept(false) override{};
+        ~EndProcessBlockProducer() noexcept(false) override {}
 
       private:
         void doEndProcessBlockProduce_(ProcessBlock&) final;
@@ -336,7 +337,7 @@ namespace edm {
         BeginRunProducer() = default;
         BeginRunProducer(BeginRunProducer const&) = delete;
         BeginRunProducer& operator=(BeginRunProducer const&) = delete;
-        ~BeginRunProducer() noexcept(false) override{};
+        ~BeginRunProducer() noexcept(false) override {}
 
       private:
         void doBeginRunProduce_(Run& rp, EventSetup const& c) final;
@@ -350,7 +351,7 @@ namespace edm {
         EndRunProducer() = default;
         EndRunProducer(EndRunProducer const&) = delete;
         EndRunProducer& operator=(EndRunProducer const&) = delete;
-        ~EndRunProducer() noexcept(false) override{};
+        ~EndRunProducer() noexcept(false) override {}
 
       private:
         void doEndRunProduce_(Run& rp, EventSetup const& c) final;
@@ -364,7 +365,7 @@ namespace edm {
         EndRunSummaryProducer() = default;
         EndRunSummaryProducer(EndRunSummaryProducer const&) = delete;
         EndRunSummaryProducer& operator=(EndRunSummaryProducer const&) = delete;
-        ~EndRunSummaryProducer() noexcept(false) override{};
+        ~EndRunSummaryProducer() noexcept(false) override {}
 
       private:
         void doEndRunProduce_(Run& rp, EventSetup const& c) final {
@@ -384,7 +385,7 @@ namespace edm {
         BeginLuminosityBlockProducer() = default;
         BeginLuminosityBlockProducer(BeginLuminosityBlockProducer const&) = delete;
         BeginLuminosityBlockProducer& operator=(BeginLuminosityBlockProducer const&) = delete;
-        ~BeginLuminosityBlockProducer() noexcept(false) override{};
+        ~BeginLuminosityBlockProducer() noexcept(false) override {}
 
       private:
         void doBeginLuminosityBlockProduce_(LuminosityBlock& lb, EventSetup const& c) final;
@@ -397,7 +398,7 @@ namespace edm {
         EndLuminosityBlockProducer() = default;
         EndLuminosityBlockProducer(EndLuminosityBlockProducer const&) = delete;
         EndLuminosityBlockProducer& operator=(EndLuminosityBlockProducer const&) = delete;
-        ~EndLuminosityBlockProducer() noexcept(false) override{};
+        ~EndLuminosityBlockProducer() noexcept(false) override {}
 
       private:
         void doEndLuminosityBlockProduce_(LuminosityBlock& lb, EventSetup const& c) final;
@@ -410,7 +411,7 @@ namespace edm {
         EndLuminosityBlockSummaryProducer() = default;
         EndLuminosityBlockSummaryProducer(EndLuminosityBlockSummaryProducer const&) = delete;
         EndLuminosityBlockSummaryProducer& operator=(EndLuminosityBlockSummaryProducer const&) = delete;
-        ~EndLuminosityBlockSummaryProducer() noexcept(false) override{};
+        ~EndLuminosityBlockSummaryProducer() noexcept(false) override {}
 
       private:
         void doEndLuminosityBlockProduce_(LuminosityBlock& lb, EventSetup const& c) final {
@@ -430,10 +431,10 @@ namespace edm {
         ExternalWork() = default;
         ExternalWork(ExternalWork const&) = delete;
         ExternalWork& operator=(ExternalWork const&) = delete;
-        ~ExternalWork() noexcept(false) override{};
+        ~ExternalWork() noexcept(false) override {}
 
       private:
-        bool hasAcquire() const override { return true; }
+        bool hasAcquire() const noexcept override { return true; }
 
         void doAcquire_(StreamID, Event const&, edm::EventSetup const&, WaitingTaskWithArenaHolder&) final;
 
@@ -446,10 +447,10 @@ namespace edm {
         Accumulator() = default;
         Accumulator(Accumulator const&) = delete;
         Accumulator& operator=(Accumulator const&) = delete;
-        ~Accumulator() noexcept(false) override{};
+        ~Accumulator() noexcept(false) override {}
 
       private:
-        bool hasAccumulator() const override { return true; }
+        bool hasAccumulator() const noexcept override { return true; }
 
         void produce(StreamID streamID, Event& ev, EventSetup const& es) const final { accumulate(streamID, ev, es); }
 
@@ -462,7 +463,7 @@ namespace edm {
         Transformer() = default;
         Transformer(Transformer const&) = delete;
         Transformer& operator=(Transformer const&) = delete;
-        ~Transformer() noexcept(false) override{};
+        ~Transformer() noexcept(false) override {}
 
         template <typename G, typename F>
         void registerTransform(ProductRegistryHelper::BranchAliasSetterT<G> iSetter,
@@ -510,17 +511,18 @@ namespace edm {
         }
 
       private:
-        size_t transformIndex_(edm::BranchDescription const& iBranch) const final {
+        size_t transformIndex_(edm::BranchDescription const& iBranch) const noexcept final {
           return TransformerBase::findMatchingIndex(*this, iBranch);
         }
-        ProductResolverIndex transformPrefetch_(std::size_t iIndex) const final {
+        ProductResolverIndex transformPrefetch_(std::size_t iIndex) const noexcept final {
           return TransformerBase::prefetchImp(iIndex);
         }
         void transformAsync_(WaitingTaskHolder iTask,
                              std::size_t iIndex,
                              edm::EventForTransformer& iEvent,
-                             ServiceWeakToken const& iToken) const final {
-          return TransformerBase::transformImpAsync(std::move(iTask), iIndex, *this, iEvent);
+                             edm::ActivityRegistry* iAct,
+                             ServiceWeakToken const& iToken) const noexcept final {
+          return TransformerBase::transformImpAsync(std::move(iTask), iIndex, iAct, *this, iEvent);
         }
         void extendUpdateLookup(BranchType iBranchType, ProductResolverIndexHelper const& iHelper) override {
           if (iBranchType == InEvent) {
@@ -529,7 +531,7 @@ namespace edm {
         }
       };
     }  // namespace impl
-  }    // namespace global
+  }  // namespace global
 }  // namespace edm
 
 #endif

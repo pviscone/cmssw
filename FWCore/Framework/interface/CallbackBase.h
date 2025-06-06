@@ -68,9 +68,9 @@ namespace edm {
     class CallbackBase {
     public:
       CallbackBase(T* iProd, std::shared_ptr<TProduceFunc> iProduceFunc, unsigned int iID, const TDecorator& iDec)
-          : proxyData_{},
+          : resolverData_{},
             producer_(iProd),
-            callingContext_(&iProd->description()),
+            callingContext_(&iProd->description(), iID),
             produceFunction_(std::move(iProduceFunc)),
             id_(iID),
             wasCalledForThisRecord_(false),
@@ -127,13 +127,13 @@ namespace edm {
                     try {
                       convertException::wrap([this, &serviceToken, &record, &eventSetupImpl, &produceFunctor] {
                         ESModuleCallingContext const& context = callingContext_;
-                        auto proxies = getTokenIndices();
+                        auto resolvers = getTokenIndices();
                         if (postMayGetResolvers_) {
-                          proxies = &((*postMayGetResolvers_).front());
+                          resolvers = &((*postMayGetResolvers_).front());
                         }
                         TRecord rec;
                         ESParentContext pc{&context};
-                        rec.setImpl(record, transitionID(), proxies, eventSetupImpl, &pc);
+                        rec.setImpl(record, transitionID(), resolvers, eventSetupImpl, &pc);
                         ServiceRegistry::Operate operate(serviceToken.lock());
                         record->activityRegistry()->preESModuleSignal_.emit(record->key(), context);
                         struct EndGuard {
@@ -165,7 +165,7 @@ namespace edm {
                              EventSetupRecordImpl const* iRecord,
                              EventSetupImpl const* iEventSetupImpl,
                              ServiceToken const& token,
-                             ESParentContext const& iParent) {
+                             ESParentContext const& iParent) noexcept {
         bool expected = false;
         auto doPrefetch = wasCalledForThisRecord_.compare_exchange_strong(expected, true);
         taskList_.add(iTask);
@@ -202,12 +202,12 @@ namespace edm {
 
       template <class DataT>
       void holdOntoPointer(DataT* iData) {
-        proxyData_[produce::find_index<TReturn, DataT>::value] = iData;
+        resolverData_[produce::find_index<TReturn, DataT>::value] = iData;
       }
 
       template <class RemainingContainerT, class DataT, class ProductsT>
       void setData(ProductsT& iProducts) {
-        DataT* temp = reinterpret_cast<DataT*>(proxyData_[produce::find_index<TReturn, DataT>::value]);
+        DataT* temp = reinterpret_cast<DataT*>(resolverData_[produce::find_index<TReturn, DataT>::value]);
         if (nullptr != temp) {
           moveFromTo(iProducts, *temp);
         }
@@ -221,16 +221,16 @@ namespace edm {
         taskList_.reset();
       }
 
-      unsigned int transitionID() const { return id_; }
-      ESResolverIndex const* getTokenIndices() const { return producer_->getTokenIndices(id_); }
+      unsigned int transitionID() const noexcept { return id_; }
+      ESResolverIndex const* getTokenIndices() const noexcept { return producer_->getTokenIndices(id_); }
 
       std::optional<std::vector<ESResolverIndex>> const& postMayGetResolvers() const { return postMayGetResolvers_; }
-      T* producer() { return producer_.get(); }
-      ESModuleCallingContext& callingContext() { return callingContext_; }
-      WaitingTaskList& taskList() { return taskList_; }
-      std::shared_ptr<TProduceFunc> const& produceFunction() { return produceFunction_; }
-      TDecorator const& decorator() const { return decorator_; }
-      SerialTaskQueueChain& queue() { return producer_->queue(); }
+      T* producer() noexcept { return producer_.get(); }
+      ESModuleCallingContext& callingContext() noexcept { return callingContext_; }
+      WaitingTaskList& taskList() noexcept { return taskList_; }
+      std::shared_ptr<TProduceFunc> const& produceFunction() noexcept { return produceFunction_; }
+      TDecorator const& decorator() const noexcept { return decorator_; }
+      SerialTaskQueueChain& queue() noexcept { return producer_->queue(); }
 
     protected:
       ~CallbackBase() = default;
@@ -243,14 +243,14 @@ namespace edm {
 
       void prefetchNeededDataAsync(WaitingTaskHolder task,
                                    EventSetupImpl const* iImpl,
-                                   ESResolverIndex const* proxies,
-                                   ServiceToken const& token) const {
+                                   ESResolverIndex const* resolvers,
+                                   ServiceToken const& token) const noexcept {
         auto recs = producer_->getTokenRecordIndices(id_);
         auto n = producer_->numberOfTokenIndices(id_);
         for (size_t i = 0; i != n; ++i) {
           auto rec = iImpl->findImpl(recs[i]);
           if (rec) {
-            rec->prefetchAsync(task, proxies[i], iImpl, token, ESParentContext{&callingContext_});
+            rec->prefetchAsync(task, resolvers[i], iImpl, token, ESParentContext{&callingContext_});
           }
         }
       }
@@ -264,7 +264,7 @@ namespace edm {
         return static_cast<bool>(postMayGetResolvers_);
       }
 
-      std::array<void*, produce::size<TReturn>::value> proxyData_;
+      std::array<void*, produce::size<TReturn>::value> resolverData_;
       std::optional<std::vector<ESResolverIndex>> postMayGetResolvers_;
       propagate_const<T*> producer_;
       ESModuleCallingContext callingContext_;

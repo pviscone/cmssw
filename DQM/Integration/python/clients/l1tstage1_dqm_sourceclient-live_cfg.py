@@ -31,8 +31,8 @@ process.load("DQM.Integration.config.environment_cfi")
 process.dqmEnv.subSystemFolder = 'L1TStage1'
 process.dqmSaver.tag = 'L1TStage1'
 process.dqmSaver.runNumber = options.runNumber
-process.dqmSaverPB.tag = 'L1TStage1'
-process.dqmSaverPB.runNumber = options.runNumber
+# process.dqmSaverPB.tag = 'L1TStage1'
+# process.dqmSaverPB.runNumber = options.runNumber
 
 #
 # references needed
@@ -107,8 +107,8 @@ process.l1tMonitorClientEndPath = cms.EndPath(process.l1tMonitorClientEndPathSeq
 #
 process.dqmEndPath = cms.EndPath(
                                  process.dqmEnv *
-                                 process.dqmSaver *
-                                 process.dqmSaverPB
+                                 process.dqmSaver # *
+                                 # process.dqmSaverPB
                                  )
 
 #
@@ -183,7 +183,7 @@ print("Running with run type = ", process.runType.getRunType())
 process.castorDigis.InputLabel = "rawDataCollector"
 process.csctfDigis.producer = "rawDataCollector"
 process.dttfDigis.DTTF_FED_Source = "rawDataCollector"
-process.ecalDigis.cpu.InputLabel = "rawDataCollector"
+process.ecalDigisCPU.InputLabel = "rawDataCollector"
 process.ecalPreshowerDigis.sourceTag = "rawDataCollector"
 process.gctDigis.inputLabel = "rawDataCollector"
 process.gtDigis.DaqGtInputTag = "rawDataCollector"
@@ -202,7 +202,7 @@ if (process.runType.getRunType() == process.runType.hi_run):
     process.castorDigis.InputLabel = "rawDataRepacker"
     process.csctfDigis.producer = "rawDataRepacker"
     process.dttfDigis.DTTF_FED_Source = "rawDataRepacker"
-    process.ecalDigis.cpu.InputLabel = "rawDataRepacker"
+    process.ecalDigisCPU.InputLabel = "rawDataRepacker"
     process.ecalPreshowerDigis.sourceTag = "rawDataRepacker"
     process.gctDigis.inputLabel = "rawDataRepacker"
     process.gtDigis.DaqGtInputTag = "rawDataRepacker"

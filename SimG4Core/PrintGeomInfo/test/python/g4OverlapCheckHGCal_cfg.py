@@ -2,7 +2,7 @@
 # Way to use this:
 #   cmsRun g4OverlapCheckHGCal_cfg.py geometry=D88 tol=0.1
 #
-#   Options for geometry D88, D92, D93, D99, D103
+#   Options for geometry D102, D103, D105, D107, D108, D110, D114
 #
 ###############################################################################
 import FWCore.ParameterSet.Config as cms
@@ -13,12 +13,12 @@ import FWCore.ParameterSet.VarParsing as VarParsing
 ### SETUP OPTIONS
 options = VarParsing.VarParsing('standard')
 options.register('geometry',
-                 "D92",
+                 "D110",
                   VarParsing.VarParsing.multiplicity.singleton,
                   VarParsing.VarParsing.varType.string,
-                  "geometry of operations: D88, D92, D93, D99, D103")
+                  "geometry of operations: D102, D103, D105, D107, D108, D110, D114")
 options.register('tol',
-                 0.1,
+                 0.01,
                  VarParsing.VarParsing.multiplicity.singleton,
                  VarParsing.VarParsing.varType.float,
                  "Tolerance for checking overlaps: 0.0, 0.01, 0.1, 1.0"
@@ -34,8 +34,8 @@ print(options)
 
 from Configuration.Eras.Era_Phase2C17I13M9_cff import Phase2C17I13M9
 process = cms.Process('G4PrintGeometry',Phase2C17I13M9)
-geomFile = "Configuration.Geometry.GeometryExtended2026" + options.geometry + "Reco_cff"
-baseName = "HGCal2026" + options.geometry
+geomFile = "Configuration.Geometry.GeometryExtendedRun4" + options.geometry + "Reco_cff"
+baseName = "HGCalRun4" + options.geometry
 
 print("Geometry file Name: ", geomFile)
 print("Base file Name:     ", baseName)

@@ -100,6 +100,20 @@ L1TriggerFEVTDEBUG = cms.PSet(
 )
 
 
+def _appendCICADAInformation(obj):
+    cicadaDataRegions = [
+        # unpacked/data CICADA input/output
+        'keep L1CaloRegions_caloLayer1Digis_*_*',
+        'keep *_caloLayer1Digis_CICADAScore_*',
+    ]
+    obj.outputCommands += cicadaDataRegions
+# Make CICADA available in AOD and miniAOD from 2024 on
+from Configuration.Eras.Modifier_stage2L1Trigger_2024_cff import stage2L1Trigger_2024
+stage2L1Trigger_2024.toModify(L1TriggerAOD, func=_appendCICADAInformation)
+from PhysicsTools.PatAlgos.slimming.MicroEventContent_cff import MicroEventContent, MicroEventContentMC
+stage2L1Trigger_2024.toModify(MicroEventContent, func=_appendCICADAInformation)
+stage2L1Trigger_2024.toModify(MicroEventContentMC, func=_appendCICADAInformation)
+
 def _appendStage2Digis(obj):
     l1Stage2Digis = [
         'keep *_gtStage2Digis_*_*',
@@ -175,6 +189,8 @@ def _appendPhase2Digis(obj):
         'keep *_l1tHGCalBackEndLayer2Producer_*_*',
         'keep *_l1tHGCalTowerMapProducer_*_*',
         'keep *_l1tHGCalTowerProducer_*_*',
+        'keep *_l1tHGCalEnergySplitTowerMapProducer_*_*',
+        'keep *_l1tHGCalEnergySplitTowerProducer_*_*',
         'keep *_l1tEGammaClusterEmuProducer_*_*',
         'keep *_l1tVertexFinder_*_*',
         'keep *_l1tVertexFinderEmulator_*_*',
@@ -188,19 +204,24 @@ def _appendPhase2Digis(obj):
         'keep *_l1tTrackerEmuEtMiss_*_*',
         'keep *_l1tTrackerEmuHTMiss_*_*',
         'keep *_l1tTrackerEmuHTMissExtended_*_*',
+        'keep *_l1tTrackTripletEmulation_*_*',
         'keep *_l1tTowerCalibration_*_*',
         'keep *_l1tCaloJet_*_*',
         'keep *_l1tCaloJetHTT_*_*',
+        'keep *_l1tPhase2CaloJetEmulator_*_*',
+        'keep *_l1tNNCaloTauProducer_*_*',
+        'keep *_l1tNNCaloTauEmulator_*_*',
         'keep *_l1tPFClustersFromL1EGClusters_*_*',
         'keep *_l1tPFClustersFromCombinedCaloHCal_*_*',
         'keep *_l1tPFClustersFromCombinedCaloHF_*_*',
         'keep *_l1tPFClustersFromHGC3DClusters_*_*',
         'keep *_l1tPFTracksFromL1TracksBarrel_*_*',
         'keep *_l1tPFTracksFromL1TracksHGCal_*_*',
-        'keep *_l1tSCPFL1PuppiCorrectedEmulator_*_*',
-        'keep *_l1tSCPFL1PuppiCorrectedEmulatorMHT_*_*',
-        'keep *_l1tSCPFL1PuppiExtendedCorrectedEmulator_*_*',
-        'keep *_l1tSCPFL1PuppiExtendedCorrectedEmulatorMHT_*_*',
+        'keep *_l1tSC4PFL1PuppiCorrectedEmulator_*_*',
+        'keep *_l1tSC4PFL1PuppiCorrectedEmulatorMHT_*_*',
+        'keep *_l1tSC4PFL1PuppiExtendedCorrectedEmulator_*_*',
+        'keep *_l1tSC4PFL1PuppiExtendedCorrectedEmulatorMHT_*_*',
+	'keep *_l1tSC8PFL1PuppiCorrectedEmulator_*_*',
         'keep *_l1tPhase1JetProducer9x9_*_*', 
         'keep *_l1tPhase1JetCalibrator9x9_*_*',
         'keep *_l1tPhase1JetSumsProducer9x9_*_*',
@@ -218,12 +239,14 @@ def _appendPhase2Digis(obj):
         'keep *_l1tLayer1EG_*_*',
         'keep *_l1tLayer2EG_*_*',
         'keep *_l1tMETPFProducer_*_*',
+        'keep *_l1tMETMLProducer_*_*',
         'keep *_l1tNNTauProducer_*_*',
         'keep *_l1tNNTauProducerPuppi_*_*',
-        'keep *_l1tHPSPFTauProducerPF_*_*',
-        'keep *_l1tHPSPFTauProducerPuppi_*_*',
+        'keep *_l1tHPSPFTauProducer_*_*',
         'keep *_l1tBJetProducerPuppi_*_*',
         'keep *_l1tBJetProducerPuppiCorrectedEmulator_*_*',
+        'keep *_l1tTOoLLiPProducer_*_*',
+        'keep *_l1tTOoLLiPProducerCorrectedEmulator_*_*',
         'keep *_TTStubsFromPhase2TrackerDigis_*_*',
         'keep *_TTClustersFromPhase2TrackerDigis_*_*',
         'keep *_l1tTTTracksFromExtendedTrackletEmulation_*_*',
@@ -231,6 +254,10 @@ def _appendPhase2Digis(obj):
         'keep *_l1tTkStubsGmt_*_*',
         'keep *_l1tTkMuonsGmt_*_*',
         'keep *_l1tSAMuonsGmt_*_*',
+        'keep *_l1tTkMuonsGmtLowPtFix_*_*', # in the long run this should be removed, but these fix objects will be used for now.
+	'keep *_l1tPhase2L1CaloEGammaEmulator_*_*',
+        'keep *_l1tGTProducer_*_*',
+        'keep *_l1tGTAlgoBlockProducer_*_*',
         ]
     obj.outputCommands += l1Phase2Digis
 

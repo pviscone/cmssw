@@ -46,6 +46,7 @@ PAYLOAD_2XML_MODULE(pluginUtilities_payload2xml) {
   PAYLOAD_2XML_CLASS(CastorRecoParams);
   PAYLOAD_2XML_CLASS(CastorSaturationCorrs);
   PAYLOAD_2XML_CLASS(CentralityTable);
+  PAYLOAD_2XML_CLASS(DeDxCalibration);
   PAYLOAD_2XML_CLASS(DTCCBConfig);
   PAYLOAD_2XML_CLASS(DTDeadFlag);
   PAYLOAD_2XML_CLASS(DTHVStatus);
@@ -115,12 +116,21 @@ PAYLOAD_2XML_MODULE(pluginUtilities_payload2xml) {
   PAYLOAD_2XML_CLASS(EcalTPGOddWeightGroup);
   PAYLOAD_2XML_CLASS(EcalTPGOddWeightIdMap);
   PAYLOAD_2XML_CLASS(EcalTPGTPMode);
+  PAYLOAD_2XML_CLASS(EcalEBPhase2TPGAmplWeightIdMap);
+  PAYLOAD_2XML_CLASS(EcalEBPhase2TPGAmplWeights);
+  PAYLOAD_2XML_CLASS(EcalEBPhase2TPGLinearizationConstant);
+  PAYLOAD_2XML_CLASS(EcalEBPhase2TPGPedestal);
+  PAYLOAD_2XML_CLASS(EcalEBPhase2TPGTimeWeightIdMap);
+  PAYLOAD_2XML_CLASS(EcalEBPhase2TPGTimeWeights);
   PAYLOAD_2XML_CLASS(EcalTimeBiasCorrections);
   PAYLOAD_2XML_CLASS(EcalTimeDependentCorrections);
   PAYLOAD_2XML_CLASS(EcalTimeOffsetConstant);
   PAYLOAD_2XML_CLASS(FileBlob);
   PAYLOAD_2XML_CLASS(GBRForest);
   PAYLOAD_2XML_CLASS(GBRForestD);
+  PAYLOAD_2XML_CLASS(GEMChMap);
+  PAYLOAD_2XML_CLASS(GEMMaskedStrips);
+  PAYLOAD_2XML_CLASS(GEMDeadStrips);
   //PAYLOAD_2XML_CLASS( HBHENegativeEFilter );
   PAYLOAD_2XML_CLASS(HcalChannelQuality);
   PAYLOAD_2XML_CLASS(HcalDcsValues);
@@ -256,6 +266,7 @@ PAYLOAD_2XML_MODULE(pluginUtilities_payload2xml) {
   PAYLOAD_2XML_CLASS(RecoIdealGeometry);
   PAYLOAD_2XML_CLASS(RunInfo);
   PAYLOAD_2XML_CLASS(SimBeamSpotObjects);
+  PAYLOAD_2XML_CLASS(SimBeamSpotHLLHCObjects);
   PAYLOAD_2XML_CLASS(SiPhase2OuterTrackerLorentzAngle);
   PAYLOAD_2XML_CLASS(SiPixel2DTemplateDBObject);
   PAYLOAD_2XML_CLASS(SiPixelCPEGenericErrorParm);

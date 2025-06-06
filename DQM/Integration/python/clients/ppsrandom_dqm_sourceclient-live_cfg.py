@@ -5,10 +5,7 @@ from Configuration.Eras.Era_Run3_cff import Run3
 process = cms.Process('CTPPSDQM', Run3)
 
 test = False
-unitTest = False
-
-if 'unitTest=True' in sys.argv:
-  unitTest=True
+unitTest = 'unitTest=True' in sys.argv
 
 # event source
 if unitTest:
@@ -29,7 +26,7 @@ else:
     'drop *',
     'keep FEDRawDataCollection_*_*_*'
   )
-  
+
 process.source.streamLabel = "streamDQMPPSRandom"
 
 # DQM environment
@@ -37,12 +34,12 @@ process.load("DQM.Integration.config.environment_cfi")
 process.dqmEnv.subSystemFolder = 'PPSRANDOM'
 process.dqmSaver.tag = 'PPSRANDOM'
 process.dqmSaver.runNumber = options.runNumber
-process.dqmSaverPB.tag = 'PPSRANDOM'
-process.dqmSaverPB.runNumber = options.runNumber
+# process.dqmSaverPB.tag = 'PPSRANDOM'
+# process.dqmSaverPB.runNumber = options.runNumber
 
 if test:
   process.dqmSaver.path = "."
-  process.dqmSaverPB.path = "./pb"
+  # process.dqmSaverPB.path = "./pb"
 
 process.load("DQMServices.Components.DQMProvInfo_cfi")
 

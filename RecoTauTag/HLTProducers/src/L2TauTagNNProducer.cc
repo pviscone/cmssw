@@ -234,8 +234,6 @@ std::unique_ptr<L2TauNNProducerCacheData> L2TauNNProducer::initializeGlobalCache
   cacheData->graphDef = tensorflow::loadGraphDef(graphPath);
   cacheData->session = tensorflow::createSession(cacheData->graphDef);
 
-  tensorflow::setLogging("2");
-
   boost::property_tree::ptree loadPtreeRoot;
   auto const normalizationDict = edm::FileInPath(cfg.getParameter<std::string>("normalizationDict")).fullPath();
   boost::property_tree::read_json(normalizationDict, loadPtreeRoot);
@@ -731,14 +729,16 @@ void L2TauNNProducer::fillPatatracks(tensorflow::Tensor& cellGridMatrix,
 }
 
 std::vector<float> L2TauNNProducer::getTauScore(const tensorflow::Tensor& cellGridMatrix) {
-  std::vector<tensorflow::Tensor> pred_tensor;
-  tensorflow::run(L2cacheData_->session, {{inputTensorName_, cellGridMatrix}}, {outputTensorName_}, &pred_tensor);
   const int nTau = cellGridMatrix.shape().dim_size(0);
   std::vector<float> pred_vector(nTau);
-  for (int tau_idx = 0; tau_idx < nTau; ++tau_idx) {
-    pred_vector[tau_idx] = pred_tensor[0].matrix<float>()(tau_idx, 0);
+  if (nTau > 0) {
+    // Only run the inference if there are taus to process
+    std::vector<tensorflow::Tensor> pred_tensor;
+    tensorflow::run(L2cacheData_->session, {{inputTensorName_, cellGridMatrix}}, {outputTensorName_}, &pred_tensor);
+    for (int tau_idx = 0; tau_idx < nTau; ++tau_idx) {
+      pred_vector[tau_idx] = pred_tensor[0].matrix<float>()(tau_idx, 0);
+    }
   }
-
   return pred_vector;
 }
 

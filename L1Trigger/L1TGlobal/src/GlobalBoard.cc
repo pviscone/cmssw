@@ -38,6 +38,7 @@
 #include "L1Trigger/L1TGlobal/interface/EnergySumTemplate.h"
 #include "L1Trigger/L1TGlobal/interface/EnergySumZdcTemplate.h"
 #include "L1Trigger/L1TGlobal/interface/AXOL1TLTemplate.h"
+#include "L1Trigger/L1TGlobal/interface/CICADATemplate.h"
 #include "L1Trigger/L1TGlobal/interface/ExternalTemplate.h"
 #include "L1Trigger/L1TGlobal/interface/CorrelationTemplate.h"
 #include "L1Trigger/L1TGlobal/interface/CorrelationThreeBodyTemplate.h"
@@ -55,6 +56,7 @@
 #include "L1Trigger/L1TGlobal/interface/EnergySumCondition.h"
 #include "L1Trigger/L1TGlobal/interface/EnergySumZdcCondition.h"
 #include "L1Trigger/L1TGlobal/interface/AXOL1TLCondition.h"
+#include "L1Trigger/L1TGlobal/interface/CICADACondition.h"
 #include "L1Trigger/L1TGlobal/interface/ExternalCondition.h"
 #include "L1Trigger/L1TGlobal/interface/CorrCondition.h"
 #include "L1Trigger/L1TGlobal/interface/CorrThreeBodyCondition.h"
@@ -76,6 +78,7 @@ l1t::GlobalBoard::GlobalBoard()
       m_currentLumi(0),
       m_isDebugEnabled(edm::isDebugEnabled()) {
   m_uGtAlgBlk.reset();
+  m_uGtAXOScore.reset();
 
   m_gtlAlgorithmOR.reset();
   m_gtlDecisionWord.reset();
@@ -112,11 +115,6 @@ void l1t::GlobalBoard::setBxFirst(int bx) { m_bxFirst_ = bx; }
 
 void l1t::GlobalBoard::setBxLast(int bx) { m_bxLast_ = bx; }
 
-// temporary class for getting axol1tl version from config to condition class until it can be got from the utm menu
-void l1t::GlobalBoard::setAXOL1TLModelVersion(std::string axol1tlModelVersion) {
-  m_axol1tlModelVersion = axol1tlModelVersion;
-}
-
 void l1t::GlobalBoard::init(const int numberPhysTriggers,
                             const int nrL1Mu,
                             const int nrL1MuShower,
@@ -149,6 +147,7 @@ void l1t::GlobalBoard::receiveCaloObjectData(const edm::Event& iEvent,
                                              const edm::EDGetTokenT<BXVector<l1t::Jet>>& jetInputToken,
                                              const edm::EDGetTokenT<BXVector<l1t::EtSum>>& sumInputToken,
                                              const edm::EDGetTokenT<BXVector<l1t::EtSum>>& sumZdcInputToken,
+                                             const edm::EDGetTokenT<BXVector<float>>& CICADAInputToken,
                                              const bool receiveEG,
                                              const int nrL1EG,
                                              const bool receiveTau,
@@ -156,7 +155,8 @@ void l1t::GlobalBoard::receiveCaloObjectData(const edm::Event& iEvent,
                                              const bool receiveJet,
                                              const int nrL1Jet,
                                              const bool receiveEtSums,
-                                             const bool receiveEtSumsZdc) {
+                                             const bool receiveEtSumsZdc,
+                                             const bool receiveCICADA) {
   if (m_verbosity) {
     LogDebug("L1TGlobal") << "\n**** Board receiving Calo Data ";
   }
@@ -193,9 +193,9 @@ void l1t::GlobalBoard::receiveCaloObjectData(const edm::Event& iEvent,
 
           nObj++;
         }  //end loop over EG in bx
-      }    //end loop over bx
-    }      //end if over valid EG data
-  }        //end if ReceiveEG data
+      }  //end loop over bx
+    }  //end if over valid EG data
+  }  //end if ReceiveEG data
 
   if (receiveTau) {
     edm::Handle<BXVector<l1t::Tau>> tauData;
@@ -227,9 +227,9 @@ void l1t::GlobalBoard::receiveCaloObjectData(const edm::Event& iEvent,
           nObj++;
 
         }  //end loop over tau in bx
-      }    //end loop over bx
-    }      //end if over valid tau data
-  }        //end if ReceiveTau data
+      }  //end loop over bx
+    }  //end if over valid tau data
+  }  //end if ReceiveTau data
 
   if (receiveJet) {
     edm::Handle<BXVector<l1t::Jet>> jetData;
@@ -260,9 +260,9 @@ void l1t::GlobalBoard::receiveCaloObjectData(const edm::Event& iEvent,
                                 << "  Qual " << jet->hwQual() << "  Iso " << jet->hwIso();
           nObj++;
         }  //end loop over jet in bx
-      }    //end loop over bx
-    }      //end if over valid jet data
-  }        //end if ReceiveJet data
+      }  //end loop over bx
+    }  //end if over valid jet data
+  }  //end if ReceiveJet data
 
   if (receiveEtSums) {
     edm::Handle<BXVector<l1t::EtSum>> etSumData;
@@ -322,7 +322,7 @@ void l1t::GlobalBoard::receiveCaloObjectData(const edm::Event& iEvent,
 */
 
         }  //end loop over EtSum objects in bx
-      }    //end loop over Bx
+      }  //end loop over Bx
     }
   }
 
@@ -345,6 +345,29 @@ void l1t::GlobalBoard::receiveCaloObjectData(const edm::Event& iEvent,
           (*m_candL1EtSumZdc).push_back(i, &(*etsum));
         }
       }  //end loop over Bx
+    }
+  }
+  if (receiveCICADA) {
+    edm::Handle<BXVector<float>> cicadaScoreHandle;
+    iEvent.getByToken(CICADAInputToken, cicadaScoreHandle);
+    if (not cicadaScoreHandle.isValid()) {
+      if (m_verbosity) {
+        edm::LogWarning("L1Tglobal") << "\nWarning: Input tag for the CICADA score"
+                                     << "\nrequested in configuration, but not found in the event.\n"
+                                     << "\nSetting score to 0.0";
+      }
+      setCICADAScore(0.0);
+    } else if (cicadaScoreHandle->isEmpty(0)) {
+      if (m_verbosity) {
+        edm::LogWarning("L1Tglobal")
+            << "\nWarning: CICADA score had a valid input tag, but an empty BX collection"
+            << "\nThe CICADA score will be filled with 0.0 to prevent any failure of uGT emulation";
+      }
+      setCICADAScore(0.0);
+    } else {
+      setCICADAScore(cicadaScoreHandle->at(
+          0,
+          0));  //CICADA emulation will only provide a central BX, and one value. Unpacking may have more values, but that can't be guaranteed.
     }
   }
 }
@@ -391,9 +414,9 @@ void l1t::GlobalBoard::receiveMuonObjectData(const edm::Event& iEvent,
                                 << mu->hwPhiAtVtx() << "  Qual " << mu->hwQual() << "  Iso " << mu->hwIso();
           nObj++;
         }  //end loop over muons in bx
-      }    //end loop over bx
-    }      //end if over valid muon data
-  }        //end if ReceiveMuon data
+      }  //end loop over bx
+    }  //end if over valid muon data
+  }  //end if ReceiveMuon data
 }
 
 // receive muon shower data from Global Muon Trigger
@@ -455,9 +478,9 @@ void l1t::GlobalBoard::receiveMuonShowerObjectData(const edm::Event& iEvent,
           }
           nObj++;
         }  //end loop over muon showers in bx
-      }    //end loop over bx
-    }      //end if over valid muon shower data
-  }        //end if ReceiveMuonShower data
+      }  //end loop over bx
+    }  //end if over valid muon shower data
+  }  //end if ReceiveMuonShower data
 }
 
 // receive data from Global External Conditions
@@ -492,9 +515,25 @@ void l1t::GlobalBoard::receiveExternalData(const edm::Event& iEvent,
         for (std::vector<GlobalExtBlk>::const_iterator ext = extData->begin(i); ext != extData->end(i); ++ext) {
           (*m_candL1External).push_back(i, &(*ext));
         }  //end loop over ext in bx
-      }    //end loop over bx
-    }      //end if over valid ext data
-  }        //end if ReceiveExt data
+      }  //end loop over bx
+    }  //end if over valid ext data
+  }  //end if ReceiveExt data
+}
+
+// fill axo score value per bx in event
+void l1t::GlobalBoard::fillAXOScore(int iBxInEvent, std::unique_ptr<AXOL1TLScoreBxCollection>& AxoScoreRecord) {
+  m_uGtAXOScore.reset();
+  m_uGtAXOScore.setbxInEventNr((iBxInEvent & 0xF));
+
+  //save stored condition score if Bx is zero, else set to 0
+  float scorevalue = 0.0;
+  if (iBxInEvent == 0) {
+    scorevalue = m_storedAXOScore;
+  }
+
+  //set dataformat value
+  m_uGtAXOScore.setAXOScore(scorevalue);
+  AxoScoreRecord->push_back(iBxInEvent, m_uGtAXOScore);
 }
 
 // run GTL
@@ -656,11 +695,15 @@ void l1t::GlobalBoard::runGTL(const edm::Event&,
 
           axol1tlCondition->setVerbosity(m_verbosity);
 
-          axol1tlCondition->setModelVersion(m_axol1tlModelVersion);
-
           axol1tlCondition->evaluateConditionStoreResult(iBxInEvent);
 
           cMapResults[itCond->first] = axol1tlCondition;
+
+          //for optional software-only saving of axol1tl score
+          //m_storedAXOScore < 0.0 ensures only sets once per condition if score not default of -999
+          if (m_saveAXOScore && m_storedAXOScore < 0.0) {
+            m_storedAXOScore = axol1tlCondition->getScore();
+          }
 
           if (m_verbosity && m_isDebugEnabled) {
             std::ostringstream myCout;
@@ -670,6 +713,21 @@ void l1t::GlobalBoard::runGTL(const edm::Event&,
           }
           //delete axol1tlCCondition;
 
+        } break;
+        case CondCICADA: {
+          CICADACondition* cicadaCondition = new CICADACondition(itCond->second, this);
+
+          cicadaCondition->setVerbosity(m_verbosity);
+          cicadaCondition->evaluateConditionStoreResult(iBxInEvent);
+
+          cMapResults[itCond->first] = cicadaCondition;
+
+          if (m_verbosity && m_isDebugEnabled) {
+            std::ostringstream myCout;
+            cicadaCondition->print(myCout);
+
+            edm::LogWarning("L1TGlobal") << "cicadaCondition " << myCout.str();
+          }
         } break;
 
         case CondExternal: {
@@ -1063,7 +1121,7 @@ void l1t::GlobalBoard::runFDL(const edm::Event& iEvent,
               // change bit to false in prescaled word and final decision word
               m_uGtAlgBlk.setAlgoDecisionInterm(iBit, false);
             }  //if Prescale counter reached zero
-          }    //if prescale factor is not 1 (ie. no prescale)
+          }  //if prescale factor is not 1 (ie. no prescale)
           else {
             temp_algPrescaledOr = true;
           }
@@ -1073,7 +1131,7 @@ void l1t::GlobalBoard::runFDL(const edm::Event& iEvent,
           edm::LogWarning("L1TGlobal") << "\nWarning: algoBit >= prescaleFactorsAlgoTrig.size() in bx " << iBxInEvent;
         }
       }  //if algo bit is set true
-    }    //loop over alg bits
+    }  //loop over alg bits
 
     m_algPrescaledOr = temp_algPrescaledOr;  //temp
 
@@ -1161,6 +1219,10 @@ void l1t::GlobalBoard::reset() {
 
   m_uGtAlgBlk.reset();
 
+  //reset AXO score
+  m_storedAXOScore = -999.0;
+  m_uGtAXOScore.reset();
+
   m_gtlDecisionWord.reset();
   m_gtlAlgorithmOR.reset();
 }
@@ -1184,6 +1246,7 @@ void l1t::GlobalBoard::resetCalo() {
   m_candL1Jet->clear();
   m_candL1EtSum->clear();
   m_candL1EtSumZdc->clear();
+  m_cicadaScore = 0.0;
 
   m_candL1EG->setBXRange(m_bxFirst_, m_bxLast_);
   m_candL1Tau->setBXRange(m_bxFirst_, m_bxLast_);

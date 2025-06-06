@@ -16,7 +16,10 @@
 #include "SimG4CMS/HcalTestBeam/interface/HcalTB02HcalNumberingScheme.h"
 #include "FWCore/MessageLogger/interface/MessageLogger.h"
 
-#include "G4SystemOfUnits.hh"
+#include <CLHEP/Units/SystemOfUnits.h>
+using CLHEP::degree;
+using CLHEP::m;
+
 //#define EDM_ML_DEBUG
 //
 // constructors and destructor
@@ -38,24 +41,22 @@ HcalTB02HcalNumberingScheme::~HcalTB02HcalNumberingScheme() {
 //
 
 int HcalTB02HcalNumberingScheme::getUnitID(const G4Step* aStep) const {
-  int scintID = 0;
-
   G4StepPoint* preStepPoint = aStep->GetPreStepPoint();
   const G4ThreeVector& hitPoint = preStepPoint->GetPosition();
   float hx = hitPoint.x();
   float hy = hitPoint.y();
-  float hz = hitPoint.z();
   float hr = std::sqrt(pow(hx, 2) + pow(hy, 2));
 
   // Check if hit happened in first HO layer or second.
 
   if ((hr > 3. * m) && (hr < 3.830 * m))
-    return scintID = 17;
+    return 17;
   if (hr > 3.830 * m)
-    return scintID = 18;
+    return 18;
 
   // Compute the scintID in the HB.
-
+  int scintID = 0;
+  float hz = hitPoint.z();
   float hR = hitPoint.mag();  //sqrt( pow(hx,2)+pow(hy,2)+pow(hz,2) );
   float htheta = (hR == 0. ? 0. : acos(std::max(std::min(hz / hR, float(1.)), float(-1.))));
   float hsintheta = sin(htheta);

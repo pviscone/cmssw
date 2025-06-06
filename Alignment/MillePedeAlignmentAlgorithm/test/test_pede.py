@@ -1,4 +1,5 @@
 import FWCore.ParameterSet.Config as cms
+
 process = cms.Process("Alignment")
 
 ################################################################################
@@ -10,6 +11,7 @@ setupCollection = "ALCARECOTkAlCosmicsCosmicTF0T"
 setupCosmicsDecoMode = True
 setupCosmicsZeroTesla = False
 setupPrimaryWidth     = -1.0
+setupRecoGeometry     = "" # empty string defaults to DB
 setupJson             = "placeholder_json"
 setupRunStartGeometry = 348908
 
@@ -34,8 +36,7 @@ readFiles.extend([
 # General setup
 # ------------------------------------------------------------------------------
 import Alignment.MillePedeAlignmentAlgorithm.alignmentsetup.GeneralSetup as generalSetup
-generalSetup.setup(process, setupGlobaltag, setupCosmicsZeroTesla)
-
+generalSetup.setup(process, setupGlobaltag, setupCosmicsZeroTesla, setupRecoGeometry)
 
 ################################################################################
 # setup alignment producer
@@ -49,7 +50,6 @@ confAliProducer.setConfiguration(process,
     binaryFile   = setupBinaryFile,
     primaryWidth = setupPrimaryWidth,
     cosmicsZeroTesla = setupCosmicsZeroTesla)
-
 
 ################################################################################
 # Overwrite some conditions in global tag
@@ -69,16 +69,8 @@ process.AlignmentProducer.ParameterBuilder.parameterTypes = [
     ]
 #
 # # Define the high-level structure alignables
-process.AlignmentProducer.ParameterBuilder.SelectorRigid = cms.PSet(
-    alignParams = cms.vstring(
-        "TrackerP1PXBHalfBarrel,111111",
-        "TrackerP1PXECHalfCylinder,111111",
-        "TrackerTIBHalfBarrel,111111",
-        "TrackerTOBHalfBarrel,rrrrrr",
-        "TrackerTIDEndcap,111111",
-        "TrackerTECEndcap,111111",
-        )
-    )
+from align_params_cff import _alignParams
+process.AlignmentProducer.ParameterBuilder.SelectorRigid = _alignParams
 
 #########################
 ## insert Pedesettings ##

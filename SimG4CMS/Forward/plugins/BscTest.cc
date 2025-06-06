@@ -44,7 +44,7 @@
 #include <CLHEP/Vector/ThreeVector.h>
 #include <CLHEP/Vector/LorentzVector.h>
 #include <CLHEP/Random/Randomize.h>
-#include <CLHEP/Units/GlobalSystemOfUnits.h>
+#include <CLHEP/Units/SystemOfUnits.h>
 #include <CLHEP/Units/GlobalPhysicalConstants.h>
 
 // ----------------------------------------------------------------
@@ -952,7 +952,7 @@ void BscTest::update(const EndOfEvent* evt) {
       }
       */
     }  // MI or no MI or all  - end
-  }    // primary end
+  }  // primary end
 
   if (verbosity > 0) {
     edm::LogVerbatim("BscTest") << "BscTest:  END OF Event " << (*evt)()->GetEventID();

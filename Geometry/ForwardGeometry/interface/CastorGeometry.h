@@ -25,11 +25,11 @@ public:
   typedef PCastorRcd PGeometryRecord;
   typedef HcalCastorDetId DetIdType;
 
-  enum { k_NumberOfCellsForCorners = HcalCastorDetId::kSizeForDenseIndexing };
+  static constexpr int k_NumberOfCellsForCorners = HcalCastorDetId::kSizeForDenseIndexing;
 
-  enum { k_NumberOfShapes = 4 };
+  static constexpr int k_NumberOfShapes = 4;
 
-  enum { k_NumberOfParametersPerShape = 6 };
+  static constexpr int k_NumberOfParametersPerShape = 6;
 
   static std::string dbString() { return "PCastorRcd"; }
 
@@ -63,12 +63,10 @@ public:
 
 protected:
   // Modify the RawPtr class
-  const CaloCellGeometry* getGeometryRawPtr(uint32_t index) const override;
+  CaloCellGeometryPtr getGeometryRawPtr(uint32_t index) const override;
 
 private:
   const CastorTopology* theTopology;
-  mutable DetId::Detector lastReqDet_;
-  mutable int lastReqSubdet_;
   bool m_ownsTopology;
 
   CellVec m_cellVec;

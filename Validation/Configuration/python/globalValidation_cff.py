@@ -44,7 +44,6 @@ from DQMOffline.RecoB.dqmAnalyzer_cff import *
 from Validation.RecoB.BDHadronTrackValidation_cff import *
 from Validation.Configuration.hgcalSimValid_cff import *
 from Validation.Configuration.mtdSimValid_cff import *
-from Validation.SiOuterTrackerV.OuterTrackerSourceConfigV_cff import *
 from Validation.Configuration.ecalSimValid_cff import *
 from Validation.SiTrackerPhase2V.Phase2TrackerValidationFirstStep_cff import *
 
@@ -197,13 +196,11 @@ globalValidationHCALOnly = cms.Sequence(
     + hcalRecHitsOnlyValidationSequence
     + pfClusterCaloOnlyValidationSequence
 )
-
-globalValidationHGCal = cms.Sequence(hgcalValidation)
 globalPrevalidationHGCal = cms.Sequence(hgcalAssociators, ticlSimTrackstersTask)
 
-globalValidationMTD = cms.Sequence()
+globalValidationHGCal = cms.Sequence(hgcalValidation)
 
-globalValidationOuterTracker = cms.Sequence(OuterTrackerSourceV)
+globalValidationMTD = cms.Sequence()
 
 globalPrevalidationMuons = cms.Sequence(
       gemSimValid

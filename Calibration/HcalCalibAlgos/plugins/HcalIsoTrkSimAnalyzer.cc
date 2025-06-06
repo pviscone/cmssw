@@ -1,19 +1,11 @@
 // system include files
-#include <atomic>
 #include <cmath>
-#include <memory>
 #include <string>
 #include <vector>
 
 // Root objects
-#include "TROOT.h"
-#include "TSystem.h"
-#include "TFile.h"
-#include "TProfile.h"
-#include "TDirectory.h"
 #include "TTree.h"
 #include "TLorentzVector.h"
-#include "TInterpreter.h"
 
 #include "CondFormats/EcalObjects/interface/EcalPFRecHitThresholds.h"
 #include "CondFormats/DataRecord/interface/EcalPFRecHitThresholdsRcd.h"
@@ -137,7 +129,7 @@ private:
   const int prescaleLow_, prescaleHigh_;
   const int useRaw_, dataType_, mode_;
   const bool ignoreTrigger_, useL1Trigger_;
-  const bool unCorrect_, collapseDepth_;
+  const bool unCorrect_, collapseDepth_, fillTreeRange_;
   const double hitEthrEB_, hitEthrEE0_, hitEthrEE1_;
   const double hitEthrEE2_, hitEthrEE3_;
   const double hitEthrEELo_, hitEthrEEHi_;
@@ -237,6 +229,7 @@ HcalIsoTrkSimAnalyzer::HcalIsoTrkSimAnalyzer(const edm::ParameterSet& iConfig)
       useL1Trigger_(iConfig.getUntrackedParameter<bool>("useL1Trigger", false)),
       unCorrect_(iConfig.getUntrackedParameter<bool>("unCorrect", false)),
       collapseDepth_(iConfig.getUntrackedParameter<bool>("collapseDepth", false)),
+      fillTreeRange_(iConfig.getUntrackedParameter<bool>("fillTreeRange", false)),
       hitEthrEB_(iConfig.getParameter<double>("EBHitEnergyThreshold")),
       hitEthrEE0_(iConfig.getParameter<double>("EEHitEnergyThreshold0")),
       hitEthrEE1_(iConfig.getParameter<double>("EEHitEnergyThreshold1")),
@@ -341,10 +334,10 @@ HcalIsoTrkSimAnalyzer::HcalIsoTrkSimAnalyzer(const edm::ParameterSet& iConfig)
                                    << "\t ignoreTrigger_ " << ignoreTrigger_ << "\n\t useL1Trigegr_ " << useL1Trigger_
                                    << "\t dataType_      " << dataType_ << "\t mode_          " << mode_
                                    << "\t unCorrect_     " << unCorrect_ << "\t collapseDepth_ " << collapseDepth_
-                                   << "\t L1TrigName_    " << l1TrigName_ << "\nThreshold flag used " << usePFThresh_
-                                   << " value for EB " << hitEthrEB_ << " EE " << hitEthrEE0_ << ":" << hitEthrEE1_
-                                   << ":" << hitEthrEE2_ << ":" << hitEthrEE3_ << ":" << hitEthrEELo_ << ":"
-                                   << hitEthrEEHi_;
+                                   << "\t fillTreeRange " << fillTreeRange_ << "\t L1TrigName_    " << l1TrigName_
+                                   << "\nThreshold flag used " << usePFThresh_ << " value for EB " << hitEthrEB_
+                                   << " EE " << hitEthrEE0_ << ":" << hitEthrEE1_ << ":" << hitEthrEE2_ << ":"
+                                   << hitEthrEE3_ << ":" << hitEthrEELo_ << ":" << hitEthrEEHi_;
   edm::LogVerbatim("HcalIsoTrack") << "Process " << processName_ << " L1Filter:" << l1Filter_
                                    << " L2Filter:" << l2Filter_ << " L3Filter:" << l3Filter_;
   for (unsigned int k = 0; k < trigNames_.size(); ++k) {
@@ -490,7 +483,7 @@ void HcalIsoTrkSimAnalyzer::analyze(edm::Event const& iEvent, edm::EventSetup co
   if (!ignoreTrigger_) {
     //L1
     l1GtUtils_->retrieveL1(iEvent, iSetup, tok_alg_);
-    const std::vector<std::pair<std::string, bool> >& finalDecisions = l1GtUtils_->decisionsFinal();
+    const auto& finalDecisions = l1GtUtils_->decisionsFinal();
     for (const auto& decision : finalDecisions) {
       if (decision.first.find(l1TrigName_) != std::string::npos) {
         t_L1Bit = decision.second;
@@ -860,6 +853,7 @@ void HcalIsoTrkSimAnalyzer::fillDescriptions(edm::ConfigurationDescriptions& des
   desc.addUntracked<int>("dataType", 0);
   desc.addUntracked<bool>("unCorrect", false);
   desc.addUntracked<bool>("collapseDepth", false);
+  desc.addUntracked<bool>("fillTreeRange", false);
   desc.addUntracked<std::string>("l1TrigName", "L1_SingleJet60");
   desc.addUntracked<int>("outMode", 11);
   std::vector<int> dummy;
@@ -1189,6 +1183,10 @@ std::array<int, 3> HcalIsoTrkSimAnalyzer::fillTree(std::vector<math::XYZTLorentz
           } else {
             accept = true;
           }
+        }
+        if (fillTreeRange_) {
+          if ((t_p < pTrackLow_) || (t_p > pTrackHigh_))
+            accept = false;
         }
         if (accept) {
           tree->Fill();

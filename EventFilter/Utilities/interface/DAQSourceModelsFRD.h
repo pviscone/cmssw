@@ -10,7 +10,7 @@ class FEDRawDataCollection;
 class DataModeFRD : public DataMode {
 public:
   DataModeFRD(DAQSource* daqSource) : DataMode(daqSource) {}
-  ~DataModeFRD() override{};
+  ~DataModeFRD() override {}
   std::vector<std::shared_ptr<const edm::DaqProvenanceHelper>>& makeDaqProvenanceHelpers() override;
   void readEvent(edm::EventPrincipal& eventPrincipal) override;
 
@@ -24,9 +24,9 @@ public:
     detectedFRDversion_ = *((uint16_t*)(fileBuf + fileHeaderOffset));
   }
 
-  uint32_t headerSize() const override { return FRDHeaderVersionSize[detectedFRDversion_]; }
+  uint32_t headerSize() const override { return edm::streamer::FRDHeaderVersionSize[detectedFRDversion_]; }
 
-  bool versionCheck() const override { return detectedFRDversion_ <= FRDHeaderMaxVersion; }
+  bool versionCheck() const override { return detectedFRDversion_ <= edm::streamer::FRDHeaderMaxVersion; }
 
   uint64_t dataBlockSize() const override { return event_->size(); }
 
@@ -57,14 +57,16 @@ public:
   bool fitToBuffer() const override { return false; }
   bool dataBlockInitialized() const override { return true; }
 
-  void setDataBlockInitialized(bool) override{};
+  void setDataBlockInitialized(bool) override {}
 
   void setTCDSSearchRange(uint16_t MINTCDSuTCAFEDID, uint16_t MAXTCDSuTCAFEDID) override {
     MINTCDSuTCAFEDID_ = MINTCDSuTCAFEDID;
     MAXTCDSuTCAFEDID_ = MAXTCDSuTCAFEDID;
   }
 
-  void makeDirectoryEntries(std::vector<std::string> const& baseDirs, std::string const& runDir) override {}
+  void makeDirectoryEntries(std::vector<std::string> const& baseDirs,
+                            std::vector<int> const& numSources,
+                            std::string const& runDir) override {}
 
   std::pair<bool, std::vector<std::string>> defineAdditionalFiles(std::string const& primaryName, bool) const override {
     return std::make_pair(true, std::vector<std::string>());
@@ -74,7 +76,7 @@ private:
   std::vector<std::shared_ptr<const edm::DaqProvenanceHelper>> daqProvenanceHelpers_;
   uint16_t detectedFRDversion_ = 0;
   size_t headerSize_ = 0;
-  std::unique_ptr<FRDEventMsgView> event_;
+  std::unique_ptr<edm::streamer::FRDEventMsgView> event_;
   uint32_t crc_ = 0;
   unsigned char* dataBlockAddr_ = nullptr;
   size_t dataBlockMax_ = 0;
@@ -92,7 +94,7 @@ private:
 class DataModeFRDStriped : public DataMode {
 public:
   DataModeFRDStriped(DAQSource* daqSource) : DataMode(daqSource) {}
-  ~DataModeFRDStriped() override{};
+  ~DataModeFRDStriped() override {}
   std::vector<std::shared_ptr<const edm::DaqProvenanceHelper>>& makeDaqProvenanceHelpers() override;
   void readEvent(edm::EventPrincipal& eventPrincipal) override;
 
@@ -104,9 +106,9 @@ public:
     detectedFRDversion_ = *((uint16_t*)(fileBuf + fileHeaderOffset));
   }
 
-  uint32_t headerSize() const override { return FRDHeaderVersionSize[detectedFRDversion_]; }
+  uint32_t headerSize() const override { return edm::streamer::FRDHeaderVersionSize[detectedFRDversion_]; }
 
-  bool versionCheck() const override { return detectedFRDversion_ <= FRDHeaderMaxVersion; }
+  bool versionCheck() const override { return detectedFRDversion_ <= edm::streamer::FRDHeaderMaxVersion; }
 
   uint64_t dataBlockSize() const override {
     //just get first event size
@@ -164,14 +166,16 @@ public:
 
   bool dataBlockInitialized() const override { return dataBlockInitialized_; }
 
-  void setDataBlockInitialized(bool val) override { dataBlockInitialized_ = val; };
+  void setDataBlockInitialized(bool val) override { dataBlockInitialized_ = val; }
 
   void setTCDSSearchRange(uint16_t MINTCDSuTCAFEDID, uint16_t MAXTCDSuTCAFEDID) override {
     MINTCDSuTCAFEDID_ = MINTCDSuTCAFEDID;
     MAXTCDSuTCAFEDID_ = MAXTCDSuTCAFEDID;
   }
 
-  void makeDirectoryEntries(std::vector<std::string> const& baseDirs, std::string const& runDir) override;
+  void makeDirectoryEntries(std::vector<std::string> const& baseDirs,
+                            std::vector<int> const& numSources,
+                            std::string const& runDir) override;
 
   std::pair<bool, std::vector<std::string>> defineAdditionalFiles(std::string const& primaryName,
                                                                   bool fileListMode) const override;
@@ -182,7 +186,7 @@ private:
   uint16_t detectedFRDversion_ = 0;
   size_t fileHeaderSize_ = 0;
   size_t headerSize_ = 0;
-  std::vector<std::unique_ptr<FRDEventMsgView>> events_;
+  std::vector<std::unique_ptr<edm::streamer::FRDEventMsgView>> events_;
   std::string crcMsg_;
   unsigned char* dataBlockAddr_ = nullptr;
   std::vector<unsigned char*> dataBlockAddrs_;
