@@ -29,7 +29,7 @@ else:
 process.load("DQM.Integration.config.FrontierCondition_GT_cfi")
 # Condition for lxplus: change and possibly customise the GT
 #from Configuration.AlCa.GlobalTag import GlobalTag as gtCustomise
-#process.GlobalTag = gtCustomise(process.GlobalTag, 'auto:run2_data', '')
+#process.GlobalTag = gtCustomise(process.GlobalTag, 'auto:run3_data', '')
 
 process.load("EventFilter.ESRawToDigi.esRawToDigi_cfi")
 #process.ecalPreshowerDigis = EventFilter.ESRawToDigi.esRawToDigi_cfi.esRawToDigi.clone()
@@ -53,11 +53,11 @@ process.load("DQM.Integration.config.environment_cfi")
 process.dqmEnv.subSystemFolder = 'EcalPreshower'
 process.dqmSaver.tag = 'EcalPreshower'
 process.dqmSaver.runNumber = options.runNumber
-process.dqmSaverPB.tag = 'EcalPreshower'
-process.dqmSaverPB.runNumber = options.runNumber
+# process.dqmSaverPB.tag = 'EcalPreshower'
+# process.dqmSaverPB.runNumber = options.runNumber
 # for local test
 #process.dqmSaver.path = '.'
-#process.dqmSaverPB.path = './pb'
+## process.dqmSaverPB.path = './pb'
 
 process.load("DQM/EcalPreshowerMonitorModule/EcalPreshowerMonitorTasks_cfi")
 process.ecalPreshowerIntegrityTask.ESDCCCollections = "esRawToDigi"
@@ -78,8 +78,8 @@ process.p = cms.Path(process.preScaler*
                process.ecalPreshowerDefaultTasksSequence*
                process.dqmEnv*
                process.ecalPreshowerMonitorClient*
-               process.dqmSaver*
-               process.dqmSaverPB)
+               process.dqmSaver)#*
+               #process.dqmSaverPB)
 
 
 process.esRawToDigi.sourceTag = "rawDataCollector"

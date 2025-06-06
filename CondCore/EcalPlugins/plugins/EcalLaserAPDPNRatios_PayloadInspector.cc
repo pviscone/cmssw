@@ -62,9 +62,9 @@ namespace {
       for (auto const& iov : tag.iovs) {
         std::shared_ptr<EcalLaserAPDPNRatios> payload = Base::fetchPayload(std::get<1>(iov));
         if (payload.get()) {
-          // set to -1 for ieta 0 (no crystal)
+          // set to 1 for ieta 0 (no crystal)
           for (int iphi = 1; iphi < 361; iphi++)
-            fillWithValue(iphi, 0, -1);
+            fillWithValue(iphi, 0, 1);
 
           for (int cellid = EBDetId::MIN_HASH; cellid < EBDetId::kSizeForDenseIndexing; ++cellid) {
             uint32_t rawid = EBDetId::unhashIndex(cellid);
@@ -72,8 +72,8 @@ namespace {
             // fill the Histogram2D here
             fillWithValue((EBDetId(rawid)).iphi(), (EBDetId(rawid)).ieta(), p2);
           }  // loop over cellid
-        }    // if payload.get()
-      }      // loop over IOV's (1 in this case)
+        }  // if payload.get()
+      }  // loop over IOV's (1 in this case)
 
       return true;
     }  // fill method
@@ -102,10 +102,10 @@ namespace {
       for (auto const& iov : tag.iovs) {
         std::shared_ptr<EcalLaserAPDPNRatios> payload = Base::fetchPayload(std::get<1>(iov));
         if (payload.get()) {
-          // set to -1 everywhwere
+          // set to 0 everywhwere
           for (int ix = IX_MIN; ix < EEhistXMax + 1; ix++)
-            for (int iy = IY_MAX; iy < IY_MAX + 1; iy++)
-              fillWithValue(ix, iy, -1);
+            for (int iy = IY_MIN; iy < IY_MAX + 1; iy++)
+              fillWithValue(ix, iy, 0);
 
           for (int cellid = 0; cellid < EEDetId::kSizeForDenseIndexing; ++cellid) {
             if (!EEDetId::validHashIndex(cellid))
@@ -118,8 +118,8 @@ namespace {
             else
               fillWithValue(myEEId.ix() + IX_MAX + EEhistSplit, myEEId.iy(), p2);
           }  // loop over cellid
-        }    // payload
-      }      // loop over IOV's (1 in this case)
+        }  // payload
+      }  // loop over IOV's (1 in this case)
       return true;
     }  // fill method
   };
@@ -208,7 +208,7 @@ namespace {
             endc_m[2]->Fill(myEEId.ix(), myEEId.iy(), p3);
           }
         }  // validDetId
-      }    // if payload.get()
+      }  // if payload.get()
       else
         return false;
 
@@ -464,7 +464,7 @@ namespace {
               }
             }
           }  // loop over cellid
-        }    //  if payload.get()
+        }  //  if payload.get()
         else
           return false;
       }  // loop over IOVs
@@ -572,7 +572,7 @@ namespace {
       canvas.SaveAs(ImageName.c_str());
       return true;
     }  // fill method
-  };   // class EcalLaserAPDPNRatiosDiffBase
+  };  // class EcalLaserAPDPNRatiosDiffBase
   using EcalLaserAPDPNRatiosDiffOneTag = EcalLaserAPDPNRatiosBase<cond::payloadInspector::SINGLE_IOV, 1, 0>;
   using EcalLaserAPDPNRatiosDiffTwoTags = EcalLaserAPDPNRatiosBase<cond::payloadInspector::SINGLE_IOV, 2, 0>;
   using EcalLaserAPDPNRatiosRatioOneTag = EcalLaserAPDPNRatiosBase<cond::payloadInspector::SINGLE_IOV, 1, 1>;

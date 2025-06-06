@@ -66,7 +66,6 @@
 #include "FWCore/Framework/interface/OccurrenceTraits.h"
 #include "FWCore/Framework/interface/UnscheduledCallProducer.h"
 #include "FWCore/Framework/interface/WorkerManager.h"
-#include "FWCore/Framework/interface/EDProducer.h"
 #include "FWCore/Framework/interface/Path.h"
 #include "FWCore/Framework/interface/TransitionInfoTypes.h"
 #include "FWCore/Framework/interface/maker/Worker.h"
@@ -76,6 +75,9 @@
 #include "FWCore/MessageLogger/interface/JobReport.h"
 #include "FWCore/MessageLogger/interface/MessageLogger.h"
 #include "FWCore/ServiceRegistry/interface/Service.h"
+#include "FWCore/ServiceRegistry/interface/ServiceRegistry.h"
+#include "FWCore/ServiceRegistry/interface/ServiceRegistryfwd.h"
+#include "FWCore/ServiceRegistry/interface/ServiceToken.h"
 #include "FWCore/ServiceRegistry/interface/StreamContext.h"
 #include "FWCore/Concurrency/interface/FunctorTask.h"
 #include "FWCore/Concurrency/interface/WaitingTaskHolder.h"
@@ -88,23 +90,24 @@
 #include "FWCore/Utilities/interface/propagate_const.h"
 #include "FWCore/Utilities/interface/thread_safety_macros.h"
 
+#include <exception>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <set>
 #include <string>
 #include <vector>
 #include <sstream>
 #include <atomic>
 #include <unordered_set>
+#include <utility>
 
 namespace edm {
 
-  class ActivityRegistry;
   class BranchIDListHelper;
   class ExceptionCollector;
   class ExceptionToActionTable;
   class OutputModuleCommunicator;
-  class ProcessContext;
   class UnscheduledCallProducer;
   class WorkerInPath;
   class ModuleRegistry;
@@ -112,49 +115,16 @@ namespace edm {
   class PathStatusInserter;
   class EndPathStatusInserter;
   class PreallocationConfiguration;
-  class WaitingTaskHolder;
+  class ConditionalTaskHelper;
 
   namespace service {
     class TriggerNamesService;
   }
 
-  namespace {
-    template <typename T>
-    class StreamScheduleSignalSentry {
-    public:
-      StreamScheduleSignalSentry(ActivityRegistry* a, typename T::Context const* context)
-          : a_(a), context_(context), allowThrow_(false) {
-        if (a_)
-          T::preScheduleSignal(a_, context_);
-      }
-      ~StreamScheduleSignalSentry() noexcept(false) {
-        // Caught exception is rethrown (when allowed)
-        CMS_SA_ALLOW try {
-          if (a_) {
-            T::postScheduleSignal(a_, context_);
-          }
-        } catch (...) {
-          if (allowThrow_) {
-            throw;
-          }
-        }
-      }
-
-      void allowThrow() { allowThrow_ = true; }
-
-    private:
-      // We own none of these resources.
-      ActivityRegistry* a_;  // We do not use propagate_const because the registry itself is mutable.
-      typename T::Context const* context_;
-      bool allowThrow_;
-    };
-  }  // namespace
-
   class StreamSchedule {
   public:
     typedef std::vector<std::string> vstring;
     typedef std::vector<Path> TrigPaths;
-    typedef std::vector<Path> NonTrigPaths;
     typedef std::shared_ptr<HLTGlobalStatus> TrigResPtr;
     typedef std::shared_ptr<HLTGlobalStatus const> TrigResConstPtr;
     typedef std::shared_ptr<Worker> WorkerPtr;
@@ -172,10 +142,9 @@ namespace edm {
                    service::TriggerNamesService const& tns,
                    PreallocationConfiguration const& prealloc,
                    ProductRegistry& pregistry,
-                   BranchIDListHelper& branchIDListHelper,
                    ExceptionToActionTable const& actions,
                    std::shared_ptr<ActivityRegistry> areg,
-                   std::shared_ptr<ProcessConfiguration> processConfiguration,
+                   std::shared_ptr<ProcessConfiguration const> processConfiguration,
                    StreamID streamID,
                    ProcessContext const* processContext);
 
@@ -194,7 +163,7 @@ namespace edm {
                                bool cleaningUpAfterException = false);
 
     void beginStream();
-    void endStream();
+    void endStream(ExceptionCollector& collector, std::mutex& collectorMutex) noexcept;
 
     StreamID streamID() const { return streamID_; }
 
@@ -248,38 +217,32 @@ namespace edm {
 
     void initializeEarlyDelete(ModuleRegistry& modReg,
                                std::vector<std::string> const& branchesToDeleteEarly,
+                               std::multimap<std::string, std::string> const& referencesToBranches,
+                               std::vector<std::string> const& modulesToSkip,
                                edm::ProductRegistry const& preg);
 
     /// returns the collection of pointers to workers
-    AllWorkers const& allWorkers() const { return workerManager_.allWorkers(); }
+    AllWorkers const& allWorkersBeginEnd() const { return workerManagerBeginEnd_.allWorkers(); }
+    AllWorkers const& allWorkersRuns() const { return workerManagerRuns_.allWorkers(); }
+    AllWorkers const& allWorkersLumisAndEvents() const { return workerManagerLumisAndEvents_.allWorkers(); }
 
+    AllWorkers const& unscheduledWorkersLumisAndEvents() const {
+      return workerManagerLumisAndEvents_.unscheduledWorkers();
+    }
     unsigned int numberOfUnscheduledModules() const { return number_of_unscheduled_modules_; }
 
     StreamContext const& context() const { return streamContext_; }
 
-  private:
-    //Sentry class to only send a signal if an
-    // exception occurs. An exception is identified
-    // by the destructor being called without first
-    // calling completedSuccessfully().
-    class SendTerminationSignalIfException {
-    public:
-      SendTerminationSignalIfException(edm::ActivityRegistry* iReg, edm::StreamContext const* iContext)
-          : reg_(iReg), context_(iContext) {}
-      ~SendTerminationSignalIfException() {
-        if (reg_) {
-          reg_->preStreamEarlyTerminationSignal_(*context_, TerminationOrigin::ExceptionFromThisContext);
-        }
-      }
-      void completedSuccessfully() { reg_ = nullptr; }
-
-    private:
-      edm::ActivityRegistry* reg_;  // We do not use propagate_const because the registry itself is mutable.
-      StreamContext const* context_;
+    struct AliasInfo {
+      std::string friendlyClassName;
+      std::string instanceLabel;
+      std::string originalInstanceLabel;
+      std::string originalModuleLabel;
     };
 
+  private:
     /// returns the action table
-    ExceptionToActionTable const& actionTable() const { return workerManager_.actionTable(); }
+    ExceptionToActionTable const& actionTable() const { return workerManagerLumisAndEvents_.actionTable(); }
 
     void resetAll();
 
@@ -289,17 +252,11 @@ namespace edm {
 
     void reportSkipped(EventPrincipal const& ep) const;
 
-    struct AliasInfo {
-      std::string friendlyClassName;
-      std::string instanceLabel;
-      std::string originalInstanceLabel;
-      std::string originalModuleLabel;
-    };
     std::vector<Worker*> tryToPlaceConditionalModules(
         Worker*,
         std::unordered_set<std::string>& conditionalModules,
-        std::multimap<std::string, edm::BranchDescription const*> const& conditionalModuleBranches,
-        std::multimap<std::string, AliasInfo> const& aliasMap,
+        std::unordered_multimap<std::string, edm::BranchDescription const*> const& conditionalModuleBranches,
+        std::unordered_multimap<std::string, AliasInfo> const& aliasMap,
         ParameterSet& proc_pset,
         ProductRegistry& preg,
         PreallocationConfiguration const* prealloc,
@@ -311,7 +268,9 @@ namespace edm {
                      std::string const& name,
                      bool ignoreFilters,
                      PathWorkers& out,
-                     std::vector<std::string> const& endPathNames);
+                     std::vector<std::string> const& endPathNames,
+                     ConditionalTaskHelper const& conditionalTaskHelper,
+                     std::unordered_set<std::string>& allConditionalModules);
     void fillTrigPath(ParameterSet& proc_pset,
                       ProductRegistry& preg,
                       PreallocationConfiguration const* prealloc,
@@ -319,14 +278,18 @@ namespace edm {
                       int bitpos,
                       std::string const& name,
                       TrigResPtr,
-                      std::vector<std::string> const& endPathNames);
+                      std::vector<std::string> const& endPathNames,
+                      ConditionalTaskHelper const& conditionalTaskHelper,
+                      std::unordered_set<std::string>& allConditionalModules);
     void fillEndPath(ParameterSet& proc_pset,
                      ProductRegistry& preg,
                      PreallocationConfiguration const* prealloc,
                      std::shared_ptr<ProcessConfiguration const> processConfiguration,
                      int bitpos,
                      std::string const& name,
-                     std::vector<std::string> const& endPathNames);
+                     std::vector<std::string> const& endPathNames,
+                     ConditionalTaskHelper const& conditionalTaskHelper,
+                     std::unordered_set<std::string>& allConditionalModules);
 
     void addToAllWorkers(Worker* w);
 
@@ -340,7 +303,17 @@ namespace edm {
         std::vector<edm::propagate_const<std::shared_ptr<EndPathStatusInserter>>>& endPathStatusInserters,
         ExceptionToActionTable const& actions);
 
-    WorkerManager workerManager_;
+    template <typename T>
+    void preScheduleSignal(StreamContext const*) const;
+
+    template <typename T>
+    void postScheduleSignal(StreamContext const*, std::exception_ptr&) const noexcept;
+
+    void handleException(StreamContext const&, bool cleaningUpAfterException, std::exception_ptr&) const noexcept;
+
+    WorkerManager workerManagerBeginEnd_;
+    WorkerManager workerManagerRuns_;
+    WorkerManager workerManagerLumisAndEvents_;
     std::shared_ptr<ActivityRegistry> actReg_;  // We do not use propagate_const because the registry itself is mutable.
 
     edm::propagate_const<TrigResPtr> results_;
@@ -375,7 +348,6 @@ namespace edm {
 
     StreamID streamID_;
     StreamContext streamContext_;
-    std::atomic<bool> skippingEvent_;
   };
 
   void inline StreamSchedule::reportSkipped(EventPrincipal const& ep) const {
@@ -388,75 +360,54 @@ namespace edm {
                                              typename T::TransitionInfoType& transitionInfo,
                                              ServiceToken const& token,
                                              bool cleaningUpAfterException) {
+    auto group = iHolder.group();
     auto const& principal = transitionInfo.principal();
     T::setStreamContext(streamContext_, principal);
 
-    auto id = principal.id();
     ServiceWeakToken weakToken = token;
-    auto doneTask = make_waiting_task(
-        [this, iHolder, id, cleaningUpAfterException, weakToken](std::exception_ptr const* iPtr) mutable {
-          std::exception_ptr excpt;
-          if (iPtr) {
-            excpt = *iPtr;
-            //add context information to the exception and print message
-            try {
-              convertException::wrap([&]() { std::rethrow_exception(excpt); });
-            } catch (cms::Exception& ex) {
-              //TODO: should add the transition type info
-              std::ostringstream ost;
-              if (ex.context().empty()) {
-                ost << "Processing " << T::transitionName() << " " << id;
-              }
-              ServiceRegistry::Operate op(weakToken.lock());
-              addContextAndPrintException(ost.str().c_str(), ex, cleaningUpAfterException);
-              excpt = std::current_exception();
-            }
+    auto doneTask = make_waiting_task([this, iHolder = std::move(iHolder), cleaningUpAfterException, weakToken](
+                                          std::exception_ptr const* iPtr) mutable {
+      std::exception_ptr excpt;
+      {
+        ServiceRegistry::Operate op(weakToken.lock());
 
-            ServiceRegistry::Operate op(weakToken.lock());
-            actReg_->preStreamEarlyTerminationSignal_(streamContext_, TerminationOrigin::ExceptionFromThisContext);
-          }
-          // Caught exception is propagated via WaitingTaskHolder
-          CMS_SA_ALLOW try {
-            ServiceRegistry::Operate op(weakToken.lock());
-            T::postScheduleSignal(actReg_.get(), &streamContext_);
-          } catch (...) {
-            if (not excpt) {
-              excpt = std::current_exception();
-            }
-          }
-          iHolder.doneWaiting(excpt);
-        });
+        if (iPtr) {
+          excpt = *iPtr;
+          handleException(streamContext_, cleaningUpAfterException, excpt);
+        }
+        postScheduleSignal<T>(&streamContext_, excpt);
+      }  // release service token before calling doneWaiting
+      iHolder.doneWaiting(excpt);
+    });
 
-    auto task = make_functor_task(
-        [this, h = WaitingTaskHolder(*iHolder.group(), doneTask), info = transitionInfo, weakToken]() mutable {
+    auto task =
+        make_functor_task([this, h = WaitingTaskHolder(*group, doneTask), info = transitionInfo, weakToken]() mutable {
           auto token = weakToken.lock();
           ServiceRegistry::Operate op(token);
           // Caught exception is propagated via WaitingTaskHolder
+          WorkerManager* workerManager = &workerManagerRuns_;
+          if (T::branchType_ == InLumi) {
+            workerManager = &workerManagerLumisAndEvents_;
+          }
           CMS_SA_ALLOW try {
-            T::preScheduleSignal(actReg_.get(), &streamContext_);
-
-            workerManager_.resetAll();
+            preScheduleSignal<T>(&streamContext_);
+            workerManager->resetAll();
           } catch (...) {
-            h.doneWaiting(std::current_exception());
+            // Just remember the exception at this point,
+            // let the destructor of h call doneWaiting() so the
+            // ServiceRegistry::Operator object is destroyed first
+            h.presetTaskAsFailed(std::current_exception());
             return;
           }
 
-          for (auto& p : end_paths_) {
-            p.runAllModulesAsync<T>(h, info, token, streamID_, &streamContext_);
-          }
-
-          for (auto& p : trig_paths_) {
-            p.runAllModulesAsync<T>(h, info, token, streamID_, &streamContext_);
-          }
-
-          workerManager_.processOneOccurrenceAsync<T>(h, info, token, streamID_, &streamContext_, &streamContext_);
+          workerManager->processOneOccurrenceAsync<T>(h, info, token, streamID_, &streamContext_, &streamContext_);
         });
 
     if (streamID_.value() == 0) {
       //Enqueueing will start another thread if there is only
       // one thread in the job. Having stream == 0 use spawn
       // avoids starting up another thread when there is only one stream.
-      iHolder.group()->run([task]() {
+      group->run([task]() {
         TaskSentry s{task};
         task->execute();
       });
@@ -466,6 +417,35 @@ namespace edm {
         TaskSentry s{task};
         task->execute();
       });
+    }
+  }
+
+  template <typename T>
+  void StreamSchedule::preScheduleSignal(StreamContext const* streamContext) const {
+    try {
+      convertException::wrap([this, streamContext]() { T::preScheduleSignal(actReg_.get(), streamContext); });
+    } catch (cms::Exception& ex) {
+      std::ostringstream ost;
+      ex.addContext("Handling pre signal, likely in a service function");
+      exceptionContext(ost, *streamContext);
+      ex.addContext(ost.str());
+      throw;
+    }
+  }
+
+  template <typename T>
+  void StreamSchedule::postScheduleSignal(StreamContext const* streamContext,
+                                          std::exception_ptr& excpt) const noexcept {
+    try {
+      convertException::wrap([this, streamContext]() { T::postScheduleSignal(actReg_.get(), streamContext); });
+    } catch (cms::Exception& ex) {
+      if (not excpt) {
+        std::ostringstream ost;
+        ex.addContext("Handling post signal, likely in a service function");
+        exceptionContext(ost, *streamContext);
+        ex.addContext(ost.str());
+        excpt = std::current_exception();
+      }
     }
   }
 }  // namespace edm

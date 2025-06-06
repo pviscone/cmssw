@@ -887,7 +887,6 @@ void Fit::multiplyMatrices() {
   }
 
   ALIint nEnt = 0;
-  ALIint nEntUnk = 0;
   for (vecite = Model::EntryList().begin(); vecite != Model::EntryList().end(); ++vecite) {
     //------------------ Number of parameters 'cal'
     //                  (= No parameters to be fitted - No parameters 'unk' )
@@ -901,8 +900,6 @@ void Fit::multiplyMatrices() {
       }
       nEnt++;
     }
-    if ((*vecite)->quality() == 2)
-      nEntUnk++;
   }
 
   if (ALIUtils::debug >= 5)
@@ -1213,8 +1210,9 @@ void Fit::dumpFittedValues(ALIFileOut& fileout, ALIbool printErrors, ALIbool pri
   //  const Entry* entry;
   int ii, siz;
   std::vector<OpticalObject*>::const_iterator vocite;
+  ALIstring sys = ALIstring("system");
   for (vocite = Model::OptOList().begin(); vocite != Model::OptOList().end(); ++vocite) {
-    if ((*vocite)->type() == ALIstring("system"))
+    if ((*vocite)->type() == sys)
       continue;
 
     fileout << " %%%% Optical Object: " << (*vocite)->longName() << std::endl;
@@ -1271,8 +1269,9 @@ void Fit::dumpFittedValuesInAllAncestorFrames(ALIFileOut& fileout, ALIbool print
   //---------- Iterate over OptO list
   std::vector<Entry*> entries;
   std::vector<OpticalObject*>::const_iterator vocite;
+  ALIstring sys = ALIstring("system");
   for (vocite = Model::OptOList().begin(); vocite != Model::OptOList().end(); ++vocite) {
-    if ((*vocite)->type() == ALIstring("system"))
+    if ((*vocite)->type() == sys)
       continue;
 
     fileout << " %%%% Optical Object: " << (*vocite)->longName() << std::endl;

@@ -14,10 +14,15 @@
 
 // system include files
 #include <bitset>
+#include <cassert>
 #include <vector>
+#include <cmath>
+#include <memory>
 
 // user include files
 #include "FWCore/Utilities/interface/typedefs.h"
+#include "FWCore/Utilities/interface/Exception.h"
+
 #include "DataFormats/L1TGlobal/interface/GlobalObjectMapRecord.h"
 
 #include "L1Trigger/L1TGlobal/interface/AlgorithmEvaluation.h"
@@ -34,10 +39,9 @@
 // Objects to produce for the output record.
 #include "DataFormats/L1TGlobal/interface/GlobalAlgBlk.h"
 #include "DataFormats/L1TGlobal/interface/GlobalExtBlk.h"
+#include "DataFormats/L1TGlobal/interface/AXOL1TLScore.h"
 
 #include "FWCore/Framework/interface/Event.h"
-#include "FWCore/Utilities/interface/InputTag.h"
-
 #include "FWCore/Framework/interface/EventSetup.h"
 
 // forward declarations
@@ -60,30 +64,36 @@ namespace l1t {
 
   public:
     /// receive data from Global Muon Trigger
-    void receiveCaloObjectData(edm::Event&,
+    void receiveCaloObjectData(const edm::Event&,
                                const edm::EDGetTokenT<BXVector<l1t::EGamma>>&,
                                const edm::EDGetTokenT<BXVector<l1t::Tau>>&,
                                const edm::EDGetTokenT<BXVector<l1t::Jet>>&,
                                const edm::EDGetTokenT<BXVector<l1t::EtSum>>&,
+                               const edm::EDGetTokenT<BXVector<l1t::EtSum>>&,
+                               const edm::EDGetTokenT<BXVector<float>>&,
                                const bool receiveEG,
                                const int nrL1EG,
                                const bool receiveTau,
                                const int nrL1Tau,
                                const bool receiveJet,
                                const int nrL1Jet,
-                               const bool receiveEtSums);
+                               const bool receiveEtSums,
+                               const bool receiveEtSumsZdc,
+                               const bool receiveCICADA);
 
-    void receiveMuonObjectData(edm::Event&,
+    void receiveMuonObjectData(const edm::Event&,
                                const edm::EDGetTokenT<BXVector<l1t::Muon>>&,
                                const bool receiveMu,
                                const int nrL1Mu);
 
-    void receiveMuonShowerObjectData(edm::Event&,
+    void receiveMuonShowerObjectData(const edm::Event&,
                                      const edm::EDGetTokenT<BXVector<l1t::MuonShower>>&,
                                      const bool receiveMuShower,
                                      const int nrL1MuShower);
 
-    void receiveExternalData(edm::Event&, const edm::EDGetTokenT<BXVector<GlobalExtBlk>>&, const bool receiveExt);
+    void receiveExternalData(const edm::Event&, const edm::EDGetTokenT<BXVector<GlobalExtBlk>>&, const bool receiveExt);
+
+    void fillAXOScore(int iBxInEvent, std::unique_ptr<AXOL1TLScoreBxCollection>& AxoScoreRecord);
 
     /// initialize the class (mainly reserve)
     void init(const int numberPhysTriggers,
@@ -96,7 +106,7 @@ namespace l1t {
               int bxLast);
 
     /// run the uGT GTL (Conditions and Algorithms)
-    void runGTL(edm::Event& iEvent,
+    void runGTL(const edm::Event& iEvent,
                 const edm::EventSetup& evSetup,
                 const TriggerMenu* m_l1GtMenu,
                 const bool produceL1GtObjectMapRecord,
@@ -110,7 +120,7 @@ namespace l1t {
                 const int nrL1Jet);
 
     /// run the uGT FDL (Apply Prescales and Veto)
-    void runFDL(edm::Event& iEvent,
+    void runFDL(const edm::Event& iEvent,
                 const int iBxInEvent,
                 const int totalBxInEvent,
                 const unsigned int numberPhysTriggers,
@@ -147,7 +157,7 @@ namespace l1t {
     inline const BXVector<const l1t::Muon*>* getCandL1Mu() const { return m_candL1Mu; }
 
     /// return global muon trigger candidate
-    inline const BXVector<const l1t::MuonShower*>* getCandL1MuShower() const { return m_candL1MuShower; }
+    inline const BXVector<std::shared_ptr<l1t::MuonShower>>* getCandL1MuShower() const { return m_candL1MuShower; }
 
     /// pointer to EG data list
     inline const BXVector<const l1t::L1Candidate*>* getCandL1EG() const { return m_candL1EG; }
@@ -158,11 +168,16 @@ namespace l1t {
     /// pointer to Tau data list
     inline const BXVector<const l1t::L1Candidate*>* getCandL1Tau() const { return m_candL1Tau; }
 
-    /// pointer to Tau data list
+    /// pointer to EtSum data list
     inline const BXVector<const l1t::EtSum*>* getCandL1EtSum() const { return m_candL1EtSum; }
 
-    /// pointer to Tau data list
+    /// pointer to ZDC EtSum data list
+    inline const BXVector<const l1t::EtSum*>* getCandL1EtSumZdc() const { return m_candL1EtSumZdc; }
+
+    /// pointer to External data list
     inline const BXVector<const GlobalExtBlk*>* getCandL1External() const { return m_candL1External; }
+
+    inline const float getCICADAScore() const { return m_cicadaScore; }
 
     /*  Drop individual EtSums for Now
     /// pointer to ETM data list
@@ -194,9 +209,14 @@ namespace l1t {
     void setBxLast(int bx);
 
     void setResetPSCountersEachLumiSec(bool val) { m_resetPSCountersEachLumiSec = val; }
+    void setSemiRandomInitialPSCounters(bool val) { m_semiRandomInitialPSCounters = val; }
+
+    void setCICADAScore(float val) { m_cicadaScore = val; }
 
   public:
     inline void setVerbosity(const int verbosity) { m_verbosity = verbosity; }
+
+    inline void enableAXOScoreSaving(bool savescore) { m_saveAXOScore = savescore; }
 
   private:
     // cached stuff
@@ -217,11 +237,12 @@ namespace l1t {
 
   private:
     BXVector<const l1t::Muon*>* m_candL1Mu;
-    BXVector<const l1t::MuonShower*>* m_candL1MuShower;
+    BXVector<std::shared_ptr<l1t::MuonShower>>* m_candL1MuShower;
     BXVector<const l1t::L1Candidate*>* m_candL1EG;
     BXVector<const l1t::L1Candidate*>* m_candL1Tau;
     BXVector<const l1t::L1Candidate*>* m_candL1Jet;
     BXVector<const l1t::EtSum*>* m_candL1EtSum;
+    BXVector<const l1t::EtSum*>* m_candL1EtSumZdc;
     BXVector<const GlobalExtBlk*>* m_candL1External;
 
     //    BXVector<const l1t::EtSum*>* m_candETM;
@@ -232,20 +253,22 @@ namespace l1t {
     int m_bxFirst_;
     int m_bxLast_;
 
+    float m_cicadaScore = 0.0;
+
     std::bitset<GlobalAlgBlk::maxPhysicsTriggers> m_gtlAlgorithmOR;
     std::bitset<GlobalAlgBlk::maxPhysicsTriggers> m_gtlDecisionWord;
 
     GlobalAlgBlk m_uGtAlgBlk;
 
-    // cache  of maps
+    //for optional software-only saving of axol1tl score
+    AXOL1TLScore m_uGtAXOScore;       //score dataformat
+    float m_storedAXOScore = -999.0;  //score from cond class
+    bool m_saveAXOScore = false;
+
+    // cache of maps
     std::vector<AlgorithmEvaluation::ConditionEvaluationMap> m_conditionResultMaps;
 
-    /// prescale counters: NumberPhysTriggers counters per bunch cross in event
-    std::vector<std::vector<double>> m_prescaleCounterAlgoTrig;
-
-    bool m_firstEv;
-    bool m_firstEvLumiSegment;
-    uint m_currentLumi;
+    unsigned int m_currentLumi;
 
   private:
     /// verbosity level
@@ -266,9 +289,46 @@ namespace l1t {
     int m_uGtBoardNumber;
     bool m_uGtFinalBoard;
 
-    //whether we reset the prescales each lumi or not
-    bool m_resetPSCountersEachLumiSec = true;
+    // whether we reset the prescales each lumi or not
+    bool m_resetPSCountersEachLumiSec = false;
+
+    // start the PS counter from a random value between [1,PS] instead of PS
+    bool m_semiRandomInitialPSCounters = false;
+
+    // step-size in prescale counter corresponding to 10^p,
+    // where p is the precision allowed for non-integer prescales;
+    // since the introduction of L1T fractional prescales, p == 2
+    static constexpr size_t m_singlestep = 100;
+
+    // struct to increment the prescale according to fractional prescale logic in firmware
+    struct PrescaleCounter {
+      size_t const prescale_count;
+      size_t trigger_counter;
+
+      PrescaleCounter(double prescale, size_t const initial_counter = 0)
+          : prescale_count(std::lround(prescale * m_singlestep)), trigger_counter(initial_counter) {
+        if (prescale_count != 0 and (prescale_count < m_singlestep or prescale < 0)) {
+          throw cms::Exception("PrescaleCounterConstructor")
+              << "invalid initialisation of PrescaleCounter: prescale = " << prescale
+              << ", prescale_count = " << prescale_count << " (< " << m_singlestep << " = m_singlestep)";
+        }
+      }
+
+      // function to increment the prescale counter and return the decision
+      bool accept();
+    };
+
+    // prescale counters: NumberPhysTriggers counters per bunch cross in event
+    std::vector<std::vector<PrescaleCounter>> m_prescaleCounterAlgoTrig;
+
+    // create prescale counters, initialising trigger_counter to zero
+    static std::vector<PrescaleCounter> prescaleCounters(std::vector<double> const& prescaleFactorsAlgoTrig);
+
+    // create prescale counters, initialising trigger_counter to a semirandom number between 0 and prescale_count - 1 inclusive
+    static std::vector<PrescaleCounter> prescaleCountersWithSemirandomInitialCounter(
+        std::vector<double> const& prescaleFactorsAlgoTrig, edm::Event const& iEvent);
   };
 
 }  // namespace l1t
+
 #endif

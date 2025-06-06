@@ -38,11 +38,11 @@ public:
 
   typedef EEDetId DetIdType;
 
-  enum { k_NumberOfCellsForCorners = EEDetId::kSizeForDenseIndexing };
+  static constexpr int k_NumberOfCellsForCorners = EEDetId::kSizeForDenseIndexing;
 
-  enum { k_NumberOfShapes = 1 };
+  static constexpr int k_NumberOfShapes = 1;
 
-  enum { k_NumberOfParametersPerShape = 11 };
+  static constexpr int k_NumberOfParametersPerShape = 11;
 
   static std::string dbString() { return "PEcalEndcapRcd"; }
 
@@ -96,7 +96,7 @@ public:
 
 protected:
   // Modify the RawPtr class
-  const CaloCellGeometry* getGeometryRawPtr(uint32_t index) const override;
+  CaloCellGeometryPtr getGeometryRawPtr(uint32_t index) const override;
 
 private:
   static int myPhi(int i) {

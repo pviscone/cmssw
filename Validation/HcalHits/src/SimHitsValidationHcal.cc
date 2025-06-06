@@ -37,22 +37,22 @@ void SimHitsValidationHcal::bookHistograms(DQMStore::IBooker &ib, edm::Run const
   float iphi_max = NphiMax + 0.5;
   int iphi_bins = (int)(iphi_max - iphi_min);
 
-  int iEtaHBMax = hcons->getEtaRange(0).second;
-  int iEtaHEMax = std::max(hcons->getEtaRange(1).second, 1);
-  int iEtaHFMax = hcons->getEtaRange(2).second;
-  int iEtaHOMax = hcons->getEtaRange(3).second;
+  //int iEtaHBMax = hcons->getEtaRange(0).second;
+  //int iEtaHEMax = std::max(hcons->getEtaRange(1).second, 1);
+  //int iEtaHFMax = hcons->getEtaRange(2).second;
+  //int iEtaHOMax = hcons->getEtaRange(3).second;
 
   // Retain classic behavior, all plots have same ieta range.
   // Comment out	code to	allow each subdetector to have its on range
 
-  int iEtaMax = (iEtaHBMax > iEtaHEMax ? iEtaHBMax : iEtaHEMax);
-  iEtaMax = (iEtaMax > iEtaHFMax ? iEtaMax : iEtaHFMax);
-  iEtaMax = (iEtaMax > iEtaHOMax ? iEtaMax : iEtaHOMax);
+  //int iEtaMax = (iEtaHBMax > iEtaHEMax ? iEtaHBMax : iEtaHEMax);
+  //iEtaMax = (iEtaMax > iEtaHFMax ? iEtaMax : iEtaHFMax);
+  //iEtaMax = (iEtaMax > iEtaHOMax ? iEtaMax : iEtaHOMax);
 
-  iEtaHBMax = iEtaMax;
-  iEtaHEMax = iEtaMax;
-  iEtaHFMax = iEtaMax;
-  iEtaHOMax = iEtaMax;
+  //iEtaHBMax = iEtaMax;
+  //iEtaHEMax = iEtaMax;
+  //iEtaHFMax = iEtaMax;
+  //iEtaHOMax = iEtaMax;
 
   // Give an empty bin around the subdet ieta range to make it clear that all
   // ieta rings have been included float ieta_min_HB = -iEtaHBMax - 1.5; float
@@ -181,7 +181,6 @@ void SimHitsValidationHcal::analyzeHits(std::vector<PCaloHit> &hits) {
   int nHit = hits.size();
   double entotHB = 0, entotHE = 0, entotHF = 0, entotHO = 0;
   double timetotHB = 0, timetotHE = 0, timetotHF = 0, timetotHO = 0;
-  int nHB = 0, nHE = 0, nHO = 0, nHF = 0;
 
   std::map<std::pair<HcalDetId, unsigned int>, energysum> map_try;
   map_try.clear();
@@ -201,19 +200,15 @@ void SimHitsValidationHcal::analyzeHits(std::vector<PCaloHit> &hits) {
     if (subdet == static_cast<int>(HcalBarrel)) {
       entotHB += energy;
       timetotHB += time;
-      nHB++;
     } else if (subdet == static_cast<int>(HcalEndcap)) {
       entotHE += energy;
       timetotHE += time;
-      nHE++;
     } else if (subdet == static_cast<int>(HcalOuter)) {
       entotHO += energy;
       timetotHO += time;
-      nHO++;
     } else if (subdet == static_cast<int>(HcalForward)) {
       entotHF += energy;
       timetotHF += time;
-      nHF++;
     }
 
     std::pair<HcalDetId, unsigned int> id0(id, dep);

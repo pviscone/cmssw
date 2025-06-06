@@ -6,7 +6,6 @@
 // Now we allow for the creation of towers from
 // rejected hists as well: requested by the MET group
 // for studies of the effect of noise clean up.
-
 #include "CaloTowersCreationAlgo.h"
 #include "EScales.h"
 
@@ -25,12 +24,17 @@
 #include "Geometry/Records/interface/CaloGeometryRecord.h"
 #include "Geometry/Records/interface/IdealGeometryRecord.h"
 #include "RecoLocalCalo/EcalRecAlgos/interface/EcalSeverityLevelAlgoRcd.h"
+#include "CondFormats/DataRecord/interface/HcalPFCutsRcd.h"
+#include "CondTools/Hcal/interface/HcalPFCutsHandler.h"
+#include "CondFormats/EcalObjects/interface/EcalPFRecHitThresholds.h"
+#include "CondFormats/DataRecord/interface/EcalPFRecHitThresholdsRcd.h"
 
 class CaloTowersCreator : public edm::stream::EDProducer<> {
 public:
   explicit CaloTowersCreator(const edm::ParameterSet& ps);
   ~CaloTowersCreator() override {}
   void produce(edm::Event& e, const edm::EventSetup& c) override;
+  void beginRun(edm::Run const&, edm::EventSetup const&) override;
   static void fillDescriptions(edm::ConfigurationDescriptions& descriptions);
   double EBEScale, EEEScale, HBEScale, HESEScale;
   double HEDEScale, HOEScale, HF1EScale, HF2EScale;
@@ -84,6 +88,15 @@ private:
   edm::ESWatcher<IdealGeometryRecord> caloTowerConstituentsWatcher_;
   edm::ESWatcher<EcalSeverityLevelAlgoRcd> ecalSevLevelWatcher_;
   EScales eScales_;
+
+  edm::ESGetToken<HcalPFCuts, HcalPFCutsRcd> hcalCutsToken_;
+  bool cutsFromDB;
+  HcalPFCuts const* paramPF = nullptr;
+
+  // Ecal noise thresholds
+  edm::ESGetToken<EcalPFRecHitThresholds, EcalPFRecHitThresholdsRcd> ecalPFRechitThresholdsToken_;
+  bool ecalRecHitThresh_;
+  EcalPFRecHitThresholds const* ecalThresholds = nullptr;
 };
 
 #include "FWCore/Framework/interface/MakerMacros.h"
@@ -165,9 +178,9 @@ CaloTowersCreator::CaloTowersCreator(const edm::ParameterSet& conf)
           conf.getParameter<unsigned int>("HcalAcceptSeverityLevelForRejectedHit")),
 
       useRejectedRecoveredHcalHits_(conf.getParameter<bool>("UseRejectedRecoveredHcalHits")),
-      useRejectedRecoveredEcalHits_(conf.getParameter<bool>("UseRejectedRecoveredEcalHits"))
-
-{
+      useRejectedRecoveredEcalHits_(conf.getParameter<bool>("UseRejectedRecoveredEcalHits")),
+      cutsFromDB(conf.getParameter<bool>("usePFThresholdsFromDB")),
+      ecalRecHitThresh_(conf.getParameter<bool>("EcalRecHitThresh")) {
   algo_.setMissingHcalRescaleFactorForEcal(conf.getParameter<double>("missingHcalRescaleFactorForEcal"));
 
   // register for data access
@@ -182,6 +195,15 @@ CaloTowersCreator::CaloTowersCreator(const edm::ParameterSet& conf)
   tok_hcalChStatus_ = esConsumes<HcalChannelQuality, HcalChannelQualityRcd>(edm::ESInputTag("", "withTopo"));
   tok_hcalSevComputer_ = esConsumes<HcalSeverityLevelComputer, HcalSeverityLevelComputerRcd>();
   tok_ecalSevAlgo_ = esConsumes<EcalSeverityLevelAlgo, EcalSeverityLevelAlgoRcd>();
+
+  if (cutsFromDB) {
+    hcalCutsToken_ = esConsumes<HcalPFCuts, HcalPFCutsRcd, edm::Transition::BeginRun>(edm::ESInputTag("", "withTopo"));
+  }
+
+  if (ecalRecHitThresh_) {
+    ecalPFRechitThresholdsToken_ =
+        esConsumes<EcalPFRecHitThresholds, EcalPFRecHitThresholdsRcd, edm::Transition::BeginRun>();
+  }
 
   const unsigned nLabels = ecalLabels_.size();
   for (unsigned i = 0; i != nLabels; i++)
@@ -215,6 +237,18 @@ CaloTowersCreator::CaloTowersCreator(const edm::ParameterSet& conf)
   std::cout << "VI Producer " << (useRejectedHitsOnly_ ? "use rejectOnly " : " ")
             << (allowMissingInputs_ ? "allowMissing " : " ") << nLabels << ' ' << severitynames.size() << std::endl;
 #endif
+}
+
+void CaloTowersCreator::beginRun(const edm::Run& run, const edm::EventSetup& es) {
+  if (cutsFromDB) {
+    paramPF = &es.getData(hcalCutsToken_);
+  }
+
+  if (ecalRecHitThresh_) {
+    ecalThresholds = &es.getData(ecalPFRechitThresholdsToken_);
+  }
+
+  algo_.setThresFromDB(ecalThresholds, paramPF);
 }
 
 void CaloTowersCreator::produce(edm::Event& e, const edm::EventSetup& c) {
@@ -452,6 +486,7 @@ void CaloTowersCreator::fillDescriptions(edm::ConfigurationDescriptions& descrip
   desc.add<unsigned int>("HcalAcceptSeverityLevelForRejectedHit", 9999);
   desc.add<std::vector<std::string> >("EcalSeveritiesToBeUsedInBadTowers", {});
   desc.add<int>("HcalPhase", 0);
-
+  desc.add<bool>("usePFThresholdsFromDB", true);
+  desc.add<bool>("EcalRecHitThresh", false);
   descriptions.addDefault(desc);
 }

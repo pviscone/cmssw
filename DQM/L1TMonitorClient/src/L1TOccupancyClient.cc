@@ -248,14 +248,6 @@ void L1TOccupancyClient::dqmEndJob(DQMStore::IBooker& ibooker, DQMStore::IGetter
 }
 
 //____________________________________________________________________________
-// Function: beginLuminosityBlock
-// Description: This is will be run at the begining of each luminosity block
-// Inputs:
-// * const LuminosityBlock& lumiSeg = Luminosity Block information
-// * const EventSetup&      context = Event Setup information
-//____________________________________________________________________________
-
-//____________________________________________________________________________
 // Function: endLuminosityBlock
 // Description: This is will be run at the end of each luminosity block
 // Inputs:
@@ -426,13 +418,11 @@ double L1TOccupancyClient::xySymmetry(const ParameterSet& ps,
     std::unique_ptr<double[]> maxAvgs(new double[maxBinStrip - upBinStrip + 1]);
 
     int nActualStrips = 0;  //number of strips that are not fully masked
-    for (int i = 0, j = upBinStrip, k = lowBinStrip; j <= maxBinStrip; i++, j++, k--) {
-      double avg1 = getAvrg(diffHist, iTestName, pAxis, nBinsY, j, pAverageMode);
-      double avg2 = getAvrg(diffHist, iTestName, pAxis, nBinsY, k, pAverageMode);
-
+    for (int j = upBinStrip, k = lowBinStrip; j <= maxBinStrip; j++, k--) {
       // Protection for when both strips are masked
       if (!hservice_->isStripMasked(iTestName, j, pAxis) && !hservice_->isStripMasked(iTestName, k, pAxis)) {
-        maxAvgs[i] = TMath::Max(avg1, avg2);
+        maxAvgs[nActualStrips] = TMath::Max(getAvrg(diffHist, iTestName, pAxis, nBinsY, j, pAverageMode),
+                                            getAvrg(diffHist, iTestName, pAxis, nBinsY, k, pAverageMode));
         nActualStrips++;
       }
     }
@@ -467,7 +457,11 @@ double L1TOccupancyClient::xySymmetry(const ParameterSet& ps,
       cout << "statsup= " << statsup << ", statslow= " << statslow << endl;
     }
 
-    enoughStats = TMath::MinElement(nActualStrips, maxAvgs.get()) > TMath::Max(statsup, statslow);
+    if (nActualStrips > 0) {
+      enoughStats = TMath::MinElement(nActualStrips, maxAvgs.get()) > TMath::Max(statsup, statslow);
+    } else if (verbose_) {
+      cout << "No valid strips found, insufficient statistics." << endl;
+    }
     if (verbose_) {
       cout << "stats: " << TMath::MinElement(nActualStrips, maxAvgs.get())
            << ", statsAvg: " << diffHist->GetEntries() / hservice_->getNBinsHistogram(iTestName)
@@ -515,11 +509,10 @@ double L1TOccupancyClient::xySymmetry(const ParameterSet& ps,
     //do we have enough statistics? Min(Max(strip_i,strip_j))>threshold
     std::unique_ptr<double[]> maxAvgs(new double[maxBinStrip - upBinStrip + 1]);
     int nActualStrips = 0;
-    for (int i = 0, j = upBinStrip, k = lowBinStrip; j <= maxBinStrip; i++, j++, k--) {
-      double avg1 = getAvrg(diffHist, iTestName, pAxis, nBinsX, j, pAverageMode);
-      double avg2 = getAvrg(diffHist, iTestName, pAxis, nBinsX, k, pAverageMode);
+    for (int j = upBinStrip, k = lowBinStrip; j <= maxBinStrip; j++, k--) {
       if (!hservice_->isStripMasked(iTestName, j, pAxis) && !hservice_->isStripMasked(iTestName, k, pAxis)) {
-        maxAvgs[i] = TMath::Max(avg1, avg2);
+        maxAvgs[nActualStrips] = TMath::Max(getAvrg(diffHist, iTestName, pAxis, nBinsX, j, pAverageMode),
+                                            getAvrg(diffHist, iTestName, pAxis, nBinsX, k, pAverageMode));
         nActualStrips++;
       }
     }
@@ -551,7 +544,11 @@ double L1TOccupancyClient::xySymmetry(const ParameterSet& ps,
     if (verbose_) {
       cout << "statsup= " << statsup << ", statslow= " << statslow << endl;
     }
-    enoughStats = TMath::MinElement(nActualStrips, maxAvgs.get()) > TMath::Max(statsup, statslow);
+    if (nActualStrips > 0) {
+      enoughStats = TMath::MinElement(nActualStrips, maxAvgs.get()) > TMath::Max(statsup, statslow);
+    } else if (verbose_) {
+      cout << "No valid strips found, insufficient statistics." << endl;
+    }
     if (verbose_) {
       cout << "stats: " << TMath::MinElement(nActualStrips, maxAvgs.get())
            << ", statsAvg: " << diffHist->GetEntries() / hservice_->getNBinsHistogram(iTestName)
@@ -680,7 +677,6 @@ void L1TOccupancyClient::printDeadChannels(const vector<pair<int, double> >& iDe
   }
 
   int x, y, z;
-  float chi2 = 0.0;
 
   // put all bad (value=1) and masked (value=-1) cells in histo
   for (std::vector<pair<int, double> >::const_iterator it = iDeadChannels.begin(); it != iDeadChannels.end(); it++) {
@@ -699,13 +695,6 @@ void L1TOccupancyClient::printDeadChannels(const vector<pair<int, double> >& iDe
       }
     }
   }
-
-  // FIXME: Is this needed?
-  for (std::vector<pair<int, double> >::const_iterator it = statDev.begin(); it != statDev.end(); it++) {
-    double dev = (*it).second;
-    chi2 += dev;
-  }
-  //put total chi2 in float
 
   if (verbose_) {
     cout << "total number of suspect channels: " << (iDeadChannels.size() - (hservice_->getNBinsMasked(iTestName)))

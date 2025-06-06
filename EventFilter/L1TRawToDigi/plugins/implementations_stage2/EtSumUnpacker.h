@@ -8,11 +8,11 @@ namespace l1t {
     class EtSumUnpacker : public Unpacker {
     public:
       EtSumUnpacker();
-      ~EtSumUnpacker() override{};
+      ~EtSumUnpacker() override {}
 
       bool unpack(const Block& block, UnpackerCollections* coll) override;
 
-      inline void setEtSumCopy(const unsigned int copy) { EtSumCopy_ = copy; };
+      virtual inline void setEtSumCopy(const unsigned int copy) { EtSumCopy_ = copy; };
 
     private:
       unsigned int EtSumCopy_;

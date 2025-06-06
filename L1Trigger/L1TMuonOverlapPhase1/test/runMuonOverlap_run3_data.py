@@ -140,7 +140,6 @@ process.simOmtfDigis.bxMin = cms.int32(0)
 process.simOmtfDigis.bxMax = cms.int32(0)
 
 process.simOmtfDigis.dumpResultToXML = cms.bool(False)
-process.simOmtfDigis.dumpResultToROOT = cms.bool(False)
 process.simOmtfDigis.eventCaptureDebug = cms.bool(True)
 
 

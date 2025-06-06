@@ -36,10 +36,10 @@ simpleCosmicBONSeeds = cms.EDProducer("SimpleCosmicBONSeeder",
     TTRHBuilder = cms.string('WithTrackAngle'),
     ClusterCheckPSet = cms.PSet(
             doClusterCheck = cms.bool(True),
-            MaxNumberOfCosmicClusters = cms.uint32(300),
+            MaxNumberOfStripClusters = cms.uint32(300),
             ClusterCollectionLabel = cms.InputTag("siStripClusters"),
             DontCountDetsAboveNClusters = cms.uint32(20),  # if N > 0, ignore in total the dets with more than N clusters
-            MaxNumberOfPixelClusters = cms.uint32(300),
+            MaxNumberOfPixelClusters = cms.uint32(1000),
             PixelClusterCollectionLabel = cms.InputTag("siPixelClusters")
     ),
     maxTriplets = cms.int32(50000),

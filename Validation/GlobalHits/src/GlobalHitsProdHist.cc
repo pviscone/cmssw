@@ -5,9 +5,12 @@
  *  \author M. Strang SUNY-Buffalo
  */
 
+#include "FWCore/Utilities/interface/Exception.h"
 #include "Geometry/HcalTowerAlgo/interface/HcalGeometry.h"
 #include "Geometry/Records/interface/CaloGeometryRecord.h"
 #include "Validation/GlobalHits/interface/GlobalHitsProdHist.h"
+using CLHEP::micrometer;
+using CLHEP::millimeter;
 
 GlobalHitsProdHist::GlobalHitsProdHist(const edm::ParameterSet &iPSet)
     : fName(""),
@@ -721,7 +724,12 @@ void GlobalHitsProdHist::fillG4MC(edm::Event &iEvent) {
   /////////////////////
   edm::Handle<edm::HepMCProduct> HepMCEvt;
   std::vector<edm::Handle<edm::HepMCProduct>> AllHepMCEvt;
-  iEvent.getManyByType(AllHepMCEvt);
+
+  //iEvent.getManyByType(AllHepMCEvt);
+  throw cms::Exception("UnsupportedFunction") << "GlobalHitsProdHist::fillG4MC: "
+                                              << "getManyByType has not been supported by the Framework since 2015. "
+                                              << "This module has been broken since then. Maybe it should be deleted. "
+                                              << "Another possibility is to upgrade to use GetterOfProducts instead.";
 
   // loop through products and extract VtxSmearing if available. Any of them
   // should have the information needed
@@ -925,7 +933,7 @@ void GlobalHitsProdHist::fillTrk(edm::Event &iEvent, const edm::EventSetup &iSet
                                     << sdPxlBrl << "); value returned is: (" << detector << "," << subdetector << ")";
       continue;
     }  // end detector type check
-  }    // end loop through PxlBrl Hits
+  }  // end loop through PxlBrl Hits
 
   if (verbosity > 1) {
     eventout += "\n          Number of Pixel Barrel Hits collected:..... ";
@@ -997,7 +1005,7 @@ void GlobalHitsProdHist::fillTrk(edm::Event &iEvent, const edm::EventSetup &iSet
                                     << sdPxlFwd << "); value returned is: (" << detector << "," << subdetector << ")";
       continue;
     }  // end detector type check
-  }    // end loop through PxlFwd Hits
+  }  // end loop through PxlFwd Hits
 
   if (verbosity > 1) {
     eventout += "\n          Number of Pixel Forward Hits collected:.... ";
@@ -1091,7 +1099,7 @@ void GlobalHitsProdHist::fillTrk(edm::Event &iEvent, const edm::EventSetup &iSet
                                     << subdetector << ")";
       continue;
     }  // end detector type check
-  }    // end loop through SiBrl Hits
+  }  // end loop through SiBrl Hits
 
   if (verbosity > 1) {
     eventout += "\n          Number of Silicon Barrel Hits collected:... ";
@@ -1179,7 +1187,7 @@ void GlobalHitsProdHist::fillTrk(edm::Event &iEvent, const edm::EventSetup &iSet
                                     << subdetector << ")";
       continue;
     }  // end check detector type
-  }    // end loop through SiFwd Hits
+  }  // end loop through SiFwd Hits
 
   if (verbosity > 1) {
     eventout += "\n          Number of Silicon Forward Hits collected:.. ";
@@ -1270,7 +1278,7 @@ void GlobalHitsProdHist::fillMuon(edm::Event &iEvent, const edm::EventSetup &iSe
                                     << sdMuonCSC << "); value returned is: (" << detector << "," << subdetector << ")";
       continue;
     }  // end detector type check
-  }    // end loop through CSC Hits
+  }  // end loop through CSC Hits
 
   if (verbosity > 1) {
     eventout += "\n          Number of CSC muon Hits collected:......... ";
@@ -1343,7 +1351,7 @@ void GlobalHitsProdHist::fillMuon(edm::Event &iEvent, const edm::EventSetup &iSe
                                     << sdMuonDT << "); value returned is: (" << detector << "," << subdetector << ")";
       continue;
     }  // end detector type check
-  }    // end loop through DT Hits
+  }  // end loop through DT Hits
 
   if (verbosity > 1) {
     eventout += "\n          Number of DT muon Hits collected:.......... ";
@@ -1442,7 +1450,7 @@ void GlobalHitsProdHist::fillMuon(edm::Event &iEvent, const edm::EventSetup &iSe
                                     << sdMuonRPC << "); value returned is: (" << detector << "," << subdetector << ")";
       continue;
     }  // end detector type check
-  }    // end loop through RPC Hits
+  }  // end loop through RPC Hits
 
   if (verbosity > 1) {
     eventout += "\n          Number of RPC muon Hits collected:......... ";
@@ -1550,7 +1558,7 @@ void GlobalHitsProdHist::fillECal(edm::Event &iEvent, const edm::EventSetup &iSe
                                     << subdetector << ")";
       continue;
     }  // end detector type check
-  }    // end loop through ECal Hits
+  }  // end loop through ECal Hits
 
   if (verbosity > 1) {
     eventout += "\n          Number of ECal Hits collected:............. ";
@@ -1616,7 +1624,7 @@ void GlobalHitsProdHist::fillECal(edm::Event &iEvent, const edm::EventSetup &iSe
                                     << sdEcalPS << "); value returned is: (" << detector << "," << subdetector << ")";
       continue;
     }  // end detector type check
-  }    // end loop through PreShower Hits
+  }  // end loop through PreShower Hits
 
   if (verbosity > 1) {
     eventout += "\n          Number of PreSh Hits collected:............ ";
@@ -1708,7 +1716,7 @@ void GlobalHitsProdHist::fillHCal(edm::Event &iEvent, const edm::EventSetup &iSe
                                     << "); value returned is: (" << detector << "," << subdetector << ")";
       continue;
     }  // end detector type check
-  }    // end loop through HCal Hits
+  }  // end loop through HCal Hits
 
   if (verbosity > 1) {
     eventout += "\n          Number of HCal Hits collected:............. ";

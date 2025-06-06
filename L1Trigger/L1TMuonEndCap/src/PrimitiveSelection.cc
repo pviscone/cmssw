@@ -25,7 +25,9 @@ void PrimitiveSelection::configure(int verbose,
                                    int bxShiftME0,
                                    bool includeNeighbor,
                                    bool duplicateTheta,
-                                   bool bugME11Dupes) {
+                                   bool bugME11Dupes,
+                                   bool useRun3CCLUT_OTMB,
+                                   bool useRun3CCLUT_TMB) {
   verbose_ = verbose;
   endcap_ = endcap;
   sector_ = sector;
@@ -39,6 +41,10 @@ void PrimitiveSelection::configure(int verbose,
   includeNeighbor_ = includeNeighbor;
   duplicateTheta_ = duplicateTheta;
   bugME11Dupes_ = bugME11Dupes;
+
+  // Run 3 CCLUT algorithm
+  useRun3CCLUT_OTMB_ = useRun3CCLUT_OTMB;
+  useRun3CCLUT_TMB_ = useRun3CCLUT_TMB;
 }
 
 // _____________________________________________________________________________
@@ -76,7 +82,7 @@ void PrimitiveSelection::process(emtf::CSCTag tag,
       }
 
     }  // End conditional: if (selected_csc >= 0)
-  }    // End loop: for (; tp_it != tp_end; ++tp_it)
+  }  // End loop: for (; tp_it != tp_end; ++tp_it)
 
   // Duplicate CSC muon primitives
   // If there are 2 LCTs in the same chamber with (strip, wire) = (s1, w1) and (s2, w2)
@@ -134,8 +140,8 @@ void PrimitiveSelection::process(emtf::CSCTag tag,
         }
 
       }  // end if tmp_primitives.size() == 2
-    }    // end loop over selected_csc_map
-  }      // end if duplicate theta
+    }  // end loop over selected_csc_map
+  }  // end if duplicate theta
 }
 
 // _____________________________________________________________________________
@@ -328,7 +334,7 @@ void PrimitiveSelection::process(emtf::RPCTag tag,
     }  // end loop over selected_rpc_map
 
     std::swap(selected_rpc_map, tmp_selected_rpc_map);  // replace the original map
-  }                                                     // end if map_rpc_to_csc
+  }  // end if map_rpc_to_csc
 }
 
 // _____________________________________________________________________________
@@ -456,8 +462,8 @@ void PrimitiveSelection::process(emtf::DTTag tag,
           tmp_primitives.insert(tmp_primitives.begin() + 2, tp0);  // (s1,w2) at 3rd pos
         }
       }  // end if tmp_primitives.size() == 2
-    }    // end loop over selected_dt_map
-  }      // end if duplicate theta
+    }  // end loop over selected_dt_map
+  }  // end if duplicate theta
 }
 
 // _____________________________________________________________________________
@@ -601,6 +607,7 @@ int PrimitiveSelection::select_csc(const TriggerPrimitive& muon_primitive) const
 
     const auto& [max_strip, max_wire] = emtf::get_csc_max_strip_and_wire(tp_station, tp_ring);
     const auto& [max_pattern, max_quality] = emtf::get_csc_max_pattern_and_quality(tp_station, tp_ring);
+    const auto max_slope = emtf::get_csc_max_slope(tp_station, tp_ring, useRun3CCLUT_OTMB_, useRun3CCLUT_TMB_);
 
     if (endcap_ == 1 && sector_ == 1 && bx_ == -3) {  // do assertion checks only once
       emtf_assert(emtf::MIN_ENDCAP <= tp_endcap && tp_endcap <= emtf::MAX_ENDCAP);
@@ -659,6 +666,16 @@ int PrimitiveSelection::select_csc(const TriggerPrimitive& muon_primitive) const
       if (!(0 < tp_data.quality && tp_data.quality < max_quality)) {
         edm::LogWarning("L1T") << "Found error in LCT quality: " << tp_data.quality << " (allowed range: 1-"
                                << max_quality - 1 << ").";
+        edm::LogWarning("L1T")
+            << "From endcap " << tp_endcap << ", sector " << tp_sector << ", station " << tp_station << ", ring "
+            << tp_ring << ", cscid " << tp_csc_ID
+            << ". (Note that this LCT may be reported multiple times. See source code for explanations.)";
+        return selected;
+      }
+
+      if (!(tp_data.slope < max_slope)) {
+        edm::LogWarning("L1T") << "Found error in LCT slope: " << tp_data.slope << " (allowed range: 0-"
+                               << max_slope - 1 << ").";
         edm::LogWarning("L1T")
             << "From endcap " << tp_endcap << ", sector " << tp_sector << ", station " << tp_station << ", ring "
             << tp_ring << ", cscid " << tp_csc_ID
@@ -726,14 +743,14 @@ int PrimitiveSelection::get_index_csc(
     if (tp_station == 1) {  // ME1: 0 - 8, 9 - 17
       selected = (tp_subsector - 1) * 9 + (tp_csc_ID - 1);
     } else {  // ME2,3,4: 18 - 26, 27 - 35, 36 - 44
-      selected = (tp_station)*9 + (tp_csc_ID - 1);
+      selected = (tp_station) * 9 + (tp_csc_ID - 1);
     }
 
   } else {
     if (tp_station == 1) {  // ME1n: 45 - 47
       selected = (5) * 9 + (tp_csc_ID - 1) / 3;
     } else {  // ME2n,3n,4n: 48 - 53
-      selected = (5) * 9 + (tp_station)*2 - 1 + (tp_csc_ID - 1 < 3 ? 0 : 1);
+      selected = (5) * 9 + (tp_station) * 2 - 1 + (tp_csc_ID - 1 < 3 ? 0 : 1);
     }
   }
   emtf_assert(selected != -1);

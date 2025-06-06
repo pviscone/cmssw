@@ -62,7 +62,6 @@
 
 #include "DataFormats/JetReco/interface/CaloJetCollection.h"
 #include "Geometry/CaloTopology/interface/CaloTowerConstituentsMap.h"
-#include "JetMETCorrections/Objects/interface/JetCorrector.h"
 #include "DataFormats/CaloTowers/interface/CaloTowerDetId.h"
 
 #include "DataFormats/METReco/interface/PFMETCollection.h"
@@ -366,8 +365,8 @@ int EcalDeadCellDeltaRFilter::dPhiToMETfunc(const std::vector<reco::Jet> &jetTVe
 
   if (minIdx == -1) {
   }  // removing a stupid compiling WARNING that minIdx NOT used.
-     //  if( minIdx == -1 ) return 0;
-     //  closeToMETjetsVec.push_back(jetTVec[minIdx]);
+  //  if( minIdx == -1 ) return 0;
+  //  closeToMETjetsVec.push_back(jetTVec[minIdx]);
 
   return (int)closeToMETjetsVec.size();
 }
@@ -472,7 +471,7 @@ int EcalDeadCellDeltaRFilter::getChannelStatusMaps() {
         EcalAllDeadChannelsBitMap.insert(std::make_pair(detid, bitVec));
       }
     }  // end loop iphi
-  }    // end loop ieta
+  }  // end loop ieta
 
   // Loop over EE detid
   for (int ix = 0; ix <= 100; ix++) {
@@ -508,8 +507,8 @@ int EcalDeadCellDeltaRFilter::getChannelStatusMaps() {
           EcalAllDeadChannelsBitMap.insert(std::make_pair(detid, bitVec));
         }
       }  // end loop iz
-    }    // end loop iy
-  }      // end loop ix
+    }  // end loop iy
+  }  // end loop ix
 
   EcalAllDeadChannelsTTMap.clear();
   std::map<DetId, std::vector<int> >::iterator bitItor;

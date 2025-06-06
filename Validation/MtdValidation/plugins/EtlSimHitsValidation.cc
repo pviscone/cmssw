@@ -29,18 +29,15 @@
 #include "SimDataFormats/CrossingFrame/interface/MixCollection.h"
 #include "SimDataFormats/TrackingHit/interface/PSimHit.h"
 
+#include "SimFastTiming/FastTimingCommon/interface/MTDDigitizerTypes.h"
+#include "Geometry/MTDGeometryBuilder/interface/MTDGeomUtil.h"
+
 #include "Geometry/Records/interface/MTDDigiGeometryRecord.h"
 #include "Geometry/MTDGeometryBuilder/interface/MTDGeometry.h"
 #include "Geometry/MTDNumberingBuilder/interface/MTDTopology.h"
 #include "Geometry/MTDCommonData/interface/MTDTopologyMode.h"
 
-struct MTDHit {
-  float energy;
-  float time;
-  float x;
-  float y;
-  float z;
-};
+#include "MTDHit.h"
 
 class EtlSimHitsValidation : public DQMEDAnalyzer {
 public:
@@ -57,10 +54,9 @@ private:
   // ------------ member data ------------
 
   const std::string folder_;
-  const float hitMinEnergy1Dis_;
   const float hitMinEnergy2Dis_;
 
-  edm::EDGetTokenT<CrossingFrame<PSimHit> > etlSimHitsToken_;
+  edm::EDGetTokenT<CrossingFrame<PSimHit>> etlSimHitsToken_;
 
   edm::ESGetToken<MTDGeometry, MTDDigiGeometryRecord> mtdgeoToken_;
   edm::ESGetToken<MTDTopology, MTDTopologyRcd> mtdtopoToken_;
@@ -95,9 +91,8 @@ private:
 // ------------ constructor and destructor --------------
 EtlSimHitsValidation::EtlSimHitsValidation(const edm::ParameterSet& iConfig)
     : folder_(iConfig.getParameter<std::string>("folder")),
-      hitMinEnergy1Dis_(iConfig.getParameter<double>("hitMinimumEnergy1Dis")),
       hitMinEnergy2Dis_(iConfig.getParameter<double>("hitMinimumEnergy2Dis")) {
-  etlSimHitsToken_ = consumes<CrossingFrame<PSimHit> >(iConfig.getParameter<edm::InputTag>("inputTag"));
+  etlSimHitsToken_ = consumes<CrossingFrame<PSimHit>>(iConfig.getParameter<edm::InputTag>("inputTag"));
   mtdgeoToken_ = esConsumes<MTDGeometry, MTDDigiGeometryRecord>();
   mtdtopoToken_ = esConsumes<MTDTopology, MTDTopologyRcd>();
 }
@@ -109,64 +104,58 @@ void EtlSimHitsValidation::analyze(const edm::Event& iEvent, const edm::EventSet
   using namespace edm;
   using namespace geant_units::operators;
 
+  using namespace mtd;
+  using namespace std;
+
   auto geometryHandle = iSetup.getTransientHandle(mtdgeoToken_);
   const MTDGeometry* geom = geometryHandle.product();
 
-  auto topologyHandle = iSetup.getTransientHandle(mtdtopoToken_);
-  const MTDTopology* topology = topologyHandle.product();
-
-  bool topo1Dis = false;
-  bool topo2Dis = false;
-  if (topology->getMTDTopologyMode() <= static_cast<int>(MTDTopologyMode::Mode::barphiflat)) {
-    topo1Dis = true;
-  }
-  if (topology->getMTDTopologyMode() > static_cast<int>(MTDTopologyMode::Mode::barphiflat)) {
-    topo2Dis = true;
-  }
+  MTDGeomUtil geomUtil;
+  geomUtil.setGeometry(geom);
 
   auto etlSimHitsHandle = makeValid(iEvent.getHandle(etlSimHitsToken_));
   MixCollection<PSimHit> etlSimHits(etlSimHitsHandle.product());
 
-  std::unordered_map<uint32_t, MTDHit> m_etlHits[4];
-  std::unordered_map<uint32_t, std::set<int> > m_etlTrkPerCell[4];
+  std::unordered_map<mtd_digitizer::MTDCellId, MTDHit> m_etlHits[4];
+  std::unordered_map<mtd_digitizer::MTDCellId, std::set<int>> m_etlTrkPerCell[4];
 
   // --- Loop over the ETL SIM hits
 
   int idet = 999;
 
+  size_t index(0);
+
   for (auto const& simHit : etlSimHits) {
+    index++;
+    LogDebug("EtlSimHitsValidation") << "SimHit # " << index << " detId " << simHit.detUnitId() << " ene "
+                                     << simHit.energyLoss() << " tof " << simHit.tof() << " tId " << simHit.trackId();
+
     // --- Use only hits compatible with the in-time bunch-crossing
     if (simHit.tof() < 0 || simHit.tof() > 25.)
       continue;
 
     ETLDetId id = simHit.detUnitId();
-    if (topo1Dis) {
-      if (id.zside() == -1) {
-        idet = 0;
-      } else if (id.zside() == 1) {
-        idet = 2;
-      } else {
-        continue;
-      }
+    if ((id.zside() == -1) && (id.nDisc() == 1)) {
+      idet = 0;
+    } else if ((id.zside() == -1) && (id.nDisc() == 2)) {
+      idet = 1;
+    } else if ((id.zside() == 1) && (id.nDisc() == 1)) {
+      idet = 2;
+    } else if ((id.zside() == 1) && (id.nDisc() == 2)) {
+      idet = 3;
+    } else {
+      edm::LogWarning("EtlSimHitsValidation") << "Unknown ETL DetId configuration: " << id;
+      continue;
     }
 
-    if (topo2Dis) {
-      if ((id.zside() == -1) && (id.nDisc() == 1)) {
-        idet = 0;
-      } else if ((id.zside() == -1) && (id.nDisc() == 2)) {
-        idet = 1;
-      } else if ((id.zside() == 1) && (id.nDisc() == 1)) {
-        idet = 2;
-      } else if ((id.zside() == 1) && (id.nDisc() == 2)) {
-        idet = 3;
-      } else {
-        continue;
-      }
-    }
+    const auto& position = simHit.localPosition();
 
-    m_etlTrkPerCell[idet][id.rawId()].insert(simHit.trackId());
+    LocalPoint simscaled(convertMmToCm(position.x()), convertMmToCm(position.y()), convertMmToCm(position.z()));
+    std::pair<uint8_t, uint8_t> pixel = geomUtil.pixelInModule(id, simscaled);
 
-    auto simHitIt = m_etlHits[idet].emplace(id.rawId(), MTDHit()).first;
+    mtd_digitizer::MTDCellId pixelId(id.rawId(), pixel.first, pixel.second);
+    m_etlTrkPerCell[idet][pixelId].insert(simHit.trackId());
+    auto simHitIt = m_etlHits[idet].emplace(pixelId, MTDHit()).first;
 
     // --- Accumulate the energy (in MeV) of SIM hits in the same detector cell
     (simHitIt->second).energy += convertUnitsTo(0.001_MeV, simHit.energyLoss());
@@ -175,11 +164,12 @@ void EtlSimHitsValidation::analyze(const edm::Event& iEvent, const edm::EventSet
     if ((simHitIt->second).time == 0 || simHit.tof() < (simHitIt->second).time) {
       (simHitIt->second).time = simHit.tof();
 
-      auto hit_pos = simHit.entryPoint();
+      auto hit_pos = simHit.localPosition();
       (simHitIt->second).x = hit_pos.x();
       (simHitIt->second).y = hit_pos.y();
       (simHitIt->second).z = hit_pos.z();
     }
+    LogDebug("EtlSimHitsValidation") << "Registered in idet " << idet;
 
   }  // simHit loop
 
@@ -188,9 +178,8 @@ void EtlSimHitsValidation::analyze(const edm::Event& iEvent, const edm::EventSet
   // ==============================================================================
 
   for (int idet = 0; idet < 4; ++idet) {  //two disks per side
-    if (((idet == 1) || (idet == 3)) && (topo1Dis == true))
-      continue;
     meNhits_[idet]->Fill(m_etlHits[idet].size());
+    LogDebug("EtlSimHitsValidation") << "idet " << idet << " #hits " << m_etlHits[idet].size();
 
     for (auto const& hit : m_etlTrkPerCell[idet]) {
       meNtrkPerCell_[idet]->Fill((hit.second).size());
@@ -198,16 +187,11 @@ void EtlSimHitsValidation::analyze(const edm::Event& iEvent, const edm::EventSet
 
     for (auto const& hit : m_etlHits[idet]) {
       double weight = 1.0;
-      if (topo1Dis) {
-        if ((hit.second).energy < hitMinEnergy1Dis_)
-          continue;
-      }
-      if (topo2Dis) {
-        if ((hit.second).energy < hitMinEnergy2Dis_)
-          continue;
-      }
+      if ((hit.second).energy < hitMinEnergy2Dis_)
+        continue;
       // --- Get the SIM hit global position
-      ETLDetId detId(hit.first);
+      ETLDetId detId;
+      detId = hit.first.detid_;
       DetId geoId = detId.geographicalId();
       const MTDGeomDet* thedet = geom->idToDet(geoId);
       if (thedet == nullptr)
@@ -218,7 +202,7 @@ void EtlSimHitsValidation::analyze(const edm::Event& iEvent, const edm::EventSet
           convertMmToCm((hit.second).x), convertMmToCm((hit.second).y), convertMmToCm((hit.second).z));
       const auto& global_point = thedet->toGlobal(local_point);
 
-      if (topo2Dis && (detId.discSide() == 1)) {
+      if (detId.discSide() == 1) {
         weight = -weight;
       }
 
@@ -283,13 +267,13 @@ void EtlSimHitsValidation::bookHistograms(DQMStore::IBooker& ibook,
   meNtrkPerCell_[3] =
       ibook.book1D("EtlNtrkPerCellZposD2", "Number of tracks per ETL sensor (+Z, Second disk);N_{trk}", 10, 0., 10.);
   meHitEnergy_[0] = ibook.book1D(
-      "EtlHitEnergyZnegD1", "ETL SIM hits energy (-Z, Single(topo1D)/First(topo2D) disk);E_{SIM} [MeV]", 100, 0., 3.);
+      "EtlHitEnergyZnegD1", "ETL SIM hits energy (-Z, Single(topo1D)/First(topo2D) disk);E_{SIM} [MeV]", 100, 0., 1.5);
   meHitEnergy_[1] =
-      ibook.book1D("EtlHitEnergyZnegD2", "ETL SIM hits energy (-Z, Second disk);E_{SIM} [MeV]", 100, 0., 3.);
+      ibook.book1D("EtlHitEnergyZnegD2", "ETL SIM hits energy (-Z, Second disk);E_{SIM} [MeV]", 100, 0., 1.5);
   meHitEnergy_[2] = ibook.book1D(
-      "EtlHitEnergyZposD1", "ETL SIM hits energy (+Z, Single(topo1D)/First(topo2D) disk);E_{SIM} [MeV]", 100, 0., 3.);
+      "EtlHitEnergyZposD1", "ETL SIM hits energy (+Z, Single(topo1D)/First(topo2D) disk);E_{SIM} [MeV]", 100, 0., 1.5);
   meHitEnergy_[3] =
-      ibook.book1D("EtlHitEnergyZposD2", "ETL SIM hits energy (+Z, Second disk);E_{SIM} [MeV]", 100, 0., 3.);
+      ibook.book1D("EtlHitEnergyZposD2", "ETL SIM hits energy (+Z, Second disk);E_{SIM} [MeV]", 100, 0., 1.5);
   meHitTime_[0] = ibook.book1D(
       "EtlHitTimeZnegD1", "ETL SIM hits ToA (-Z, Single(topo1D)/First(topo2D) disk);ToA_{SIM} [ns]", 100, 0., 25.);
   meHitTime_[1] = ibook.book1D("EtlHitTimeZnegD2", "ETL SIM hits ToA (-Z, Second disk);ToA_{SIM} [ns]", 100, 0., 25.);
@@ -548,7 +532,6 @@ void EtlSimHitsValidation::fillDescriptions(edm::ConfigurationDescriptions& desc
 
   desc.add<std::string>("folder", "MTD/ETL/SimHits");
   desc.add<edm::InputTag>("inputTag", edm::InputTag("mix", "g4SimHitsFastTimerHitsEndcap"));
-  desc.add<double>("hitMinimumEnergy1Dis", 0.1);    // [MeV]
   desc.add<double>("hitMinimumEnergy2Dis", 0.001);  // [MeV]
 
   descriptions.add("etlSimHitsValid", desc);

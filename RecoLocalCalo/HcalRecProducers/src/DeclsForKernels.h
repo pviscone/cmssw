@@ -8,18 +8,6 @@
 #include "CUDADataFormats/HcalDigi/interface/DigiCollection.h"
 #include "CUDADataFormats/HcalRecHitSoA/interface/RecHitCollection.h"
 #include "CalibCalorimetry/HcalAlgos/interface/HcalTimeSlew.h"
-#include "CondFormats/DataRecord/interface/HcalCombinedRecordsGPU.h"
-#include "CondFormats/DataRecord/interface/HcalGainWidthsRcd.h"
-#include "CondFormats/DataRecord/interface/HcalGainsRcd.h"
-#include "CondFormats/DataRecord/interface/HcalLUTCorrsRcd.h"
-#include "CondFormats/DataRecord/interface/HcalQIEDataRcd.h"
-#include "CondFormats/DataRecord/interface/HcalQIETypesRcd.h"
-#include "CondFormats/DataRecord/interface/HcalRecoParamsRcd.h"
-#include "CondFormats/DataRecord/interface/HcalRespCorrsRcd.h"
-#include "CondFormats/DataRecord/interface/HcalSiPMCharacteristicsRcd.h"
-#include "CondFormats/DataRecord/interface/HcalSiPMParametersRcd.h"
-#include "CondFormats/DataRecord/interface/HcalTimeCorrsRcd.h"
-#include "CondFormats/DataRecord/interface/HcalChannelQualityRcd.h"
 #include "CondFormats/HcalObjects/interface/HcalConvertedEffectivePedestalWidthsGPU.h"
 #include "CondFormats/HcalObjects/interface/HcalConvertedEffectivePedestalsGPU.h"
 #include "CondFormats/HcalObjects/interface/HcalGainWidthsGPU.h"
@@ -68,7 +56,6 @@ namespace hcal {
     };
 
     struct ConfigParameters {
-      uint32_t maxChannels;
       uint32_t maxTimeSamples;
       uint32_t kprep1dChannelsPerBlock;
       int sipmQTSShift;
@@ -93,12 +80,12 @@ namespace hcal {
     struct OutputDataGPU {
       RecHitCollection<::calo::common::DevStoragePolicy> recHits;
 
-      void allocate(ConfigParameters const& config, cudaStream_t cudaStream) {
-        recHits.energy = cms::cuda::make_device_unique<float[]>(config.maxChannels, cudaStream);
-        recHits.chi2 = cms::cuda::make_device_unique<float[]>(config.maxChannels, cudaStream);
-        recHits.energyM0 = cms::cuda::make_device_unique<float[]>(config.maxChannels, cudaStream);
-        recHits.timeM0 = cms::cuda::make_device_unique<float[]>(config.maxChannels, cudaStream);
-        recHits.did = cms::cuda::make_device_unique<uint32_t[]>(config.maxChannels, cudaStream);
+      void allocate(ConfigParameters const& config, uint32_t size, cudaStream_t cudaStream) {
+        recHits.energy = cms::cuda::make_device_unique<float[]>(size, cudaStream);
+        recHits.chi2 = cms::cuda::make_device_unique<float[]>(size, cudaStream);
+        recHits.energyM0 = cms::cuda::make_device_unique<float[]>(size, cudaStream);
+        recHits.timeM0 = cms::cuda::make_device_unique<float[]>(size, cudaStream);
+        recHits.did = cms::cuda::make_device_unique<uint32_t[]>(size, cudaStream);
       }
     };
 

@@ -1,15 +1,42 @@
+###############################################################################
+# Way to use this:
+#   cmsRun testHGCalGeometryCheck_cfg.py geometry=D110
+#
+#   Options for geometry D95, D96, D98, D99, D100, D101, D102, D103, D104, D105,
+#                        D106, D107, D108, D109, D110, D111, D112, D113, D114
+#
+###############################################################################
 import FWCore.ParameterSet.Config as cms
+import os, sys, imp, re
+import FWCore.ParameterSet.VarParsing as VarParsing
 
-#from Configuration.Eras.Era_Phase2C9_cff import Phase2C9
-#process = cms.Process('PROD',Phase2C9)
-#process.load('Configuration.Geometry.GeometryExtended2026D49_cff')
-#process.load('Configuration.Geometry.GeometryExtended2026D49Reco_cff')
+####################################################################
+### SETUP OPTIONS
+options = VarParsing.VarParsing('standard')
+options.register('geometry',
+                 "D110",
+                  VarParsing.VarParsing.multiplicity.singleton,
+                  VarParsing.VarParsing.varType.string,
+                  "geometry of operations: D95, D96, D98, D99, D100, D101, D102, D103, D104, D105, D106, D107, D108, D109, D110, D111, D112, D113, D114")
 
-from Configuration.Eras.Era_Phase2C11_cff import Phase2C11
-process = cms.Process('PROD',Phase2C11)
-process.load('Configuration.Geometry.GeometryExtended2026D76_cff')
-process.load('Configuration.Geometry.GeometryExtended2026D76Reco_cff')
+### get and parse the command line arguments
+options.parseArguments()
 
+print(options)
+
+####################################################################
+# Use the options
+
+geomFile = "Configuration.Geometry.GeometryExtendedRun4" + options.geometry + "Reco_cff"
+fileName = "HGCGeomStudy" + options.geometry + ".root"
+
+from Configuration.Eras.Era_Phase2C17I13M9_cff import Phase2C17I13M9
+process = cms.Process('HGCGeomCheck',Phase2C17I13M9)
+
+print("Geometry file: ", geomFile)
+print("Output   file: ", fileName)
+
+process.load(geomFile)
 process.load("SimGeneral.HepPDTESSource.pdt_cfi")
 process.load('Geometry.HGCalGeometry.hgcalGeometryCheck_cfi')
 process.load('FWCore.MessageService.MessageLogger_cfi')
@@ -42,7 +69,7 @@ process.maxEvents = cms.untracked.PSet(
 )
 
 process.TFileService = cms.Service("TFileService",
-                                   fileName = cms.string('hgcGeomStudyV14.root'),
+                                   fileName = cms.string(fileName),
                                    closeFileFast = cms.untracked.bool(True)
                                    )
 

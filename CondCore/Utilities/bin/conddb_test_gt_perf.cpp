@@ -7,6 +7,7 @@
 #include <iostream>
 #include <fstream>
 
+#include <atomic>
 #include <chrono>
 #include <memory>
 
@@ -325,7 +326,7 @@ cond::TestGTPerf::TestGTPerf() : Utilities("conddb_test_gt_load") {
 // thread helpers
 
 // global counter for dummy thread measurements:
-volatile int fooGlobal = 0;
+std::atomic<int> fooGlobal = 0;
 
 class FetchWorker {
 private:
@@ -471,9 +472,7 @@ int cond::TestGTPerf::execute() {
   std::cout << "Loading " << gt.size() << " tags..." << std::endl;
   std::vector<UntypedPayloadProxy*> proxies;
   std::map<std::string, size_t> requests;
-  size_t nt = 0;
   for (const auto& t : gt) {
-    nt++;
     UntypedPayloadProxy* p = new UntypedPayloadProxy;
     p->init(session);
     try {
@@ -607,8 +606,8 @@ int cond::TestGTPerf::execute() {
         std::cout << "for payload type name: " << payloadTypeName << std::endl;
       }
       timex.deserInt(p->getBufferSize());  // keep track of time vs. size
-    }                                      // single-thread
-    index++;                               // increment index into payloads
+    }  // single-thread
+    index++;  // increment index into payloads
   }
   std::cout << std::endl;
 

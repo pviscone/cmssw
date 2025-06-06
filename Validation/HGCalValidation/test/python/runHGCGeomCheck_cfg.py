@@ -1,22 +1,23 @@
 ###############################################################################
 # Way to use this:
-#   cmsRun runHGCGeomCheck_cfg.py geometry=D77
+#   cmsRun runHGCGeomCheck_cfg.py geometry=D110
 #
-#   Options for geometry D49, D68, D77, D83, D84, D86
+#   Options for geometry D98, D99, D103, D104, D105, D106, D107, D108, D109
+#                        D110, D111, D112, D113, D114, D115
 #
 ###############################################################################
 import FWCore.ParameterSet.Config as cms
-import os, sys, imp, re
+import os, sys, importlib, re
 import FWCore.ParameterSet.VarParsing as VarParsing
 
 ####################################################################
 ### SETUP OPTIONS
 options = VarParsing.VarParsing('standard')
 options.register('geometry',
-                 "D86",
+                 "D110",
                   VarParsing.VarParsing.multiplicity.singleton,
                   VarParsing.VarParsing.varType.string,
-                  "geometry of operations: D49, D68, D84, D77, D83, D86")
+                  "geometry of operations: D98, D99, D103, D104, D105, D106, D107, D108, D109, D110, D111, D112, D113, D114, D115")
 
 ### get and parse the command line arguments
 options.parseArguments()
@@ -25,53 +26,40 @@ print(options)
 
 ####################################################################
 # Use the options
-
-if (options.geometry == "D49"):
-    from Configuration.Eras.Era_Phase2C9_cff import Phase2C9
-    process = cms.Process('PROD',Phase2C9)
-    process.load('Configuration.Geometry.GeometryExtended2026D49_cff')
-    process.load('Configuration.Geometry.GeometryExtended2026D49Reco_cff')
-    inFile = 'file:testHGCalSimWatcherV11.root'
-    outFile = 'hgcGeomCheckD49.root'
-elif (options.geometry == "D68"):
-    from Configuration.Eras.Era_Phase2C12_cff import Phase2C12
-    process = cms.Process('PROD',Phase2C12)
-    process.load('Configuration.Geometry.GeometryExtended2026D68_cff')
-    process.load('Configuration.Geometry.GeometryExtended2026D68Reco_cff')
-    inFile = 'file:testHGCalSimWatcherV12.root'
-    outFile = 'hgcGeomCheckD68.root'
-elif (options.geometry == "D83"):
-    from Configuration.Eras.Era_Phase2C11M9_cff import Phase2C11M9
-    process = cms.Process('PROD',Phase2C11M9)
-    process.load('Configuration.Geometry.GeometryExtended2026D83_cff')
-    process.load('Configuration.Geometry.GeometryExtended2026D83Reco_cff')
-    inFile = 'file:testHGCalSimWatcherV15.root'
-    outFile = 'hgcGeomCheckD83.root'
-elif (options.geometry == "D84"):
-    from Configuration.Eras.Era_Phase2C11_cff import Phase2C11
-    process = cms.Process('PROD',Phase2C11)
-    process.load('Configuration.Geometry.GeometryExtended2026D84_cff')
-    process.load('Configuration.Geometry.GeometryExtended2026D84Reco_cff')
-    inFile = 'file:testHGCalSimWatcherV13.root'
-    outFile = 'hgcGeomCheckD84.root'
-elif (options.geometry == "D86"):
-    from Configuration.Eras.Era_Phase2C11M9_cff import Phase2C11M9
-    process = cms.Process('PROD',Phase2C11M9)
-    process.load('Configuration.Geometry.GeometryExtended2026D86_cff')
-    process.load('Configuration.Geometry.GeometryExtended2026D86Reco_cff')
-    inFile = 'file:testHGCalSimWatcherV16.root'
-    outFile = 'hgcGeomCheckD86.root'
+if (options.geometry == "D115"):
+    from Configuration.Eras.Era_Phase2C20I13M9_cff import Phase2C20I13M9
+    process = cms.Process('GeomCheck',Phase2C20I13M9)
+elif (options.geometry == "D104"):
+    from Configuration.Eras.Era_Phase2C22I13M9_cff import Phase2C22I13M9
+    process = cms.Process('GeomCheck',PhaseC22I13M9)
+elif (options.geometry == "D106"):
+    from Configuration.Eras.Era_Phase2C22I13M9_cff import Phase2C22I13M9
+    process = cms.Process('GeomCheck',PhaseC22I13M9)
+elif (options.geometry == "D109"):
+    from Configuration.Eras.Era_Phase2C22I13M9_cff import Phase2C22I13M9
+    process = cms.Process('GeomCheck',PhaseC22I13M9)
+elif (options.geometry == "D111"):
+    from Configuration.Eras.Era_Phase2C22I13M9_cff import Phase2C22I13M9
+    process = cms.Process('GeomCheck',PhaseC22I13M9)
+elif (options.geometry == "D112"):
+    from Configuration.Eras.Era_Phase2C22I13M9_cff import Phase2C22I13M9
+    process = cms.Process('GeomCheck',PhaseC22I13M9)
+elif (options.geometry == "D113"):
+    from Configuration.Eras.Era_Phase2C22I13M9_cff import Phase2C22I13M9
+    process = cms.Process('GeomCheck',PhaseC22I13M9)
 else:
-    from Configuration.Eras.Era_Phase2C11M9_cff import Phase2C11M9
-    process = cms.Process('PROD',Phase2C11M9)
-    process.load('Configuration.Geometry.GeometryExtended2026D77_cff')
-    process.load('Configuration.Geometry.GeometryExtended2026D77Reco_cff')
-    inFile = 'file:testHGCalSimWatcherV14.root'
-    outFile = 'hgcGeomCheckD77.root'
+    from Configuration.Eras.Era_Phase2C17I13M9_cff import Phase2C17I13M9
+    process = cms.Process('GeomCheck',Phase2C17I13M9)
 
-print("Input file: ", inFile)
-print("Output file: ", outFile)
+geomFile = "Configuration.Geometry.GeometryExtendedRun4" + options.geometry + "Reco_cff"
+inFile = "file:testHGCalSimWatcher" + options.geometry + ".root"
+outFile = "hgcGeomCheck" + options.geometry + ".root"
 
+print("Geometry file: ", geomFile)
+print("Input file:    ", inFile)
+print("Output file:   ", outFile)
+
+process.load(geomFile)
 process.load('Configuration.StandardSequences.Services_cff')
 process.load('SimGeneral.HepPDTESSource.pythiapdt_cfi')    
 process.load('FWCore.MessageService.MessageLogger_cfi')
@@ -101,5 +89,3 @@ process.TFileService = cms.Service("TFileService",
 SimpleMemoryCheck = cms.Service("SimpleMemoryCheck",ignoreTotal = cms.untracked.int32(1) )
 
 process.p = cms.Path(process.hgcGeomCheck)
-
-

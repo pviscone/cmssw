@@ -2,7 +2,7 @@
 #include "DataFormats/Math/interface/deltaR.h"
 #include "DataFormats/Candidate/interface/Candidate.h"
 
-#include "FWCore/Framework/interface/EDProducer.h"
+#include "FWCore/Framework/interface/stream/EDProducer.h"
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/MessageLogger/interface/MessageLogger.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
@@ -15,12 +15,11 @@
 #include <string>
 #include <vector>
 
-class TtDilepEvtSolutionMaker : public edm::EDProducer {
+class TtDilepEvtSolutionMaker : public edm::stream::EDProducer<> {
 public:
   explicit TtDilepEvtSolutionMaker(const edm::ParameterSet& iConfig);
   ~TtDilepEvtSolutionMaker() override;
 
-  void beginJob() override;
   void produce(edm::Event& iEvent, const edm::EventSetup& iSetup) override;
 
 private:
@@ -85,13 +84,11 @@ TtDilepEvtSolutionMaker::TtDilepEvtSolutionMaker(const edm::ParameterSet& iConfi
   produces<std::vector<TtDilepEvtSolution> >();
 
   myLRSignalSelObservables = new TtDilepLRSignalSelObservables(consumesCollector(), jetSourceToken_);
+
+  solver = new TtFullLepKinSolver(tmassbegin_, tmassend_, tmassstep_, nupars_);
 }
 
 TtDilepEvtSolutionMaker::~TtDilepEvtSolutionMaker() {}
-
-void TtDilepEvtSolutionMaker::beginJob() {
-  solver = new TtFullLepKinSolver(tmassbegin_, tmassend_, tmassstep_, nupars_);
-}
 
 void TtDilepEvtSolutionMaker::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   edm::Handle<std::vector<pat::Tau> > taus;
@@ -160,7 +157,6 @@ void TtDilepEvtSolutionMaker::produce(edm::Event& iEvent, const edm::EventSetup&
     }
     if (ee) {
       if (LepDiffCharge(&(*electrons)[0], &(*electrons)[1])) {
-        leptonFound = true;
         leptonFoundEE = true;
         if (HasPositiveCharge(&(*electrons)[0])) {
           selElectronp = 0;
@@ -172,7 +168,6 @@ void TtDilepEvtSolutionMaker::produce(edm::Event& iEvent, const edm::EventSetup&
       }
     } else if (emu) {
       if (LepDiffCharge(&(*electrons)[0], &(*muons)[0])) {
-        leptonFound = true;
         if (HasPositiveCharge(&(*electrons)[0])) {
           leptonFoundEpMm = true;
           selElectronp = 0;
@@ -185,7 +180,6 @@ void TtDilepEvtSolutionMaker::produce(edm::Event& iEvent, const edm::EventSetup&
       }
     } else if (mumu) {
       if (LepDiffCharge(&(*muons)[0], &(*muons)[1])) {
-        leptonFound = true;
         leptonFoundMM = true;
         if (HasPositiveCharge(&(*muons)[0])) {
           selMuonp = 0;
@@ -308,7 +302,6 @@ void TtDilepEvtSolutionMaker::produce(edm::Event& iEvent, const edm::EventSetup&
   } else if (taus->size() > 1) {
     tautau = true;
     if (LepDiffCharge(&(*taus)[0], &(*taus)[1])) {
-      leptonFound = true;
       leptonFoundTT = true;
       if (HasPositiveCharge(&(*taus)[0])) {
         selTaup = 0;

@@ -3,6 +3,7 @@
 
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 #include "SimG4Core/Notification/interface/SimActivityRegistry.h"
+#include "SimG4Core/Application/interface/SteppingTrackStatus.h"
 
 #include "G4LogicalVolume.hh"
 #include "G4Region.hh"
@@ -14,25 +15,12 @@
 #include <string>
 #include <vector>
 
-class EventAction;
 class CMSSteppingVerbose;
-
-enum TrackStatus {
-  sAlive = 0,
-  sKilledByProcess = 1,
-  sDeadRegion = 2,
-  sOutOfTime = 3,
-  sLowEnergy = 4,
-  sLowEnergyInVacuum = 5,
-  sEnergyDepNaN = 6,
-  sVeryForward = 7,
-  sNumberOfSteps = 8
-};
 
 class SteppingAction : public G4UserSteppingAction {
 public:
-  explicit SteppingAction(EventAction* ea, const edm::ParameterSet& ps, const CMSSteppingVerbose*, bool hasW);
-  ~SteppingAction() override;
+  explicit SteppingAction(const CMSSteppingVerbose*, const edm::ParameterSet&, bool, bool);
+  ~SteppingAction() override = default;
 
   void UserSteppingAction(const G4Step* aStep) final;
 
@@ -43,14 +31,16 @@ private:
 
   inline bool isInsideDeadRegion(const G4Region* reg) const;
   inline bool isOutOfTimeWindow(const G4Region* reg, const double& time) const;
-  inline bool isThisVolume(const G4VTouchable* touch, const G4VPhysicalVolume* pv) const;
+  inline bool isForZDC(const G4LogicalVolume* lv, int pdg) const;
 
   bool isLowEnergy(const G4LogicalVolume*, const G4Track*) const;
   void PrintKilledTrack(const G4Track*, const TrackStatus&) const;
 
-  EventAction* eventAction_;
-  const G4VPhysicalVolume *tracker, *calo;
-  const CMSSteppingVerbose* steppingVerbose;
+  const G4VPhysicalVolume* tracker{nullptr};
+  const G4VPhysicalVolume* calo{nullptr};
+  const CMSSteppingVerbose* steppingVerbose{nullptr};
+  const G4LogicalVolume* m_CMStoZDC{nullptr};
+  const G4Region* m_ZDCRegion{nullptr};
   double theCriticalEnergyForVacuum;
   double theCriticalDensity;
   double maxTrackTime;
@@ -61,12 +51,14 @@ private:
   unsigned int numberEkins;
   unsigned int numberPart;
   unsigned int ndeadRegions;
-  unsigned int nWarnings;
+  unsigned int nWarnings{0};
   G4int maxNumberOfSteps;
 
-  bool initialized;
-  bool killBeamPipe;
+  bool initialized{false};
+  bool killBeamPipe{false};
+  bool m_CMStoZDCtransport;
   bool hasWatcher;
+  bool dd4hep_;
 
   std::vector<double> maxTrackTimes, ekinMins;
   std::vector<std::string> maxTimeNames, ekinNames, ekinParticles;
@@ -75,11 +67,12 @@ private:
   std::vector<const G4Region*> deadRegions;
   std::vector<G4LogicalVolume*> ekinVolumes;
   std::vector<int> ekinPDG;
+  std::string trackerName_, caloName_, cms2ZDCName_;
 };
 
 inline bool SteppingAction::isInsideDeadRegion(const G4Region* reg) const {
   bool res = false;
-  for (auto& region : deadRegions) {
+  for (auto const& region : deadRegions) {
     if (reg == region) {
       res = true;
       break;
@@ -99,9 +92,8 @@ inline bool SteppingAction::isOutOfTimeWindow(const G4Region* reg, const double&
   return (time > tofM);
 }
 
-inline bool SteppingAction::isThisVolume(const G4VTouchable* touch, const G4VPhysicalVolume* pv) const {
-  int level = (touch->GetHistoryDepth()) + 1;
-  return (level >= 3) ? (touch->GetVolume(level - 3) == pv) : false;
+inline bool SteppingAction::isForZDC(const G4LogicalVolume* lv, int pdg) const {
+  return (m_CMStoZDCtransport && lv == m_CMStoZDC && (pdg == 22 || pdg == 2112));
 }
 
 #endif

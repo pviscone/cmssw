@@ -35,7 +35,7 @@
 #include "G4HCofThisEvent.hh"
 #include "G4UserEventAction.hh"
 
-#include <CLHEP/Units/GlobalSystemOfUnits.h>
+#include <CLHEP/Units/SystemOfUnits.h>
 #include <CLHEP/Units/GlobalPhysicalConstants.h>
 #include <CLHEP/Random/Randomize.h>
 
@@ -340,8 +340,10 @@ void CastorTestAnalysis::update(const EndOfEvent *evt) {
 
     for (int i = 0; i < nvertex; i++) {
       G4PrimaryVertex *avertex = (*evt)()->GetPrimaryVertex(i);
-      if (avertex == nullptr)
+      if (avertex == nullptr) {
         edm::LogVerbatim("ForwardSim") << "CASTORTest End Of Event ERR: pointer to vertex = 0";
+        continue;
+      }
       edm::LogVerbatim("ForwardSim") << "Vertex number :" << i;
       int npart = avertex->GetNumberOfParticle();
       if (npart == 0)

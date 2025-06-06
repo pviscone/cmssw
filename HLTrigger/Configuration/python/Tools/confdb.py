@@ -50,7 +50,7 @@ class HLTProcess(object):
 
     # get the configuration from ConfdB
     from .confdbOfflineConverter import OfflineConverter
-    self.converter = OfflineConverter(version = self.config.menu.version, database = self.config.menu.database, proxy = self.config.proxy, proxyHost = self.config.proxy_host, proxyPort = self.config.proxy_port)
+    self.converter = OfflineConverter(version = self.config.menu.version, database = self.config.menu.database, proxy = self.config.proxy, proxyHost = self.config.proxy_host, proxyPort = self.config.proxy_port, tunnel = self.config.tunnel, tunnelPort = self.config.tunnel_port)
     self.buildPathList()
     self.buildOptions()
     self.getSetupConfigurationFromDB()
@@ -244,12 +244,6 @@ modifyHLTforEras(%(process)s)
     if not self.config.fragment:
       self.build_source()
 
-    # manual override some parameters
-    if self.config.type in ('HIon', ):
-      if self.config.data:
-        if not self.config.fragment:
-          self._fix_parameter( type = 'InputTag', value = 'rawDataCollector',  replace = 'rawDataRepacker')
-
     # if requested, remove the HLT prescales
     self.fixPrescales()
 
@@ -333,11 +327,9 @@ if 'hltGetConditions' in %(dict)s and 'HLTriggerFirstPath' in %(dict)s :
 
     self.data += """
 # enable TrigReport, TimeReport and MultiThreading
-%(process)s.options = cms.untracked.PSet(
-    wantSummary = cms.untracked.bool( True ),
-    numberOfThreads = cms.untracked.uint32( 4 ),
-    numberOfStreams = cms.untracked.uint32( 0 ),
-)
+%(process)s.options.wantSummary = True
+%(process)s.options.numberOfThreads = 4
+%(process)s.options.numberOfStreams = 0
 """
 
   def _fix_parameter(self, **args):
@@ -470,25 +462,37 @@ from HLTrigger.Configuration.CustomConfigs import L1REPACK
       self.data += text
 
   def overrideOutput(self):
-    # if not runnign on Hilton, override the "online" ShmStreamConsumer output modules with "offline" PoolOutputModule's
-    # note for Run3 ShmStreamConsumer has been replaced with EvFOutputModule and later GlobalEvFOutputModule
-    # so we also do a replace there
+    # if not running on Hilton, override the "online" output modules with the "offline" one (i.e. PoolOutputModule)
+    # in Run 1 and Run 2, the online output modules were instances of ShmStreamConsumer
+    # in Run 3, ShmStreamConsumer has been replaced with EvFOutputModule, and later GlobalEvFOutputModule
     if not self.config.hilton:
       self.data = re.sub(
         r'\b(process\.)?hltOutput(\w+) *= *cms\.OutputModule\( *"(ShmStreamConsumer)" *,',
         r'%(process)s.hltOutput\2 = cms.OutputModule( "PoolOutputModule",\n    fileName = cms.untracked.string( "output\2.root" ),\n    fastCloning = cms.untracked.bool( False ),\n    dataset = cms.untracked.PSet(\n        filterName = cms.untracked.string( "" ),\n        dataTier = cms.untracked.string( "RAW" )\n    ),',
         self.data
       )
-      self.data = re.sub(
-        r'\b(process\.)?hltOutput(\w+) *= *cms\.OutputModule\( *"EvFOutputModule" *,\n    use_compression = cms.untracked.bool\( True \),\n    compression_algorithm = cms.untracked.string\( "ZLIB" \),\n    compression_level = cms.untracked.int32\( 1 \),\n    lumiSection_interval = cms.untracked.int32\( 0 \),\n(.+?),\n    psetMap = cms.untracked.InputTag\( "hltPSetMap" \)\n',
-        r'\1hltOutput\2 = cms.OutputModule( "PoolOutputModule",\n    fileName = cms.untracked.string( "output\2.root" ),\n    fastCloning = cms.untracked.bool( False ),\n    dataset = cms.untracked.PSet(\n        filterName = cms.untracked.string( "" ),\n        dataTier = cms.untracked.string( "RAW" )\n    ),\n\3\n',
-        self.data,0,re.DOTALL
-      )
-      self.data = re.sub(
-        r'\b(process\.)?hltOutput(\w+) *= *cms\.OutputModule\( *"GlobalEvFOutputModule" *,\n    use_compression = cms.untracked.bool\( True \),\n    compression_algorithm = cms.untracked.string\( "ZLIB" \),\n    compression_level = cms.untracked.int32\( 1 \),\n    lumiSection_interval = cms.untracked.int32\( 0 \),\n(.+?),\n    psetMap = cms.untracked.InputTag\( "hltPSetMap" \)\n',
-        r'\1hltOutput\2 = cms.OutputModule( "PoolOutputModule",\n    fileName = cms.untracked.string( "output\2.root" ),\n    fastCloning = cms.untracked.bool( False ),\n    dataset = cms.untracked.PSet(\n        filterName = cms.untracked.string( "" ),\n        dataTier = cms.untracked.string( "RAW" )\n    ),\n\3\n',
-        self.data,0,re.DOTALL
-      )
+
+      self.data = re.sub("""\
+\\b(process\\.)?hltOutput(\\w+) *= *cms\\.OutputModule\\( *['"](EvFOutputModule|GlobalEvFOutputModule)['"] *,
+    use_compression = cms.untracked.bool\\( (True|False) \\),
+    compression_algorithm = cms.untracked.string\\( ['"](.+?)['"] \\),
+    compression_level = cms.untracked.int32\\( (-?\\d+) \\),
+    lumiSection_interval = cms.untracked.int32\\( (-?\\d+) \\),
+(.+?),
+    psetMap = cms.untracked.InputTag\\( ['"]hltPSetMap['"] \\)
+""","""\
+%(process)s.hltOutput\\g<2> = cms.OutputModule( "PoolOutputModule",
+    fileName = cms.untracked.string( "output\\g<2>.root" ),
+    compressionAlgorithm = cms.untracked.string( "\\g<5>" ),
+    compressionLevel = cms.untracked.int32( \\g<6> ),
+    fastCloning = cms.untracked.bool( False ),
+    dataset = cms.untracked.PSet(
+        filterName = cms.untracked.string( "" ),
+        dataTier = cms.untracked.string( "RAW" )
+    ),
+\\g<8>
+""", self.data, 0, re.DOTALL)
+
     if not self.config.fragment and self.config.output == 'minimal':
       # add a single output to keep the TriggerResults and TriggerEvent
       self.data += """
@@ -538,7 +542,7 @@ from HLTrigger.Configuration.CustomConfigs import L1REPACK
       return
     from Configuration.StandardSequences.Eras import eras
     erasSplit = self.config.eras.split(',')
-    self.data = re.sub(r'process = cms.Process\( *"\w+"', '\n'.join(eras.pythonCfgLines[era] for era in erasSplit)+'\n\g<0>, '+', '.join(era for era in erasSplit), self.data)
+    self.data = re.sub(r'process = cms.Process\( *"\w+"', '\n'.join(eras.pythonCfgLines[era] for era in erasSplit)+'\n\\g<0>, '+', '.join(era for era in erasSplit), self.data)
 
   # select specific Eras
   def loadSetupCff(self):
@@ -644,7 +648,7 @@ if 'GlobalTag' in %%(dict)s:
 # enable DQM plots
 %(process)s.FastTimerService.enableDQM                 = True
 
-# enable per-path DQM plots (starting with CMSSW 9.2.3-patch2)
+# enable per-path DQM plots
 %(process)s.FastTimerService.enableDQMbyPath           = True
 
 # enable per-module DQM plots
@@ -662,9 +666,30 @@ if 'GlobalTag' in %%(dict)s:
 %(process)s.FastTimerService.dqmModuleTimeRange        =  200.
 %(process)s.FastTimerService.dqmModuleTimeResolution   =    1.
 
-# set the base DQM folder for the plots
+# set the base DQM folder for the DQM plots
 %(process)s.FastTimerService.dqmPath                   = 'HLT/TimerService'
 %(process)s.FastTimerService.enableDQMbyProcesses      = False
+
+# write a JSON file with the information to be displayed in a pie chart
+%(process)s.FastTimerService.writeJSONSummary          = True
+%(process)s.FastTimerService.jsonFileName              = 'resources.json'
+"""
+
+      self.data += '\n# configure the ThroughputService\n'
+      self.loadCff('HLTrigger.Timer.ThroughputService_cfi')
+
+      self.data += """# enable DQM plots
+%(process)s.ThroughputService.enableDQM                = True
+
+# set the resolution of the DQM plots
+%(process)s.ThroughputService.eventRange               = 10000
+%(process)s.ThroughputService.eventResolution          = 1
+%(process)s.ThroughputService.timeRange                = 60000
+%(process)s.ThroughputService.timeResolution           = 10
+
+# set the base DQM folder for the DQM plots
+%(process)s.ThroughputService.dqmPath                  = 'HLT/Throughput'
+%(process)s.ThroughputService.dqmPathByProcesses       = False
 """
 
 
@@ -852,6 +877,7 @@ if 'GlobalTag' in %%(dict)s:
       self.options['esmodules'].append( "-ZdcGeometryFromDBEP" )
       self.options['esmodules'].append( "-XMLFromDBSource" )
       self.options['esmodules'].append( "-sistripconn" )
+      self.options['esmodules'].append( "-siPixelQualityESProducer" )
 
       self.options['services'].append( "-MessageLogger" )
 
@@ -867,6 +893,7 @@ if 'GlobalTag' in %%(dict)s:
 
     if self.config.fragment or self.config.timing:
       self.options['services'].append( "-FastTimerService" )
+      self.options['services'].append( "-ThroughputService" )
 
 
   def append_filenames(self, name, filenames):

@@ -21,11 +21,11 @@
 class SimHitCaloHitDumper : public edm::one::EDAnalyzer<> {
 public:
   SimHitCaloHitDumper(const edm::ParameterSet&);
-  ~SimHitCaloHitDumper() override{};
+  ~SimHitCaloHitDumper() override {}
 
   void analyze(const edm::Event&, const edm::EventSetup&) override;
-  void beginJob() override{};
-  void endJob() override{};
+  void beginJob() override {}
+  void endJob() override {}
 
   static void fillDescriptions(edm::ConfigurationDescriptions& descriptions);
 
@@ -371,7 +371,10 @@ void SimHitCaloHitDumper::analyze(const edm::Event& iEvent, const edm::EventSetu
     edm::LogPrint("SimHitCaloHitDumper") << (*icoll).second << " hits in the event = " << (*icoll).first;
     edm::LogPrint("SimHitCaloHitDumper") << "\n";
     for (int ihit = 0; ihit < (*icoll).first; ++ihit) {
-      edm::LogPrint("SimHitCaloHitDumper") << theMTDHits[nhit] << " Track Id = " << theMTDHits[nhit].trackId();
+      edm::LogPrint("SimHitCaloHitDumper")
+          << theMTDHits[nhit] << " Energy = " << theMTDHits[nhit].energyLoss()
+          << " tid orig/offset= " << theMTDHits[nhit].originalTrackId() << " " << theMTDHits[nhit].offsetTrackId()
+          << " Track Id = " << theMTDHits[nhit].trackId();
       nhit++;
     }
   }

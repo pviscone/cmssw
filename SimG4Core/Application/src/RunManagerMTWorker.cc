@@ -6,9 +6,12 @@
 #include "SimG4Core/Application/interface/StackingAction.h"
 #include "SimG4Core/Application/interface/TrackingAction.h"
 #include "SimG4Core/Application/interface/SteppingAction.h"
+#include "SimG4Core/Application/interface/Phase2SteppingAction.h"
+#include "SimG4Core/Application/interface/CMSSimEventManager.h"
 #include "SimG4Core/Application/interface/CustomUIsessionThreadPrefix.h"
 #include "SimG4Core/Application/interface/CustomUIsessionToFile.h"
 #include "SimG4Core/Application/interface/ExceptionHandler.h"
+#include "SimG4Core/Application/interface/CMSGDMLWriteStructure.h"
 
 #include "SimG4Core/Geometry/interface/CustomUIsession.h"
 
@@ -21,10 +24,10 @@
 #include "FWCore/Utilities/interface/Exception.h"
 #include "FWCore/Utilities/interface/thread_safety_macros.h"
 
-#include "SimG4Core/Notification/interface/G4SimEvent.h"
 #include "SimG4Core/Notification/interface/SimActivityRegistry.h"
 #include "SimG4Core/Notification/interface/BeginOfJob.h"
 #include "SimG4Core/Notification/interface/CMSSteppingVerbose.h"
+#include "SimG4Core/Notification/interface/SimTrackManager.h"
 #include "SimG4Core/Watcher/interface/SimWatcherFactory.h"
 
 #include "SimG4Core/Geometry/interface/DDDWorld.h"
@@ -45,24 +48,31 @@
 #include "G4Timer.hh"
 #include "G4Event.hh"
 #include "G4Run.hh"
-#include "G4SystemOfUnits.hh"
+#include <CLHEP/Units/SystemOfUnits.h>
 #include "G4Threading.hh"
 #include "G4UImanager.hh"
 #include "G4WorkerThread.hh"
 #include "G4WorkerRunManagerKernel.hh"
 #include "G4StateManager.hh"
 #include "G4TransportationManager.hh"
+#include "G4LossTableManager.hh"
+#include "G4PhysListUtil.hh"
 #include "G4Field.hh"
 #include "G4FieldManager.hh"
+#include "G4ScoringManager.hh"
+#include "G4UserSteppingAction.hh"
+#include "G4GDMLParser.hh"
+#include "G4Threading.hh"
 
 #include <atomic>
 #include <memory>
-
 #include <thread>
 #include <sstream>
 #include <vector>
 
 static std::once_flag applyOnce;
+static std::once_flag applyOnceEnd;
+static std::once_flag applyOnceGDML;
 
 // from https://hypernews.cern.ch/HyperNews/CMS/get/edmFramework/3302/2.html
 namespace {
@@ -119,7 +129,7 @@ struct RunManagerMTWorker::TLSData {
   std::vector<SensitiveCaloDetector*> sensCaloDets;
   std::vector<std::shared_ptr<SimWatcher>> watchers;
   std::vector<std::shared_ptr<SimProducer>> producers;
-  //G4Run can only be deleted if there is a G4RunManager
+  // G4Run can only be deleted if there is a G4RunManager
   // on the thread where the G4Run is being deleted,
   // else it causes a segmentation fault
   G4Run* currentRun = nullptr;
@@ -130,41 +140,61 @@ struct RunManagerMTWorker::TLSData {
 
   TLSData() {}
 
-  ~TLSData() {}
+  ~TLSData() = default;
 };
 
-//This can not be a smart pointer since we must delete some of the members
+// This can not be a smart pointer since we must delete some of the members
 // before leaving main() else we get a segmentation fault caused by accessing
 // other 'singletons' after those singletons have been deleted. Instead we
 // atempt to delete all TLS at RunManagerMTWorker destructor. If that fails for
 // some reason, it is better to leak than cause a crash.
-//thread_local RunManagerMTWorker::TLSData* RunManagerMTWorker::m_tls{nullptr};
+// thread_local RunManagerMTWorker::TLSData* RunManagerMTWorker::m_tls{nullptr};
 
-RunManagerMTWorker::RunManagerMTWorker(const edm::ParameterSet& iConfig, edm::ConsumesCollector&& iC)
-    : m_generator(iConfig.getParameter<edm::ParameterSet>("Generator")),
+RunManagerMTWorker::RunManagerMTWorker(const edm::ParameterSet& p, edm::ConsumesCollector&& iC)
+    : m_generator(p.getParameter<edm::ParameterSet>("Generator")),
       m_InToken(iC.consumes<edm::HepMCProduct>(
-          iConfig.getParameter<edm::ParameterSet>("Generator").getParameter<edm::InputTag>("HepMCProductLabel"))),
-      m_theLHCTlinkToken(
-          iC.consumes<edm::LHCTransportLinkContainer>(iConfig.getParameter<edm::InputTag>("theLHCTlinkTag"))),
-      m_nonBeam(iConfig.getParameter<bool>("NonBeamEvent")),
-      m_pUseMagneticField(iConfig.getParameter<bool>("UseMagneticField")),
-      m_LHCTransport(iConfig.getParameter<bool>("LHCTransport")),
-      m_thread_index{get_new_thread_index()},
-      m_EvtMgrVerbosity(iConfig.getUntrackedParameter<int>("G4EventManagerVerbosity", 0)),
-      m_pField(iConfig.getParameter<edm::ParameterSet>("MagneticField")),
-      m_pRunAction(iConfig.getParameter<edm::ParameterSet>("RunAction")),
-      m_pEventAction(iConfig.getParameter<edm::ParameterSet>("EventAction")),
-      m_pStackingAction(iConfig.getParameter<edm::ParameterSet>("StackingAction")),
-      m_pTrackingAction(iConfig.getParameter<edm::ParameterSet>("TrackingAction")),
-      m_pSteppingAction(iConfig.getParameter<edm::ParameterSet>("SteppingAction")),
-      m_pCustomUIsession(iConfig.getUntrackedParameter<edm::ParameterSet>("CustomUIsession")),
-      m_p(iConfig) {
-  int thisID = getThreadIndex();
-  edm::LogVerbatim("SimG4CoreApplication") << "RunManagerMTWorker for the thread " << thisID;
+          p.getParameter<edm::ParameterSet>("Generator").getParameter<edm::InputTag>("HepMCProductLabel"))),
+      m_theLHCTlinkToken(iC.consumes<edm::LHCTransportLinkContainer>(p.getParameter<edm::InputTag>("theLHCTlinkTag"))),
+      m_nonBeam(p.getParameter<bool>("NonBeamEvent")),
+      m_UseG4EventManager(p.getParameter<bool>("UseG4EventManager")),
+      m_pUseMagneticField(p.getParameter<bool>("UseMagneticField")),
+      m_LHCTransport(p.getParameter<bool>("LHCTransport")),
+      m_thread_index{(get_new_thread_index())},
+      m_pField(p.getParameter<edm::ParameterSet>("MagneticField")),
+      m_pRunAction(p.getParameter<edm::ParameterSet>("RunAction")),
+      m_pEventAction(p.getParameter<edm::ParameterSet>("EventAction")),
+      m_pStackingAction(p.getParameter<edm::ParameterSet>("StackingAction")),
+      m_pTrackingAction(p.getParameter<edm::ParameterSet>("TrackingAction")),
+      m_pSteppingAction(p.getParameter<edm::ParameterSet>("SteppingAction")),
+      m_G4Commands(p.getParameter<std::vector<std::string>>("G4Commands")),
+      m_G4CommandsEndRun(p.getParameter<std::vector<std::string>>("G4CommandsEndRun")),
+      m_p(p) {
+  int id = getThreadIndex();
+  edm::LogVerbatim("SimG4CoreApplication") << "RunManagerMTWorker for the thread " << id;
+
+  // Initialize per-thread output
+  G4Threading::G4SetThreadId(id);
+  G4UImanager::GetUIpointer()->SetUpForAThread(id);
+  auto iPset = p.getUntrackedParameter<edm::ParameterSet>("CustomUIsession");
+  const std::string& uitype = iPset.getUntrackedParameter<std::string>("Type");
+  if (uitype == "MessageLogger") {
+    m_UIsession = new CustomUIsession();
+  } else if (uitype == "MessageLoggerThreadPrefix") {
+    m_UIsession = new CustomUIsessionThreadPrefix(iPset.getUntrackedParameter<std::string>("ThreadPrefix"), id);
+  } else if (uitype == "FilePerThread") {
+    m_UIsession = new CustomUIsessionToFile(iPset.getUntrackedParameter<std::string>("ThreadFile"), id);
+  } else {
+    throw cms::Exception("Configuration")
+        << "RunManagerMTWorker::initializeG4: Invalid value of CustomUIsession.Type '" << uitype
+        << "', valid are MessageLogger, MessageLoggerThreadPrefix, FilePerThread";
+  }
+  G4UImanager::GetUIpointer()->SetCoutDestination(m_UIsession);
+  //G4PhysListUtil::InitialiseParameters();
+  //G4LossTableManager::Instance();
 
   // sensitive detectors
-  std::vector<std::string> onlySDs = iConfig.getParameter<std::vector<std::string>>("OnlySDs");
-  m_sdMakers = sim::sensitiveDetectorMakers(m_p, iC, onlySDs);
+  std::vector<std::string> onlySDs = p.getParameter<std::vector<std::string>>("OnlySDs");
+  m_sdMakers = sim::sensitiveDetectorMakers(p, iC, onlySDs);
 
   // TLS and watchers
   initializeTLS();
@@ -173,20 +203,20 @@ RunManagerMTWorker::RunManagerMTWorker(const edm::ParameterSet& iConfig, edm::Co
       watcher->registerConsumes(iC);
     }
   }
-
   if (m_LHCTransport) {
     m_LHCToken = iC.consumes<edm::HepMCProduct>(edm::InputTag("LHCTransport"));
   }
   if (m_pUseMagneticField) {
     m_MagField = iC.esConsumes<MagneticField, IdealMagneticFieldRecord, edm::Transition::BeginRun>();
   }
-  edm::LogVerbatim("SimG4CoreApplication") << "RunManagerMTWorker is constructed for the thread " << thisID;
+  edm::LogVerbatim("SimG4CoreApplication") << "RunManagerMTWorker is constructed for the thread " << id;
   unsigned int k = 0;
   for (std::unordered_map<std::string, std::unique_ptr<SensitiveDetectorMakerBase>>::const_iterator itr =
            m_sdMakers.begin();
        itr != m_sdMakers.end();
-       ++itr, ++k)
+       ++itr, ++k) {
     edm::LogVerbatim("SimG4CoreApplication") << "SD[" << k << "] " << itr->first;
+  }
 }
 
 RunManagerMTWorker::~RunManagerMTWorker() {
@@ -195,6 +225,8 @@ RunManagerMTWorker::~RunManagerMTWorker() {
 }
 
 void RunManagerMTWorker::beginRun(edm::EventSetup const& es) {
+  int id = getThreadIndex();
+  edm::LogVerbatim("SimG4CoreApplication") << "RunManagerMTWorker::beginRun for the thread " << id;
   for (auto& maker : m_sdMakers) {
     maker.second->beginRun(es);
   }
@@ -206,11 +238,12 @@ void RunManagerMTWorker::beginRun(edm::EventSetup const& es) {
       watcher->beginRun(es);
     }
   }
+  edm::LogVerbatim("SimG4CoreApplication") << "RunManagerMTWorker::beginRun done for the thread " << id;
 }
 
 void RunManagerMTWorker::endRun() {
-  int thisID = getThreadIndex();
-  edm::LogVerbatim("SimG4CoreApplication") << "RunManagerMTWorker::endRun for the thread " << thisID;
+  int id = getThreadIndex();
+  edm::LogVerbatim("SimG4CoreApplication") << "RunManagerMTWorker::endRun for the thread " << id;
   terminateRun();
 }
 
@@ -251,25 +284,6 @@ void RunManagerMTWorker::initializeG4(RunManagerMT* runManagerMaster, const edm:
   int thisID = getThreadIndex();
   edm::LogVerbatim("SimG4CoreApplication") << "RunManagerMTWorker::initializeG4 in thread " << thisID << " is started";
 
-  // Initialize per-thread output
-  G4Threading::G4SetThreadId(thisID);
-  G4UImanager::GetUIpointer()->SetUpForAThread(thisID);
-  const std::string& uitype = m_pCustomUIsession.getUntrackedParameter<std::string>("Type", "MessageLogger");
-  if (uitype == "MessageLogger") {
-    m_UIsession = new CustomUIsession();
-  } else if (uitype == "MessageLoggerThreadPrefix") {
-    m_UIsession = new CustomUIsessionThreadPrefix(
-        m_pCustomUIsession.getUntrackedParameter<std::string>("ThreadPrefix", ""), thisID);
-  } else if (uitype == "FilePerThread") {
-    m_UIsession =
-        new CustomUIsessionToFile(m_pCustomUIsession.getUntrackedParameter<std::string>("ThreadFile", ""), thisID);
-  } else {
-    throw cms::Exception("Configuration")
-        << "RunManagerMTWorker::initializeG4: Invalid value of CustomUIsession.Type '" << uitype
-        << "', valid are MessageLogger, MessageLoggerThreadPrefix, FilePerThread";
-  }
-  G4UImanager::GetUIpointer()->SetCoutDestination(m_UIsession);
-
   // Initialize worker part of shared resources (geometry, physics)
   G4WorkerThread::BuildGeometryAndPhysicsVector();
 
@@ -291,7 +305,8 @@ void RunManagerMTWorker::initializeG4(RunManagerMT* runManagerMaster, const edm:
   tM->SetWorldForTracking(worldPV);
 
   // we need the track manager now
-  m_tls->trackManager = std::make_unique<SimTrackManager>();
+  int verbose = m_p.getParameter<int>("EventVerbose");
+  m_tls->trackManager = std::make_unique<SimTrackManager>(&m_simEvent, verbose);
 
   // setup the magnetic field
   if (m_pUseMagneticField) {
@@ -318,15 +333,41 @@ void RunManagerMTWorker::initializeG4(RunManagerMT* runManagerMaster, const edm:
   auto sensDets = sim::attachSD(
       m_sdMakers, es, runManagerMaster->catalog(), m_p, m_tls->trackManager.get(), *(m_tls->registry.get()));
 
-  m_tls->sensTkDets.swap(sensDets.first);
-  m_tls->sensCaloDets.swap(sensDets.second);
+  m_tls->sensTkDets = sensDets.first;
+  m_tls->sensCaloDets = sensDets.second;
 
   edm::LogVerbatim("SimG4CoreApplication")
       << "RunManagerMTWorker::InitializeG4: Sensitive Detectors are built in thread " << thisID << " found "
       << m_tls->sensTkDets.size() << " Tk type SD, and " << m_tls->sensCaloDets.size() << " Calo type SD";
 
+  // geometry dump
+  G4String writeFile = (G4String)m_p.getUntrackedParameter<std::string>("FileNameGDML");
+  if (!writeFile.empty()) {
+    std::call_once(applyOnceGDML, [this]() { m_dumpGDML = true; });
+    edm::LogVerbatim("SimG4CoreApplication") << "DumpGDML:" << m_dumpGDML;
+    if (m_dumpGDML) {
+      G4int thID = G4Threading::G4GetThreadId();
+      edm::LogVerbatim("SimG4CoreApplication") << "ThreadID=" << thID;
+      G4Threading::G4SetThreadId(-1);
+      G4GDMLParser gdml;
+      gdml.SetRegionExport(true);
+      gdml.SetEnergyCutsExport(true);
+      gdml.SetSDExport(true);
+      gdml.Write(writeFile, worldPV, true);
+      G4Threading::G4SetThreadId(thID);
+    }
+  }
+
+  // Enable couple transportation
+  bool scorer = m_p.getParameter<bool>("UseCommandBaseScorer");
+  if (scorer) {
+    G4ScoringManager* scManager = G4ScoringManager::GetScoringManager();
+    scManager->SetVerboseLevel(1);
+  }
+
   // Set the physics list for the worker, share from master
   PhysicsList* physicsList = runManagerMaster->physicsListForWorker();
+  m_isPhase2 = runManagerMaster->isPhase2();
 
   edm::LogVerbatim("SimG4CoreApplication")
       << "RunManagerMTWorker::InitializeG4: start initialisation of PhysicsList for the thread " << thisID;
@@ -349,19 +390,22 @@ void RunManagerMTWorker::initializeG4(RunManagerMT* runManagerMaster, const edm:
     throw cms::Exception("Configuration")
         << "RunManagerMTWorker::InitializeG4: Geant4 kernel initialization failed in thread " << thisID;
   }
+
   //tell all interesting parties that we are beginning the job
   BeginOfJob aBeginOfJob(&es);
   m_tls->registry->beginOfJobSignal_(&aBeginOfJob);
 
-  G4int sv = m_p.getUntrackedParameter<int>("SteppingVerbosity", 0);
-  G4double elim = m_p.getUntrackedParameter<double>("StepVerboseThreshold", 0.1) * CLHEP::GeV;
-  std::vector<int> ve = m_p.getUntrackedParameter<std::vector<int>>("VerboseEvents");
-  std::vector<int> vn = m_p.getUntrackedParameter<std::vector<int>>("VertexNumber");
-  std::vector<int> vt = m_p.getUntrackedParameter<std::vector<int>>("VerboseTracks");
+  G4int sv = m_p.getUntrackedParameter<int>("SteppingVerbosity");
 
   if (sv > 0) {
+    G4double elim = m_p.getUntrackedParameter<double>("StepVerboseThreshold", 0.1) * CLHEP::GeV;
+    std::vector<int> ve = m_p.getUntrackedParameter<std::vector<int>>("VerboseEvents");
+    std::vector<int> vn = m_p.getUntrackedParameter<std::vector<int>>("VertexNumber");
+    std::vector<int> vt = m_p.getUntrackedParameter<std::vector<int>>("VerboseTracks");
     m_sVerbose = std::make_unique<CMSSteppingVerbose>(sv, elim, ve, vn, vt);
   }
+  if (!m_UseG4EventManager)
+    m_evtManager = std::make_unique<CMSSimEventManager>(m_p);
   initializeUserActions();
 
   G4StateManager::GetStateManager()->SetNewState(G4State_Idle);
@@ -378,24 +422,51 @@ void RunManagerMTWorker::initializeUserActions() {
   m_tls->userRunAction->SetMaster(false);
   Connect(m_tls->userRunAction.get());
 
+  G4int ver = m_p.getParameter<int>("EventVerbose");
   G4EventManager* eventManager = m_tls->kernel->GetEventManager();
-  eventManager->SetVerboseLevel(m_EvtMgrVerbosity);
+  eventManager->SetVerboseLevel(ver);
 
-  EventAction* userEventAction =
+  auto userEventAction =
       new EventAction(m_pEventAction, m_tls->runInterface.get(), m_tls->trackManager.get(), m_sVerbose.get());
   Connect(userEventAction);
-  eventManager->SetUserAction(userEventAction);
+  if (m_UseG4EventManager) {
+    eventManager->SetUserAction(userEventAction);
+  } else {
+    m_evtManager->SetUserAction(userEventAction);
+  }
 
-  TrackingAction* userTrackingAction = new TrackingAction(userEventAction, m_pTrackingAction, m_sVerbose.get());
+  auto userTrackingAction = new TrackingAction(m_tls->trackManager.get(), m_sVerbose.get(), m_pTrackingAction);
   Connect(userTrackingAction);
-  eventManager->SetUserAction(userTrackingAction);
+  if (m_UseG4EventManager) {
+    eventManager->SetUserAction(userTrackingAction);
+  } else {
+    m_evtManager->SetUserAction(userTrackingAction);
+  }
 
-  SteppingAction* userSteppingAction =
-      new SteppingAction(userEventAction, m_pSteppingAction, m_sVerbose.get(), m_hasWatchers);
-  Connect(userSteppingAction);
-  eventManager->SetUserAction(userSteppingAction);
+  // different stepping actions for Run2,3 and Phase2
+  G4UserSteppingAction* userSteppingAction;
+  bool dd4hep = m_p.getParameter<bool>("g4GeometryDD4hepSource");
+  if (m_isPhase2) {
+    auto ptr = new Phase2SteppingAction(m_sVerbose.get(), m_pSteppingAction, m_hasWatchers, dd4hep);
+    Connect(ptr);
+    userSteppingAction = (G4UserSteppingAction*)ptr;
+  } else {
+    auto ptr = new SteppingAction(m_sVerbose.get(), m_pSteppingAction, m_hasWatchers, dd4hep);
+    Connect(ptr);
+    userSteppingAction = (G4UserSteppingAction*)ptr;
+  }
+  if (m_UseG4EventManager) {
+    eventManager->SetUserAction(userSteppingAction);
+  } else {
+    m_evtManager->SetUserAction(userSteppingAction);
+  }
 
-  eventManager->SetUserAction(new StackingAction(userTrackingAction, m_pStackingAction, m_sVerbose.get()));
+  auto userStackingAction = new StackingAction(userTrackingAction, m_pStackingAction, m_sVerbose.get());
+  if (m_UseG4EventManager) {
+    eventManager->SetUserAction(userStackingAction);
+  } else {
+    m_evtManager->SetUserAction(userStackingAction);
+  }
 }
 
 void RunManagerMTWorker::Connect(RunAction* runAction) {
@@ -417,7 +488,11 @@ void RunManagerMTWorker::Connect(SteppingAction* steppingAction) {
   steppingAction->m_g4StepSignal.connect(m_tls->registry->g4StepSignal_);
 }
 
-SimTrackManager* RunManagerMTWorker::GetSimTrackManager() {
+void RunManagerMTWorker::Connect(Phase2SteppingAction* steppingAction) {
+  steppingAction->m_g4StepSignal.connect(m_tls->registry->g4StepSignal_);
+}
+
+SimTrackManager* RunManagerMTWorker::getSimTrackManager() {
   initializeTLS();
   return m_tls->trackManager.get();
 }
@@ -435,47 +510,52 @@ std::vector<std::shared_ptr<SimProducer>>& RunManagerMTWorker::producers() {
 }
 
 void RunManagerMTWorker::initializeRun() {
-  int thisID = getThreadIndex();
-  edm::LogVerbatim("SimG4CoreApplication") << "RunManagerMTWorker::initializeRun " << thisID << " is started";
   m_tls->currentRun = new G4Run();
   G4StateManager::GetStateManager()->SetNewState(G4State_GeomClosed);
   if (nullptr != m_tls->userRunAction) {
     m_tls->userRunAction->BeginOfRunAction(m_tls->currentRun);
   }
+  int id = getThreadIndex();
+  edm::LogVerbatim("SimG4CoreApplication") << "RunManagerMTWorker::initializeRun done for thread " << id;
 }
 
 void RunManagerMTWorker::terminateRun() {
-  edm::LogVerbatim("SimG4CoreApplication") << "RunManagerMTWorker::terminateRun ";
+  int id = getThreadIndex();
+  edm::LogVerbatim("SimG4CoreApplication") << "RunManagerMTWorker::terminateRun for thread " << id;
   if (nullptr == m_tls || m_tls->runTerminated) {
     return;
   }
-  int thisID = getThreadIndex();
-  edm::LogVerbatim("SimG4CoreApplication") << "RunManagerMTWorker::terminateRun " << thisID << " is started";
+
+  // Geant4 UI commands after the run
+  if (!m_G4CommandsEndRun.empty()) {
+    std::call_once(applyOnceEnd, [this]() { m_endOfRun = true; });
+    if (m_endOfRun) {
+      edm::LogVerbatim("SimG4CoreApplication") << "RunManagerMTWorker: Requested end of run UI commands: ";
+      for (const std::string& command : m_G4CommandsEndRun) {
+        edm::LogVerbatim("SimG4CoreApplication") << "    " << command;
+        G4UImanager::GetUIpointer()->ApplyCommand(command);
+      }
+    }
+  }
   if (m_tls->userRunAction) {
     m_tls->userRunAction->EndOfRunAction(m_tls->currentRun);
     m_tls->userRunAction.reset();
   }
   m_tls->currentEvent.reset();
-  m_simEvent = nullptr;
-
   if (m_tls->kernel) {
     m_tls->kernel->RunTermination();
   }
-
   m_tls->runTerminated = true;
+  edm::LogVerbatim("SimG4CoreApplication") << "RunManagerMTWorker::terminateRun done for thread " << id;
 }
 
-std::unique_ptr<G4SimEvent> RunManagerMTWorker::produce(const edm::Event& inpevt,
-                                                        const edm::EventSetup& es,
-                                                        RunManagerMT& runManagerMaster) {
-  // The initialization and begin/end run is a bit convoluted due to
-  // - Geant4 deals per-thread
-  // - OscarMTProducer deals per-stream
-  // and framework/TBB is free to schedule work in streams to the
-  // threads as it likes.
-  //
+TmpSimEvent* RunManagerMTWorker::produce(const edm::Event& inpevt,
+                                         const edm::EventSetup& es,
+                                         RunManagerMT& runManagerMaster) {
   // We have to do the per-thread initialization, and per-thread
   // per-run initialization here by ourselves.
+
+  edm::LogVerbatim("SimG4CoreApplication") << "RunManagerMTWorker::produce: start EventID=" << inpevt.id().event();
 
   assert(m_tls != nullptr and m_tls->threadInitialized);
   // Initialize run
@@ -484,26 +564,25 @@ std::unique_ptr<G4SimEvent> RunManagerMTWorker::produce(const edm::Event& inpevt
         << "RunManagerMTWorker::produce: RunID= " << inpevt.id().run() << "  TLS RunID= " << m_tls->currentRunNumber;
     if (m_tls->currentRunNumber != 0 && !m_tls->runTerminated) {
       // If previous run in this thread was not terminated via endRun() call,
-      // terminate it now
+      // then terminate it now
       terminateRun();
     }
     initializeRun();
     m_tls->currentRunNumber = inpevt.id().run();
   }
-  m_tls->runInterface->setRunManagerMTWorker(this);  // For UserActions
 
+  // event and primary
   m_tls->currentEvent.reset(generateEvent(inpevt));
+  m_simEvent.clear();
+  m_simEvent.setHepEvent(m_generator.genEvent());
+  m_simEvent.setWeight(m_generator.eventWeight());
 
-  auto simEvent = std::make_unique<G4SimEvent>();
-  m_simEvent = simEvent.get();
-  m_simEvent->hepEvent(m_generator.genEvent());
-  m_simEvent->weight(m_generator.eventWeight());
   if (m_generator.genVertex() != nullptr) {
     auto genVertex = m_generator.genVertex();
-    m_simEvent->collisionPoint(math::XYZTLorentzVectorD(genVertex->x() / CLHEP::cm,
-                                                        genVertex->y() / CLHEP::cm,
-                                                        genVertex->z() / CLHEP::cm,
-                                                        genVertex->t() / CLHEP::second));
+    m_simEvent.collisionPoint(math::XYZTLorentzVectorD(genVertex->x() / CLHEP::cm,
+                                                       genVertex->y() / CLHEP::cm,
+                                                       genVertex->z() / CLHEP::cm,
+                                                       genVertex->t() / CLHEP::second));
   }
   if (m_tls->currentEvent->GetNumberOfPrimaryVertex() == 0) {
     throw cms::Exception("EventCorruption")
@@ -513,22 +592,25 @@ std::unique_ptr<G4SimEvent> RunManagerMTWorker::produce(const edm::Event& inpevt
   } else {
     edm::LogVerbatim("SimG4CoreApplication")
         << "RunManagerMTWorker::produce: start EventID=" << inpevt.id().event() << " StreamID=" << inpevt.streamID()
-        << " threadIndex=" << getThreadIndex() << " weight=" << m_simEvent->weight() << "; "
-        << m_tls->currentEvent->GetNumberOfPrimaryVertex() << " vertices for Geant4; generator produced "
-        << m_simEvent->nGenParts() << " particles.";
-
-    m_tls->kernel->GetEventManager()->ProcessOneEvent(m_tls->currentEvent.get());
+        << " threadIndex=" << getThreadIndex() << " weight=" << m_simEvent.weight()
+        << " Nprimary: " << m_tls->currentEvent->GetNumberOfPrimaryVertex() << " vertices and " << m_simEvent.nTracks()
+        << " particles";
+    // process event
+    if (m_UseG4EventManager) {
+      m_tls->kernel->GetEventManager()->ProcessOneEvent(m_tls->currentEvent.get());
+    } else {
+      m_evtManager->ProcessOneEvent(m_tls->currentEvent.get());
+    }
   }
 
-  //remove memory only needed during event processing
+  // remove memory only needed during event processing
   m_tls->currentEvent.reset();
-
   for (auto& sd : m_tls->sensCaloDets) {
     sd->reset();
   }
+
   edm::LogVerbatim("SimG4CoreApplication") << "RunManagerMTWorker::produce: ended Event " << inpevt.id().event();
-  m_simEvent = nullptr;
-  return simEvent;
+  return &m_simEvent;
 }
 
 void RunManagerMTWorker::abortEvent() {
@@ -558,7 +640,6 @@ void RunManagerMTWorker::abortRun(bool softAbort) {
 
 G4Event* RunManagerMTWorker::generateEvent(const edm::Event& inpevt) {
   m_tls->currentEvent.reset();
-  m_simEvent = nullptr;
 
   // 64 bits event ID in CMSSW converted into Geant4 event ID
   G4int evtid = (G4int)inpevt.id().event();
@@ -570,8 +651,7 @@ G4Event* RunManagerMTWorker::generateEvent(const edm::Event& inpevt) {
   m_generator.setGenEvent(HepMCEvt->GetEvent());
 
   // required to reset the GenParticle Id for particles transported
-  // along the beam pipe
-  // to their original value for SimTrack creation
+  // along the beam pipe to their original value for SimTrack creation
   resetGenParticleId(inpevt);
 
   if (!m_nonBeam) {
@@ -603,11 +683,11 @@ void RunManagerMTWorker::DumpMagneticField(const G4Field* field, const std::stri
         << "MTWorker::DumpMagneticField: error opening file <" << file << "> for magnetic field";
   } else {
     // CMS magnetic field volume
-    double rmax = 9000 * mm;
-    double zmax = 24000 * mm;
+    double rmax = 9000 * CLHEP::mm;
+    double zmax = 24000 * CLHEP::mm;
 
-    double dr = 1 * cm;
-    double dz = 5 * cm;
+    double dr = 1 * CLHEP::cm;
+    double dz = 5 * CLHEP::cm;
 
     int nr = (int)(rmax / dr);
     int nz = 2 * (int)(zmax / dz);
@@ -631,9 +711,10 @@ void RunManagerMTWorker::DumpMagneticField(const G4Field* field, const std::stri
         point[1] = r * sinf;
         point[2] = z;
         field->GetFieldValue(point, bfield);
-        fout << "R(mm)= " << r / mm << " phi(deg)= " << phi / degree << " Z(mm)= " << z / mm
-             << "   Bz(tesla)= " << bfield[2] / tesla << " Br(tesla)= " << (bfield[0] * cosf + bfield[1] * sinf) / tesla
-             << " Bphi(tesla)= " << (bfield[0] * sinf - bfield[1] * cosf) / tesla << G4endl;
+        fout << "R(mm)= " << r / CLHEP::mm << " phi(deg)= " << phi / CLHEP::degree << " Z(mm)= " << z / CLHEP::mm
+             << "   Bz(tesla)= " << bfield[2] / CLHEP::tesla
+             << " Br(tesla)= " << (bfield[0] * cosf + bfield[1] * sinf) / CLHEP::tesla
+             << " Bphi(tesla)= " << (bfield[0] * sinf - bfield[1] * cosf) / CLHEP::tesla << G4endl;
         z += dz;
       }
       r += dr;

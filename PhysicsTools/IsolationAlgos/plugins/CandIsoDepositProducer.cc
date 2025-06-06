@@ -9,8 +9,6 @@
 #include "DataFormats/RecoCandidate/interface/RecoCandidate.h"
 #include "DataFormats/TrackReco/interface/Track.h"
 #include "FWCore/Framework/interface/ConsumesCollector.h"
-#include "FWCore/Framework/interface/EDProducer.h"
-#include "FWCore/Framework/interface/ESHandle.h"
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/EventSetup.h"
 #include "FWCore/Framework/interface/stream/EDProducer.h"
@@ -175,7 +173,7 @@ void CandIsoDepositProducer::produce(Event &event, const EventSetup &eventSetup)
         }
       }
     }  //! for(i<nMuons)
-  }    //if (nMuons>0)
+  }  //if (nMuons>0)
 
   //! now fill in selectively
   for (unsigned int iDep = 0; iDep < nDeps; ++iDep) {

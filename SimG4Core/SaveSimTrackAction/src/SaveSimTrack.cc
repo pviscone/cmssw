@@ -6,7 +6,7 @@
 #include "FWCore/MessageLogger/interface/MessageLogger.h"
 
 #include "G4PhysicalConstants.hh"
-#include "G4SystemOfUnits.hh"
+#include <CLHEP/Units/SystemOfUnits.h>
 #include "G4Track.hh"
 #include <algorithm>
 
@@ -28,10 +28,10 @@ void SaveSimTrack::update(const BeginOfTrack *trk) {
   if (nullptr != trkInfo) {
     int pdg = theTrack->GetDefinition()->GetPDGEncoding();
     if (std::find(pdgs_.begin(), pdgs_.end(), pdg) != pdgs_.end()) {
-      trkInfo->storeTrack(true);
+      trkInfo->setStoreTrack();
       LogDebug("SaveSimTrack") << "Save SimTrack the Track " << theTrack->GetTrackID() << " Type "
                                << theTrack->GetDefinition()->GetParticleName() << " Momentum "
-                               << theTrack->GetMomentum() / MeV << " MeV/c";
+                               << theTrack->GetMomentum() / CLHEP::MeV << " MeV/c";
     }
   }
 }

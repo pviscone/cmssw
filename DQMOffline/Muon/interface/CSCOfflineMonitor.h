@@ -13,8 +13,6 @@
 #include "FWCore/Framework/interface/ConsumesCollector.h"
 #include "FWCore/Framework/interface/MakerMacros.h"
 #include "FWCore/Framework/interface/Frameworkfwd.h"
-#include "FWCore/Framework/interface/EDAnalyzer.h"
-#include "FWCore/Framework/interface/EDFilter.h"
 #include "FWCore/Framework/interface/Event.h"
 #include "DataFormats/Common/interface/Handle.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
@@ -71,7 +69,7 @@
 class CSCOfflineMonitor : public DQMEDAnalyzer {
 public:
   CSCOfflineMonitor(const edm::ParameterSet &pset);
-  ~CSCOfflineMonitor() override{};
+  ~CSCOfflineMonitor() override {}
 
   enum LabelType { SMALL, EXTENDED };
   enum AxisType { X = 1, Y = 2, Z = 3 };

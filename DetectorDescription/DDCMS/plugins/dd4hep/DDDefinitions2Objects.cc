@@ -590,7 +590,6 @@ void Converter<DDLCompositeMaterial>::operator()(xml_h element) const {
   TGeoManager& mgr = description.manager();
   TGeoMaterial* mat = mgr.GetMaterial(nam.c_str());
   if (nullptr == mat) {
-    const char* matname = nam.c_str();
     double density = xmat.attr<double>(DD_CMU(density)) / (dd4hep::g / dd4hep::cm3);
     xml_coll_t composites(xmat, DD_CMU(MaterialFraction));
     TGeoMixture* mix = new TGeoMixture(nam.c_str(), composites.size(), density);
@@ -634,10 +633,10 @@ void Converter<DDLCompositeMaterial>::operator()(xml_h element) const {
     mix->SetPressure(ns.context()->description.stdConditions().pressure);
     mix->SetRadLen(0e0);
     /// Create medium from the material
-    TGeoMedium* medium = mgr.GetMedium(matname);
+    TGeoMedium* medium = mgr.GetMedium(nam.c_str());
     if (nullptr == medium) {
       --unique_mat_id;
-      medium = new TGeoMedium(matname, unique_mat_id, mix);
+      medium = new TGeoMedium(nam.c_str(), unique_mat_id, mix);
       medium->SetTitle("material");
       medium->SetUniqueID(unique_mat_id);
     }
@@ -893,12 +892,14 @@ static void placeAssembly(Volume* parentPtr,
       as->ComputeBBox();
     }
   }
-  TGeoNode* n;
-  TString nam_id = TString::Format("%s_%d", (*childPtr)->GetName(), copy);
-  n = static_cast<TGeoNode*>((*parentPtr)->GetNode(nam_id));
-  if (n != nullptr) {
-    printout(ERROR, "PlacedVolume", "++ Attempt to add already existing node %s", (const char*)nam_id);
-    return;
+  if (ns.context()->validate) {
+    TGeoNode* n;
+    TString nam_id = TString::Format("%s_%d", (*childPtr)->GetName(), copy);
+    n = static_cast<TGeoNode*>((*parentPtr)->GetNode(nam_id));
+    if (n != nullptr) {
+      printout(ERROR, "PlacedVolume", "++ Attempt to add already existing node %s", (const char*)nam_id);
+      return;
+    }
   }
 
   PlacedVolume pv;
@@ -1005,9 +1006,11 @@ void Converter<DDLPosPart>::operator()(xml_h element) const {
     }
     TGeoNode* n;
     TString nam_id = TString::Format("%s_%d", child->GetName(), copy);
-    n = static_cast<TGeoNode*>(parent->GetNode(nam_id));
-    if (n != nullptr) {
-      printout(ERROR, "PlacedVolume", "++ Attempt to add already existing node %s", (const char*)nam_id);
+    if (ns.context()->validate) {
+      n = static_cast<TGeoNode*>(parent->GetNode(nam_id));
+      if (n != nullptr) {
+        printout(ERROR, "PlacedVolume", "++ Attempt to add already existing node %s", (const char*)nam_id);
+      }
     }
 
     Rotation3D rot(transform.Rotation());
@@ -1017,7 +1020,8 @@ void Converter<DDLPosPart>::operator()(xml_h element) const {
     Position pos(x, y, z);
     parent->AddNode(child, copy, createPlacement(rot, pos));
 
-    n = static_cast<TGeoNode*>(parent->GetNode(nam_id));
+    n = static_cast<TGeoNode*>(parent->GetNodes()->Last());
+    assert(n->GetName() == nam_id);
     n->TGeoNode::SetUserExtension(new PlacedVolume::Object());
     pv = PlacedVolume(n);
   }
@@ -2309,7 +2313,7 @@ static long load_dddefinition(Detector& det, xml_h element) {
         wv.placeVolume(mfv1, 1);
 
       // Can not deal with reflections without closed geometry
-      det.manager().CloseGeometry();
+      det.manager().CloseGeometry("nv");
 
       det.endDocument();
     }

@@ -32,10 +32,10 @@ typedefsDict = \
 equivDict = \
      [
          {'SelectorUtils': ['VersionedSelector']},
-         {'Associations': ['TTTrackTruthPair', 'edm::Wrapper.+edm::AssociationMap.+TrackingParticle']},
+         {'Associations': ['TTTrackTruthPair', 'edm::Wrapper.+edm::AssociationMap.+TrackingParticle', 'MtdSimLayerCluster.+TrackingParticle', 'TrackingParticle.+MtdSimLayerCluster',
+                           '(TTClusterAssociationMap|TTStubAssociationMap|TTTrackAssociationMap|TrackingParticle).*Phase2TrackerDigi',
+                           '(TTStub|TTCluster|TTTrack).*Phase2TrackerDigi.*TrackingParticle']},
          {'TrajectoryState'         : ['TrajectoryStateOnSurface']},
-         {'TrackTriggerAssociation' : ['(TTClusterAssociationMap|TTStubAssociationMap|TTTrackAssociationMap|TrackingParticle).*Phase2TrackerDigi',
-                                       '(TTStub|TTCluster|TTTrack).*Phase2TrackerDigi.*TrackingParticle']},
          {'L1TrackTrigger'        : ['(TTStub|TTCluster|TTTrack).*Phase2TrackerDigi']},
          {'L1TCalorimeterPhase2'  : ['l1tp2::CaloTower.*']},
          {'L1TCalorimeter'        : ['l1t::CaloTower.*']},
@@ -62,7 +62,7 @@ equivDict = \
          {'TrackInfo'             : ['reco::TrackingRecHitInfo']},
          {'EgammaCandidates'      : ['reco::GsfElectron.*','reco::Photon.*']},
          {'HcalIsolatedTrack'     : ['reco::IsolatedPixelTrackCandidate', 'reco::EcalIsolatedParticleCandidate', 'reco::HcalIsolatedTrackCandidate']},
-         {'HcalRecHit'            : ['HFRecHit','HORecHit','ZDCRecHit','HBHERecHit']},
+         {'HcalRecHit'            : ['HFRecHit','HORecHit','ZDCRecHit','HBHERecHit','HcalRecHitSoA']},
          {'PFRootEvent'           : ['EventColin::']},
          {'CaloTowers'            : ['CaloTower.*']},
          {'GsfTrackReco'          : ['GsfTrack.*']},
@@ -132,7 +132,7 @@ def searchClassDefXml ():
     ncdict = {'class' : 'className', 'function' : 'functionName'}
     for filename in xmlFiles:
         if (not filename) or (ignoreSrcRE.match(filename)): continue
-        dupProblems     = ''
+        lostProblems    = ''
         exceptName      = ''
         regexList       = []
         localObjects    = []
@@ -216,7 +216,7 @@ def searchClassDefXml ():
             if foundEquiv: continue
             for exRes in explicitREs:
                 if exRes[0].search(className):
-                    dupProblems += "  %s : %s\n" % (exRes[1], className)
+                    lostProblems += "  %s : %s\n" % (exRes[1], className)
                     foundEquiv = True
                     break
             if foundEquiv: continue
@@ -224,17 +224,17 @@ def searchClassDefXml ():
                 # don't bother looking for the name of this
                 # package in this package
                 if packagesREs[packageName].search (className):
-                    dupProblems += "  %s : %s\n" % (packageName, className)
+                    lostProblems += "  %s : %s\n" % (packageName, className)
                     break
         # for piece
-        if dupProblems:
-            print('\n%s\n%s\n' % (filename, dupProblems))
+        if lostProblems:
+            print(f'\n{filename} defines the following dictionaries that should be defined in another package\n{lostProblems}\n')
     # for filename
     if options.dups:
         for name, fileSet in sorted( classDict.items() ):
             if len (fileSet) < 2:
                 continue
-            print(name)
+            print(f"{name} is defined in more than one package")
             fileList = sorted (fileSet)
             for filename in fileList:
                 print("  ", filename)
@@ -255,7 +255,7 @@ def searchDuplicatePlugins ():
         if libdir.endswith(biglib): continue
         if os.path.exists(libdir+'/.edmplugincache'): edmpluginFile = edmpluginFile + ' ' + libdir+'/.edmplugincache'
     if edmpluginFile == '': edmpluginFile = os.path.join(os.environ.get('CMSSW_BASE'),'lib',os.environ.get('SCRAM_ARCH'),'.edmplugincache')
-    cmd = "cat %s | awk '{print $2\" \"$1}' | sort | uniq | awk '{print $1}' | sort | uniq -c | grep '2 ' | awk '{print $2}'" % edmpluginFile
+    cmd = "cat %s | awk '{print $2\"?\"$3\" \"$1}' | sort | uniq | awk '{print $1}' | sort | uniq -c | grep '2 ' | tr \"?\" \" \" | awk '{print $2}'" % edmpluginFile
     output = getoutput (cmd).split('\n')
     for line in output:
         if line in ignoreEdmDP: continue

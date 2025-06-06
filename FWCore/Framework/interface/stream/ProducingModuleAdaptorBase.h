@@ -19,6 +19,7 @@
 //
 
 // system include files
+#include <array>
 #include <map>
 #include <string>
 #include <vector>
@@ -52,6 +53,9 @@ namespace edm {
   class PreallocationConfiguration;
   class ProductResolverIndexAndSkipBit;
   class ThinnedAssociationsHelper;
+  class ActivityRegistry;
+  class WaitingTaskHolder;
+  class ServiceWeakToken;
 
   namespace maker {
     template <typename T>
@@ -59,7 +63,7 @@ namespace edm {
   }
 
   namespace eventsetup {
-    class ESRecordsToProxyIndices;
+    class ESRecordsToProductResolverIndices;
   }
 
   namespace stream {
@@ -81,16 +85,16 @@ namespace edm {
       // ---------- static member functions --------------------
 
       // ---------- member functions ---------------------------
-      const ModuleDescription& moduleDescription() const { return moduleDescription_; }
+      const ModuleDescription& moduleDescription() const noexcept { return moduleDescription_; }
 
-      virtual bool wantsProcessBlocks() const = 0;
-      virtual bool wantsInputProcessBlocks() const = 0;
-      virtual bool wantsGlobalRuns() const = 0;
-      virtual bool wantsGlobalLuminosityBlocks() const = 0;
-      virtual bool hasAcquire() const = 0;
-      virtual bool hasAccumulator() const = 0;
-      bool wantsStreamRuns() const { return true; }
-      bool wantsStreamLuminosityBlocks() const { return true; }
+      virtual bool wantsProcessBlocks() const noexcept = 0;
+      virtual bool wantsInputProcessBlocks() const noexcept = 0;
+      virtual bool wantsGlobalRuns() const noexcept = 0;
+      virtual bool wantsGlobalLuminosityBlocks() const noexcept = 0;
+      virtual bool hasAcquire() const noexcept = 0;
+      virtual bool hasAccumulator() const noexcept = 0;
+      virtual bool wantsStreamRuns() const noexcept = 0;
+      virtual bool wantsStreamLuminosityBlocks() const noexcept = 0;
 
       void registerProductsAndCallbacks(ProducingModuleAdaptorBase const*, ProductRegistry* reg);
 
@@ -98,11 +102,11 @@ namespace edm {
       void itemsMayGet(BranchType, std::vector<ProductResolverIndexAndSkipBit>&) const;
       std::vector<ProductResolverIndexAndSkipBit> const& itemsToGetFrom(BranchType) const;
 
-      std::vector<ESProxyIndex> const& esGetTokenIndicesVector(edm::Transition iTrans) const;
+      std::vector<ESResolverIndex> const& esGetTokenIndicesVector(edm::Transition iTrans) const;
       std::vector<ESRecordIndex> const& esGetTokenRecordIndicesVector(edm::Transition iTrans) const;
 
       void updateLookup(BranchType iBranchType, ProductResolverIndexHelper const&, bool iPrefetchMayGet);
-      void updateLookup(eventsetup::ESRecordsToProxyIndices const&);
+      void updateLookup(eventsetup::ESRecordsToProductResolverIndices const&);
       virtual void selectInputProcessBlocks(ProductRegistry const&, ProcessBlockHelperBase const&) = 0;
 
       void modulesWhoseProductsAreConsumed(std::array<std::vector<ModuleDescription const*>*, NumBranchTypes>& modules,
@@ -123,6 +127,15 @@ namespace edm {
                               std::string const& moduleLabel);
 
       std::vector<edm::ProductResolverIndex> const& indiciesForPutProducts(BranchType iBranchType) const;
+
+      ProductResolverIndex transformPrefetch_(size_t iTransformIndex) const noexcept;
+      size_t transformIndex_(edm::BranchDescription const& iBranch) const noexcept;
+      void doTransformAsync(WaitingTaskHolder iTask,
+                            size_t iTransformIndex,
+                            EventPrincipal const& iEvent,
+                            ActivityRegistry*,
+                            ModuleCallingContext,
+                            ServiceWeakToken const&) noexcept;
 
     protected:
       template <typename F>
@@ -153,6 +166,7 @@ namespace edm {
 
     private:
       void doPreallocate(PreallocationConfiguration const&);
+      virtual void preallocRuns(unsigned int) {}
       virtual void preallocLumis(unsigned int) {}
       virtual void setupStreamModules() = 0;
       virtual void doBeginJob() = 0;

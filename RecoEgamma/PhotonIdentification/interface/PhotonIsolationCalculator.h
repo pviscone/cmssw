@@ -24,29 +24,30 @@
 #include "Geometry/CaloTopology/interface/CaloTowerConstituentsMap.h"
 
 #include "RecoEgamma/EgammaIsolationAlgos/interface/EgammaHcalIsolation.h"
+#include "CondFormats/EcalObjects/interface/EcalPFRecHitThresholds.h"
+#include "CondFormats/DataRecord/interface/EcalPFRecHitThresholdsRcd.h"
 
 class EcalSeverityLevelAlgo;
 class EcalSeverityLevelAlgoRcd;
 
 class PhotonIsolationCalculator {
 public:
-  PhotonIsolationCalculator() {}
+  PhotonIsolationCalculator(const edm::ParameterSet& conf,
+                            std::vector<int> const& flagsEB_,
+                            std::vector<int> const& flagsEE_,
+                            std::vector<int> const& severitiesEB_,
+                            std::vector<int> const& severitiesEE_,
+                            edm::ConsumesCollector&& iC);
 
-  ~PhotonIsolationCalculator() {}
-
-  void setup(const edm::ParameterSet& conf,
-             std::vector<int> const& flagsEB_,
-             std::vector<int> const& flagsEE_,
-             std::vector<int> const& severitiesEB_,
-             std::vector<int> const& severitiesEE_,
-             edm::ConsumesCollector&& iC);
+  ~PhotonIsolationCalculator() = default;
 
   void calculate(const reco::Photon*,
                  const edm::Event&,
                  const edm::EventSetup& es,
                  reco::Photon::FiducialFlags& phofid,
                  reco::Photon::IsolationVariables& phoisolR03,
-                 reco::Photon::IsolationVariables& phoisolR04) const;
+                 reco::Photon::IsolationVariables& phoisolR04,
+                 const HcalPFCuts* hcalCuts) const;
 
 private:
   static void classify(const reco::Photon* photon,
@@ -90,7 +91,8 @@ private:
                                 const HBHERecHitCollection& hbheRecHits,
                                 double RCone,
                                 double RConeInner,
-                                int depth) const dso_internal;
+                                int depth,
+                                const HcalPFCuts* hcalCuts) const dso_internal;
 
 private:
   edm::EDGetToken barrelecalCollection_;
@@ -103,6 +105,7 @@ private:
   edm::ESGetToken<HcalSeverityLevelComputer, HcalSeverityLevelComputerRcd> hcalSevLvlComputerToken_;
   edm::ESGetToken<CaloTowerConstituentsMap, CaloGeometryRecord> towerMapToken_;
   edm::ESGetToken<EcalSeverityLevelAlgo, EcalSeverityLevelAlgoRcd> ecalSevLvlToken_;
+  edm::ESGetToken<EcalPFRecHitThresholds, EcalPFRecHitThresholdsRcd> ecalPFRechitThresholdsToken_;
 
   edm::EDGetToken trackInputTag_;
   edm::EDGetToken beamSpotProducerTag_;

@@ -7,18 +7,18 @@ CSCUpgradeCathodeLCTProcessor::CSCUpgradeCathodeLCTProcessor(unsigned endcap,
                                                              unsigned sector,
                                                              unsigned subsector,
                                                              unsigned chamber,
-                                                             const edm::ParameterSet& conf)
+                                                             CSCBaseboard::Parameters& conf)
     : CSCCathodeLCTProcessor(endcap, station, sector, subsector, chamber, conf) {
   if (!runPhase2_)
     edm::LogError("CSCUpgradeCathodeLCTProcessor|ConfigError")
         << "+++ Upgrade CSCUpgradeCathodeLCTProcessor constructed while runPhase2_ is not set! +++\n";
 
   // use of localized dead-time zones
-  use_dead_time_zoning_ = clctParams_.getParameter<bool>("useDeadTimeZoning");
-  clct_state_machine_zone_ = clctParams_.getParameter<unsigned int>("clctStateMachineZone");
+  use_dead_time_zoning_ = conf.clctParams().getParameter<bool>("useDeadTimeZoning");
+  clct_state_machine_zone_ = conf.clctParams().getParameter<unsigned int>("clctStateMachineZone");
 
   // how far away may trigger happen from pretrigger
-  pretrig_trig_zone_ = clctParams_.getParameter<unsigned int>("clctPretriggerTriggerZone");
+  pretrig_trig_zone_ = conf.clctParams().getParameter<unsigned int>("clctPretriggerTriggerZone");
 }
 
 // --------------------------------------------------------------------------
@@ -104,10 +104,11 @@ bool CSCUpgradeCathodeLCTProcessor::preTrigger(const int start_bx, int& first_bx
 
 // Phase2 version.
 std::vector<CSCCLCTDigi> CSCUpgradeCathodeLCTProcessor::findLCTs(
-    const std::vector<int> halfstrip[CSCConstants::NUM_LAYERS][CSCConstants::MAX_NUM_HALF_STRIPS_RUN2_TRIGGER]) {
+    const std::vector<int> halfstrip[CSCConstants::NUM_LAYERS][CSCConstants::MAX_NUM_HALF_STRIPS_RUN2_TRIGGER],
+    const CSCL1TPLookupTableCCLUT* lookupTable) {
   // run the original algorithm in case we do not use dead time zoning
   if (runPhase2_ and !use_dead_time_zoning_) {
-    return CSCCathodeLCTProcessor::findLCTs(halfstrip);
+    return CSCCathodeLCTProcessor::findLCTs(halfstrip, lookupTable);
   }
 
   std::vector<CSCCLCTDigi> lctList;
@@ -191,7 +192,7 @@ std::vector<CSCCLCTDigi> CSCUpgradeCathodeLCTProcessor::findLCTs(
       if (hits_in_time) {
         // first, mark half-strip zones around pretriggers
         // that happened at the current first_bx
-        markPreTriggerZone(pretrig_zone);
+        markPreTriggerZone(first_bx, pretrig_zone);
 
         for (int hstrip = stagger[CSCConstants::KEY_CLCT_LAYER - 1]; hstrip < numHalfStrips_; hstrip++) {
           /* The bend-direction bit pid[0] is ignored (left and right bends have equal quality).
@@ -219,7 +220,7 @@ std::vector<CSCCLCTDigi> CSCUpgradeCathodeLCTProcessor::findLCTs(
             // construct a CLCT if the trigger condition has been met
             if (best_hs >= 0 && nhits[best_hs] >= nplanes_hit_pattern) {
               // overwrite the current best CLCT
-              tempBestCLCT = constructCLCT(first_bx, best_hs, hits_in_patterns[best_hs][best_pat]);
+              tempBestCLCT = constructCLCT(first_bx, best_hs, hits_in_patterns[best_hs][best_pat], lookupTable);
             }
           }
         }
@@ -248,10 +249,49 @@ std::vector<CSCCLCTDigi> CSCUpgradeCathodeLCTProcessor::findLCTs(
             // construct a CLCT if the trigger condition has been met
             if (best_hs >= 0 && nhits[best_hs] >= nplanes_hit_pattern) {
               // overwrite the current second best CLCT
-              tempSecondCLCT = constructCLCT(first_bx, best_hs, hits_in_patterns[best_hs][best_pat]);
+              tempSecondCLCT = constructCLCT(first_bx, best_hs, hits_in_patterns[best_hs][best_pat], lookupTable);
             }
           }
         }
+
+        // Sort bestCLCT and secondALCT by quality
+        // if qualities are the same, sort by run-2 or run-3 pattern
+        // if qualities and patterns are the same, sort by half strip number
+        bool changeOrder = false;
+
+        unsigned qualityBest = 0, qualitySecond = 0;
+        unsigned patternBest = 0, patternSecond = 0;
+        unsigned halfStripBest = 0, halfStripSecond = 0;
+
+        if (tempBestCLCT.isValid() and tempSecondCLCT.isValid()) {
+          qualityBest = tempBestCLCT.getQuality();
+          qualitySecond = tempSecondCLCT.getQuality();
+          if (!run3_) {
+            patternBest = tempBestCLCT.getPattern();
+            patternSecond = tempSecondCLCT.getPattern();
+          } else {
+            patternBest = tempBestCLCT.getRun3Pattern();
+            patternSecond = tempSecondCLCT.getRun3Pattern();
+          }
+          halfStripBest = tempBestCLCT.getKeyStrip();
+          halfStripSecond = tempSecondCLCT.getKeyStrip();
+
+          if (qualitySecond > qualityBest)
+            changeOrder = true;
+          else if ((qualitySecond == qualityBest) and (int(patternSecond / 2) > int(patternBest / 2)))
+            changeOrder = true;
+          else if ((qualitySecond == qualityBest) and (int(patternSecond / 2) == int(patternBest / 2)) and
+                   (halfStripSecond < halfStripBest))
+            changeOrder = true;
+        }
+
+        CSCCLCTDigi tempCLCT;
+        if (changeOrder) {
+          tempCLCT = tempBestCLCT;
+          tempBestCLCT = tempSecondCLCT;
+          tempSecondCLCT = tempCLCT;
+        }
+
         // add the CLCTs to the collection
         if (tempBestCLCT.isValid()) {
           lctList.push_back(tempBestCLCT);
@@ -260,7 +300,7 @@ std::vector<CSCCLCTDigi> CSCUpgradeCathodeLCTProcessor::findLCTs(
           lctList.push_back(tempSecondCLCT);
         }
       }  //find CLCT, end of best_halfstrip[0] >= 0
-    }    //pre_trig
+    }  //pre_trig
     // The pattern finder runs continuously, so another pre-trigger
     // could occur already at the next bx.
     start_bx = first_bx + 1;
@@ -269,14 +309,14 @@ std::vector<CSCCLCTDigi> CSCUpgradeCathodeLCTProcessor::findLCTs(
 }  // findLCTs -- Phase2 version.
 
 void CSCUpgradeCathodeLCTProcessor::markPreTriggerZone(
-    bool pretrig_zone[CSCConstants::MAX_NUM_HALF_STRIPS_RUN2_TRIGGER]) const {
+    int bx, bool pretrig_zone[CSCConstants::MAX_NUM_HALF_STRIPS_RUN2_TRIGGER]) const {
   // first reset the pretrigger zone (no pretriggers anywhere in this BX
   for (int hstrip = 0; hstrip < CSCConstants::MAX_NUM_HALF_STRIPS_RUN2_TRIGGER; hstrip++) {
     pretrig_zone[hstrip] = false;
   }
   // then set the pretrigger zone according to the ispretrig_ array
   for (int hstrip = 0; hstrip < CSCConstants::MAX_NUM_HALF_STRIPS_RUN2_TRIGGER; hstrip++) {
-    if (ispretrig_[hstrip]) {
+    if (ispretrig_[hstrip] && !busyMap_[hstrip][bx]) {
       int min_hs = hstrip - pretrig_trig_zone_;
       int max_hs = hstrip + pretrig_trig_zone_;
       // set the minimum strip

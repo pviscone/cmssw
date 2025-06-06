@@ -19,8 +19,8 @@
 #include "DataFormats/HcalDetId/interface/HcalSubdetector.h"
 
 #include "Randomize.hh"
-#include "CLHEP/Units/GlobalSystemOfUnits.h"
-#include "CLHEP/Units/GlobalPhysicalConstants.h"
+#include <CLHEP/Units/SystemOfUnits.h>
+#include <CLHEP/Units/PhysicalConstants.h>
 
 // Geant4 headers
 #include "G4ParticleDefinition.hh"
@@ -125,7 +125,7 @@ void FastHFShowerLibrary::recoHFShowerLibrary(const FSimTrack& myTrack) {
         cellitr->second += 1.0;
       }
     }  // end of isItinFidVolume check
-  }    // end loop over hits
+  }  // end loop over hits
 }
 
 void FastHFShowerLibrary::modifyDepth(HcalNumberingFromDDD::HcalID& id) {

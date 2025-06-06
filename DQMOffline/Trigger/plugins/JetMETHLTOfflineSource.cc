@@ -6,12 +6,9 @@
 #include "DQMOffline/Trigger/interface/JetMETHLTOfflineSource.h"
 
 #include "FWCore/Common/interface/TriggerNames.h"
-#include "FWCore/Framework/interface/EDAnalyzer.h"
 #include "FWCore/Framework/interface/Run.h"
 #include "FWCore/Framework/interface/MakerMacros.h"
-#include "FWCore/Framework/interface/ESHandle.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
-#include "FWCore/ServiceRegistry/interface/Service.h"
 #include "FWCore/MessageLogger/interface/MessageLogger.h"
 
 #include "DataFormats/Common/interface/Handle.h"
@@ -480,9 +477,9 @@ void JetMETHLTOfflineSource::fillMEforTriggerNTfired() {
           const CaloMET met = calometcol->front();
           v.getMEhisto_JetPt()->Fill(met.pt());
         }  //MET trigger is not fired
-      }    // L1 is fired
-    }      //
-  }        // trigger not fired
+      }  // L1 is fired
+    }  //
+  }  // trigger not fired
 }
 
 //------------------------------------------------------------------------//
@@ -702,8 +699,8 @@ void JetMETHLTOfflineSource::fillMEforMonAllTrigger(const Event& iEvent, const e
                         hltPyVec.push_back(toc[*kj].py());
                       }
                     }  // matching jet
-                  }    // Jet Loop
-                }      // valid calojet collection, with calojet trigger
+                  }  // Jet Loop
+                }  // valid calojet collection, with calojet trigger
 
                 //PFJet trigger
                 if (pfjetColl_.isValid() && (v.getObjectType() == trigger::TriggerJet) && (v.getPath() != "PFJet")) {
@@ -749,11 +746,11 @@ void JetMETHLTOfflineSource::fillMEforMonAllTrigger(const Event& iEvent, const e
                         hltPyVec.push_back(toc[*kj].py());
                       }
                     }  // matching jet
-                  }    //PFJet loop
-                }      //valid pfjet collection, with pfjet trigger
-                       //
-              }        // hlt matching with l1
-            }          // jet trigger
+                  }  //PFJet loop
+                }  //valid pfjet collection, with pfjet trigger
+                //
+              }  // hlt matching with l1
+            }  // jet trigger
 
             //------------------------------------------------------
             if (calometColl_.isValid() &&
@@ -790,8 +787,8 @@ void JetMETHLTOfflineSource::fillMEforMonAllTrigger(const Event& iEvent, const e
           if ((v.getTriggerType() == "DiJet_Trigger"))
             diJetFire = true;
         }  // Valid hlt trigger object
-      }    // Loop over L1 objects
-    }      // Valid L1 trigger object
+      }  // Loop over L1 objects
+    }  // Valid L1 trigger object
     v.getMEhisto_N()->Fill(jetsize);
 
     //--------------------------------------------------------
@@ -820,15 +817,11 @@ void JetMETHLTOfflineSource::fillMEforEffAllTrigger(const Event& iEvent, const e
   if (!triggerResults_.isValid())
     return;
 
-  int num = -1;
-  int denom = -1;
   bool denompassed = false;
   bool numpassed = false;
   const trigger::TriggerObjectCollection& toc(triggerObj_->getObjects());
 
   for (auto& v : hltPathsEff_) {
-    num++;
-    denom++;
     denompassed = false;
     numpassed = false;
 
@@ -1067,7 +1060,7 @@ void JetMETHLTOfflineSource::fillMEforEffAllTrigger(const Event& iEvent, const e
               }
             }
           }  //numpassed
-        }    //CalojetID filter
+        }  //CalojetID filter
       }
 
       if (jetIDbool == true && (v.getTriggerType() == "DiJet_Trigger") && calojet.size() > 1) {
@@ -3394,3 +3387,6 @@ bool JetMETHLTOfflineSource::isTriggerObjectFound(std::string objectName) {
   return output;
 }
 //------------------------------------------------------------------------//
+
+#include "FWCore/Framework/interface/MakerMacros.h"
+DEFINE_FWK_MODULE(JetMETHLTOfflineSource);

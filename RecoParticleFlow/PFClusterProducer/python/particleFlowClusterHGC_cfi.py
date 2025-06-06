@@ -49,17 +49,18 @@ _hgcalTracksterMapper_HGCal = cms.PSet(
     thresholdsByDetector = cms.VPSet(
     ),
     tracksterSrc = cms.InputTag("ticlTrackstersMerge"),
-    clusterSrc = cms.InputTag("hgcalLayerClusters"),
-    filterByTracksterPID = cms.bool(False),
+    clusterSrc = cms.InputTag("hgcalMergeLayerClusters"),
+    filterByTracksterPID = cms.bool(True),
     pid_threshold = cms.double(0.8),
     filter_on_categories = cms.vint32([0, 1]),
-    filterByTracksterIteration = cms.bool(True),
+    filterByTracksterIteration = cms.bool(False),
     filter_on_iterations = cms.vint32([0, 1]),
 )
 
 particleFlowClusterHGCal = cms.EDProducer(
     "PFClusterProducer",
     recHitsSource = cms.InputTag("particleFlowRecHitHGC"),
+    usePFThresholdsFromDB = cms.bool(False),
     recHitCleaners = cms.VPSet(),
     seedCleaners   = cms.VPSet(),
     seedFinder = _passThruSeeds_HGCal,
@@ -72,3 +73,6 @@ particleFlowClusterHGCal = cms.EDProducer(
 particleFlowClusterHGCalFromSimCl = particleFlowClusterHGCal.clone(
     initialClusteringStep = _simClusterMapper_HGCal
 )
+
+from Configuration.ProcessModifiers.ticl_v5_cff import ticl_v5
+ticl_v5.toModify(particleFlowClusterHGCal.initialClusteringStep, tracksterSrc = "ticlCandidate")

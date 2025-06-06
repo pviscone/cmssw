@@ -27,6 +27,10 @@ The templated form, EDGetTokenT<T>, is the same as EDGetToken except when used t
 // user include files
 
 // forward declarations
+namespace fwlite {
+  class EventBase;
+}
+
 namespace edm {
   class EDConsumerBase;
   template <typename T>
@@ -66,6 +70,7 @@ namespace edm {
   class EDGetTokenT {
     friend class EDConsumerBase;
     friend class EDGetToken;
+    friend class ::fwlite::EventBase;
 
   public:
     constexpr EDGetTokenT() : m_value{s_uninitializedValue} {}
@@ -76,9 +81,11 @@ namespace edm {
     constexpr EDGetTokenT& operator=(EDGetTokenT<T>&&) noexcept = default;
 
     template <typename ADAPTER>
+      requires requires(ADAPTER&& a) { a.template consumes<T>(); }
     constexpr explicit EDGetTokenT(ADAPTER&& iAdapter) : EDGetTokenT(iAdapter.template consumes<T>()) {}
 
     template <typename ADAPTER>
+      requires requires(ADAPTER&& a) { a.template consumes<T>(); }
     constexpr EDGetTokenT& operator=(ADAPTER&& iAdapter) {
       EDGetTokenT<T> temp(iAdapter.template consumes<T>());
       m_value = temp.m_value;
@@ -86,14 +93,6 @@ namespace edm {
       return *this;
     }
 
-    //Needed to avoid EDGetTokenT(ADAPTER&&) from being called instead
-    // when we can use C++20 concepts we can avoid the problem using a constraint
-    constexpr EDGetTokenT(EDGetTokenT<T>& iOther) noexcept : m_value{iOther.m_value} {}
-    constexpr EDGetTokenT(const EDGetTokenT<T>&& iOther) noexcept : m_value{iOther.m_value} {}
-
-    constexpr EDGetTokenT& operator=(EDGetTokenT<T>& iOther) {
-      return (*this = const_cast<const EDGetTokenT<T>&>(iOther));
-    }
     // ---------- const member functions ---------------------
     constexpr unsigned int index() const noexcept { return m_value; }
     constexpr bool isUninitialized() const noexcept { return m_value == s_uninitializedValue; }

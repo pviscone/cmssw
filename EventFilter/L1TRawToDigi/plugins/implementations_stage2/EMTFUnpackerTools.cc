@@ -21,6 +21,17 @@ namespace l1t {
         _hit.set_subsystem(l1tmu::kCSC);
         // _hit.set_layer();
 
+        // Run 3 OTMB
+        _hit.set_strip_quart_bit(_ME.Quarter_strip());
+        _hit.set_strip_eighth_bit(_ME.Eighth_strip());
+        _hit.set_slope(_ME.Slope());
+        _hit.set_pattern_run3(_ME.Run3_pattern());
+
+        // Run 3 muon shower
+        _hit.set_muon_shower_inTime(_ME.MUS_inTime());
+        _hit.set_muon_shower_outOfTime(_ME.MUS_outOfTime());
+        _hit.set_muon_shower_valid(_ME.MUSV());
+
         _hit.set_ring(L1TMuonEndCap::calc_ring(_hit.Station(), _hit.CSC_ID(), _hit.Strip()));
         _hit.set_chamber(
             L1TMuonEndCap::calc_chamber(_hit.Station(), _hit.Sector(), _hit.Subsector(), _hit.Ring(), _hit.CSC_ID()));
@@ -61,16 +72,15 @@ namespace l1t {
       }  // End ImportRPC
 
       void ImportGEM(EMTFHit& _hit, const l1t::emtf::GEM& _GEM, const int _endcap, const int _evt_sector) {
-        constexpr uint8_t GEM_MAX_CLUSTERS_PER_LAYER = 8;
+        constexpr uint8_t GEM_MAX_NROLL = 8;  //unpacked roll number 0-7, GE1/1 case only
         _hit.set_endcap(_endcap == 1 ? 1 : -1);
         _hit.set_sector_idx(_endcap == 1 ? _evt_sector - 1 : _evt_sector + 5);
 
         _hit.set_pad(_GEM.Pad());
         _hit.set_pad_hi(_GEM.Pad() + (_GEM.ClusterSize() - 1));
         _hit.set_pad_low(_GEM.Pad());
-        _hit.set_partition(_GEM.Partition());
-        // TODO: verify layer naming is 0/1 and not 1/2
-        _hit.set_layer(_GEM.ClusterID() < GEM_MAX_CLUSTERS_PER_LAYER ? 0 : 1);
+        //_GEM.Partition() is roll number, 0-7, ieta is for GEMDetID, 8-1
+        _hit.set_partition(GEM_MAX_NROLL - _GEM.Partition());
         _hit.set_cluster_size(_GEM.ClusterSize());
         _hit.set_cluster_id(_GEM.ClusterID());
         // TODO: FIXME is this value known for GEM? - JS 13.07.20
@@ -80,8 +90,6 @@ namespace l1t {
         _hit.set_subsystem(l1tmu::kGEM);
 
         _hit.set_ring(1);  // GEM only on ring 1
-        // TODO: FIXME correct for GEM, should match CSC chamber, but GEM have 2 chambers (layers in a superchamber) per CSC chamber - JS 13.07.20
-        // _hit.set_chamber(L1TMuonEndCap::calc_chamber(_hit.Station(), _hit.Sector(), _hit.Subsector(), _hit.Ring(), _hit.GEM_ID()));
         _hit.SetGEMDetId(_hit.CreateGEMDetId());
         // _hit.SetGEMDigi(_hit.CreateGEMPadDigi());
 
@@ -104,8 +112,11 @@ namespace l1t {
         _track.set_phi_glob(L1TMuonEndCap::calc_phi_glob_deg(_track.Phi_loc(), _track.Sector()));
         _track.set_eta(L1TMuonEndCap::calc_eta(_SP.Eta_GMT()));
         _track.set_pt((_SP.Pt_GMT() - 1) * 0.5);
+        _track.set_pt_dxy((_SP.Pt_dxy_GMT() - 1));
 
         _track.set_gmt_pt(_SP.Pt_GMT());
+        _track.set_gmt_pt_dxy(_SP.Pt_dxy_GMT());
+        _track.set_gmt_dxy(_SP.Dxy_GMT());
         _track.set_gmt_phi(_SP.Phi_GMT());
         _track.set_gmt_eta(_SP.Eta_GMT());
         _track.set_gmt_quality(_SP.Quality_GMT());
@@ -122,5 +133,5 @@ namespace l1t {
       }  // End ImportSP
 
     }  // End namespace emtf
-  }    // End namespace stage2
+  }  // End namespace stage2
 }  // End namespace l1t

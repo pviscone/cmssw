@@ -21,7 +21,7 @@ class FRDStreamSource : public edm::ProducerSourceFromFiles {
 public:
   // construction/destruction
   FRDStreamSource(edm::ParameterSet const& pset, edm::InputSourceDescription const& desc);
-  ~FRDStreamSource() override{};
+  ~FRDStreamSource() override {}
 
 private:
   // member functions
@@ -34,6 +34,7 @@ private:
 
 private:
   // member data
+  std::vector<std::string> fileNames_;
   std::vector<std::string>::const_iterator itFileName_;
   std::vector<std::string>::const_iterator endFileName_;
   std::ifstream fin_;

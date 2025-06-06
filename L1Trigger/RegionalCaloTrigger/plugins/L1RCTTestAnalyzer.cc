@@ -3,7 +3,6 @@
 
 // user include files
 #include "CommonTools/UtilAlgos/interface/TFileService.h"
-#include "FWCore/Framework/interface/EDAnalyzer.h"
 #include "FWCore/Framework/interface/Frameworkfwd.h"
 
 #include "FWCore/Framework/interface/Event.h"
@@ -32,6 +31,7 @@ L1RCTTestAnalyzer::L1RCTTestAnalyzer(const edm::ParameterSet &iConfig)
       rctDigisLabel(iConfig.getParameter<edm::InputTag>("rctDigisLabel")) {
   // now do what ever initialization is needed
 
+  usesResource(TFileService::kSharedResource);
   edm::Service<TFileService> fs;
 
   emTree = fs->make<TTree>("emTree", "L1 RCT EM tree");
@@ -135,7 +135,6 @@ void L1RCTTestAnalyzer::analyze(const edm::Event &iEvent, const edm::EventSetup 
 
     h_emCandTimeSample->Fill((*em).bx());
     if ((*em).bx() == 0) {
-      unsigned short n_emcands = 0;
       // std::cout << std::endl << "rank: " << (*em).rank() ;
 
       if ((*em).rank() > 0) {
@@ -154,28 +153,28 @@ void L1RCTTestAnalyzer::analyze(const edm::Event &iEvent, const edm::EventSetup 
       if (showEmCands) {
         if ((*em).rank() > 0) {
           //		 std::cout << std::endl << "rank: " << (*em).rank();
-          unsigned short rgnPhi = 999;
-          unsigned short rgn = (unsigned short)(*em).rctRegion();
+          // unsigned short rgnPhi = 999;
+          // unsigned short rgn = (unsigned short)(*em).rctRegion();
           unsigned short card = (unsigned short)(*em).rctCard();
-          unsigned short crate = (unsigned short)(*em).rctCrate();
+          // unsigned short crate = (unsigned short)(*em).rctCrate();
 
-          if (card == 6) {
-            rgnPhi = rgn;
-          } else if (card < 6) {
-            rgnPhi = (card % 2);
-          } else {
-            std::cout << "rgnPhi not assigned (still " << rgnPhi << ") -- Weird card number! " << card;
+          // if (card == 6) {
+          //   rgnPhi = rgn;
+          // } else if (card < 6) {
+          //   rgnPhi = (card % 2);
+          // } else {
+          if (card > 6) {
+            std::cout << "rgnPhi not assigned -- Weird card number! " << card;
           }
 
           // unsigned short phi_bin = ((crate % 9) * 2) + rgnPhi;
-          short eta_bin = (card / 2) * 2 + 1;
-          if (card < 6) {
-            eta_bin = eta_bin + rgn;
-          }
-          if (crate < 9) {
-            eta_bin = -eta_bin;
-          }
-          n_emcands++;
+          // short eta_bin = (card / 2) * 2 + 1;
+          // if (card < 6) {
+          //   eta_bin = eta_bin + rgn;
+          // }
+          // if (crate < 9) {
+          //   eta_bin = -eta_bin;
+          // }
 
           //		   std::cout << /* "rank: " << (*em).rank() << */ "
           // eta_bin: " << eta_bin << "  phi_bin: " << phi_bin << ".  crate: "

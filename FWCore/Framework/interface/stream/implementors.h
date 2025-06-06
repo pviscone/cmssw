@@ -31,6 +31,8 @@
 #include "FWCore/Framework/interface/stream/EDProducerBase.h"
 #include "FWCore/Framework/interface/Frameworkfwd.h"
 #include "FWCore/Framework/interface/InputProcessBlockCacheImpl.h"
+#include "FWCore/Framework/interface/TransformerBase.h"
+#include "FWCore/Concurrency/interface/WaitingTaskWithArenaHolder.h"
 #include "FWCore/Utilities/interface/EDGetToken.h"
 #include "FWCore/Utilities/interface/EDMException.h"
 #include "FWCore/Utilities/interface/StreamID.h"
@@ -284,9 +286,103 @@ namespace edm {
         ExternalWork() = default;
         ExternalWork(ExternalWork const&) = delete;
         ExternalWork& operator=(ExternalWork const&) = delete;
-        virtual ~ExternalWork() noexcept(false){};
+        virtual ~ExternalWork() noexcept(false) {}
 
         virtual void acquire(Event const&, edm::EventSetup const&, WaitingTaskWithArenaHolder) = 0;
+      };
+
+      class WatchLuminosityBlocks {
+      public:
+        WatchLuminosityBlocks() = default;
+        WatchLuminosityBlocks(WatchLuminosityBlocks const&) = delete;
+        WatchLuminosityBlocks& operator=(WatchLuminosityBlocks const&) = delete;
+        virtual ~WatchLuminosityBlocks() noexcept(false) {}
+
+        // virtual void beginLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&) = 0;
+        // virtual void endLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&) {}
+      };
+
+      class WatchRuns {
+      public:
+        WatchRuns() = default;
+        WatchRuns(WatchRuns const&) = delete;
+        WatchRuns& operator=(WatchRuns const&) = delete;
+        virtual ~WatchRuns() noexcept(false) {}
+
+        // virtual void beginRun(edm::Run const&, edm::EventSetup const&) = 0;
+        // virtual void endRun(edm::Run const&, edm::EventSetup const&) {}
+      };
+      class Transformer : private TransformerBase, public EDProducerBase {
+      public:
+        Transformer() = default;
+        Transformer(Transformer const&) = delete;
+        Transformer& operator=(Transformer const&) = delete;
+        ~Transformer() noexcept(false) override {}
+
+        template <typename G, typename F>
+        void registerTransform(ProducerBase::BranchAliasSetterT<G> iSetter,
+                               F&& iF,
+                               std::string productInstance = std::string()) {
+          registerTransform(edm::EDPutTokenT<G>(iSetter), std::forward<F>(iF), std::move(productInstance));
+        }
+
+        template <typename G, typename F>
+        void registerTransform(edm::EDPutTokenT<G> iToken, F iF, std::string productInstance = std::string()) {
+          using ReturnTypeT = decltype(iF(std::declval<G>()));
+          TypeID returnType(typeid(ReturnTypeT));
+          TransformerBase::registerTransformImp(
+              *this,
+              EDPutToken(iToken),
+              returnType,
+              std::move(productInstance),
+              [f = std::move(iF)](std::any const& iGotProduct) {
+                auto pGotProduct = std::any_cast<edm::WrapperBase const*>(iGotProduct);
+                return std::make_unique<edm::Wrapper<ReturnTypeT>>(
+                    WrapperBase::Emplace{}, f(*static_cast<edm::Wrapper<G> const*>(pGotProduct)->product()));
+              });
+        }
+
+        template <typename G, typename P, typename F>
+        void registerTransformAsync(edm::EDPutTokenT<G> iToken,
+                                    P iPre,
+                                    F iF,
+                                    std::string productInstance = std::string()) {
+          using CacheTypeT = decltype(iPre(std::declval<G>(), WaitingTaskWithArenaHolder()));
+          using ReturnTypeT = decltype(iF(std::declval<CacheTypeT>()));
+          TypeID returnType(typeid(ReturnTypeT));
+          TransformerBase::registerTransformAsyncImp(
+              *this,
+              EDPutToken(iToken),
+              returnType,
+              std::move(productInstance),
+              [p = std::move(iPre)](edm::WrapperBase const& iGotProduct, WaitingTaskWithArenaHolder iHolder) {
+                return std::any(p(*static_cast<edm::Wrapper<G> const&>(iGotProduct).product(), std::move(iHolder)));
+              },
+              [f = std::move(iF)](std::any const& iCache) {
+                auto cache = std::any_cast<CacheTypeT>(iCache);
+                return std::make_unique<edm::Wrapper<ReturnTypeT>>(WrapperBase::Emplace{}, f(cache));
+              });
+        }
+
+      private:
+        size_t transformIndex_(edm::BranchDescription const& iBranch) const noexcept final {
+          return TransformerBase::findMatchingIndex(*this, iBranch);
+        }
+        ProductResolverIndex transformPrefetch_(std::size_t iIndex) const noexcept final {
+          return TransformerBase::prefetchImp(iIndex);
+        }
+        void transformAsync_(WaitingTaskHolder iTask,
+                             std::size_t iIndex,
+                             edm::EventForTransformer& iEvent,
+                             edm::ActivityRegistry* iAct,
+                             ServiceWeakToken const& iToken) const noexcept final {
+          return TransformerBase::transformImpAsync(std::move(iTask), iIndex, iAct, *this, iEvent);
+        }
+        void extendUpdateLookup(BranchType iBranchType, ProductResolverIndexHelper const& iHelper) override {
+          if (iBranchType == InEvent) {
+            TransformerBase::extendUpdateLookup(*this, this->moduleDescription(), iHelper);
+          }
+        }
       };
 
       class Accumulator : public EDProducerBase {
@@ -294,14 +390,14 @@ namespace edm {
         Accumulator() = default;
         Accumulator(Accumulator const&) = delete;
         Accumulator& operator=(Accumulator const&) = delete;
-        ~Accumulator() noexcept(false) override{};
+        ~Accumulator() noexcept(false) override {}
 
         virtual void accumulate(Event const& ev, EventSetup const& es) = 0;
 
         void produce(Event& ev, EventSetup const& es) final { accumulate(ev, es); }
       };
     }  // namespace impl
-  }    // namespace stream
+  }  // namespace stream
 }  // namespace edm
 
 #endif

@@ -10,6 +10,7 @@
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 #include "HeterogeneousCore/CUDACore/interface/ScopedContext.h"
 #include "HeterogeneousCore/CUDAUtilities/interface/host_unique_ptr.h"
+#include "CUDADataFormats/Common/interface/PortableHostCollection.h"
 
 class SiPixelDigisSoAFromCUDA : public edm::stream::EDProducer<edm::ExternalWork> {
 public:
@@ -25,16 +26,16 @@ private:
   void produce(edm::Event& iEvent, const edm::EventSetup& iSetup) override;
 
   edm::EDGetTokenT<cms::cuda::Product<SiPixelDigisCUDA>> digiGetToken_;
-  edm::EDPutTokenT<SiPixelDigisSoA> digiPutToken_;
+  edm::EDPutTokenT<legacy::SiPixelDigisSoA> digiPutToken_;
 
-  cms::cuda::host::unique_ptr<uint16_t[]> store_;
+  cms::cuda::PortableHostCollection<SiPixelDigisSoA> digis_h_;
 
   int nDigis_;
 };
 
 SiPixelDigisSoAFromCUDA::SiPixelDigisSoAFromCUDA(const edm::ParameterSet& iConfig)
     : digiGetToken_(consumes<cms::cuda::Product<SiPixelDigisCUDA>>(iConfig.getParameter<edm::InputTag>("src"))),
-      digiPutToken_(produces<SiPixelDigisSoA>()) {}
+      digiPutToken_(produces<legacy::SiPixelDigisSoA>()) {}
 
 void SiPixelDigisSoAFromCUDA::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
   edm::ParameterSetDescription desc;
@@ -48,29 +49,24 @@ void SiPixelDigisSoAFromCUDA::acquire(const edm::Event& iEvent,
   // Do the transfer in a CUDA stream parallel to the computation CUDA stream
   cms::cuda::ScopedContextAcquire ctx{iEvent.streamID(), std::move(waitingTaskHolder)};
 
-  const auto& gpuDigis = ctx.get(iEvent, digiGetToken_);
+  const auto& digis_d = ctx.get(iEvent, digiGetToken_);
 
-  nDigis_ = gpuDigis.nDigis();
-  store_ = gpuDigis.copyAllToHostAsync(ctx.stream());
+  nDigis_ = digis_d.nDigis();
+  digis_h_ = cms::cuda::PortableHostCollection<SiPixelDigisSoA>(digis_d.view().metadata().size(), ctx.stream());
+  cudaCheck(cudaMemcpyAsync(digis_h_.buffer().get(),
+                            digis_d.const_buffer().get(),
+                            digis_d.bufferSize(),
+                            cudaMemcpyDeviceToHost,
+                            ctx.stream()));
 }
 
 void SiPixelDigisSoAFromCUDA::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
-  // The following line copies the data from the pinned host memory to
-  // regular host memory. In principle that feels unnecessary (why not
-  // just use the pinned host memory?). There are a few arguments for
-  // doing it though
-  // - Now can release the pinned host memory back to the (caching) allocator
-  //   * if we'd like to keep the pinned memory, we'd need to also
-  //     keep the CUDA stream around as long as that, or allow pinned
-  //     host memory to be allocated without a CUDA stream
-  // - What if a CPU algorithm would produce the same SoA? We can't
-  //   use cudaMallocHost without a GPU...
-
-  auto tmp_view = SiPixelDigisCUDASOAView(store_, nDigis_, SiPixelDigisCUDASOAView::StorageLocationHost::kMAX);
-
-  iEvent.emplace(digiPutToken_, nDigis_, tmp_view.pdigi(), tmp_view.rawIdArr(), tmp_view.adc(), tmp_view.clus());
-
-  store_.reset();
+  iEvent.emplace(digiPutToken_,
+                 nDigis_,
+                 digis_h_.view().pdigi(),
+                 digis_h_.view().rawIdArr(),
+                 digis_h_.view().adc(),
+                 digis_h_.view().clus());
 }
 
 // define as framework plugin

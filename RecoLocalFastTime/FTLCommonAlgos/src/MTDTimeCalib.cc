@@ -38,16 +38,13 @@ float MTDTimeCalib::getTimeCalib(const MTDDetId& id) const {
     const ProxyMTDTopology& topoproxy = static_cast<const ProxyMTDTopology&>(thedet->topology());
     const RectangularMTDTopology& topo = static_cast<const RectangularMTDTopology&>(topoproxy.specificTopology());
 
-    if (MTDTopologyMode::crysLayoutFromTopoMode(topo_->getMTDTopologyMode()) == BTLDetId::CrysLayout::tile) {
-      time_calib -= btlLightCollTime_;  //simply remove the offset introduced at sim level
-    } else if (MTDTopologyMode::crysLayoutFromTopoMode(topo_->getMTDTopologyMode()) == BTLDetId::CrysLayout::bar ||
-               MTDTopologyMode::crysLayoutFromTopoMode(topo_->getMTDTopologyMode()) ==
-                   BTLDetId::CrysLayout::barphiflat) {
+    BTLDetId::CrysLayout btlL = MTDTopologyMode::crysLayoutFromTopoMode(topo_->getMTDTopologyMode());
+    if (static_cast<int>(btlL) >= static_cast<int>(BTLDetId::CrysLayout::barphiflat)) {
       //for bars in phi
       time_calib -= 0.5 * topo.pitch().first * btlLightCollSlope_;  //time offset for bar time is L/2v
-    } else if (MTDTopologyMode::crysLayoutFromTopoMode(topo_->getMTDTopologyMode()) == BTLDetId::CrysLayout::barzflat) {
-      //for bars in z
-      time_calib -= 0.5 * topo.pitch().second * btlLightCollSlope_;  //time offset for bar time is L/2v
+    } else {
+      throw cms::Exception("MTDTimeCalib")
+          << "BTL topology mode " << static_cast<int>(btlL) << " unsupported! Aborting";
     }
   } else if (id.mtdSubDetector() == MTDDetId::ETL) {
     time_calib += etlTimeOffset_;

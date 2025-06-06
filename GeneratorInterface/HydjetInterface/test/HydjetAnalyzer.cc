@@ -45,7 +45,6 @@
 #include "TH1.h"
 
 #include "FWCore/Framework/interface/ConsumesCollector.h"
-#include "FWCore/Framework/interface/EDProducer.h"
 #include "FWCore/Utilities/interface/EDGetToken.h"
 
 using namespace edm;
@@ -401,7 +400,7 @@ HydjetAnalyzer::HydjetAnalyzer(const edm::ParameterSet &iConfig) {
         }
       }
     }  //user histo
-  }    //do histo
+  }  //do histo
 }
 HydjetAnalyzer::~HydjetAnalyzer() {}
 
@@ -585,7 +584,7 @@ void HydjetAnalyzer::analyze(const edm::Event &iEvent, const edm::EventSetup &iS
                 dhv2eta->Fill(eta, v2);
                 dheta_ch->Fill(eta);
               }  //ch
-            }    //status 1
+            }  //status 1
 
             //user histos
             if (userHistos_ && ((uStatus_ == 3) || (((*it)->status() < 10) && (uStatus_ == 1)) ||

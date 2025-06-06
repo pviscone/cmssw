@@ -10,7 +10,6 @@ filteredLayerClustersEM = _filteredLayerClustersProducer.clone(
     clusterFilter = "ClusterFilterByAlgoAndSizeAndLayerRange",
     min_cluster_size = 3, # inclusive
     max_layerId = 30, # inclusive
-    algo_number = 8,
     LayerClustersInputMask = 'ticlTrackstersTrkEM',
     iteration_label = "EM"
 )
@@ -38,6 +37,8 @@ ticlTrackstersEM = _trackstersProducer.clone(
     ),
     itername = "EM"
 )
+from Configuration.ProcessModifiers.ticl_v5_cff import ticl_v5
+ticl_v5.toModify(ticlTrackstersEM.pluginPatternRecognitionByCA, computeLocalTime = cms.bool(True))
 
 ticlEMStepTask = cms.Task(ticlSeedingGlobal
     ,filteredLayerClustersEM
@@ -49,7 +50,7 @@ filteredLayerClustersHFNoseEM = filteredLayerClustersEM.clone(
     LayerClusters = 'hgcalLayerClustersHFNose',
     LayerClustersInputMask = 'ticlTrackstersHFNoseTrkEM',
     min_cluster_size = 3, # inclusive
-    algo_number = 9,
+    algo_number = [9], # reco::CaloCluster::hfnose
     iteration_label = "EMn"
 )
 
@@ -72,6 +73,7 @@ ticlTrackstersHFNoseEM = ticlTrackstersEM.clone(
        shower_start_max_layer = 4 ### inclusive
     )
 )
+ticl_v5.toModify(ticlTrackstersHFNoseEM.pluginPatternRecognitionByCA, computeLocalTime = cms.bool(True))
 
 ticlHFNoseEMStepTask = cms.Task(ticlSeedingGlobalHFNose
                               ,filteredLayerClustersHFNoseEM

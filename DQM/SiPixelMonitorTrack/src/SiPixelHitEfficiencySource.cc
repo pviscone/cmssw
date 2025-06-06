@@ -375,10 +375,8 @@ void SiPixelHitEfficiencySource::analyze(const edm::Event &iEvent, const edm::Ev
     int L1hits = 0;
     int L2hits = 0;
     int L3hits = 0;
-    int L4hits = 0;
     int D1hits = 0;
     int D2hits = 0;
-    int D3hits = 0;
     std::vector<TrajectoryMeasurement> tmeasColl = traj_iterator->measurements();
     std::vector<TrajectoryMeasurement>::const_iterator tmeasIt;
     // loop on measurements to find out what kind of hits there are
@@ -408,8 +406,6 @@ void SiPixelHitEfficiencySource::analyze(const edm::Event &iEvent, const edm::Ev
           L2hits++;
         if (hit_layer == 3)
           L3hits++;
-        if (hit_layer == 4)
-          L4hits++;
       }
       if (testSubDetID == PixelSubdetector::PixelEndcap) {
         isFpixtrack = true;
@@ -419,8 +415,6 @@ void SiPixelHitEfficiencySource::analyze(const edm::Event &iEvent, const edm::Ev
           D1hits++;
         if (hit_disk == 2)
           D2hits++;
-        if (hit_disk == 3)
-          D3hits++;
       }
       if (testSubDetID == StripSubdetector::TIB)
         nStripHits++;
@@ -766,7 +760,7 @@ void SiPixelHitEfficiencySource::analyze(const edm::Event &iEvent, const edm::Ev
                       dy_cl[1] = lp.y();
                     }
                   }  // loop on clusterSets
-                }    // loop on clusterCollection
+                }  // loop on clusterCollection
                 for (size_t i = 0; i < 2; i++) {
                   if (minD[i] < 9999.) {
                     dx_cl[i] = fabs(dx_cl[i] - lx);
@@ -774,8 +768,8 @@ void SiPixelHitEfficiencySource::analyze(const edm::Event &iEvent, const edm::Ev
                   }
                 }
               }  // valid clusterCollectionHandle
-            }    // valid tracker
-          }      // valid cpEstimator
+            }  // valid tracker
+          }  // valid cpEstimator
           // distance of hit from closest cluster!
           float d_cl[2];
           d_cl[0] = d_cl[1] = -9999.;
@@ -813,7 +807,7 @@ void SiPixelHitEfficiencySource::analyze(const edm::Event &iEvent, const edm::Ev
         }  // end of else
 
       }  // end for (all traj measurements of pixeltrack)
-    }    // end if (is pixeltrack)
+    }  // end if (is pixeltrack)
     else if (debug_)
       std::cout << "no pixeltrack:\n";
 

@@ -26,12 +26,13 @@
 
 #include "L1Trigger/TrackTrigger/interface/classNameFinder.h"
 #include "SimDataFormats/EncodedEventId/interface/EncodedEventId.h"
-#include "SimTracker/TrackTriggerAssociation/interface/TTStubAssociationMap.h"
-#include "SimTracker/TrackTriggerAssociation/interface/TTTrackAssociationMap.h"
-#include "SimTracker/TrackTriggerAssociation/plugins/TTStubAssociator.h"
-#include "SimTracker/TrackTriggerAssociation/plugins/TTClusterAssociator.h"
+#include "SimDataFormats/Associations/interface/TTStubAssociationMap.h"
+#include "SimDataFormats/Associations/interface/TTTrackAssociationMap.h"
 #include "DataFormats/L1TrackTrigger/interface/TTTypes.h"
 #include "DataFormats/Common/interface/DetSetVectorNew.h"
+
+#include "TTStubAssociator.h"
+#include "TTClusterAssociator.h"
 
 #include <memory>
 #include <map>
@@ -59,8 +60,6 @@ private:
   bool TTTrackAllowOneFalse2SStub;
 
   /// Mandatory methods
-  void beginRun(const edm::Run& run, const edm::EventSetup& iSetup) override;
-  void endRun(const edm::Run& run, const edm::EventSetup& iSetup) override;
   void produce(edm::Event& iEvent, const edm::EventSetup& iSetup) override;
 
 };  /// Close class
@@ -90,22 +89,13 @@ TTTrackAssociator<T>::TTTrackAssociator(const edm::ParameterSet& iConfig) {
 
     produces<TTTrackAssociationMap<T> >(iTag.instance());
   }
+  /// Print some information when loaded
+  edm::LogInfo("TTStubAssociator< ") << "TTTrackAssociator< " << templateNameFinder<T>() << " > loaded.";
 }
 
 /// Destructor
 template <typename T>
 TTTrackAssociator<T>::~TTTrackAssociator() {}
-
-/// Begin run
-template <typename T>
-void TTTrackAssociator<T>::beginRun(const edm::Run& run, const edm::EventSetup& iSetup) {
-  /// Print some information when loaded
-  edm::LogInfo("TTStubAssociator< ") << "TTTrackAssociator< " << templateNameFinder<T>() << " > loaded.";
-}
-
-/// End run
-template <typename T>
-void TTTrackAssociator<T>::endRun(const edm::Run& run, const edm::EventSetup& iSetup) {}
 
 /// Implement the producer
 template <>

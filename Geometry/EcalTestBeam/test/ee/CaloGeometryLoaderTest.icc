@@ -7,8 +7,8 @@
 #include "DetectorDescription/Core/interface/DDSolid.h"
 #include "DetectorDescription/Core/interface/DDSpecifics.h"
 
-#include "CLHEP/Units/GlobalSystemOfUnits.h"
-#include "CLHEP/Geometry/Plane3D.h"
+#include <CLHEP/Units/SystemOfUnits.h>
+#include <CLHEP/Geometry/Plane3D.h>
 
 #include <vector>
 #include <fstream>
@@ -48,9 +48,7 @@ void CaloGeometryLoaderTest<T>::makeGeometry(const DDCompactView* cpv,
 
   DDFilteredView fv(*cpv, m_filter);
 
-  unsigned int counter(0);
   for (bool doSubDets = fv.firstChild(); doSubDets; doSubDets = fv.nextSibling()) {
-    ++counter;
     const DDSolid& solid(fv.logicalPart().solid());
 
     const ParmVec& parameters(solid.parameters());

@@ -32,7 +32,7 @@ public:
         recHitToken_(cc.consumes<EcalRecHitCollection>(iConfig.getParameter<edm::InputTag>("src"))),
         triggerTowerMap_(nullptr),
         geomToken_(cc.esConsumes()),
-        towerToken_(cc.esConsumes<edm::Transition::BeginLuminosityBlock>()) {
+        towerToken_(cc.esConsumes<edm::Transition::BeginRun>()) {
     auto srF = iConfig.getParameter<edm::InputTag>("srFlags");
     if (not srF.label().empty())
       srFlagToken_ = cc.consumes<EBSrFlagCollection>(srF);
@@ -67,15 +67,16 @@ public:
       auto flags = erh.flagsBits();
       bool hi = (useSrF ? isHighInterest(detid) : true);
 
-      const auto thisCell = ecalGeo->getGeometry(detid);
+      {
+        auto thisCell = ecalGeo->getGeometry(detid);
 
-      // find rechit geometry
-      if (!thisCell) {
-        throw cms::Exception("PFEcalBarrelRecHitCreator") << "detid " << detid.rawId() << "not found in geometry";
+        // find rechit geometry
+        if (!thisCell) {
+          throw cms::Exception("PFEcalBarrelRecHitCreator") << "detid " << detid.rawId() << "not found in geometry";
+        }
+
+        out->emplace_back(std::move(thisCell), detid.rawId(), PFLayer::ECAL_BARREL, energy, flags);
       }
-
-      out->emplace_back(thisCell, detid.rawId(), PFLayer::ECAL_BARREL, energy, flags);
-
       auto& rh = out->back();
 
       bool rcleaned = false;

@@ -1,5 +1,8 @@
+#include "FWCore/MessageLogger/interface/MessageLogger.h"
 #include "Geometry/HGCalCommonData/interface/HGCalProperty.h"
 #include "Geometry/HGCalCommonData/interface/HGCalTileIndex.h"
+
+//#define EDM_ML_DEBUG
 
 int32_t HGCalTileIndex::tileIndex(int32_t layer, int32_t ring, int32_t phi) {
   int32_t id(0);
@@ -19,6 +22,18 @@ int32_t HGCalTileIndex::tileRing(int32_t id) {
 
 int32_t HGCalTileIndex::tilePhi(int32_t id) {
   return ((id >> HGCalProperty::kHGCalPhiOffset) & HGCalProperty::kHGCalPhiMask);
+}
+
+int32_t HGCalTileIndex::tileCassette(int32_t iphi, int32_t phiOffset, int32_t nphiCassette, int32_t cassettes) {
+  int32_t cassette(0);
+  if (nphiCassette > 1) {
+    cassette = (iphi - phiOffset) / nphiCassette;
+    if (cassette < 0)
+      cassette += cassettes;
+    else if (cassette >= cassettes)
+      cassette = cassettes - 1;
+  }
+  return (cassette + 1);
 }
 
 int32_t HGCalTileIndex::tileProperty(int32_t type, int32_t sipm) {
@@ -57,8 +72,32 @@ bool HGCalTileIndex::tileExist(const int32_t* hex, int32_t zside, int32_t iphi) 
       phi -= HGCalProperty::kHGCalTilePhis;
   }
   int32_t jj = phi % HGCalProperty::kHGCalTilePhisBy3;
-  int32_t iw = jj / HGCalProperty::kHGCalTilePhisBy12;
-  int32_t ibit = HGCalProperty::kHGCalTilePhisBy12 - (jj % HGCalProperty::kHGCalTilePhisBy12) - 1;
+  int32_t iw = jj / HGCalProperty::kHGCalTilePhisWord;
+  int32_t ibit = HGCalProperty::kHGCalTilePhisWord - (jj % HGCalProperty::kHGCalTilePhisWord) - 1;
   bool ok = (hex[iw] & (1 << ibit));
+#ifdef EDM_ML_DEBUG
+  edm::LogVerbatim("HGCalGeom") << "tileExist::Phi " << iphi << " " << phi << " zside " << zside << " jj|iw|ibit " << jj
+                                << "|" << iw << "|" << ibit << " hex " << std::hex << hex[iw] << std::dec << " OK "
+                                << ok;
+#endif
+  return ok;
+}
+
+bool HGCalTileIndex::tileFineExist(const int32_t* hex, int32_t zside, int32_t iphi) {
+  int32_t phi(iphi - 1);
+  if (zside > 0) {
+    phi += HGCalProperty::kHGCalFineTilePhisBy2;
+    if (phi >= HGCalProperty::kHGCalFineTilePhis)
+      phi -= HGCalProperty::kHGCalFineTilePhis;
+  }
+  int32_t jj = phi % HGCalProperty::kHGCalFineTilePhisBy3;
+  int32_t iw = jj / HGCalProperty::kHGCalTilePhisWord;
+  int32_t ibit = HGCalProperty::kHGCalTilePhisWord - (jj % HGCalProperty::kHGCalTilePhisWord) - 1;
+  bool ok = (hex[iw] & (1 << ibit));
+#ifdef EDM_ML_DEBUG
+  edm::LogVerbatim("HGCalGeom") << "tileFineexist::Phi " << iphi << " " << phi << " zside " << zside << " jj|iw|ibit "
+                                << jj << "|" << iw << "|" << ibit << " hex " << std::hex << hex[iw] << std::dec
+                                << " OK " << ok;
+#endif
   return ok;
 }

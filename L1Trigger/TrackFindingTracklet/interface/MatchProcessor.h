@@ -38,6 +38,7 @@ namespace trklet {
   private:
     unsigned int layerdisk_;
     bool barrel_;
+    bool first_;
 
     unsigned int phiregion_;
 
@@ -58,9 +59,18 @@ namespace trklet {
     TrackletLUT rphicut2Stable_;
     TrackletLUT rcutPStable_;
     TrackletLUT rcut2Stable_;
+    TrackletLUT alphainner_;
+    TrackletLUT alphaouter_;
+    TrackletLUT rSSinner_;
+    TrackletLUT rSSouter_;
+
+    TrackletLUT diskRadius_;
 
     int nrbits_;
     int nphiderbits_;
+
+    //Number of r bits for the projection to use in LUT for disk
+    int nrprojbits_;
 
     AllStubsMemory* allstubs_;
     std::vector<VMStubsMEMemory*> vmstubs_;
@@ -82,6 +92,13 @@ namespace trklet {
 
     unsigned int nMatchEngines_;
     std::vector<MatchEngineUnit> matchengines_;
+
+    int best_ideltaphi_barrel;
+    int best_ideltaz_barrel;
+    int best_ideltaphi_disk;
+    int best_ideltar_disk;
+    Tracklet* curr_tracklet;
+    Tracklet* next_tracklet;
 
     CircularBuffer<ProjectionTemp> inputProjBuffer_;
   };

@@ -10,7 +10,6 @@
 #include "DataFormats/Common/interface/ValueMap.h"
 #include "DataFormats/METReco/interface/CaloMET.h"
 #include "DataFormats/ParticleFlowCandidate/interface/PFCandidate.h"
-#include "JetMETCorrections/Objects/interface/JetCorrector.h"
 #include "DataFormats/EgammaCandidates/interface/GsfElectron.h"
 #include "DataFormats/VertexReco/interface/Vertex.h"
 #include "FWCore/Framework/interface/ConsumesCollector.h"
@@ -59,7 +58,7 @@ namespace TopSingleLepton {
     /// default contructor
     MonitorEnsemble(const char* label, const edm::ParameterSet& cfg, edm::ConsumesCollector&& iC);
     /// default destructor
-    ~MonitorEnsemble(){};
+    ~MonitorEnsemble() {}
 
     /// book histograms in subdirectory _directory_
     void book(DQMStore::IBooker& ibooker);
@@ -120,7 +119,6 @@ namespace TopSingleLepton {
 
     /// electronId label
     edm::EDGetTokenT<edm::ValueMap<float> > electronId_;
-    edm::EDGetTokenT<reco::JetCorrector> mJetCorrector;
 
     /// electronId pattern we expect the following pattern:
     ///  0: fails
@@ -155,7 +153,7 @@ namespace TopSingleLepton {
     std::unique_ptr<StringCutObjectSelector<reco::PFCandidate> > muonSelect_;
 
     /// jetCorrector
-    edm::ESGetToken<JetCorrector, JetCorrectionsRecord> jetCorrector_;
+    edm::EDGetTokenT<reco::JetCorrector> jetCorrector_;
 
     /// jetID as an extra selection type
     edm::EDGetTokenT<reco::JetIDValueMap> jetIDLabel_;
@@ -268,7 +266,7 @@ public:
   /// default constructor
   TopSingleLeptonDQM(const edm::ParameterSet& cfg);
   /// default destructor
-  ~TopSingleLeptonDQM() override{};
+  ~TopSingleLeptonDQM() override {}
 
   /// do this during the event loop
   void analyze(const edm::Event& event, const edm::EventSetup& setup) override;

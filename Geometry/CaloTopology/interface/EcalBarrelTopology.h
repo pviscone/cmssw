@@ -5,6 +5,7 @@
 #include <vector>
 #include <iostream>
 #include "DataFormats/EcalDetId/interface/EBDetId.h"
+#include "FWCore/MessageLogger/interface/MessageLogger.h"
 #include "Geometry/CaloTopology/interface/CaloSubdetectorTopology.h"
 #include "Geometry/CaloGeometry/interface/CaloGeometry.h"
 #include "Geometry/CaloGeometry/interface/CaloSubdetectorGeometry.h"
@@ -12,7 +13,7 @@
 class EcalBarrelTopology final : public CaloSubdetectorTopology {
 public:
   /// create a new Topology
-  EcalBarrelTopology() : theGeom_(nullptr){};
+  EcalBarrelTopology() : theGeom_(nullptr) {}
 
   /// virtual destructor
   ~EcalBarrelTopology() override {}
@@ -63,13 +64,13 @@ public:
   }
 
   std::vector<DetId> up(const DetId& /*id*/) const override {
-    std::cout << "EcalBarrelTopology::up() not yet implemented" << std::endl;
+    edm::LogVerbatim("CaloTopology") << "EcalBarrelTopology::up() not yet implemented";
     std::vector<DetId> vNeighborsDetId;
     return vNeighborsDetId;
   }
 
   std::vector<DetId> down(const DetId& /*id*/) const override {
-    std::cout << "EcalBarrelTopology::down() not yet implemented" << std::endl;
+    edm::LogVerbatim("CaloTopology") << "EcalBarrelTopology::down() not yet implemented";
     std::vector<DetId> vNeighborsDetId;
     return vNeighborsDetId;
   }

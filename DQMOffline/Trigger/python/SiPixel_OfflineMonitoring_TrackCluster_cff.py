@@ -125,7 +125,7 @@ hltSiPixelPhase1TrackClustersOnTrackPositionB = hltDefaultHistoTrack.clone(
   title = "Cluster_onTrack Positions",
   range_min   =  -60, range_max   =  60, range_nbins   = 600,
   range_y_min = -3.2, range_y_max = 3.2, range_y_nbins = 200,
-  xlabel = "Global Z", ylabel = "Global \phi",
+  xlabel = "Global Z", ylabel = "Global \\phi",
   dimensions = 2,
   specs = VPSet(
     Specification().groupBy("PXBarrel/PXLayer").save(),
@@ -426,12 +426,16 @@ from DQMServices.Core.DQMEDAnalyzer import DQMEDAnalyzer
 hltSiPixelPhase1TrackClustersAnalyzer = DQMEDAnalyzer('SiPixelPhase1TrackClusters',
         VertexCut  = cms.untracked.bool(False),
         clusters   = cms.InputTag("hltSiPixelClusters"),
-        tracks     = cms.InputTag("hltMergedTracks"), #hltIter2Merged"
+        tracks     = cms.InputTag("hltTrackRefitterForPixelDQM"),
         clusterShapeCache = cms.InputTag("hltSiPixelClusterShapeCache"),
         vertices = cms.InputTag(""),
         histograms = hltSiPixelPhase1TrackClustersConf,
         geometry   = hltSiPixelPhase1Geometry
 )
+
+from Configuration.Eras.Modifier_pp_on_PbPb_run3_cff import pp_on_PbPb_run3
+pp_on_PbPb_run3.toModify(hltSiPixelPhase1TrackClustersAnalyzer,
+                         clusters   = "hltSiPixelClustersAfterSplittingPPOnAA")
 
 hltSiPixelPhase1TrackClustersHarvester = DQMEDHarvester("SiPixelPhase1Harvester",
         histograms = hltSiPixelPhase1TrackClustersConf,

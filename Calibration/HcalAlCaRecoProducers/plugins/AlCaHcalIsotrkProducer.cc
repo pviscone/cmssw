@@ -83,25 +83,25 @@
 // class declaration
 //
 
-namespace alcaHcalIsoTracks {
+namespace alCaHcalIsotrkProducer {
   struct Counters {
     Counters() : nAll_(0), nGood_(0), nRange_(0) {}
     mutable std::atomic<unsigned int> nAll_, nGood_, nRange_;
   };
-}  // namespace alcaHcalIsoTracks
+}  // namespace alCaHcalIsotrkProducer
 
-class AlCaHcalIsotrkProducer : public edm::stream::EDProducer<edm::GlobalCache<alcaHcalIsoTracks::Counters>> {
+class AlCaHcalIsotrkProducer : public edm::stream::EDProducer<edm::GlobalCache<alCaHcalIsotrkProducer::Counters>> {
 public:
-  explicit AlCaHcalIsotrkProducer(edm::ParameterSet const&, const alcaHcalIsoTracks::Counters*);
+  explicit AlCaHcalIsotrkProducer(edm::ParameterSet const&, const alCaHcalIsotrkProducer::Counters*);
   ~AlCaHcalIsotrkProducer() override = default;
 
-  static std::unique_ptr<alcaHcalIsoTracks::Counters> initializeGlobalCache(edm::ParameterSet const&) {
-    return std::make_unique<alcaHcalIsoTracks::Counters>();
+  static std::unique_ptr<alCaHcalIsotrkProducer::Counters> initializeGlobalCache(edm::ParameterSet const&) {
+    return std::make_unique<alCaHcalIsotrkProducer::Counters>();
   }
 
   void produce(edm::Event&, edm::EventSetup const&) override;
   void endStream() override;
-  static void globalEndJob(const alcaHcalIsoTracks::Counters* counters);
+  static void globalEndJob(const alCaHcalIsotrkProducer::Counters* counters);
   static void fillDescriptions(edm::ConfigurationDescriptions& descriptions);
 
 private:
@@ -211,7 +211,7 @@ private:
 };
 
 AlCaHcalIsotrkProducer::AlCaHcalIsotrkProducer(edm::ParameterSet const& iConfig,
-                                               const alcaHcalIsoTracks::Counters* counters)
+                                               const alCaHcalIsotrkProducer::Counters* counters)
     : nRun_(0),
       nAll_(0),
       nGood_(0),
@@ -405,7 +405,7 @@ void AlCaHcalIsotrkProducer::fillDescriptions(edm::ConfigurationDescriptions& de
   desc.add<double>("coneRadiusMIP3", 20.0);
   desc.add<double>("coneRadiusMIP4", 22.0);
   desc.add<double>("coneRadiusMIP5", 24.0);
-  desc.add<double>("maximumEcalEnergy", 2.0);
+  desc.add<double>("maximumEcalEnergy", 10.0);
   // following 4 parameters are for isolation cuts and described in the code
   desc.add<double>("maxTrackP", 8.0);
   desc.add<double>("slopeTrackP", 0.05090504066);
@@ -557,7 +557,7 @@ void AlCaHcalIsotrkProducer::produce(edm::Event& iEvent, edm::EventSetup const& 
   if (!ignoreTrigger_) {
     //L1
     l1GtUtils_->retrieveL1(iEvent, iSetup, tok_alg_);
-    const std::vector<std::pair<std::string, bool>>& finalDecisions = l1GtUtils_->decisionsFinal();
+    const auto& finalDecisions = l1GtUtils_->decisionsFinal();
     for (const auto& decision : finalDecisions) {
       if (decision.first.find(l1TrigName_) != std::string::npos) {
         isoTrkEvent.l1Bit_ = decision.second;
@@ -654,10 +654,10 @@ void AlCaHcalIsotrkProducer::produce(edm::Event& iEvent, edm::EventSetup const& 
             //loop over all trigger filters in event (i.e. filters passed)
             for (unsigned int ifilter = 0; ifilter < triggerEvent.sizeFilters(); ++ifilter) {
               std::vector<int> Keys;
-              std::string label = triggerEvent.filterTag(ifilter).label();
+              auto const label = triggerEvent.filterLabel(ifilter);
               //loop over keys to objects passing this filter
               for (unsigned int imodule = 0; imodule < moduleLabels.size(); imodule++) {
-                if (label.find(moduleLabels[imodule]) != std::string::npos) {
+                if (label.find(moduleLabels[imodule]) != label.npos) {
 #ifdef EDM_ML_DEBUG
                   if (debug_)
                     edm::LogVerbatim("HcalIsoTrack") << "FilterName " << label;
@@ -744,7 +744,7 @@ void AlCaHcalIsotrkProducer::endStream() {
   globalCache()->nRange_ += nRange_;
 }
 
-void AlCaHcalIsotrkProducer::globalEndJob(const alcaHcalIsoTracks::Counters* count) {
+void AlCaHcalIsotrkProducer::globalEndJob(const alCaHcalIsotrkProducer::Counters* count) {
   edm::LogVerbatim("HcalIsoTrack") << "Finds " << count->nGood_ << " good tracks in " << count->nAll_ << " events and "
                                    << count->nRange_ << " events in the momentum range";
 }
@@ -786,7 +786,7 @@ std::array<int, 3> AlCaHcalIsotrkProducer::getProducts(int goodPV,
                                                        HcalIsoTrkEventVariables& hocalibEvent,
                                                        const edm::EventID& eventId) {
   int nSave(0), nLoose(0), nTight(0);
-  unsigned int nTracks(0), nselTracks(0);
+  unsigned int nTracks(0);
   double rhohEV = (tower.isValid()) ? rhoh(tower) : 0;
 
   //Loop over tracks
@@ -884,7 +884,6 @@ std::array<int, 3> AlCaHcalIsotrkProducer::getProducts(int goodPV,
       flag += 8;
 #endif
     if (isoTk.qltyFlag_ && notMuon) {
-      nselTracks++;
       int nNearTRKs(0);
       ////////////////////////////////-MIP STUFF-//////////////////////////////
       std::vector<DetId> eIds;

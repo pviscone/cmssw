@@ -63,6 +63,7 @@ PedeSteerer::PedeSteerer(AlignableTracker *aliTracker,
       alignableObjectId_{AlignableObjectId::commonObjectIdProvider(aliTracker, aliMuon)},
       myConfig(config),
       myDirectory(myConfig.getUntrackedParameter<std::string>("fileDir")),
+      myRunDirectory(myConfig.getUntrackedParameter<std::string>("runDir")),
       myNoSteerFiles(noSteerFiles),
       myIsSteerFileDebug(myConfig.getUntrackedParameter<bool>("steerFileDebug")),
       myParameterSign(myConfig.getUntrackedParameter<int>("parameterSign")),
@@ -80,6 +81,13 @@ PedeSteerer::PedeSteerer(AlignableTracker *aliTracker,
     myDirectory = defaultDir;
   if (!myDirectory.empty() && myDirectory.find_last_of('/') != myDirectory.size() - 1) {
     myDirectory += '/';  // directory may need '/'
+  }
+
+  if (myRunDirectory.empty())
+    myRunDirectory = defaultDir;
+  if (!myRunDirectory.empty() && myRunDirectory.find_last_of('/') != myRunDirectory.size() - 1) {
+    myRunDirectory += '/';  // directory may need '/'
+    myDirectory = myRunDirectory;
   }
 
   const auto &alis = myParameterStore->alignables();
@@ -520,7 +528,7 @@ void PedeSteerer::hierarchyConstraint(const Alignable *ali,
       }
       aConstr << "\n";
       ++nParPerConstr;  // OK, we used one.
-    }                   // end loop on params
+    }  // end loop on params
 
     //
     if (nParPerConstr && nParPerConstr >= theMinHieraParPerConstr) {  // Enough to make sense?
@@ -577,9 +585,9 @@ unsigned int PedeSteerer::presigmas(const std::vector<edm::ParameterSet> &cffPre
           }
           presigmas[iParam] = presigma;
         }  // end if selected for presigma
-      }    // end loop on params
-    }      // end loop on alignables for given selection and presigma
-  }        // end loop on PSets
+      }  // end loop on params
+    }  // end loop on alignables for given selection and presigma
+  }  // end loop on PSets
 
   if (aliPresiMap.empty())
     return 0;
@@ -632,7 +640,7 @@ unsigned int PedeSteerer::presigmasFile(const std::string &fileName,
 
       ++nPresiParam;
     }  // end loop on parameters for alignables with chosen presigmas
-  }    // end loop on alignables
+  }  // end loop on alignables
 
   delete filePtr;  // close properly file
   return nPresiParam;
@@ -762,7 +770,10 @@ std::string PedeSteerer::buildMasterSteer(const std::vector<std::string> &binary
   // add binary files to master steering file
   mainSteerRef << "\nCfiles\n";
   for (unsigned int iFile = 0; iFile < binaryFiles.size(); ++iFile) {
-    mainSteerRef << binaryFiles[iFile] << "\n";
+    if (myRunDirectory.empty())
+      mainSteerRef << binaryFiles[iFile] << "\n";
+    else
+      mainSteerRef << "../" + binaryFiles[iFile] << "\n";
   }
 
   // add method
@@ -788,8 +799,18 @@ int PedeSteerer::runPede(const std::string &masterSteer) const {
     return 0;  //false;
   }
 
-  std::string command(myConfig.getUntrackedParameter<std::string>("pedeCommand"));
-  (command += " ") += masterSteer;
+  // Change pede command if running in different directory
+  std::string command;
+  if (myRunDirectory.empty()) {
+    command = myConfig.getUntrackedParameter<std::string>("pedeCommand");
+    (command += " ") += masterSteer;
+  } else {
+    command = "(cd " + myRunDirectory + " && ";
+    command += myConfig.getUntrackedParameter<std::string>("pedeCommand");
+    (command += " ") += "../" + masterSteer;
+    command += ")";
+  }
+
   const std::string dump(myConfig.getUntrackedParameter<std::string>("pedeDump"));
   if (!dump.empty()) {
     command += " > ";

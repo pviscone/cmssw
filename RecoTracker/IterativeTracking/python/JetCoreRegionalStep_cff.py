@@ -1,6 +1,6 @@
 import FWCore.ParameterSet.Config as cms
 
-#for dnn classifier
+# for dnn classifier
 from Configuration.ProcessModifiers.trackdnn_cff import trackdnn
 from RecoTracker.IterativeTracking.dnnQualityCuts import qualityCutDictionary
 
@@ -12,8 +12,8 @@ from Configuration.ProcessModifiers.trackingNoLoopers_cff import trackingNoLoope
 # run only if there are high pT jets
 jetsForCoreTracking = cms.EDFilter('CandPtrSelector', src = cms.InputTag('ak4CaloJetsForTrk'), cut = cms.string('pt > 100 && abs(eta) < 2.5'), filter = cms.bool(False))
 
-jetsForCoreTrackingBarrel = jetsForCoreTracking.clone( cut = 'pt > 100 && abs(eta) < 2.5' )
-jetsForCoreTrackingEndcap = jetsForCoreTracking.clone( cut = 'pt > 100 && abs(eta) > 1.4 && abs(eta) < 2.5' )
+jetsForCoreTrackingBarrel = jetsForCoreTracking.clone( cut = 'pt > 100 && abs(eta) < 1.4' )
+jetsForCoreTrackingEndcap = jetsForCoreTracking.clone( cut = 'pt > 100 && abs(eta) < 2.5' )
 
 # care only at tracks from main PV
 firstStepGoodPrimaryVertices = cms.EDFilter('PrimaryVertexObjectFilter',
@@ -71,6 +71,20 @@ _layerListForPhase1 = [
         'BPix4+TIB1','BPix4+TIB2'
     ]
 trackingPhase1.toModify(jetCoreRegionalStepSeedLayers, layerList = _layerListForPhase1)
+from Configuration.ProcessModifiers.jetCoreInPhase2_cff import jetCoreInPhase2
+_layerListForPhase2 = [
+        'BPix1+BPix2', 'BPix1+BPix3', 'BPix1+BPix4',
+        'BPix2+BPix3', 'BPix2+BPix4',
+        'BPix3+BPix4',
+        'BPix1+FPix1_pos', 'BPix1+FPix1_neg',
+        'BPix2+FPix1_pos', 'BPix2+FPix1_neg',
+        'FPix1_pos+FPix2_pos', 'FPix1_neg+FPix2_neg',
+        'FPix1_pos+FPix3_pos', 'FPix1_neg+FPix3_neg',
+        'FPix2_pos+FPix3_pos', 'FPix2_neg+FPix3_neg',
+        #'BPix3+TIB1','BPix3+TIB2'
+        #'BPix4+TIB1','BPix4+TIB2'
+    ]
+jetCoreInPhase2.toModify(jetCoreRegionalStepSeedLayers, layerList = _layerListForPhase2)
 
 # TrackingRegion
 from RecoTauTag.HLTProducers.tauRegionalPixelSeedTrackingRegions_cfi import tauRegionalPixelSeedTrackingRegions as _tauRegionalPixelSeedTrackingRegions
@@ -82,6 +96,12 @@ jetCoreRegionalStepTrackingRegions = _tauRegionalPixelSeedTrackingRegions.clone(
         JetSrc         = 'jetsForCoreTracking',
         vertexSrc      = 'firstStepGoodPrimaryVertices',
         howToUseMeasurementTracker = 'Never')
+)
+jetCoreInPhase2.toModify(jetCoreRegionalStepTrackingRegions,
+    RegionPSet=dict(
+        deltaPhiRegion = 0.10,
+        deltaEtaRegion = 0.10,
+    ),
 )
 jetCoreRegionalStepEndcapTrackingRegions = jetCoreRegionalStepTrackingRegions.clone(
     RegionPSet=dict(
@@ -147,7 +167,7 @@ jetCoreRegionalStepChi2Est = TrackingTools.KalmanUpdators.Chi2MeasurementEstimat
 import RecoTracker.CkfPattern.GroupedCkfTrajectoryBuilder_cfi
 #need to also load the refToPSet_ used by GroupedCkfTrajectoryBuilder
 CkfBaseTrajectoryFilter_block = RecoTracker.CkfPattern.GroupedCkfTrajectoryBuilder_cfi.CkfBaseTrajectoryFilter_block
-jetCoreRegionalStepTrajectoryBuilder = RecoTracker.CkfPattern.GroupedCkfTrajectoryBuilder_cfi.GroupedCkfTrajectoryBuilder.clone(
+jetCoreRegionalStepTrajectoryBuilder = RecoTracker.CkfPattern.GroupedCkfTrajectoryBuilder_cfi.GroupedCkfTrajectoryBuilderIterativeDefault.clone(
     trajectoryFilter = dict(refToPSet_ = 'jetCoreRegionalStepTrajectoryFilter'),
     maxCand = 50,
     estimator = 'jetCoreRegionalStepChi2Est',
@@ -156,9 +176,9 @@ jetCoreRegionalStepTrajectoryBuilder = RecoTracker.CkfPattern.GroupedCkfTrajecto
 )
 trackingNoLoopers.toModify(jetCoreRegionalStepTrajectoryBuilder,
                            maxPtForLooperReconstruction = 0.0)    
-jetCoreRegionalStepBarrelTrajectoryBuilder = RecoTracker.CkfPattern.GroupedCkfTrajectoryBuilder_cfi.GroupedCkfTrajectoryBuilder.clone(
+jetCoreRegionalStepBarrelTrajectoryBuilder = RecoTracker.CkfPattern.GroupedCkfTrajectoryBuilder_cfi.GroupedCkfTrajectoryBuilderIterativeDefault.clone(
     trajectoryFilter = dict(refToPSet_ = 'jetCoreRegionalStepBarrelTrajectoryFilter'),
-    maxCand = 50,
+    maxCand = 30,
     estimator = 'jetCoreRegionalStepChi2Est',
     keepOriginalIfRebuildFails = True,
     lockHits = False,
@@ -168,6 +188,7 @@ trackingNoLoopers.toModify(jetCoreRegionalStepBarrelTrajectoryBuilder,
                            maxPtForLooperReconstruction = cms.double(0.0))    
 jetCoreRegionalStepEndcapTrajectoryBuilder = jetCoreRegionalStepTrajectoryBuilder.clone(
     trajectoryFilter = cms.PSet(refToPSet_ = cms.string('jetCoreRegionalStepEndcapTrajectoryFilter')),
+    maxCand = 30,
     #clustersToSkip = cms.InputTag('jetCoreRegionalStepClusters'),
 )
 trackingNoLoopers.toModify(jetCoreRegionalStepEndcapTrajectoryBuilder,
@@ -191,7 +212,7 @@ jetCoreRegionalStepDeepCoreTrajectoryCleaner = trajectoryCleanerBySharedHits.clo
 
 # MAKING OF TRACK CANDIDATES
 import RecoTracker.CkfPattern.CkfTrackCandidates_cfi
-jetCoreRegionalStepTrackCandidates = RecoTracker.CkfPattern.CkfTrackCandidates_cfi.ckfTrackCandidates.clone(
+jetCoreRegionalStepTrackCandidates = RecoTracker.CkfPattern.CkfTrackCandidates_cfi.ckfTrackCandidatesIterativeDefault.clone(
     src                    = 'jetCoreRegionalStepSeeds',
     maxSeedsBeforeCleaning = 10000,
     TrajectoryBuilderPSet  = dict(refToPSet_ = 'jetCoreRegionalStepTrajectoryBuilder'),
@@ -218,8 +239,8 @@ jetCoreRegionalStepEndcapTrackCandidates = jetCoreRegionalStepTrackCandidates.cl
 )
 
 # TRACK FITTING
-import RecoTracker.TrackProducer.TrackProducer_cfi
-jetCoreRegionalStepTracks = RecoTracker.TrackProducer.TrackProducer_cfi.TrackProducer.clone(
+import RecoTracker.TrackProducer.TrackProducerIterativeDefault_cfi
+jetCoreRegionalStepTracks = RecoTracker.TrackProducer.TrackProducerIterativeDefault_cfi.TrackProducerIterativeDefault.clone(
     AlgorithmName = 'jetCoreRegionalStep',
     src           = 'jetCoreRegionalStepTrackCandidates',
     Fitter        = 'FlexibleKFFittingSmoother'
@@ -231,7 +252,6 @@ jetCoreRegionalStepEndcapTracks = jetCoreRegionalStepTracks.clone(
     src           = 'jetCoreRegionalStepEndcapTrackCandidates',
 )
 
-
 from Configuration.Eras.Modifier_fastSim_cff import fastSim
 import RecoTracker.FinalTrackSelectors.trackListMerger_cfi
 _fastSim_jetCoreRegionalStepTracks = RecoTracker.FinalTrackSelectors.trackListMerger_cfi.trackListMerger.clone(
@@ -241,7 +261,9 @@ _fastSim_jetCoreRegionalStepTracks = RecoTracker.FinalTrackSelectors.trackListMe
     copyExtras         = True
 )
 fastSim.toReplaceWith(jetCoreRegionalStepTracks,_fastSim_jetCoreRegionalStepTracks)
-
+from Configuration.ProcessModifiers.seedingDeepCore_cff import seedingDeepCore
+(seedingDeepCore & fastSim).toReplaceWith(jetCoreRegionalStepBarrelTracks,_fastSim_jetCoreRegionalStepTracks)
+(seedingDeepCore & fastSim).toReplaceWith(jetCoreRegionalStepEndcapTracks,_fastSim_jetCoreRegionalStepTracks)
 
 # Final selection
 from RecoTracker.FinalTrackSelectors.TrackCutClassifier_cff import *
@@ -277,6 +299,9 @@ trackingPhase1.toReplaceWith(jetCoreRegionalStep, TrackMVAClassifierPrompt.clone
 trackingPhase1.toReplaceWith(jetCoreRegionalStepBarrel, jetCoreRegionalStep.clone(
      src = 'jetCoreRegionalStepBarrelTracks',
 ))
+
+pp_on_AA.toModify(jetCoreRegionalStep, qualityCuts = [-0.2, 0.0, 0.8])
+pp_on_AA.toModify(jetCoreRegionalStepBarrel, qualityCuts = [-0.2, 0.0, 0.8])
 
 from RecoTracker.FinalTrackSelectors.trackTfClassifier_cfi import *
 from RecoTracker.FinalTrackSelectors.trackSelectionTf_cfi import *
@@ -332,10 +357,60 @@ JetCoreRegionalStepEndcapTask = cms.Task(jetsForCoreTrackingEndcap,
                                          jetCoreRegionalStepEndcap)
 
 
-from Configuration.ProcessModifiers.seedingDeepCore_cff import seedingDeepCore
+import RecoTracker.FinalTrackSelectors.multiTrackSelector_cfi
+jetCoreRegionalStepSelector = RecoTracker.FinalTrackSelectors.multiTrackSelector_cfi.multiTrackSelector.clone(
+    src = 'jetCoreRegionalStepTracks',
+    trackSelectors= cms.VPSet(
+        RecoTracker.FinalTrackSelectors.multiTrackSelector_cfi.looseMTS.clone(
+            name = 'jetCoreRegionalStepLoose',
+            chi2n_par = 2.0,
+            res_par = ( 0.003, 0.002 ),
+            minNumberLayers = 3,
+            maxNumberLostLayers = 3,
+            minNumber3DLayers = 3,
+            d0_par1 = ( 0.8, 4.0 ),
+            dz_par1 = ( 0.9, 4.0 ),
+            d0_par2 = ( 0.6, 4.0 ),
+            dz_par2 = ( 0.8, 4.0 )
+            ), #end of pset
+        RecoTracker.FinalTrackSelectors.multiTrackSelector_cfi.tightMTS.clone(
+            name = 'jetCoreRegionalStepTight',
+            preFilterName = 'jetCoreRegionalStepLoose',
+            chi2n_par = 1.4,
+            res_par = ( 0.003, 0.002 ),
+            minNumberLayers = 3,
+            maxNumberLostLayers = 2,
+            minNumber3DLayers = 3,
+            d0_par1 = ( 0.7, 4.0 ),
+            dz_par1 = ( 0.8, 4.0 ),
+            d0_par2 = ( 0.5, 4.0 ),
+            dz_par2 = ( 0.7, 4.0 )
+            ),
+        RecoTracker.FinalTrackSelectors.multiTrackSelector_cfi.highpurityMTS.clone(
+            name = 'jetCoreRegionalStep',
+            preFilterName = 'jetCoreRegionalStepTight',
+            min_eta = -4.1,
+            max_eta = 4.1,
+            chi2n_par = 1.2,
+            res_par = ( 0.003, 0.001 ),
+            minNumberLayers = 3,
+            maxNumberLostLayers = 2,
+            minNumber3DLayers = 3,
+            d0_par1 = ( 0.6, 4.0 ),
+            dz_par1 = ( 0.7, 4.0 ),
+            d0_par2 = ( 0.45, 4.0 ),
+            dz_par2 = ( 0.55, 4.0 )
+            ),
+        ), #end of vpset
+) #end of clone
+_JetCoreRegionalStepTask_trackingPhase2 = JetCoreRegionalStepTask.copy()
+_JetCoreRegionalStepTask_trackingPhase2.replace(jetCoreRegionalStep, jetCoreRegionalStepSelector)
+jetCoreInPhase2.toReplaceWith(JetCoreRegionalStepTask, _JetCoreRegionalStepTask_trackingPhase2)
+jetCoreInPhase2.toModify(jetCoreRegionalStepTracks, TrajectoryInEvent = True)
+jetCoreInPhase2.toModify(jetCoreRegionalStepTrajectoryBuilder, maxCand = 5)
 
 from RecoTracker.FinalTrackSelectors.TrackCollectionMerger_cfi import *
-seedingDeepCore.toReplaceWith(jetCoreRegionalStepTracks, TrackCollectionMerger.clone(
+(seedingDeepCore & ~fastSim).toReplaceWith(jetCoreRegionalStepTracks, TrackCollectionMerger.clone(
     trackProducers   = ["jetCoreRegionalStepBarrelTracks",
                         "jetCoreRegionalStepEndcapTracks",],
     inputClassifiers = ["jetCoreRegionalStepBarrel",
@@ -352,6 +427,12 @@ seedingDeepCore.toReplaceWith(JetCoreRegionalStepTask, cms.Task(
     cms.Task(jetCoreRegionalStepTracks,jetCoreRegionalStep)
 ))
 
+# short-circuit tracking parts for fastsim
 fastSim.toReplaceWith(JetCoreRegionalStepTask, 
-                      cms.Task(jetCoreRegionalStepTracks,
-                                   jetCoreRegionalStep))
+    cms.Task(jetCoreRegionalStepTracks,
+             jetCoreRegionalStep))
+(seedingDeepCore & fastSim).toReplaceWith(JetCoreRegionalStepTask,
+    cms.Task(jetCoreRegionalStepBarrelTracks, jetCoreRegionalStepEndcapTracks,
+             jetCoreRegionalStepTracks,
+             jetCoreRegionalStepBarrel, jetCoreRegionalStepEndcap,
+             jetCoreRegionalStep))

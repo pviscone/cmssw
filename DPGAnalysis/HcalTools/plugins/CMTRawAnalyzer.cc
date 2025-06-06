@@ -1,6 +1,5 @@
 // -*- C++ -*-
 //
-//
 // Package:    CMTRawAnalyzer
 //
 #include <fstream>
@@ -9,7 +8,6 @@
 #include <iosfwd>
 #include <bitset>
 #include <memory>
-
 #include "FWCore/MessageLogger/interface/MessageLogger.h"
 #include "FWCore/ServiceRegistry/interface/Service.h"
 #include "FWCore/PluginManager/interface/ModuleDef.h"
@@ -18,7 +16,6 @@
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/MakerMacros.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
-
 #include "CommonTools/UtilAlgos/interface/TFileService.h"
 #include "DataFormats/HcalRecHit/interface/HcalRecHitCollections.h"
 #include "DataFormats/HcalDetId/interface/HcalElectronicsId.h"
@@ -67,8 +64,7 @@
 #include "TF1.h"
 
 #define NUMADCS 256
-double adc2fC_QIE10[NUMADCS] = {
-    // - - - - - - - range 0 - - - - - - - -
+double const adc2fC_QIE10[NUMADCS] = {
     //subrange0
     1.58,
     4.73,
@@ -758,6 +754,12 @@ private:
   TH1F* h_amplError;
   TH1F* h_amplFine;
   TH1F* h_errorGeneral_HB;
+  TH1F* h_nadccounts8_HB;
+  TH1F* h_nadccounts6_HB;
+  TH1F* h_nadccounts4_HB;
+  TH1F* h_nadccounts3_HB;
+  TH1F* h_nadccounts2_HB;
+  TH1F* h_nadccounts0_HB;
   TH1F* h_error1_HB;
   TH1F* h_error2_HB;
   TH1F* h_error3_HB;
@@ -776,6 +778,12 @@ private:
   TH1F* h_fiber2_HB;
   TH1F* h_repetedcapid_HB;
   TH1F* h_errorGeneral_HE;
+  TH1F* h_nadccounts8_HE;
+  TH1F* h_nadccounts6_HE;
+  TH1F* h_nadccounts4_HE;
+  TH1F* h_nadccounts3_HE;
+  TH1F* h_nadccounts2_HE;
+  TH1F* h_nadccounts0_HE;
   TH1F* h_error1_HE;
   TH1F* h_error2_HE;
   TH1F* h_error3_HE;
@@ -1034,6 +1042,7 @@ private:
   TH2F* h_mapDepth4AmplE34_HO;
   TH2F* h_mapDepth4_HO;
   /////////////////////////////////////////////
+  //-----------------------------------
   TH1F* h_nbadchannels_depth1_HB;
   TH1F* h_runnbadchannels_depth1_HB;
   TH1F* h_runnbadchannelsC_depth1_HB;
@@ -1046,6 +1055,19 @@ private:
   TH1F* h_runbadrate_depth2_HB;
   TH1F* h_runbadrateC_depth2_HB;
   TH1F* h_runbadrate0_depth2_HB;
+  TH1F* h_nbadchannels_depth3_HB;
+  TH1F* h_runnbadchannels_depth3_HB;
+  TH1F* h_runnbadchannelsC_depth3_HB;
+  TH1F* h_runbadrate_depth3_HB;
+  TH1F* h_runbadrateC_depth3_HB;
+  TH1F* h_runbadrate0_depth3_HB;
+  TH1F* h_nbadchannels_depth4_HB;
+  TH1F* h_runnbadchannels_depth4_HB;
+  TH1F* h_runnbadchannelsC_depth4_HB;
+  TH1F* h_runbadrate_depth4_HB;
+  TH1F* h_runbadrateC_depth4_HB;
+  TH1F* h_runbadrate0_depth4_HB;
+  //-----------------------------------
   TH1F* h_nbadchannels_depth1_HE;
   TH1F* h_runnbadchannels_depth1_HE;
   TH1F* h_runnbadchannelsC_depth1_HE;
@@ -1064,12 +1086,38 @@ private:
   TH1F* h_runbadrate_depth3_HE;
   TH1F* h_runbadrateC_depth3_HE;
   TH1F* h_runbadrate0_depth3_HE;
+  TH1F* h_nbadchannels_depth4_HE;
+  TH1F* h_runnbadchannels_depth4_HE;
+  TH1F* h_runnbadchannelsC_depth4_HE;
+  TH1F* h_runbadrate_depth4_HE;
+  TH1F* h_runbadrateC_depth4_HE;
+  TH1F* h_runbadrate0_depth4_HE;
+  TH1F* h_nbadchannels_depth5_HE;
+  TH1F* h_runnbadchannels_depth5_HE;
+  TH1F* h_runnbadchannelsC_depth5_HE;
+  TH1F* h_runbadrate_depth5_HE;
+  TH1F* h_runbadrateC_depth5_HE;
+  TH1F* h_runbadrate0_depth5_HE;
+  TH1F* h_nbadchannels_depth6_HE;
+  TH1F* h_runnbadchannels_depth6_HE;
+  TH1F* h_runnbadchannelsC_depth6_HE;
+  TH1F* h_runbadrate_depth6_HE;
+  TH1F* h_runbadrateC_depth6_HE;
+  TH1F* h_runbadrate0_depth6_HE;
+  TH1F* h_nbadchannels_depth7_HE;
+  TH1F* h_runnbadchannels_depth7_HE;
+  TH1F* h_runnbadchannelsC_depth7_HE;
+  TH1F* h_runbadrate_depth7_HE;
+  TH1F* h_runbadrateC_depth7_HE;
+  TH1F* h_runbadrate0_depth7_HE;
+  //-----------------------------------
   TH1F* h_nbadchannels_depth4_HO;
   TH1F* h_runnbadchannels_depth4_HO;
   TH1F* h_runnbadchannelsC_depth4_HO;
   TH1F* h_runbadrate_depth4_HO;
   TH1F* h_runbadrateC_depth4_HO;
   TH1F* h_runbadrate0_depth4_HO;
+  //-----------------------------------
   TH1F* h_nbadchannels_depth1_HF;
   TH1F* h_runnbadchannels_depth1_HF;
   TH1F* h_runnbadchannelsC_depth1_HF;
@@ -1082,6 +1130,19 @@ private:
   TH1F* h_runbadrate_depth2_HF;
   TH1F* h_runbadrateC_depth2_HF;
   TH1F* h_runbadrate0_depth2_HF;
+  TH1F* h_nbadchannels_depth3_HF;
+  TH1F* h_runnbadchannels_depth3_HF;
+  TH1F* h_runnbadchannelsC_depth3_HF;
+  TH1F* h_runbadrate_depth3_HF;
+  TH1F* h_runbadrateC_depth3_HF;
+  TH1F* h_runbadrate0_depth3_HF;
+  TH1F* h_nbadchannels_depth4_HF;
+  TH1F* h_runnbadchannels_depth4_HF;
+  TH1F* h_runnbadchannelsC_depth4_HF;
+  TH1F* h_runbadrate_depth4_HF;
+  TH1F* h_runbadrateC_depth4_HF;
+  TH1F* h_runbadrate0_depth4_HF;
+  //-----------------------------------
   TH1F* h_bcnnbadchannels_depth1_HB;
   TH1F* h_bcnnbadchannels_depth2_HB;
   TH1F* h_bcnnbadchannels_depth1_HE;
@@ -1090,6 +1151,7 @@ private:
   TH1F* h_bcnnbadchannels_depth4_HO;
   TH1F* h_bcnnbadchannels_depth1_HF;
   TH1F* h_bcnnbadchannels_depth2_HF;
+  //-----------------------------------
   TH1F* h_bcnbadrate0_depth1_HB;
   TH1F* h_bcnbadrate0_depth2_HB;
   TH1F* h_bcnbadrate0_depth1_HE;
@@ -1098,6 +1160,7 @@ private:
   TH1F* h_bcnbadrate0_depth4_HO;
   TH1F* h_bcnbadrate0_depth1_HF;
   TH1F* h_bcnbadrate0_depth2_HF;
+  //-----------------------------------
   TH1F* h_Amplitude_forCapIdErrors_HB1;
   TH1F* h_Amplitude_forCapIdErrors_HB2;
   TH1F* h_Amplitude_forCapIdErrors_HE1;
@@ -1114,6 +1177,7 @@ private:
   TH1F* h_Amplitude_notCapIdErrors_HF1;
   TH1F* h_Amplitude_notCapIdErrors_HF2;
   TH1F* h_Amplitude_notCapIdErrors_HO4;
+  //-----------------------------------
   /////////////////////////////////////////////
   TH1F* h_corrforxaMAIN_HE;
   TH1F* h_corrforxaMAIN0_HE;
@@ -2256,6 +2320,19 @@ private:
   TH1F* h_sigLayer1RADDAM6_HED2;
   TH1F* h_sigLayer2RADDAM5_HED2;
   TH1F* h_sigLayer2RADDAM6_HED2;
+  TH2F* h2_TSnVsAyear2023_HB;
+  TH2F* h2_TSnVsAyear2023_HE;
+  TH2F* h2_TSnVsAyear2023_HF;
+  TH2F* h2_TSnVsAyear2023_HO;
+  TH1F* h1_TSnVsAyear2023_HB;
+  TH1F* h1_TSnVsAyear2023_HE;
+  TH1F* h1_TSnVsAyear2023_HF;
+  TH1F* h1_TSnVsAyear2023_HO;
+  TH1F* h1_TSnVsAyear20230_HB;
+  TH1F* h1_TSnVsAyear20230_HE;
+  TH1F* h1_TSnVsAyear20230_HF;
+  TH1F* h1_TSnVsAyear20230_HO;
+
   int calibcapiderror[ndepth][neta][nphi];
   float calibt[ndepth][neta][nphi];
   double caliba[ndepth][neta][nphi];
@@ -2750,7 +2827,7 @@ void CMTRawAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
     }  // new lumi
     else {
       nevcounter0 = 0;
-    }              //else new lumi
+    }  //else new lumi
     ++nevcounter;  // #ev in LS
                    //////
     if (flagtoaskrunsorls_ == 0) {
@@ -2779,10 +2856,6 @@ void CMTRawAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
       int mcountmin3 = 0;
       int mcountmin6 = 0;
       int mcountmin8 = 0;
-      int pnnbins1 = 0;
-      int pnnbins3 = 0;
-      int pnnbins6 = 0;
-      int pnnbins8 = 0;
       int pnnmin1 = 999999999;
       int pnnmin3 = 999999999;
       int pnnmin6 = 999999999;
@@ -3212,7 +3285,7 @@ void CMTRawAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
                       h_2DsumADCAmplLSdepth7HEu->Fill(double(ieta), double(k3), bbbc);
                     h_2D0sumADCAmplLSdepth7HEu->Fill(double(ieta), double(k3), bbb1);
                   }  //if(k1+1  ==7)
-                }    //if(k0==1) =HE
+                }  //if(k0==1) =HE
                 // HF:
                 if (k0 == 3) {
                   // HFdepth1
@@ -3912,7 +3985,7 @@ void CMTRawAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
                 }
                 ///
               }  //if(sumEstimator6[k0][k1][k2][k3] != 0.
-            }    //for k2
+            }  //for k2
             // occupancy distributions for error-A:
             // HB
             if (k0 == 0 && k1 == 0) {
@@ -3920,7 +3993,6 @@ void CMTRawAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
                 if (pcountmin1 < pnnmin1)
                   pnnmin1 = pcountmin1;
                 pcountmin1 = 0;
-                pnnbins1++;
               }
               if (mcountmin1 > 0) {
                 if (mcountmin1 < mnnmin1)
@@ -3935,7 +4007,6 @@ void CMTRawAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
                 if (pcountmin3 < pnnmin3)
                   pnnmin3 = pcountmin3;
                 pcountmin3 = 0;
-                pnnbins3++;
               }
               if (mcountmin3 > 0) {
                 if (mcountmin3 < mnnmin3)
@@ -3950,7 +4021,6 @@ void CMTRawAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
                 if (pcountmin8 < pnnmin8)
                   pnnmin8 = pcountmin8;
                 pcountmin8 = 0;
-                pnnbins8++;
               }
               if (mcountmin8 > 0) {
                 if (mcountmin8 < mnnmin8)
@@ -3965,7 +4035,6 @@ void CMTRawAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
                 if (pcountmin6 < pnnmin6)
                   pnnmin6 = pcountmin6;
                 pcountmin6 = 0;
-                pnnbins6++;
               }
               if (mcountmin6 > 0) {
                 if (mcountmin6 < mnnmin6)
@@ -3976,8 +4045,8 @@ void CMTRawAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
             }  //
 
           }  //for k3
-        }    //for k1
-      }      //for k0
+        }  //for k1
+      }  //for k0
       ///////  int sub= cell.subdet();  1-HB, 2-HE, 3-HO, 4-HF
       ////////////            k0(sub): =0 HB; =1 HE; =2 HO; =3 HF;
       ////////////         k1(depth-1): = 0 - 3 or depth: = 1 - 4;
@@ -4034,9 +4103,9 @@ void CMTRawAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
               sumEstimator6[k0][k1][k2][k3] = 0.;
               sum0Estimator[k0][k1][k2][k3] = 0.;
             }  //for
-          }    //for
-        }      //for
-      }        //for
+          }  //for
+        }  //for
+      }  //for
 
       //------------------------------------------------------                        averSIGNAL
       averSIGNALoccupancy_HB /= float(nevcounter0);
@@ -4119,7 +4188,7 @@ void CMTRawAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
 
       //------------------------------------------------------
     }  //if(nevcounter0 != 0)
-       //  POINT1
+    //  POINT1
 
     /////////////////////////////////////////////////// over DigiCollections:
     // for upgrade:
@@ -4141,11 +4210,11 @@ void CMTRawAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
             for (int k0 = 0; k0 < nsub; k0++) {
               badchannels[k0][k1][k2][k3] = 0;
             }  //for
-          }    //if
+          }  //if
 
         }  //for
-      }    //for
-    }      //for
+      }  //for
+    }  //for
     for (int k0 = 0; k0 < nsub; k0++) {
       for (int k1 = 0; k1 < ndepth; k1++) {
         for (int k2 = 0; k2 < neta; k2++) {
@@ -4166,9 +4235,9 @@ void CMTRawAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
             recNoiseEnergy2[k0][k1][k2][k3] = 0.;
 
           }  //k3
-        }    //k2
-      }      //k1
-    }        //k0
+        }  //k2
+      }  //k1
+    }  //k0
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////
     ///////////////////       END of GENERAL NULLING       ////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -4219,10 +4288,10 @@ void CMTRawAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
                   if (i > 1 && i < 6)
                     signal3[3][ieta + 41][iphi] += TS_data[i];
                 }  // TS
-            }      // if(recordHistoes_ && studyCalibCellsHist_)
-          }        // for
-        }          // hf.isValid
-      }            // end flagupgrade
+            }  // if(recordHistoes_ && studyCalibCellsHist_)
+          }  // for
+        }  // hf.isValid
+      }  // end flagupgrade
 
       ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// HFQIE10 DigiCollection
       //////////////////////////////////////////////////////////////////////////////////////////////////upgradeHF upgradehf
@@ -4288,11 +4357,11 @@ void CMTRawAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
               h_numberofhitsHFtest->Fill(nnnnnnTS);
               h_AmplitudeHFtest->Fill(amplitudefullTSs);
             }  // if(recordHistoes_ && studyCalibCellsHist_)
-          }    // for
+          }  // for
           h_totalAmplitudeHF->Fill(totalAmplitudeHF);
           h_totalAmplitudeHFperEvent->Fill(float(eventcounter), totalAmplitudeHF);
         }  // hfqie10.isValid
-      }    // end flagupgrade
+      }  // end flagupgrade
       //end upgrade
       //
       //
@@ -4394,7 +4463,7 @@ void CMTRawAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
             }  //if(recordHistoes_ && studyCalibCellsHist_)
             if (recordNtuples_ && nevent50 < maxNeventsInNtuple_) {
             }  //if(recordNtuples_)
-          }    // for HBHE digis
+          }  // for HBHE digis
           if (totalAmplitudeHB != 0.) {
             h_numberofhitsHBtest->Fill(nnnnnnTSHB);
             h_totalAmplitudeHB->Fill(totalAmplitudeHB);
@@ -4406,7 +4475,7 @@ void CMTRawAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
             h_totalAmplitudeHEperEvent->Fill(float(eventcounter), totalAmplitudeHE);
           }
         }  //hbhe.isValid
-      }    // end flagupgrade
+      }  // end flagupgrade
       //---------------------------------------------------------------
       //////////////////////////////////////////////////////////////////////////////////////////////////    upgradeHBHE upgradehe       HBHE with SiPM (both >=2020)
       // upgrade:
@@ -4520,8 +4589,8 @@ void CMTRawAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
                 h_AmplitudeHEtest6->Fill(amplitudefullTSs6, 1.);
 
               }  //HE end
-            }    //if(recordHistoes_ && studyCalibCellsHist_)
-          }      // for QIE11 digis
+            }  //if(recordHistoes_ && studyCalibCellsHist_)
+          }  // for QIE11 digis
 
           if (totalAmplitudeHBQIE11 != 0.) {
             h_numberofhitsHBtest->Fill(nnnnnnTSHBQIE11);
@@ -4534,7 +4603,7 @@ void CMTRawAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
             h_totalAmplitudeHEperEvent->Fill(float(eventcounter), totalAmplitudeHEQIE11);
           }
         }  //heqie11.isValid
-      }    // end flagupgrade
+      }  // end flagupgrade
 
       ///////////////////////////////////////////////////////////////////////////////////////////////////////////////   HODigiCollection
       edm::Handle<HODigiCollection> ho;
@@ -4589,12 +4658,12 @@ void CMTRawAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
             h_AmplitudeHOtest->Fill(amplitudefullTSs);
             h_numberofhitsHOtest->Fill(nnnnnnTS);
           }  //if(recordHistoes_ && studyCalibCellsHist_)
-        }    //for HODigiCollection
+        }  //for HODigiCollection
 
         h_totalAmplitudeHO->Fill(totalAmplitudeHO);
         h_totalAmplitudeHOperEvent->Fill(float(eventcounter), totalAmplitudeHO);
       }  //ho.isValid(
-    }    // flagToUseDigiCollectionsORNot_
+    }  // flagToUseDigiCollectionsORNot_
 
     //////////////////////////////////// RecHits for phi-symmetry monitoring of calibration group:
     // AZ 04.11.2019
@@ -4655,7 +4724,7 @@ void CMTRawAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
           recNoiseEnergy1[sub - 1][mdepth - 1][ieta + 41][iphi] += energyhit;
           recNoiseEnergy2[sub - 1][mdepth - 1][ieta + 41][iphi] += pow(energyhit, 2);
         }  // hbheNoise
-      }    //hbheNoise.isValid(
+      }  //hbheNoise.isValid(
       ////////////////////////////////////////////////////// /  HBHE Noise end
 
       // HF:    HFRecHitCollection hfNoise Noise
@@ -4699,7 +4768,7 @@ void CMTRawAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
           recNoiseEnergy1[sub - 1][mdepth - 1][ieta + 41][iphi] += energyhit;
           recNoiseEnergy2[sub - 1][mdepth - 1][ieta + 41][iphi] += pow(energyhit, 2);
         }  // hfNoise
-      }    //hfNoise.isValid(
+      }  //hfNoise.isValid(
       ////////////////////////////////////////////////////// /  HF Noise end
 
       ///////////////////////////////////////////////////////////////////////////////////////////////////////////// Signal
@@ -4756,7 +4825,7 @@ void CMTRawAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
           recSignalEnergy1[sub - 1][mdepth - 1][ieta + 41][iphi] += energyhit;
           recSignalEnergy2[sub - 1][mdepth - 1][ieta + 41][iphi] += pow(energyhit, 2);
         }  // hbheSignal
-      }    //hbheSignal.isValid(
+      }  //hbheSignal.isValid(
       ////////////////////////////////////////////////////// /  HBHE Signal end
 
       // HF:    HFRecHitCollection hfSignal Signal
@@ -4800,7 +4869,7 @@ void CMTRawAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
           recSignalEnergy1[sub - 1][mdepth - 1][ieta + 41][iphi] += energyhit;
           recSignalEnergy2[sub - 1][mdepth - 1][ieta + 41][iphi] += pow(energyhit, 2);
         }  // hfSignal
-      }    //hfSignal.isValid(
+      }  //hfSignal.isValid(
       //////////////////////////////////////////////////////  HF Signal end
 
       //////////////////////////////////////////////////////
@@ -4842,7 +4911,7 @@ void CMTRawAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
                     std::cout << "==== nsumoverphi = " << nsumoverphi << "  sumoverphi = " << sumoverphi
                               << "  k1 = " << k1 << "  k2 = " << k2 << " kkk = " << kkk << "  k3 = " << k3 << std::endl;
                 }  //if != 0
-              }    //k3
+              }  //k3
               // PHI normalization into new massive && filling plots:
               for (int k3 = 0; k3 < nphi; k3++) {
                 if (nsumoverphi != 0) {
@@ -4915,11 +4984,11 @@ void CMTRawAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
                     h_maprphinorm0_HE7->Fill(double(kkk), double(k3), 1.);
                   }
                 }  //if nsumoverphi != 0
-              }    //k3
-            }      //k2
-          }        //k1
-        }          //if k0 == 1 HE
-      }            //k0
+              }  //k3
+            }  //k2
+          }  //k1
+        }  //if k0 == 1 HE
+      }  //k0
       //	  //	  //	  //	  //	  //	    //	  //	  //	  //	  //	  //	    //	  //	  //	  //	  //	  //	    //	  //	  //	  //	  //	  //
       //	  //	  //	  //	  //	  //	  // amplitudechannel amplitudechannel amplitudechannel: calibration group, Iterative method, coding start 11.11.2019
       for (int k0 = 0; k0 < nsub; k0++) {
@@ -4953,9 +5022,9 @@ void CMTRawAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
                   h_amplitudechannel2_HB4->Fill(double(kkk), double(k3), amplitudechannel2[k0][k1][k2][k3]);
                 }
               }  //k3
-            }    //k2
-          }      //k1
-        }        //if k0 == 0 HB
+            }  //k2
+          }  //k1
+        }  //if k0 == 0 HB
 
         // HE:
         if (k0 == 1) {
@@ -5002,9 +5071,9 @@ void CMTRawAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
                   h_amplitudechannel2_HE7->Fill(double(kkk), double(k3), amplitudechannel2[k0][k1][k2][k3]);
                 }
               }  //k3
-            }    //k2
-          }      //k1
-        }        //if k0 == 1 HE
+            }  //k2
+          }  //k1
+        }  //if k0 == 1 HE
 
         // HF: 4 depthes for Digis and only 2 - for Reco !!!
         if (k0 == 3) {
@@ -5036,9 +5105,9 @@ void CMTRawAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
                   h_amplitudechannel2_HF4->Fill(double(kkk), double(k3), amplitudechannel2[k0][k1][k2][k3]);
                 }
               }  //k3
-            }    //k2
-          }      //k1
-        }        //if k0 == 3 HF
+            }  //k2
+          }  //k1
+        }  //if k0 == 3 HF
 
       }  //k0
 
@@ -5097,9 +5166,9 @@ void CMTRawAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
                   h_recNoiseEnergy2_HB4->Fill(double(kkk), double(k3), recNoiseEnergy2[k0][k1][k2][k3]);
                 }
               }  //k3
-            }    //k2
-          }      //k1
-        }        //if k0 == 0 HB
+            }  //k2
+          }  //k1
+        }  //if k0 == 0 HB
 
         // HE:
         if (k0 == 1) {
@@ -5167,9 +5236,9 @@ void CMTRawAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
                   h_recNoiseEnergy2_HE7->Fill(double(kkk), double(k3), recNoiseEnergy2[k0][k1][k2][k3]);
                 }
               }  //k3
-            }    //k2
-          }      //k1
-        }        //if k0 == 1 HE
+            }  //k2
+          }  //k1
+        }  //if k0 == 1 HE
 
         // HF: 4 depthes for Digis and only 2 - for Reco !!! ('ve tried to enter 4 for reco since 31.10.2021 AZ)
         if (k0 == 3) {
@@ -5214,9 +5283,9 @@ void CMTRawAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
                   h_recNoiseEnergy2_HF4->Fill(double(kkk), double(k3), recNoiseEnergy2[k0][k1][k2][k3]);
                 }
               }  //k3
-            }    //k2
-          }      //k1
-        }        //if k0 == 3 HF
+            }  //k2
+          }  //k1
+        }  //if k0 == 3 HF
 
       }  //k0
 
@@ -5236,9 +5305,9 @@ void CMTRawAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
               // N phi sectors w/ digihits
               ++mapRADDAM_HED20[k1][k2];
             }  //if
-          }    //for
-        }      //for
-      }        //for
+          }  //for
+        }  //for
+      }  //for
 
       //////////////---------------------------------------------------------------------------------  2D treatment, zraddam2.cc script
       for (int k1 = 0; k1 < ndepth; k1++) {
@@ -5261,8 +5330,8 @@ void CMTRawAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
             //////////////-----------------------  aver per N-phi_sectors ???
             mapRADDAM_HED2[k1][k2] /= mapRADDAM_HED20[k1][k2];
           }  // if(mapRADDAM_HED20[k1][k2] != 0
-        }    //for
-      }      //for
+        }  //for
+      }  //for
       ///////////////////////////////////////////
       for (int k1 = 0; k1 < ndepth; k1++) {
         for (int k2 = 0; k2 < neta; k2++) {
@@ -5297,9 +5366,9 @@ void CMTRawAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
                 h_sigLayer2RADDAM6_HED2->Fill(double(kkk - 41), 1.);
               }
             }  //if
-          }    // if(k2!=25 && k2!=56
-        }      //for
-      }        //for
+          }  // if(k2!=25 && k2!=56
+        }  //for
+      }  //for
 
       //////////////---------------------------------------------------------------------------------  3D treatment, zraddam1.cc script
 
@@ -5335,12 +5404,12 @@ void CMTRawAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
                   h_sigLayer2RADDAM6_HE->Fill(double(kkk - 41), 1.);
                 }
               }  //if
-            }    //for
-          }      // if(k2!=25 && k2!=56
-        }        //for
-      }          //for
-                 //
-                 ////////////////////////////////////////////////////////////////////////////////////////////////
+            }  //for
+          }  // if(k2!=25 && k2!=56
+        }  //for
+      }  //for
+      //
+      ////////////////////////////////////////////////////////////////////////////////////////////////
       for (int k1 = 0; k1 < ndepth; k1++) {
         for (int k2 = 0; k2 < neta; k2++) {
           mapRADDAM_HED2[k1][k2] = 0.;
@@ -5349,8 +5418,8 @@ void CMTRawAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
             mapRADDAM_HE[k1][k2][k3] = 0.;
             mapRADDAM0_HE[k1][k2][k3] = 0;
           }  //for
-        }    //for
-      }      //for
+        }  //for
+      }  //for
 
       //////////////////////////////////END of RADDAM treatment:
     }  // END TREATMENT : if(flagLaserRaddam_ == 1
@@ -5358,9 +5427,6 @@ void CMTRawAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
 
     //////////////////////////////////////////////////////////////////////////
     //	  //	  //	  //	  //	  //	  //sumamplitudes:
-    int testcount1 = 0;
-    int testcount2 = 0;
-    int testcount3 = 0;
     ////////////////////////////////////////  // k0, k2, k3 loops LOOPS  //////////   /////  ///// NO k1 loop over depthes !!!
     for (int k0 = 0; k0 < nsub; k0++) {
       int sumofchannels = 0;
@@ -5369,13 +5435,6 @@ void CMTRawAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
       double sumamplitudesubdet0 = 0.;
       for (int k2 = 0; k2 < neta; k2++) {
         for (int k3 = 0; k3 < nphi; k3++) {
-          if (amplitudechannel[k0][0][k2][k3] != 0. && amplitudechannel[k0][1][k2][k3] != 0.)
-            testcount1++;
-          if (amplitudechannel[k0][0][k2][k3] != 0. && amplitudechannel[k0][1][k2][k3] == 0.)
-            testcount2++;
-          if (amplitudechannel[k0][0][k2][k3] == 0. && amplitudechannel[k0][1][k2][k3] != 0.)
-            testcount3++;
-
           // HB
           if (k0 == 0) {
             double sumamplitudechannel_HB = amplitudechannel[k0][0][k2][k3] + amplitudechannel[k0][1][k2][k3];
@@ -5437,7 +5496,7 @@ void CMTRawAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
           }  //
 
         }  //k3
-      }    //k2
+      }  //k2
       //  }//k1
       // SA of each sub-detector DONE. Then: summarize or find maximum throught events of LS
       if (k0 == 0) {
@@ -5466,9 +5525,9 @@ void CMTRawAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
                 h_2D0Ataildepth2_HB->Fill(double(ieta), double(k3), 1.);
               }
             }  //for
-          }    //for
-        }      //>60000
-      }        //HB
+          }  //for
+        }  //>60000
+      }  //HB
       if (k0 == 1) {
         h_eventamplitude_HE->Fill((sumamplitudesubdet + sumamplitudesubdet0));
         h_eventoccupancy_HE->Fill((sumofchannels + sumofchannels0));
@@ -5505,7 +5564,7 @@ void CMTRawAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
         averNOSIGNALoccupancy_HF += sumofchannels0;
         averNOSIGNALsumamplitude_HF += sumamplitudesubdet0;
       }  //HF
-    }    //k0
+    }  //k0
 
     ///////////////////// ///////////////////// //////////////////////////////////////////
     ///////////////////////////////////////////////  for zRunRatio34.C & zRunNbadchan.C scripts:
@@ -5527,7 +5586,7 @@ void CMTRawAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
               if (badchannels[k0][k1][k2][k3] != 0)
                 ++nbadchannels;
             }  //k3
-          }    //k2
+          }  //k2
           //////////
           //HB
           if (k0 == 0) {
@@ -5556,6 +5615,28 @@ void CMTRawAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
               h_bcnnbadchannels_depth2_HB->Fill(float(bcn), float(nbadchannels));
               h_runbadrate0_depth2_HB->Fill(float(eeeeee), 1.);
               h_bcnbadrate0_depth2_HB->Fill(float(bcn), 1.);
+            }
+            if (k1 == 2) {
+              h_nbadchannels_depth3_HB->Fill(float(nbadchannels));
+              h_runnbadchannels_depth3_HB->Fill(float(eeeeee), float(nbadchannels));
+              if (nbadchannels > 0.)
+                h_runnbadchannelsC_depth3_HB->Fill(float(eeeeee), float(nbadchannels));
+              if (nbadchannels != 0)
+                h_runbadrate_depth3_HB->Fill(float(eeeeee), 1.);
+              if (nbadchannels > 0.)
+                h_runbadrateC_depth3_HB->Fill(float(eeeeee), 1.);
+              h_runbadrate0_depth3_HB->Fill(float(eeeeee), 1.);
+            }
+            if (k1 == 3) {
+              h_nbadchannels_depth4_HB->Fill(float(nbadchannels));
+              h_runnbadchannels_depth4_HB->Fill(float(eeeeee), float(nbadchannels));
+              if (nbadchannels > 0.)
+                h_runnbadchannelsC_depth4_HB->Fill(float(eeeeee), float(nbadchannels));
+              if (nbadchannels != 0)
+                h_runbadrate_depth4_HB->Fill(float(eeeeee), 1.);
+              if (nbadchannels > 0.)
+                h_runbadrateC_depth4_HB->Fill(float(eeeeee), 1.);
+              h_runbadrate0_depth4_HB->Fill(float(eeeeee), 1.);
             }
           }  ////if(k0 == 0)
           //HE
@@ -5598,6 +5679,50 @@ void CMTRawAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
               h_bcnnbadchannels_depth3_HE->Fill(float(bcn), float(nbadchannels));
               h_runbadrate0_depth3_HE->Fill(float(eeeeee), 1.);
               h_bcnbadrate0_depth3_HE->Fill(float(bcn), 1.);
+            }
+            if (k1 == 3) {
+              h_nbadchannels_depth4_HE->Fill(float(nbadchannels));
+              h_runnbadchannels_depth4_HE->Fill(float(eeeeee), float(nbadchannels));
+              if (nbadchannels > 0.)
+                h_runnbadchannelsC_depth4_HE->Fill(float(eeeeee), float(nbadchannels));
+              if (nbadchannels != 0)
+                h_runbadrate_depth4_HE->Fill(float(eeeeee), 1.);
+              if (nbadchannels > 0.)
+                h_runbadrateC_depth4_HE->Fill(float(eeeeee), 1.);
+              h_runbadrate0_depth4_HE->Fill(float(eeeeee), 1.);
+            }
+            if (k1 == 4) {
+              h_nbadchannels_depth5_HE->Fill(float(nbadchannels));
+              h_runnbadchannels_depth5_HE->Fill(float(eeeeee), float(nbadchannels));
+              if (nbadchannels > 0.)
+                h_runnbadchannelsC_depth5_HE->Fill(float(eeeeee), float(nbadchannels));
+              if (nbadchannels != 0)
+                h_runbadrate_depth5_HE->Fill(float(eeeeee), 1.);
+              if (nbadchannels > 0.)
+                h_runbadrateC_depth5_HE->Fill(float(eeeeee), 1.);
+              h_runbadrate0_depth5_HE->Fill(float(eeeeee), 1.);
+            }
+            if (k1 == 5) {
+              h_nbadchannels_depth6_HE->Fill(float(nbadchannels));
+              h_runnbadchannels_depth6_HE->Fill(float(eeeeee), float(nbadchannels));
+              if (nbadchannels > 0.)
+                h_runnbadchannelsC_depth6_HE->Fill(float(eeeeee), float(nbadchannels));
+              if (nbadchannels != 0)
+                h_runbadrate_depth6_HE->Fill(float(eeeeee), 1.);
+              if (nbadchannels > 0.)
+                h_runbadrateC_depth6_HE->Fill(float(eeeeee), 1.);
+              h_runbadrate0_depth6_HE->Fill(float(eeeeee), 1.);
+            }
+            if (k1 == 6) {
+              h_nbadchannels_depth7_HE->Fill(float(nbadchannels));
+              h_runnbadchannels_depth7_HE->Fill(float(eeeeee), float(nbadchannels));
+              if (nbadchannels > 0.)
+                h_runnbadchannelsC_depth7_HE->Fill(float(eeeeee), float(nbadchannels));
+              if (nbadchannels != 0)
+                h_runbadrate_depth7_HE->Fill(float(eeeeee), 1.);
+              if (nbadchannels > 0.)
+                h_runbadrateC_depth7_HE->Fill(float(eeeeee), 1.);
+              h_runbadrate0_depth7_HE->Fill(float(eeeeee), 1.);
             }
           }  ////if(k0 == 1)
           //HO
@@ -5644,11 +5769,33 @@ void CMTRawAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
               h_runbadrate0_depth2_HF->Fill(float(eeeeee), 1.);
               h_bcnbadrate0_depth2_HF->Fill(float(bcn), 1.);
             }
+            if (k1 == 2) {
+              h_nbadchannels_depth3_HF->Fill(float(nbadchannels));
+              h_runnbadchannels_depth3_HF->Fill(float(eeeeee), float(nbadchannels));
+              if (nbadchannels > 0.)
+                h_runnbadchannelsC_depth3_HF->Fill(float(eeeeee), float(nbadchannels));
+              if (nbadchannels != 0)
+                h_runbadrate_depth3_HF->Fill(float(eeeeee), 1.);
+              if (nbadchannels > 0.)
+                h_runbadrateC_depth3_HF->Fill(float(eeeeee), 1.);
+              h_runbadrate0_depth3_HF->Fill(float(eeeeee), 1.);
+            }
+            if (k1 == 3) {
+              h_nbadchannels_depth4_HF->Fill(float(nbadchannels));
+              h_runnbadchannels_depth4_HF->Fill(float(eeeeee), float(nbadchannels));
+              if (nbadchannels > 0.)
+                h_runnbadchannelsC_depth4_HF->Fill(float(eeeeee), float(nbadchannels));
+              if (nbadchannels != 0)
+                h_runbadrate_depth4_HF->Fill(float(eeeeee), 1.);
+              if (nbadchannels > 0.)
+                h_runbadrateC_depth4_HF->Fill(float(eeeeee), 1.);
+              h_runbadrate0_depth4_HF->Fill(float(eeeeee), 1.);
+            }
           }  ////if(k0 == 3)
 
           //////////
         }  //k1
-      }    //k0
+      }  //k0
       ////////////
     }  //if(recordHistoes_&& studyRunDependenceHist_)
 
@@ -5711,7 +5858,7 @@ void CMTRawAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
               double aaaaaa = (ii + 1) - aveamplitude;
               double aaaaaa2 = aaaaaa * aaaaaa;
               rmsamp += (aaaaaa2 * ampldefault);  // fC
-            }                                     //for 2
+            }  //for 2
             double rmsamplitude = -100.;
             if ((amplitude > 0 && rmsamp > 0) || (amplitude < 0 && rmsamp < 0))
               rmsamplitude = sqrt(rmsamp / amplitude);
@@ -5758,14 +5905,14 @@ void CMTRawAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
               calibcapiderror[cal_det - 1][ieta + 41][iphi] = 100;
 
           }  // if(cal_det>0 && cal_det<5
-        }    //if(recordHistoes_ && studyCalibCellsHist_)
+        }  //if(recordHistoes_ && studyCalibCellsHist_)
         /////////////////////////////////////////////
 
         if (recordNtuples_ && nevent50 < maxNeventsInNtuple_) {
         }  //if(recordNtuples_) {
 
       }  //for(HcalCalibDigiCollection
-    }    //if(calib.isValid(
+    }  //if(calib.isValid(
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     if (recordHistoes_ && studyCalibCellsHist_) {
       ////////////////////////////////////for loop for zcalib.C and zgain.C scripts:
@@ -6063,8 +6210,8 @@ void CMTRawAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
             }  // if(signal[k1][k2][k3]>0.)
             //////////
           }  // k3
-        }    // k2
-      }      // k1
+        }  // k2
+      }  // k1
 
       /////
 
@@ -6117,6 +6264,12 @@ void CMTRawAnalyzer::beginJob() {
     h_amplFine = fs_->make<TH1F>("h_amplFine", " ", 100, -2., 98.);
 
     h_errorGeneral_HB = fs_->make<TH1F>("h_errorGeneral_HB", " ", 5, 0., 5.);
+    h_nadccounts8_HB = fs_->make<TH1F>("h_nadccounts8_HB", " ", 257, 0., 256.);
+    h_nadccounts6_HB = fs_->make<TH1F>("h_nadccounts6_HB", " ", 257, 0., 256.);
+    h_nadccounts4_HB = fs_->make<TH1F>("h_nadccounts4_HB", " ", 257, 0., 256.);
+    h_nadccounts3_HB = fs_->make<TH1F>("h_nadccounts3_HB", " ", 257, 0., 256.);
+    h_nadccounts2_HB = fs_->make<TH1F>("h_nadccounts2_HB", " ", 257, 0., 256.);
+    h_nadccounts0_HB = fs_->make<TH1F>("h_nadccounts0_HB", " ", 257, 0., 256.);
     h_error1_HB = fs_->make<TH1F>("h_error1_HB", " ", 5, 0., 5.);
     h_error2_HB = fs_->make<TH1F>("h_error2_HB", " ", 5, 0., 5.);
     h_error3_HB = fs_->make<TH1F>("h_error3_HB", " ", 5, 0., 5.);
@@ -6136,6 +6289,12 @@ void CMTRawAnalyzer::beginJob() {
     h_repetedcapid_HB = fs_->make<TH1F>("h_repetedcapid_HB", " ", 5, 0., 5.);
 
     h_errorGeneral_HE = fs_->make<TH1F>("h_errorGeneral_HE", " ", 5, 0., 5.);
+    h_nadccounts8_HE = fs_->make<TH1F>("h_nadccounts8_HE", " ", 257, 0., 256.);
+    h_nadccounts6_HE = fs_->make<TH1F>("h_nadccounts6_HE", " ", 257, 0., 256.);
+    h_nadccounts4_HE = fs_->make<TH1F>("h_nadccounts4_HE", " ", 257, 0., 256.);
+    h_nadccounts3_HE = fs_->make<TH1F>("h_nadccounts3_HE", " ", 257, 0., 256.);
+    h_nadccounts2_HE = fs_->make<TH1F>("h_nadccounts2_HE", " ", 257, 0., 256.);
+    h_nadccounts0_HE = fs_->make<TH1F>("h_nadccounts0_HE", " ", 257, 0., 256.);
     h_error1_HE = fs_->make<TH1F>("h_error1_HE", " ", 5, 0., 5.);
     h_error2_HE = fs_->make<TH1F>("h_error2_HE", " ", 5, 0., 5.);
     h_error3_HE = fs_->make<TH1F>("h_error3_HE", " ", 5, 0., 5.);
@@ -6904,56 +7063,112 @@ void CMTRawAnalyzer::beginJob() {
     float bac2 = bac + 1.;
     // bac,         1.,     bac2  );
 
-    h_nbadchannels_depth1_HB = fs_->make<TH1F>("h_nbadchannels_depth1_HB", " ", 100, 1., 3001.);
+    h_nbadchannels_depth1_HB = fs_->make<TH1F>("h_nbadchannels_depth1_HB", " ", 30, 1., 31.);
     h_runnbadchannels_depth1_HB = fs_->make<TH1F>("h_runnbadchannels_depth1_HB", " ", bac, 1., bac2);
     h_runnbadchannelsC_depth1_HB = fs_->make<TH1F>("h_runnbadchannelsC_depth1_HB", " ", bac, 1., bac2);
     h_runbadrate_depth1_HB = fs_->make<TH1F>("h_runbadrate_depth1_HB", " ", bac, 1., bac2);
     h_runbadrateC_depth1_HB = fs_->make<TH1F>("h_runbadrateC_depth1_HB", " ", bac, 1., bac2);
     h_runbadrate0_depth1_HB = fs_->make<TH1F>("h_runbadrate0_depth1_HB", " ", bac, 1., bac2);
 
-    h_nbadchannels_depth2_HB = fs_->make<TH1F>("h_nbadchannels_depth2_HB", " ", 100, 1., 501.);
+    h_nbadchannels_depth2_HB = fs_->make<TH1F>("h_nbadchannels_depth2_HB", " ", 30, 1., 31.);
     h_runnbadchannels_depth2_HB = fs_->make<TH1F>("h_runnbadchannels_depth2_HB", " ", bac, 1., bac2);
     h_runnbadchannelsC_depth2_HB = fs_->make<TH1F>("h_runnbadchannelsC_depth2_HB", " ", bac, 1., bac2);
     h_runbadrate_depth2_HB = fs_->make<TH1F>("h_runbadrate_depth2_HB", " ", bac, 1., bac2);
     h_runbadrateC_depth2_HB = fs_->make<TH1F>("h_runbadrateC_depth2_HB", " ", bac, 1., bac2);
     h_runbadrate0_depth2_HB = fs_->make<TH1F>("h_runbadrate0_depth2_HB", " ", bac, 1., bac2);
 
-    h_nbadchannels_depth1_HE = fs_->make<TH1F>("h_nbadchannels_depth1_HE", " ", 100, 1., 3001.);
+    h_nbadchannels_depth3_HB = fs_->make<TH1F>("h_nbadchannels_depth3_HB", " ", 30, 1., 31.);
+    h_runnbadchannels_depth3_HB = fs_->make<TH1F>("h_runnbadchannels_depth3_HB", " ", bac, 1., bac2);
+    h_runnbadchannelsC_depth3_HB = fs_->make<TH1F>("h_runnbadchannelsC_depth3_HB", " ", bac, 1., bac2);
+    h_runbadrate_depth3_HB = fs_->make<TH1F>("h_runbadrate_depth3_HB", " ", bac, 1., bac2);
+    h_runbadrateC_depth3_HB = fs_->make<TH1F>("h_runbadrateC_depth3_HB", " ", bac, 1., bac2);
+    h_runbadrate0_depth3_HB = fs_->make<TH1F>("h_runbadrate0_depth3_HB", " ", bac, 1., bac2);
+
+    h_nbadchannels_depth4_HB = fs_->make<TH1F>("h_nbadchannels_depth4_HB", " ", 30, 1., 31.);
+    h_runnbadchannels_depth4_HB = fs_->make<TH1F>("h_runnbadchannels_depth4_HB", " ", bac, 1., bac2);
+    h_runnbadchannelsC_depth4_HB = fs_->make<TH1F>("h_runnbadchannelsC_depth4_HB", " ", bac, 1., bac2);
+    h_runbadrate_depth4_HB = fs_->make<TH1F>("h_runbadrate_depth4_HB", " ", bac, 1., bac2);
+    h_runbadrateC_depth4_HB = fs_->make<TH1F>("h_runbadrateC_depth4_HB", " ", bac, 1., bac2);
+    h_runbadrate0_depth4_HB = fs_->make<TH1F>("h_runbadrate0_depth4_HB", " ", bac, 1., bac2);
+
+    h_nbadchannels_depth1_HE = fs_->make<TH1F>("h_nbadchannels_depth1_HE", " ", 30, 1., 31.);
     h_runnbadchannels_depth1_HE = fs_->make<TH1F>("h_runnbadchannels_depth1_HE", " ", bac, 1., bac2);
     h_runnbadchannelsC_depth1_HE = fs_->make<TH1F>("h_runnbadchannelsC_depth1_HE", " ", bac, 1., bac2);
     h_runbadrate_depth1_HE = fs_->make<TH1F>("h_runbadrate_depth1_HE", " ", bac, 1., bac2);
     h_runbadrateC_depth1_HE = fs_->make<TH1F>("h_runbadrateC_depth1_HE", " ", bac, 1., bac2);
     h_runbadrate0_depth1_HE = fs_->make<TH1F>("h_runbadrate0_depth1_HE", " ", bac, 1., bac2);
 
-    h_nbadchannels_depth2_HE = fs_->make<TH1F>("h_nbadchannels_depth2_HE", " ", 100, 1., 3001.);
+    h_nbadchannels_depth2_HE = fs_->make<TH1F>("h_nbadchannels_depth2_HE", " ", 30, 1., 31.);
     h_runnbadchannels_depth2_HE = fs_->make<TH1F>("h_runnbadchannels_depth2_HE", " ", bac, 1., bac2);
     h_runnbadchannelsC_depth2_HE = fs_->make<TH1F>("h_runnbadchannelsC_depth2_HE", " ", bac, 1., bac2);
     h_runbadrate_depth2_HE = fs_->make<TH1F>("h_runbadrate_depth2_HE", " ", bac, 1., bac2);
     h_runbadrateC_depth2_HE = fs_->make<TH1F>("h_runbadrateC_depth2_HE", " ", bac, 1., bac2);
     h_runbadrate0_depth2_HE = fs_->make<TH1F>("h_runbadrate0_depth2_HE", " ", bac, 1., bac2);
 
-    h_nbadchannels_depth3_HE = fs_->make<TH1F>("h_nbadchannels_depth3_HE", " ", 100, 1., 501.);
+    h_nbadchannels_depth3_HE = fs_->make<TH1F>("h_nbadchannels_depth3_HE", " ", 30, 1., 31.);
     h_runnbadchannels_depth3_HE = fs_->make<TH1F>("h_runnbadchannels_depth3_HE", " ", bac, 1., bac2);
     h_runnbadchannelsC_depth3_HE = fs_->make<TH1F>("h_runnbadchannelsC_depth3_HE", " ", bac, 1., bac2);
     h_runbadrate_depth3_HE = fs_->make<TH1F>("h_runbadrate_depth3_HE", " ", bac, 1., bac2);
     h_runbadrateC_depth3_HE = fs_->make<TH1F>("h_runbadrateC_depth3_HE", " ", bac, 1., bac2);
     h_runbadrate0_depth3_HE = fs_->make<TH1F>("h_runbadrate0_depth3_HE", " ", bac, 1., bac2);
 
-    h_nbadchannels_depth1_HF = fs_->make<TH1F>("h_nbadchannels_depth1_HF", " ", 100, 1., 3001.);
+    h_nbadchannels_depth4_HE = fs_->make<TH1F>("h_nbadchannels_depth4_HE", " ", 30, 1., 31.);
+    h_runnbadchannels_depth4_HE = fs_->make<TH1F>("h_runnbadchannels_depth4_HE", " ", bac, 1., bac2);
+    h_runnbadchannelsC_depth4_HE = fs_->make<TH1F>("h_runnbadchannelsC_depth4_HE", " ", bac, 1., bac2);
+    h_runbadrate_depth4_HE = fs_->make<TH1F>("h_runbadrate_depth4_HE", " ", bac, 1., bac2);
+    h_runbadrateC_depth4_HE = fs_->make<TH1F>("h_runbadrateC_depth4_HE", " ", bac, 1., bac2);
+    h_runbadrate0_depth4_HE = fs_->make<TH1F>("h_runbadrate0_depth4_HE", " ", bac, 1., bac2);
+
+    h_nbadchannels_depth5_HE = fs_->make<TH1F>("h_nbadchannels_depth5_HE", " ", 30, 1., 31.);
+    h_runnbadchannels_depth5_HE = fs_->make<TH1F>("h_runnbadchannels_depth5_HE", " ", bac, 1., bac2);
+    h_runnbadchannelsC_depth5_HE = fs_->make<TH1F>("h_runnbadchannelsC_depth5_HE", " ", bac, 1., bac2);
+    h_runbadrate_depth5_HE = fs_->make<TH1F>("h_runbadrate_depth5_HE", " ", bac, 1., bac2);
+    h_runbadrateC_depth5_HE = fs_->make<TH1F>("h_runbadrateC_depth5_HE", " ", bac, 1., bac2);
+    h_runbadrate0_depth5_HE = fs_->make<TH1F>("h_runbadrate0_depth5_HE", " ", bac, 1., bac2);
+
+    h_nbadchannels_depth6_HE = fs_->make<TH1F>("h_nbadchannels_depth6_HE", " ", 30, 1., 31.);
+    h_runnbadchannels_depth6_HE = fs_->make<TH1F>("h_runnbadchannels_depth6_HE", " ", bac, 1., bac2);
+    h_runnbadchannelsC_depth6_HE = fs_->make<TH1F>("h_runnbadchannelsC_depth6_HE", " ", bac, 1., bac2);
+    h_runbadrate_depth6_HE = fs_->make<TH1F>("h_runbadrate_depth6_HE", " ", bac, 1., bac2);
+    h_runbadrateC_depth6_HE = fs_->make<TH1F>("h_runbadrateC_depth6_HE", " ", bac, 1., bac2);
+    h_runbadrate0_depth6_HE = fs_->make<TH1F>("h_runbadrate0_depth6_HE", " ", bac, 1., bac2);
+
+    h_nbadchannels_depth7_HE = fs_->make<TH1F>("h_nbadchannels_depth7_HE", " ", 30, 1., 31.);
+    h_runnbadchannels_depth7_HE = fs_->make<TH1F>("h_runnbadchannels_depth7_HE", " ", bac, 1., bac2);
+    h_runnbadchannelsC_depth7_HE = fs_->make<TH1F>("h_runnbadchannelsC_depth7_HE", " ", bac, 1., bac2);
+    h_runbadrate_depth7_HE = fs_->make<TH1F>("h_runbadrate_depth7_HE", " ", bac, 1., bac2);
+    h_runbadrateC_depth7_HE = fs_->make<TH1F>("h_runbadrateC_depth7_HE", " ", bac, 1., bac2);
+    h_runbadrate0_depth7_HE = fs_->make<TH1F>("h_runbadrate0_depth7_HE", " ", bac, 1., bac2);
+
+    h_nbadchannels_depth1_HF = fs_->make<TH1F>("h_nbadchannels_depth1_HF", " ", 30, 1., 31.);
     h_runnbadchannels_depth1_HF = fs_->make<TH1F>("h_runnbadchannels_depth1_HF", " ", bac, 1., bac2);
     h_runnbadchannelsC_depth1_HF = fs_->make<TH1F>("h_runnbadchannelsC_depth1_HF", " ", bac, 1., bac2);
     h_runbadrate_depth1_HF = fs_->make<TH1F>("h_runbadrate_depth1_HF", " ", bac, 1., bac2);
     h_runbadrateC_depth1_HF = fs_->make<TH1F>("h_runbadrateC_depth1_HF", " ", bac, 1., bac2);
     h_runbadrate0_depth1_HF = fs_->make<TH1F>("h_runbadrate0_depth1_HF", " ", bac, 1., bac2);
 
-    h_nbadchannels_depth2_HF = fs_->make<TH1F>("h_nbadchannels_depth2_HF", " ", 100, 1., 501.);
+    h_nbadchannels_depth2_HF = fs_->make<TH1F>("h_nbadchannels_depth2_HF", " ", 30, 1., 31.);
     h_runnbadchannels_depth2_HF = fs_->make<TH1F>("h_runnbadchannels_depth2_HF", " ", bac, 1., bac2);
     h_runnbadchannelsC_depth2_HF = fs_->make<TH1F>("h_runnbadchannelsC_depth2_HF", " ", bac, 1., bac2);
     h_runbadrate_depth2_HF = fs_->make<TH1F>("h_runbadrate_depth2_HF", " ", bac, 1., bac2);
     h_runbadrateC_depth2_HF = fs_->make<TH1F>("h_runbadrateC_depth2_HF", " ", bac, 1., bac2);
     h_runbadrate0_depth2_HF = fs_->make<TH1F>("h_runbadrate0_depth2_HF", " ", bac, 1., bac2);
 
-    h_nbadchannels_depth4_HO = fs_->make<TH1F>("h_nbadchannels_depth4_HO", " ", 100, 1., 3001.);
+    h_nbadchannels_depth3_HF = fs_->make<TH1F>("h_nbadchannels_depth3_HF", " ", 30, 1., 31.);
+    h_runnbadchannels_depth3_HF = fs_->make<TH1F>("h_runnbadchannels_depth3_HF", " ", bac, 1., bac2);
+    h_runnbadchannelsC_depth3_HF = fs_->make<TH1F>("h_runnbadchannelsC_depth3_HF", " ", bac, 1., bac2);
+    h_runbadrate_depth3_HF = fs_->make<TH1F>("h_runbadrate_depth3_HF", " ", bac, 1., bac2);
+    h_runbadrateC_depth3_HF = fs_->make<TH1F>("h_runbadrateC_depth3_HF", " ", bac, 1., bac2);
+    h_runbadrate0_depth3_HF = fs_->make<TH1F>("h_runbadrate0_depth3_HF", " ", bac, 1., bac2);
+
+    h_nbadchannels_depth4_HF = fs_->make<TH1F>("h_nbadchannels_depth4_HF", " ", 30, 1., 31.);
+    h_runnbadchannels_depth4_HF = fs_->make<TH1F>("h_runnbadchannels_depth4_HF", " ", bac, 1., bac2);
+    h_runnbadchannelsC_depth4_HF = fs_->make<TH1F>("h_runnbadchannelsC_depth4_HF", " ", bac, 1., bac2);
+    h_runbadrate_depth4_HF = fs_->make<TH1F>("h_runbadrate_depth4_HF", " ", bac, 1., bac2);
+    h_runbadrateC_depth4_HF = fs_->make<TH1F>("h_runbadrateC_depth4_HF", " ", bac, 1., bac2);
+    h_runbadrate0_depth4_HF = fs_->make<TH1F>("h_runbadrate0_depth4_HF", " ", bac, 1., bac2);
+
+    h_nbadchannels_depth4_HO = fs_->make<TH1F>("h_nbadchannels_depth4_HO", " ", 30, 1., 31.);
     h_runnbadchannels_depth4_HO = fs_->make<TH1F>("h_runnbadchannels_depth4_HO", " ", bac, 1., bac2);
     h_runnbadchannelsC_depth4_HO = fs_->make<TH1F>("h_runnbadchannelsC_depth4_HO", " ", bac, 1., bac2);
     h_runbadrate_depth4_HO = fs_->make<TH1F>("h_runbadrate_depth4_HO", " ", bac, 1., bac2);
@@ -7586,15 +7801,15 @@ void CMTRawAnalyzer::beginJob() {
     h_averNOSIGNALsumamplitude_HO = fs_->make<TH1F>("h_averNOSIGNALsumamplitude_HO", " ", bac, 1., bac2);
 
     // for channel SUM over depthes Amplitudes for each sub-detector
-    h_sumamplitudechannel_HB = fs_->make<TH1F>("h_sumamplitudechannel_HB", " ", 100, 0., 2000.);
-    h_sumamplitudechannel_HE = fs_->make<TH1F>("h_sumamplitudechannel_HE", " ", 100, 0., 3000.);
-    h_sumamplitudechannel_HF = fs_->make<TH1F>("h_sumamplitudechannel_HF", " ", 100, 0., 7000.);
+    h_sumamplitudechannel_HB = fs_->make<TH1F>("h_sumamplitudechannel_HB", " ", 100, 0., 10000.);
+    h_sumamplitudechannel_HE = fs_->make<TH1F>("h_sumamplitudechannel_HE", " ", 100, 0., 10000.);
+    h_sumamplitudechannel_HF = fs_->make<TH1F>("h_sumamplitudechannel_HF", " ", 100, 0., 10000.);
     h_sumamplitudechannel_HO = fs_->make<TH1F>("h_sumamplitudechannel_HO", " ", 100, 0., 10000.);
 
     // for event Amplitudes for each sub-detector
-    h_eventamplitude_HB = fs_->make<TH1F>("h_eventamplitude_HB", " ", 100, 0., 80000.);
-    h_eventamplitude_HE = fs_->make<TH1F>("h_eventamplitude_HE", " ", 100, 0., 100000.);
-    h_eventamplitude_HF = fs_->make<TH1F>("h_eventamplitude_HF", " ", 100, 0., 150000.);
+    h_eventamplitude_HB = fs_->make<TH1F>("h_eventamplitude_HB", " ", 100, 0., 300000.);
+    h_eventamplitude_HE = fs_->make<TH1F>("h_eventamplitude_HE", " ", 100, 0., 300000.);
+    h_eventamplitude_HF = fs_->make<TH1F>("h_eventamplitude_HF", " ", 100, 0., 300000.);
     h_eventamplitude_HO = fs_->make<TH1F>("h_eventamplitude_HO", " ", 100, 0., 250000.);
 
     // for event Occupancy for each sub-detector
@@ -7729,6 +7944,20 @@ void CMTRawAnalyzer::beginJob() {
     h_respcorr_HO = fs_->make<TH1F>("h_respcorr_HO", " ", 100, 0., 2.5);
     h_timecorr_HO = fs_->make<TH1F>("h_timecorr_HO", " ", 100, 0., 30.);
     h_lutcorr_HO = fs_->make<TH1F>("h_lutcorr_HO", " ", 100, 0., 10.);
+    //--------------------------------------------------
+    h2_TSnVsAyear2023_HB = fs_->make<TH2F>("h2_TSnVsAyear2023_HB", " ", 100, 200., 30200., 100, 0., 175.);
+    h2_TSnVsAyear2023_HE = fs_->make<TH2F>("h2_TSnVsAyear2023_HE", " ", 100, 200., 75200., 100, 0., 175.);
+    h2_TSnVsAyear2023_HF = fs_->make<TH2F>("h2_TSnVsAyear2023_HF", " ", 100, 0., 2000., 100, 0., 50.);
+    h2_TSnVsAyear2023_HO = fs_->make<TH2F>("h2_TSnVsAyear2023_HO", " ", 100, 0., 1000., 100, 0., 225.);
+    //-----------------------------
+    h1_TSnVsAyear2023_HB = fs_->make<TH1F>("h1_TSnVsAyear2023_HB", " ", 100, 200., 15200);
+    h1_TSnVsAyear2023_HE = fs_->make<TH1F>("h1_TSnVsAyear2023_HE", " ", 100, 200., 25200);
+    h1_TSnVsAyear2023_HF = fs_->make<TH1F>("h1_TSnVsAyear2023_HF", " ", 100, 0., 1500);
+    h1_TSnVsAyear2023_HO = fs_->make<TH1F>("h1_TSnVsAyear2023_HO", " ", 100, 0., 750);
+    h1_TSnVsAyear20230_HB = fs_->make<TH1F>("h1_TSnVsAyear20230_HB", " ", 100, 200., 15200);
+    h1_TSnVsAyear20230_HE = fs_->make<TH1F>("h1_TSnVsAyear20230_HE", " ", 100, 200., 25200);
+    h1_TSnVsAyear20230_HF = fs_->make<TH1F>("h1_TSnVsAyear20230_HF", " ", 100, 0., 1500);
+    h1_TSnVsAyear20230_HO = fs_->make<TH1F>("h1_TSnVsAyear20230_HO", " ", 100, 0., 750);
     //--------------------------------------------------
     float est6 = 2500.;
     int ist6 = 30;
@@ -8013,7 +8242,6 @@ void CMTRawAnalyzer::fillDigiErrors(HBHEDigiCollection::const_iterator& digiItr)
   bool anydv = true;
   // for help:
   int firstcapid = 0;
-  int sumcapid = 0;
   int lastcapid = 0, capid = 0;
   int ERRORfiber = -10;
   int ERRORfiberChan = -10;
@@ -8044,7 +8272,6 @@ void CMTRawAnalyzer::fillDigiErrors(HBHEDigiCollection::const_iterator& digiItr)
 
     if (ii == 0)
       firstcapid = capid;
-    sumcapid += capid;
 
     if (er) {
       anyer = true;
@@ -8168,22 +8395,42 @@ void CMTRawAnalyzer::fillDigiErrorsQIE11(QIE11DataFrame qie11df) {
   int iphi = hcaldetid.iphi() - 1;
   int mdepth = hcaldetid.depth();
   int sub = hcaldetid.subdet();  // 1-HB, 2-HE (HFDigiCollection: 4-HF)
-  // !!!!!!
+  int ampts[10];
+  int icapid[10];
+  for (int ii = 0; ii < 10; ii++) {
+    ampts[ii] = 0.;
+    icapid[ii] = 0.;
+  }
+  bool sticking = false;
   int error1 = 0;
-  // !!!!!!
   bool anycapid = true;
-  //    bool anyer      =  false;
-  //    bool anydv      =  true;
+  bool anyer = false;
+  bool anydv = true;
+  int error2 = 0, error3 = 0;
   // for help:
   int firstcapid = 0;
-  int sumcapid = 0;
   int lastcapid = 0, capid = 0;
   int repetedcapid = 0;
   // loop over the samples in the digi
   nTS = qie11df.samples();
+  /////////////////////////////////////////////////////////////////
+  if (mdepth == 0 || sub > 4)
+    return;
+  if (mdepth > 3 && flagupgradeqie1011_ == 3)
+    return;
+  if (mdepth > 3 && flagupgradeqie1011_ == 7)
+    return;
+  if (mdepth > 3 && flagupgradeqie1011_ == 8)
+    return;
+  if (mdepth > 3 && flagupgradeqie1011_ == 9)
+    return;
   ///////////////////////////////////////
   for (int ii = 0; ii < nTS; ii++) {
     capid = qie11df[ii].capid();  // capId (0-3, sequential)
+    bool er = false;
+    bool dv = true;
+    icapid[ii] = capid;
+    // valid data
     if (ii != 0 && ((lastcapid + 1) % 4) != capid) {
       anycapid = false;
       if (capid != lastcapid) {
@@ -8192,31 +8439,217 @@ void CMTRawAnalyzer::fillDigiErrorsQIE11(QIE11DataFrame qie11df) {
       }
     }
     lastcapid = capid;
+    if (er)
+      anyer = true;
+    if (!dv)
+      anydv = false;
     if (ii == 0)
       firstcapid = capid;
-    sumcapid += capid;
   }  // for
-  ///////////////////////////////////////
   if (!anycapid)
     error1 = 1;
-  // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  if (anyer)
+    error2 = 1;
+  if (!anydv)
+    error3 = 1;
   double ampl = 0.;
   for (int ii = 0; ii < nTS; ii++) {
     int adc = qie11df[ii].adc();
-
+    ampts[ii] = adc;
+    if (sub == 1) {
+      h_nadccounts0_HB->Fill(float(ampts[ii]), 1.);
+    }
+    if (sub == 2) {
+      h_nadccounts0_HE->Fill(float(ampts[ii]), 1.);
+    }
     double ampldefault = adc2fC_QIE11_shunt6[adc];
     if (flaguseshunt_ == 1)
       ampldefault = adc2fC_QIE11_shunt1[adc];
-
     ampl += ampldefault;  //
+  }
+  if (sub == 1 || sub == 2) {
+    if (verbosity == 111111 && (ampts[0] == ampts[1]) && (ampts[1] == ampts[2]) && (ampts[2] == ampts[3]) &&
+        (ampts[3] == ampts[4]) && (ampts[4] == ampts[5]) && (ampts[5] == ampts[6]) && (ampts[6] == ampts[7])) {
+      std::cout << " HBHE DIGI A,fC =  " << ampl << " sub = " << sub << " mdepth = " << mdepth << " nTS = " << nTS
+                << std::endl;
+      std::cout << " Ai,adc counts:  " << std::endl;
+      std::cout << " A1 =  " << ampts[0] << " A2 =  " << ampts[1] << " A3 =  " << ampts[2] << " A4 =  " << ampts[3]
+                << std::endl;
+      std::cout << " A5 =  " << ampts[4] << " A6 =  " << ampts[5] << " A7 =  " << ampts[6] << " A8 =  " << ampts[7]
+                << std::endl;
+      std::cout << " icapid:  " << std::endl;
+      std::cout << " icapid1 =  " << icapid[0] << " icapid2 =  " << icapid[1] << " icapid3 =  " << icapid[2]
+                << " icapid4 =  " << icapid[3] << std::endl;
+      std::cout << " icapid5 =  " << icapid[4] << " icapid6 =  " << icapid[5] << " icapid7 =  " << icapid[6]
+                << " icapid8 =  " << icapid[7] << std::endl;
+    }
+    if (verbosity == 222222 && (ampts[3] > 95 && (ampts[3] == ampts[4]) && (ampts[4] == ampts[5]))) {
+      std::cout << " HBHE DIGI A,fC =  " << ampl << " sub = " << sub << " mdepth = " << mdepth << " nTS = " << nTS
+                << std::endl;
+      std::cout << " Ai,adc counts:  " << std::endl;
+      std::cout << " A1 =  " << ampts[0] << " A2 =  " << ampts[1] << " A3 =  " << ampts[2] << " A4 =  " << ampts[3]
+                << std::endl;
+      std::cout << " A5 =  " << ampts[4] << " A6 =  " << ampts[5] << " A7 =  " << ampts[6] << " A8 =  " << ampts[7]
+                << std::endl;
+      std::cout << " icapid:  " << std::endl;
+      std::cout << " icapid1 =  " << icapid[0] << " icapid2 =  " << icapid[1] << " icapid3 =  " << icapid[2]
+                << " icapid4 =  " << icapid[3] << std::endl;
+      std::cout << " icapid5 =  " << icapid[4] << " icapid6 =  " << icapid[5] << " icapid7 =  " << icapid[6]
+                << " icapid8 =  " << icapid[7] << std::endl;
+    }
+    if (verbosity == 333333 && (ampts[0] > 14 && ampts[0] == ampts[1]) && (ampts[1] == ampts[2]) &&
+        (ampts[2] == ampts[3]) && (ampts[3] == ampts[4]) && (ampts[4] == ampts[5]) && (ampts[5] == ampts[6]) &&
+        (ampts[6] == ampts[7])) {
+      std::cout << " HBHE DIGI A,fC =  " << ampl << " sub = " << sub << " mdepth = " << mdepth << " nTS = " << nTS
+                << std::endl;
+      std::cout << " Ai,adc counts:  " << std::endl;
+      std::cout << " A1 =  " << ampts[0] << " A2 =  " << ampts[1] << " A3 =  " << ampts[2] << " A4 =  " << ampts[3]
+                << std::endl;
+      std::cout << " A5 =  " << ampts[4] << " A6 =  " << ampts[5] << " A7 =  " << ampts[6] << " A8 =  " << ampts[7]
+                << std::endl;
+      std::cout << " icapid:  " << std::endl;
+      std::cout << " icapid1 =  " << icapid[0] << " icapid2 =  " << icapid[1] << " icapid3 =  " << icapid[2]
+                << " icapid4 =  " << icapid[3] << std::endl;
+      std::cout << " icapid5 =  " << icapid[4] << " icapid6 =  " << icapid[5] << " icapid7 =  " << icapid[6]
+                << " icapid8 =  " << icapid[7] << std::endl;
+    }
+    if ((ampts[0] == ampts[1]) && (ampts[1] == ampts[2]) && (ampts[2] == ampts[3]) && (ampts[3] == ampts[4]) &&
+        (ampts[4] == ampts[5]) && (ampts[5] == ampts[6]) && (ampts[6] == ampts[7])) {
+      if (sub == 1) {
+        h_nadccounts8_HB->Fill(float(ampts[0]), 1.);
+      }
+      if (sub == 2) {
+        h_nadccounts8_HE->Fill(float(ampts[0]), 1.);
+      }
+      if (ampts[4] > 139)
+        sticking = true;
+    }  // nadccounts8
+    if (((ampts[0] == ampts[1]) && (ampts[1] == ampts[2]) && (ampts[2] == ampts[3]) && (ampts[3] == ampts[4]) &&
+         (ampts[4] == ampts[5])) ||
+        ((ampts[1] == ampts[2]) && (ampts[2] == ampts[3]) && (ampts[3] == ampts[4]) && (ampts[4] == ampts[5]) &&
+         (ampts[5] == ampts[6])) ||
+        ((ampts[2] == ampts[3]) && (ampts[3] == ampts[4]) && (ampts[4] == ampts[5]) && (ampts[5] == ampts[6]) &&
+         (ampts[6] == ampts[7]))) {
+      if (sub == 1) {
+        h_nadccounts6_HB->Fill(float(ampts[3]), 1.);
+      }
+      if (sub == 2) {
+        h_nadccounts6_HE->Fill(float(ampts[3]), 1.);
+      }
+    }  // nadccounts6
+    if (((ampts[0] == ampts[1]) && (ampts[1] == ampts[2]) && (ampts[2] == ampts[3])) ||
+        ((ampts[1] == ampts[2]) && (ampts[2] == ampts[3]) && (ampts[3] == ampts[4])) ||
+        ((ampts[2] == ampts[3]) && (ampts[3] == ampts[4]) && (ampts[4] == ampts[5])) ||
+        ((ampts[3] == ampts[4]) && (ampts[4] == ampts[5]) && (ampts[5] == ampts[6]))) {
+      if (sub == 1) {
+        h_nadccounts4_HB->Fill(float(ampts[3]), 1.);
+      }
+      if (sub == 2) {
+        h_nadccounts4_HE->Fill(float(ampts[3]), 1.);
+      }
+    }  // nadccounts4
+    if (((ampts[4] == ampts[5]) && (ampts[5] == ampts[6]) && (ampts[6] == ampts[7]))) {
+      if (sub == 1) {
+        h_nadccounts4_HB->Fill(float(ampts[4]), 1.);
+      }
+      if (sub == 2) {
+        h_nadccounts4_HE->Fill(float(ampts[4]), 1.);
+      }
+    }  // nadccounts4
+    if (((ampts[0] == ampts[1]) && (ampts[1] == ampts[2])) || ((ampts[1] == ampts[2]) && (ampts[2] == ampts[3])) ||
+        ((ampts[2] == ampts[3]) && (ampts[3] == ampts[4]))) {
+      if (sub == 1) {
+        h_nadccounts3_HB->Fill(float(ampts[2]), 1.);
+      }
+      if (sub == 2) {
+        h_nadccounts3_HE->Fill(float(ampts[2]), 1.);
+      }
+    }  // nadccounts3
+    if (((ampts[3] == ampts[4]) && (ampts[4] == ampts[5])) || ((ampts[4] == ampts[5]) && (ampts[5] == ampts[6])) ||
+        ((ampts[5] == ampts[6]) && (ampts[6] == ampts[7]))) {
+      if (sub == 1) {
+        h_nadccounts3_HB->Fill(float(ampts[5]), 1.);
+      }
+      if (sub == 2) {
+        h_nadccounts3_HE->Fill(float(ampts[5]), 1.);
+      }
+    }  // nadccounts3
+    if (ampts[0] == ampts[1]) {
+      if (sub == 1) {
+        h_nadccounts2_HB->Fill(float(ampts[1]), 1.);
+      }
+      if (sub == 2) {
+        h_nadccounts2_HE->Fill(float(ampts[1]), 1.);
+      }
+    }  // nadccounts2
+    if (ampts[1] == ampts[2]) {
+      if (sub == 1) {
+        h_nadccounts2_HB->Fill(float(ampts[2]), 1.);
+      }
+      if (sub == 2) {
+        h_nadccounts2_HE->Fill(float(ampts[2]), 1.);
+      }
+    }  // nadccounts2
+    if (ampts[2] == ampts[3]) {
+      if (sub == 1) {
+        h_nadccounts2_HB->Fill(float(ampts[3]), 1.);
+      }
+      if (sub == 2) {
+        h_nadccounts2_HE->Fill(float(ampts[3]), 1.);
+      }
+    }  // nadccounts2
+    if (ampts[3] == ampts[4]) {
+      if (sub == 1) {
+        h_nadccounts2_HB->Fill(float(ampts[4]), 1.);
+      }
+      if (sub == 2) {
+        h_nadccounts2_HE->Fill(float(ampts[4]), 1.);
+      }
+    }  // nadccounts2
+    if (ampts[4] == ampts[5]) {
+      if (sub == 1) {
+        h_nadccounts2_HB->Fill(float(ampts[5]), 1.);
+      }
+      if (sub == 2) {
+        h_nadccounts2_HE->Fill(float(ampts[5]), 1.);
+      }
+    }  // nadccounts2
+    if (ampts[5] == ampts[6]) {
+      if (sub == 1) {
+        h_nadccounts2_HB->Fill(float(ampts[6]), 1.);
+      }
+      if (sub == 2) {
+        h_nadccounts2_HE->Fill(float(ampts[6]), 1.);
+      }
+    }  // nadccounts2
+    if (ampts[6] == ampts[7]) {
+      if (sub == 1) {
+        h_nadccounts2_HB->Fill(float(ampts[7]), 1.);
+      }
+      if (sub == 2) {
+        h_nadccounts2_HE->Fill(float(ampts[7]), 1.);
+      }
+    }  // nadccounts2
+  }  // sub
+  if (sticking) {
+    error1 = 1;
+    if (verbosity == 444444) {
+      std::cout << " A>139, sticking =  " << sticking << " sub =  " << sub << " ampts0 =  " << ampts[0]
+                << " ampts1 =  " << ampts[1] << " ampts2 =  " << ampts[2] << " ampts3 =  " << ampts[3]
+                << " ampts4 =  " << ampts[4] << " ampts5 =  " << ampts[5] << " ampts6 =  " << ampts[6]
+                << " ampts7 =  " << ampts[7] << std::endl;
+      std::cout << " icapid0 =  " << icapid[0] << " icapid1 =  " << icapid[1] << " icapid2 =  " << icapid[2]
+                << " icapid3 =  " << icapid[3] << " icapid4 =  " << icapid[4] << " icapid5 =  " << icapid[5]
+                << " icapid6 =  " << icapid[6] << " icapid7 =  " << icapid[7] << std::endl;
+    }
   }
   ///////////////////////////////////////Digis
   // Digis:HBHE
   if (sub == 1) {
     h_error1_HB->Fill(double(error1), 1.);
     h_repetedcapid_HB->Fill(double(repetedcapid), 1.);
-    if (error1 != 0) {
-      //      if(error1 !=0 || error2 !=0 || error3 !=0 ) {
+    //  if (error1 != 0) {
+    if (error1 != 0 || error2 != 0 || error3 != 0) {
       if (studyRunDependenceHist_ && flagtodefinebadchannel_ == 0)
         ++badchannels[sub - 1][mdepth - 1][ieta + 41][iphi];  // 0-neta ; 0-71
       h_amplError_HB->Fill(ampl, 1.);
@@ -8236,8 +8669,8 @@ void CMTRawAnalyzer::fillDigiErrorsQIE11(QIE11DataFrame qie11df) {
   if (sub == 2) {
     h_error1_HE->Fill(double(error1), 1.);
     h_repetedcapid_HE->Fill(double(repetedcapid), 1.);
-    if (error1 != 0) {
-      //      if(error1 !=0 || error2 !=0 || error3 !=0 ) {
+    //     if (error1 != 0) {
+    if (error1 != 0 || error2 != 0 || error3 != 0) {
       if (studyRunDependenceHist_ && flagtodefinebadchannel_ == 0)
         ++badchannels[sub - 1][mdepth - 1][ieta + 41][iphi];  // 0-neta ; 0-71
       h_amplError_HE->Fill(ampl, 1.);
@@ -8290,7 +8723,6 @@ void CMTRawAnalyzer::fillDigiErrorsHF(HFDigiCollection::const_iterator& digiItr)
   bool anydv = true;
   // for help:
   int firstcapid = 0;
-  int sumcapid = 0;
   int lastcapid = 0, capid = 0;
   int ERRORfiber = -10;
   int ERRORfiberChan = -10;
@@ -8320,7 +8752,6 @@ void CMTRawAnalyzer::fillDigiErrorsHF(HFDigiCollection::const_iterator& digiItr)
     lastcapid = capid;
     if (ii == 0)
       firstcapid = capid;
-    sumcapid += capid;
     if (er) {
       anyer = true;
       ERRORfiber = fiber;
@@ -8415,7 +8846,6 @@ void CMTRawAnalyzer::fillDigiErrorsHFQIE10(QIE10DataFrame qie10df) {
   //    bool anydv      =  true;
   // for help:
   int firstcapid = 0;
-  int sumcapid = 0;
   int lastcapid = 0, capid = 0;
   int repetedcapid = 0;
   // loop over the samples in the digi
@@ -8433,7 +8863,6 @@ void CMTRawAnalyzer::fillDigiErrorsHFQIE10(QIE10DataFrame qie10df) {
     lastcapid = capid;
     if (ii == 0)
       firstcapid = capid;
-    sumcapid += capid;
   }  // for
   ///////////////////////////////////////
   if (!anycapid)
@@ -8494,7 +8923,6 @@ void CMTRawAnalyzer::fillDigiErrorsHO(HODigiCollection::const_iterator& digiItr)
   bool anydv = true;
   // for help:
   int firstcapid = 0;
-  int sumcapid = 0;
   int lastcapid = 0, capid = 0;
   int ERRORfiber = -10;
   int ERRORfiberChan = -10;
@@ -8521,7 +8949,6 @@ void CMTRawAnalyzer::fillDigiErrorsHO(HODigiCollection::const_iterator& digiItr)
 
     if (ii == 0)
       firstcapid = capid;
-    sumcapid += capid;
 
     if (er) {
       anyer = true;
@@ -8644,10 +9071,6 @@ void CMTRawAnalyzer::fillDigiAmplitude(HBHEDigiCollection::const_iterator& digiI
   double difpedestal2 = 0.;
   double difpedestal3 = 0.;
 
-  double amplitudewithPedSubtr1 = 0.;
-  double amplitudewithPedSubtr2 = 0.;
-  double amplitudewithPedSubtr3 = 0.;
-  double amplitudewithPedSubtr4 = 0.;
   double amplitude = 0.;
   double absamplitude = 0.;
   double amplitude345 = 0.;
@@ -8760,18 +9183,9 @@ void CMTRawAnalyzer::fillDigiAmplitude(HBHEDigiCollection::const_iterator& digiI
     //     var.4                   -------
     //
     // TS = 2-9      for raddam only  var.1
-    if (ii > 0 && ii < 9)
-      amplitudewithPedSubtr1 += ampldefaultwithPedSubtr;  //
     // TS = 3-8      for raddam only  var.2
-    if (ii > 1 && ii < 8)
-      amplitudewithPedSubtr2 += ampldefaultwithPedSubtr;  //
     // TS = 4-7      for raddam only  var.3
-    if (ii > 2 && ii < 7)
-      amplitudewithPedSubtr3 += ampldefaultwithPedSubtr;  //
     // TS = 4-6      for raddam only  var.4
-    if (ii > 2 && ii < 6)
-      amplitudewithPedSubtr4 += ampldefaultwithPedSubtr;  //
-    //
     amplitude += ampldefault;          //
     absamplitude += abs(ampldefault);  //
 
@@ -8794,23 +9208,23 @@ void CMTRawAnalyzer::fillDigiAmplitude(HBHEDigiCollection::const_iterator& digiI
   pedestalaver4 /= c4;
   pedestalwaver9 = sqrt(pedestalwaver9 / TSsize);
   pedestalwaver4 = sqrt(pedestalwaver4 / c4);
-  if (ts_with_max_signal > -1 && ts_with_max_signal < 10)
+  if (ts_with_max_signal > -1 && ts_with_max_signal < TSsize)
     ampl = tool[ts_with_max_signal];
-  if (ts_with_max_signal + 2 > -1 && ts_with_max_signal + 2 < 10)
+  if (ts_with_max_signal + 2 > -1 && ts_with_max_signal + 2 < TSsize)
     ampl += tool[ts_with_max_signal + 2];
-  if (ts_with_max_signal + 1 > -1 && ts_with_max_signal + 1 < 10)
+  if (ts_with_max_signal + 1 > -1 && ts_with_max_signal + 1 < TSsize)
     ampl += tool[ts_with_max_signal + 1];
-  if (ts_with_max_signal - 1 > -1 && ts_with_max_signal - 1 < 10)
+  if (ts_with_max_signal - 1 > -1 && ts_with_max_signal - 1 < TSsize)
     ampl += tool[ts_with_max_signal - 1];
 
   ///----------------------------------------------------------------------------------------------------  for raddam:
-  if (ts_with_max_signal > -1 && ts_with_max_signal < 10)
+  if (ts_with_max_signal > -1 && ts_with_max_signal < TSsize)
     linamplitudewithoutPedSubtr = lintoolwithoutPedSubtr[ts_with_max_signal];
-  if (ts_with_max_signal + 2 > -1 && ts_with_max_signal + 2 < 10)
+  if (ts_with_max_signal + 2 > -1 && ts_with_max_signal + 2 < TSsize)
     linamplitudewithoutPedSubtr += lintoolwithoutPedSubtr[ts_with_max_signal + 2];
-  if (ts_with_max_signal + 1 > -1 && ts_with_max_signal + 1 < 10)
+  if (ts_with_max_signal + 1 > -1 && ts_with_max_signal + 1 < TSsize)
     linamplitudewithoutPedSubtr += lintoolwithoutPedSubtr[ts_with_max_signal + 1];
-  if (ts_with_max_signal - 1 > -1 && ts_with_max_signal - 1 < 10)
+  if (ts_with_max_signal - 1 > -1 && ts_with_max_signal - 1 < TSsize)
     linamplitudewithoutPedSubtr += lintoolwithoutPedSubtr[ts_with_max_signal - 1];
 
   double ratio = 0.;
@@ -9123,6 +9537,10 @@ void CMTRawAnalyzer::fillDigiAmplitude(HBHEDigiCollection::const_iterator& digiI
     //   //   //   //   //   //   //   //   //  HB       TSmean:
     if (studyTSmeanShapeHist_) {
       h_TSmeanA_HB->Fill(aveamplitude1, 1.);
+      //      h2_TSnVsAyear2023_HB->Fill(25.*aveamplitude1, amplitude);
+      h2_TSnVsAyear2023_HB->Fill(amplitude, 25. * aveamplitude1);
+      h1_TSnVsAyear2023_HB->Fill(amplitude, 25. * aveamplitude1);
+      h1_TSnVsAyear20230_HB->Fill(amplitude, 1.);
       if (aveamplitude1 < TSmeanHBMin_ || aveamplitude1 > TSmeanHBMax_) {
         if (studyRunDependenceHist_ && flagtodefinebadchannel_ == 4)
           ++badchannels[sub - 1][mdepth - 1][ieta + 41][iphi];  // 0-neta ; 0-71
@@ -9375,6 +9793,10 @@ void CMTRawAnalyzer::fillDigiAmplitude(HBHEDigiCollection::const_iterator& digiI
     //   //   //   //   //   //   //   //   //  HE       TSmean:
     if (studyTSmeanShapeHist_) {
       h_TSmeanA_HE->Fill(aveamplitude1, 1.);
+      //      h2_TSnVsAyear2023_HE->Fill(25.*aveamplitude1, amplitude);
+      h2_TSnVsAyear2023_HE->Fill(amplitude, 25. * aveamplitude1);
+      h1_TSnVsAyear2023_HE->Fill(amplitude, 25. * aveamplitude1);
+      h1_TSnVsAyear20230_HE->Fill(amplitude, 1.);
       if (aveamplitude1 < TSmeanHEMin_ || aveamplitude1 > TSmeanHEMax_) {
         if (studyRunDependenceHist_ && flagtodefinebadchannel_ == 4)
           ++badchannels[sub - 1][mdepth - 1][ieta + 41][iphi];  // 0-neta ; 0-71
@@ -9486,13 +9908,13 @@ void CMTRawAnalyzer::fillDigiAmplitude(HBHEDigiCollection::const_iterator& digiI
       double amplitudewithPedSubtr = 0.;
 
       //for cut on A_channel:
-      if (ts_with_max_signal > -1 && ts_with_max_signal < 10)
+      if (ts_with_max_signal > -1 && ts_with_max_signal < TSsize)
         amplitudewithPedSubtr = toolwithPedSubtr[ts_with_max_signal];
-      if (ts_with_max_signal + 2 > -1 && ts_with_max_signal + 2 < 10)
+      if (ts_with_max_signal + 2 > -1 && ts_with_max_signal + 2 < TSsize)
         amplitudewithPedSubtr += toolwithPedSubtr[ts_with_max_signal + 2];
-      if (ts_with_max_signal + 1 > -1 && ts_with_max_signal + 1 < 10)
+      if (ts_with_max_signal + 1 > -1 && ts_with_max_signal + 1 < TSsize)
         amplitudewithPedSubtr += toolwithPedSubtr[ts_with_max_signal + 1];
-      if (ts_with_max_signal - 1 > -1 && ts_with_max_signal - 1 < 10)
+      if (ts_with_max_signal - 1 > -1 && ts_with_max_signal - 1 < TSsize)
         amplitudewithPedSubtr += toolwithPedSubtr[ts_with_max_signal - 1];
 
       h_AamplitudewithPedSubtr_RADDAM_HE->Fill(amplitudewithPedSubtr);
@@ -9549,7 +9971,7 @@ void CMTRawAnalyzer::fillDigiAmplitude(HBHEDigiCollection::const_iterator& digiI
         }
         //
       }  //amplitude > 60.
-    }    // END RADDAM
+    }  // END RADDAM
 
     ///////////////////////////////    for HE All
     if (mdepth == 1)
@@ -9559,7 +9981,7 @@ void CMTRawAnalyzer::fillDigiAmplitude(HBHEDigiCollection::const_iterator& digiI
     if (mdepth == 3)
       h_mapDepth3_HE->Fill(double(ieta), double(iphi), 1.);
   }  //if ( sub == 2 )
-     //
+  //
 }  // fillDigiAmplitude
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -9627,7 +10049,6 @@ void CMTRawAnalyzer::fillDigiAmplitudeQIE11(QIE11DataFrame qie11df) {
   double amplitude345 = 0.;
   double ampl = 0.;
   double ampl3ts = 0.;
-  double amplmaxts = 0.;
   double timew = 0.;
   double timeww = 0.;
   double max_signal = -100.;
@@ -9751,20 +10172,19 @@ void CMTRawAnalyzer::fillDigiAmplitudeQIE11(QIE11DataFrame qie11df) {
   pedestalwaver4 = sqrt(pedestalwaver4 / c4);
 
   // ------------ to get signal in TS: -2 max +1  ------------
-  if (ts_with_max_signal > -1 && ts_with_max_signal < 10) {
+  if (ts_with_max_signal > -1 && ts_with_max_signal < TSsize) {
     ampl = tool[ts_with_max_signal];
     ampl3ts = tool[ts_with_max_signal];
-    amplmaxts = tool[ts_with_max_signal];
   }
-  if (ts_with_max_signal - 1 > -1 && ts_with_max_signal - 1 < 10) {
+  if (ts_with_max_signal - 1 > -1 && ts_with_max_signal - 1 < TSsize) {
     ampl += tool[ts_with_max_signal - 1];
     ampl3ts += tool[ts_with_max_signal - 1];
   }
-  if (ts_with_max_signal + 1 > -1 && ts_with_max_signal + 1 < 10) {
+  if (ts_with_max_signal + 1 > -1 && ts_with_max_signal + 1 < TSsize) {
     ampl += tool[ts_with_max_signal + 1];
     ampl3ts += tool[ts_with_max_signal + 1];
   }
-  if (ts_with_max_signal + 2 > -1 && ts_with_max_signal + 2 < 10) {
+  if (ts_with_max_signal + 2 > -1 && ts_with_max_signal + 2 < TSsize) {
     ampl += tool[ts_with_max_signal + 2];
   }
   // HE charge correction for SiPMs:
@@ -9774,7 +10194,6 @@ void CMTRawAnalyzer::fillDigiAmplitudeQIE11(QIE11DataFrame qie11df) {
       double xb = ampl / 40.;
       double xc = amplitude345 / 40.;
       double xd = ampl3ts / 40.;
-      double xe = amplmaxts / 40.;
       double txa = tocampl / 40.;
       // ADDI case:
       if (((ieta == -16 || ieta == 15) && mdepth == 4) ||
@@ -9787,7 +10206,6 @@ void CMTRawAnalyzer::fillDigiAmplitudeQIE11(QIE11DataFrame qie11df) {
         double corrforxb = a2 * xb * xb + b1 * xb + c0;
         double corrforxc = a2 * xc * xc + b1 * xc + c0;
         double corrforxd = a2 * xd * xd + b1 * xd + c0;
-        double corrforxe = a2 * xe * xe + b1 * xe + c0;
         double corrfortxa = a2 * txa * txa + b1 * txa + c0;
         h_corrforxaADDI_HE->Fill(amplitude, corrforxa);
         h_corrforxaADDI0_HE->Fill(amplitude, 1.);
@@ -9795,7 +10213,6 @@ void CMTRawAnalyzer::fillDigiAmplitudeQIE11(QIE11DataFrame qie11df) {
         ampl *= corrforxb;
         amplitude345 *= corrforxc;
         ampl3ts *= corrforxd;
-        amplmaxts *= corrforxe;
         tocampl *= corrfortxa;
       }
       // MAIN case:
@@ -9807,7 +10224,6 @@ void CMTRawAnalyzer::fillDigiAmplitudeQIE11(QIE11DataFrame qie11df) {
         double corrforxb = a2 * xb * xb + b1 * xb + c0;
         double corrforxc = a2 * xc * xc + b1 * xc + c0;
         double corrforxd = a2 * xd * xd + b1 * xd + c0;
-        double corrforxe = a2 * xe * xe + b1 * xe + c0;
         double corrfortxa = a2 * txa * txa + b1 * txa + c0;
         h_corrforxaMAIN_HE->Fill(amplitude, corrforxa);
         h_corrforxaMAIN0_HE->Fill(amplitude, 1.);
@@ -9815,11 +10231,10 @@ void CMTRawAnalyzer::fillDigiAmplitudeQIE11(QIE11DataFrame qie11df) {
         ampl *= corrforxb;
         amplitude345 *= corrforxc;
         ampl3ts *= corrforxd;
-        amplmaxts *= corrforxe;
         tocampl *= corrfortxa;
       }
     }  // sub == 2   HE charge correction end
-  }    //flagsipmcorrection_
+  }  //flagsipmcorrection_
   ///////   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!      !!!!!!!!!!!!!!!!!!                      fillDigiAmplitudeQIE11
   // sub=1||2 HBHE
   if (sub == 1 || sub == 2) {
@@ -9977,8 +10392,8 @@ void CMTRawAnalyzer::fillDigiAmplitudeQIE11(QIE11DataFrame qie11df) {
         h_shape_good_channels_HE->Fill(float(ii), ampldefault);
         h_shape0_good_channels_HE->Fill(float(ii), 1.);
       }  // ii
-    }    // else for good channels
-  }      // sub   HE
+    }  // else for good channels
+  }  // sub   HE
   ///////////////////////////////////////Digis : over all digiHits
   sum0Estimator[sub - 1][mdepth - 1][ieta + 41][iphi] += 1.;
   //      for Error B-type
@@ -10148,6 +10563,10 @@ void CMTRawAnalyzer::fillDigiAmplitudeQIE11(QIE11DataFrame qie11df) {
     //   //   //   //   //   //   //   //   //  HB       TSmean:
     if (studyTSmeanShapeHist_) {
       h_TSmeanA_HB->Fill(aveamplitude1, 1.);
+      //      h2_TSnVsAyear2023_HB->Fill(25.*aveamplitude1, amplitude);
+      h2_TSnVsAyear2023_HB->Fill(amplitude, 25. * aveamplitude1);
+      h1_TSnVsAyear2023_HB->Fill(amplitude, 25. * aveamplitude1);
+      h1_TSnVsAyear20230_HB->Fill(amplitude, 1.);
       if (aveamplitude1 < TSmeanHBMin_ || aveamplitude1 > TSmeanHBMax_) {
         if (studyRunDependenceHist_ && flagtodefinebadchannel_ == 4)
           ++badchannels[sub - 1][mdepth - 1][ieta + 41][iphi];  // 0-neta ; 0-71
@@ -10526,6 +10945,10 @@ void CMTRawAnalyzer::fillDigiAmplitudeQIE11(QIE11DataFrame qie11df) {
     //   //   //   //   //   //   //   //   //  HE  QIE11     TSmean:
     if (studyTSmeanShapeHist_) {
       h_TSmeanA_HE->Fill(aveamplitude1, 1.);
+      //    h2_TSnVsAyear2023_HE->Fill(25.*aveamplitude1, amplitude);
+      h2_TSnVsAyear2023_HE->Fill(amplitude, 25. * aveamplitude1);
+      h1_TSnVsAyear2023_HE->Fill(amplitude, 25. * aveamplitude1);
+      h1_TSnVsAyear20230_HE->Fill(amplitude, 1.);
       if (aveamplitude1 < TSmeanHEMin_ || aveamplitude1 > TSmeanHEMax_) {
         if (studyRunDependenceHist_ && flagtodefinebadchannel_ == 4)
           ++badchannels[sub - 1][mdepth - 1][ieta + 41][iphi];  // 0-neta ; 0-71
@@ -10735,7 +11158,7 @@ void CMTRawAnalyzer::fillDigiAmplitudeQIE11(QIE11DataFrame qie11df) {
     }  // select entries only in TS=2
 
   }  //if ( sub == 2 )
-     //
+  //
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void CMTRawAnalyzer::fillDigiAmplitudeHF(HFDigiCollection::const_iterator& digiItr) {
@@ -11099,6 +11522,10 @@ void CMTRawAnalyzer::fillDigiAmplitudeHF(HFDigiCollection::const_iterator& digiI
     //   //   //   //   //   //   //   //   //  HF       TSmean:
     if (studyTSmeanShapeHist_) {
       h_TSmeanA_HF->Fill(aveamplitude1, 1.);
+      //    h2_TSnVsAyear2023_HF->Fill(25.*aveamplitude1, amplitude);
+      h2_TSnVsAyear2023_HF->Fill(amplitude, 25. * aveamplitude1);
+      h1_TSnVsAyear2023_HF->Fill(amplitude, 25. * aveamplitude1);
+      h1_TSnVsAyear20230_HF->Fill(amplitude, 1.);
       if (aveamplitude1 < TSmeanHFMin_ || aveamplitude1 > TSmeanHFMax_) {
         if (studyRunDependenceHist_ && flagtodefinebadchannel_ == 4)
           ++badchannels[sub - 1][mdepth - 1][ieta + 41][iphi];  // 0-neta ; 0-71
@@ -11600,6 +12027,10 @@ void CMTRawAnalyzer::fillDigiAmplitudeHFQIE10(QIE10DataFrame qie10df) {
     //   //   //   //   //   //   //   //   //  HFQIE10       TSmean:
     if (studyTSmeanShapeHist_) {
       h_TSmeanA_HF->Fill(aveamplitude1, 1.);
+      //    h2_TSnVsAyear2023_HF->Fill(25.*aveamplitude1, amplitude);
+      h2_TSnVsAyear2023_HF->Fill(amplitude, 25. * aveamplitude1);
+      h1_TSnVsAyear2023_HF->Fill(amplitude, 25. * aveamplitude1);
+      h1_TSnVsAyear20230_HF->Fill(amplitude, 1.);
       if (aveamplitude1 < TSmeanHFMin_ || aveamplitude1 > TSmeanHFMax_) {
         if (studyRunDependenceHist_ && flagtodefinebadchannel_ == 4)
           ++badchannels[sub - 1][mdepth - 1][ieta + 41][iphi];  // 0-neta ; 0-71
@@ -11875,20 +12306,20 @@ void CMTRawAnalyzer::fillDigiAmplitudeHO(HODigiCollection::const_iterator& digiI
     timeww += (ii + 1) * ampldefault;
     if (ii < 3 && ampldefault > 0.)
       flagTS012 = 1;
-  }                                                                     //for 1
+  }  //for 1
   amplitudechannel[sub - 1][mdepth - 1][ieta + 41][iphi] += amplitude;  // 0-neta ; 0-71  HO
 
   pedestalaver9 /= TSsize;
   pedestalaver4 /= c4;
   pedestalwaver9 = sqrt(pedestalwaver9 / TSsize);
   pedestalwaver4 = sqrt(pedestalwaver4 / c4);
-  if (ts_with_max_signal > -1 && ts_with_max_signal < 10)
+  if (ts_with_max_signal > -1 && ts_with_max_signal < TSsize)
     ampl = tool[ts_with_max_signal];
-  if (ts_with_max_signal + 2 > -1 && ts_with_max_signal + 2 < 10)
+  if (ts_with_max_signal + 2 > -1 && ts_with_max_signal + 2 < TSsize)
     ampl += tool[ts_with_max_signal + 2];
-  if (ts_with_max_signal + 1 > -1 && ts_with_max_signal + 1 < 10)
+  if (ts_with_max_signal + 1 > -1 && ts_with_max_signal + 1 < TSsize)
     ampl += tool[ts_with_max_signal + 1];
-  if (ts_with_max_signal - 1 > -1 && ts_with_max_signal - 1 < 10)
+  if (ts_with_max_signal - 1 > -1 && ts_with_max_signal - 1 < TSsize)
     ampl += tool[ts_with_max_signal - 1];
   double ratio = 0.;
   if (amplitude != 0.)
@@ -12059,6 +12490,10 @@ void CMTRawAnalyzer::fillDigiAmplitudeHO(HODigiCollection::const_iterator& digiI
     }  //if(studyADCAmplHist_
     if (studyTSmeanShapeHist_) {
       h_TSmeanA_HO->Fill(aveamplitude1, 1.);
+      //    h2_TSnVsAyear2023_HO->Fill(25.*aveamplitude1, amplitude);
+      h2_TSnVsAyear2023_HO->Fill(amplitude, 25. * aveamplitude1);
+      h1_TSnVsAyear2023_HO->Fill(amplitude, 25. * aveamplitude1);
+      h1_TSnVsAyear20230_HO->Fill(amplitude, 1.);
       if (aveamplitude1 < TSmeanHOMin_ || aveamplitude1 > TSmeanHOMax_) {
         if (studyRunDependenceHist_ && flagtodefinebadchannel_ == 4)
           ++badchannels[sub - 1][mdepth - 1][ieta + 41][iphi];  // 0-neta ; 0-71
@@ -13050,9 +13485,9 @@ void CMTRawAnalyzer::endRun(const edm::Run& r, const edm::EventSetup& iSetup) {
             ///
             ///
           }  //for
-        }    //for
-      }      //for
-    }        //for
+        }  //for
+      }  //for
+    }  //for
 
     //------------------------------------------------------   averSIGNAL
     averSIGNALoccupancy_HB /= float(nevcounter0);
@@ -13133,7 +13568,7 @@ void CMTRawAnalyzer::endRun(const edm::Run& r, const edm::EventSetup& iSetup) {
     maxxOCCUP4 = 0.;
 
   }  //if( nevcounter0 != 0 )
-     /////////////////////////////// -------------------------------------------------------------------
+  /////////////////////////////// -------------------------------------------------------------------
 
   std::cout << " ==== Edn of run " << std::endl;
 }
@@ -13240,8 +13675,8 @@ void CMTRawAnalyzer::fillMAP() {
         MAPfile << "}," << std::endl;
         delete detid;
       }  //Depth
-    }    //Phi
-  }      //Eta
+    }  //Phi
+  }  //Eta
   for (int eta = 1; eta <= 16; eta++) {
     for (int phi = 1; phi <= nphi; phi++) {
       for (int depth = 1; depth <= 2; depth++) {
@@ -13262,8 +13697,8 @@ void CMTRawAnalyzer::fillMAP() {
         MAPfile << "}," << std::endl;
         delete detid;
       }  //Depth
-    }    //Phi
-  }      //Eta
+    }  //Phi
+  }  //Eta
 
   // HE
   for (int eta = -20; eta <= -20; eta++) {
@@ -13286,8 +13721,8 @@ void CMTRawAnalyzer::fillMAP() {
         MAPfile << "}," << std::endl;
         delete detid;
       }  //Depth
-    }    //Phi
-  }      //Eta
+    }  //Phi
+  }  //Eta
 
   for (int eta = -19; eta <= -16; eta++) {
     for (int phi = nphi; phi <= nphi; phi++) {
@@ -13309,8 +13744,8 @@ void CMTRawAnalyzer::fillMAP() {
         MAPfile << "}," << std::endl;
         delete detid;
       }  //Depth
-    }    //Phi
-  }      //Eta
+    }  //Phi
+  }  //Eta
   for (int eta = -29; eta <= -16; eta++) {
     for (int phi = 1; phi <= 71; phi++) {
       for (int depth = 1; depth <= 3; depth++) {
@@ -13331,8 +13766,8 @@ void CMTRawAnalyzer::fillMAP() {
         MAPfile << "}," << std::endl;
         delete detid;
       }  //Depth
-    }    //Phi
-  }      //Eta
+    }  //Phi
+  }  //Eta
   for (int eta = 16; eta <= 29; eta++) {
     for (int phi = 1; phi <= nphi; phi++) {
       for (int depth = 1; depth <= 3; depth++) {
@@ -13353,8 +13788,8 @@ void CMTRawAnalyzer::fillMAP() {
         MAPfile << "}," << std::endl;
         delete detid;
       }  //Depth
-    }    //Phi
-  }      //Eta
+    }  //Phi
+  }  //Eta
 
   // HF
 
@@ -13378,8 +13813,8 @@ void CMTRawAnalyzer::fillMAP() {
         MAPfile << "}," << std::endl;
         delete detid;
       }  //Depth
-    }    //Phi
-  }      //Eta
+    }  //Phi
+  }  //Eta
 
   for (int eta = 29; eta <= 41; eta++) {
     for (int phi = 1; phi <= nphi; phi += 2) {
@@ -13401,8 +13836,8 @@ void CMTRawAnalyzer::fillMAP() {
         MAPfile << "}," << std::endl;
         delete detid;
       }  //Depth
-    }    //Phi
-  }      //Eta
+    }  //Phi
+  }  //Eta
 
   // HO
 
@@ -13426,8 +13861,8 @@ void CMTRawAnalyzer::fillMAP() {
         MAPfile << "}," << std::endl;
         delete detid;
       }  //Depth
-    }    //Phi
-  }      //Eta
+    }  //Phi
+  }  //Eta
 
   for (int eta = 1; eta <= 15; eta++) {
     for (int phi = 1; phi <= nphi; phi++) {
@@ -13449,8 +13884,8 @@ void CMTRawAnalyzer::fillMAP() {
         MAPfile << "}," << std::endl;
         delete detid;
       }  //Depth
-    }    //Phi
-  }      //Eta
+    }  //Phi
+  }  //Eta
   MAPfile << "};" << std::endl;
   MAPfile << std::endl;
 

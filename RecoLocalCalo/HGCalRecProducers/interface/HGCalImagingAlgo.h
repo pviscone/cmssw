@@ -30,11 +30,10 @@ using Density = hgcal_clustering::Density;
 
 class HGCalImagingAlgo : public HGCalClusteringAlgoBase {
 public:
-  HGCalImagingAlgo(const edm::ParameterSet &ps, edm::ConsumesCollector iC)
+  HGCalImagingAlgo(const edm::ParameterSet &ps)
       : HGCalClusteringAlgoBase(
             (HGCalClusteringAlgoBase::VerbosityLevel)ps.getUntrackedParameter<unsigned int>("verbosity", 3),
-            reco::CaloCluster::undefined,
-            iC),
+            reco::CaloCluster::undefined),
         thresholdW0_(ps.getParameter<std::vector<double>>("thresholdW0")),
         positionDeltaRho_c_(ps.getParameter<std::vector<double>>("positionDeltaRho_c")),
         vecDeltas_(ps.getParameter<std::vector<double>>("deltac")),
@@ -240,7 +239,7 @@ private:
     const double dx = pt1.x - pt2.x;
     const double dy = pt1.y - pt2.y;
     return (dx * dx + dy * dy);
-  }                                                                   //distance squaredq
+  }  //distance squaredq
   inline double distance(const Hexel &pt1, const Hexel &pt2) const {  //2-d distance on the layer (x-y)
     return std::sqrt(distance2(pt1, pt2));
   }

@@ -150,7 +150,7 @@ hltSiPixelPhase1ClustersPositionB = hltDefaultHistoDigiCluster.clone(
   title = "Cluster Positions",
   range_min   =  -60, range_max   =  60, range_nbins   = 600,
   range_y_min = -3.2, range_y_max = 3.2, range_y_nbins = 200,
-  xlabel = "Global Z", ylabel = "Global \phi",
+  xlabel = "Global Z", ylabel = "Global \\phi",
   dimensions = 2,
   specs = VPSet(
     Specification().groupBy("PXBarrel/PXLayer").save(),
@@ -302,6 +302,11 @@ hltSiPixelPhase1ClustersAnalyzer = DQMEDAnalyzer('SiPixelPhase1Clusters',
         geometry    = hltSiPixelPhase1Geometry,
         triggerflag = hltSiPixelPhase1ClustersTriggers,
 )
+
+from Configuration.Eras.Modifier_pp_on_PbPb_run3_cff import pp_on_PbPb_run3
+pp_on_PbPb_run3.toModify(hltSiPixelPhase1ClustersAnalyzer,
+                         pixelSrc = "hltSiPixelClustersAfterSplittingPPOnAA",
+                         stripSrc = "hltHITrackingSiStripRawToClustersFacilityFullZeroSuppression")
 
 hltSiPixelPhase1ClustersHarvester = DQMEDHarvester("SiPixelPhase1Harvester",
         histograms = hltSiPixelPhase1ClustersConf,

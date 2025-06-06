@@ -35,7 +35,7 @@
 
 class L1MuPacking {
 public:
-  virtual ~L1MuPacking(){};
+  virtual ~L1MuPacking() {}
 
   /// get the sign from the packed notation (0=positive, 1=negative)
   virtual int signFromPacked(unsigned packed) const = 0;
@@ -82,6 +82,11 @@ public:
           << "L1MuUnignedPacking::packedFromIdx: warning value " << idx << "exceeds " << nbits << "-bit range !!!";
     return (unsigned)idx;
   };
+
+private:
+  int signFromPacked(unsigned packed) const = 0;
+  int idxFromPacked(unsigned packed) const = 0;
+  unsigned packedFromIdx(int idx) const = 0;
 };
 
 /**
@@ -127,6 +132,11 @@ public:
           << "L1MuSignedPacking::packedFromIdx: warning value " << idx << "exceeds " << nbits << "-bit range !!!";
     return ~(std::numeric_limits<unsigned>::max() << nbits) & (idx < 0 ? (1U << nbits) + idx : idx);
   };
+
+private:
+  int signFromPacked(unsigned packed) const = 0;
+  int idxFromPacked(unsigned packed) const = 0;
+  unsigned packedFromIdx(int idx) const = 0;
 };
 
 /**
@@ -140,8 +150,8 @@ public:
 class L1MuPseudoSignedPacking : public L1MuPacking {
 public:
   L1MuPseudoSignedPacking() {}
-  ~L1MuPseudoSignedPacking() override{};
-  L1MuPseudoSignedPacking(unsigned int nbits) : m_nbits(nbits){};
+  ~L1MuPseudoSignedPacking() override {}
+  L1MuPseudoSignedPacking(unsigned int nbits) : m_nbits(nbits) {}
 
   /// get the (pseudo-)sign from the packed notation (0=positive, 1=negative)
   int signFromPacked(unsigned packed) const override { return (packed & (1 << (m_nbits - 1))) ? 1 : 0; };

@@ -30,6 +30,10 @@ ecalRecHit = cms.EDProducer("EcalRecHitProducer",
     EBLaserMAX = cms.double(3.0),
     EELaserMAX = cms.double(8.0),
 
+    # to select timing conditions record
+    timeCalibTag = cms.ESInputTag('', ''),
+    timeOffsetTag = cms.ESInputTag('', ''),
+
     # useful if time is not calculated, as at HLT                        
     skipTimeCalib = cms.bool(False),                         
 
@@ -94,6 +98,20 @@ fastSim.toModify(ecalRecHit,
                  recoverEEFE = False,
                  recoverEBIsolatedChannels = False
                 )
+
+# use CC timing method for Run3 and Phase 2 (carried over from Run3 era)
+from Configuration.ProcessModifiers.ecal_cctiming_cff import ecal_cctiming
+ecal_cctiming.toModify(ecalRecHit,
+    timeCalibTag = ':CC',
+    timeOffsetTag = ':CC'
+)
+
+# this overrides the modifications made by ecal_cctiming if both modifiers are active
+from Configuration.ProcessModifiers.gpuValidationEcal_cff import gpuValidationEcal
+gpuValidationEcal.toModify(ecalRecHit,
+    timeCalibTag = ':',
+    timeOffsetTag = ':'
+)
 
 # Phase 2 modifications
 from Configuration.Eras.Modifier_phase2_ecal_devel_cff import phase2_ecal_devel

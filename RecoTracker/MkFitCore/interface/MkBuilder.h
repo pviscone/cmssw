@@ -2,8 +2,9 @@
 #define RecoTracker_MkFitCore_interface_MkBuilder_h
 
 #include "RecoTracker/MkFitCore/interface/IterationConfig.h"
-#include "RecoTracker/MkFitCore/interface/Track.h"
 #include "RecoTracker/MkFitCore/interface/HitStructures.h"
+#include "RecoTracker/MkFitCore/interface/TrackStructures.h"
+#include "RecoTracker/MkFitCore/interface/MkJob.h"
 
 #include <atomic>
 #include <functional>
@@ -21,42 +22,12 @@ namespace mkfit {
   class Event;
 
   //==============================================================================
-  // MkJob
-  //==============================================================================
-
-  class MkJob {
-  public:
-    const TrackerInfo &m_trk_info;
-    // Config &config; // If we want to get rid of namespace / global config
-    const IterationConfig &m_iter_config;
-    const EventOfHits &m_event_of_hits;
-
-    const IterationMaskIfcBase *m_iter_mask_ifc = nullptr;
-
-    int num_regions() const { return m_iter_config.m_n_regions; }
-    const auto regions_begin() const { return m_iter_config.m_region_order.begin(); }
-    const auto regions_end() const { return m_iter_config.m_region_order.end(); }
-
-    const auto &steering_params(int i) { return m_iter_config.m_steering_params[i]; }
-
-    const auto &params() const { return m_iter_config.m_params; }
-    const auto &params_bks() const { return m_iter_config.m_backward_params; }
-
-    int max_max_cands() const { return std::max(params().maxCandsPerSeed, params_bks().maxCandsPerSeed); }
-
-    const std::vector<bool> *get_mask_for_layer(int layer) {
-      return m_iter_mask_ifc ? m_iter_mask_ifc->get_mask_for_layer(layer) : nullptr;
-    }
-  };
-
-  //==============================================================================
   // MkBuilder
   //==============================================================================
 
   class MkBuilder {
   public:
-    using insert_seed_foo = void(const Track &, int);
-    using filter_track_cand_foo = bool(const TrackCand &);
+    using insert_seed_foo = void(const Track &, int, int, int);
 
     typedef std::vector<std::pair<int, int>> CandIdx_t;
 
@@ -67,35 +38,21 @@ namespace mkfit {
 
     static std::unique_ptr<MkBuilder> make_builder(bool silent = true);
     static void populate();
+    static void clear();
 
-    int total_cands() const {
-      int res = 0;
-      for (int i = 0; i < m_event_of_comb_cands.size(); ++i)
-        res += m_event_of_comb_cands[i].size();
-      return res;
-    }
+    int total_cands() const;
+    std::pair<int, int> max_hits_layer(const EventOfHits &eoh) const;
 
-    std::pair<int, int> max_hits_layer(const EventOfHits &eoh) const {
-      int maxN = 0;
-      int maxL = 0;
-      for (int l = 0; l < eoh.nLayers(); ++l) {
-        int lsize = eoh[l].nHits();
-        if (lsize > maxN) {
-          maxN = lsize;
-          maxL = eoh[l].layer_id();
-        }
-      }
-      return {maxN, maxL};
-    }
+    // --------
 
     void begin_event(MkJob *job, Event *ev, const char *build_type);
     void end_event();
     void release_memory();
 
-    void import_seeds(const TrackVec &in_seeds, std::function<insert_seed_foo> insert_seed);
+    void import_seeds(const TrackVec &in_seeds, const bool seeds_sorted, std::function<insert_seed_foo> insert_seed);
 
     // filter for rearranging cands that will / will not do backward search.
-    int filter_comb_cands(std::function<filter_track_cand_foo> filter);
+    int filter_comb_cands(filter_candidates_func filter, bool attempt_all_cands);
 
     void find_min_max_hots_size();
 
@@ -114,10 +71,12 @@ namespace mkfit {
     const TrackVec &ref_tracks() const { return m_tracks; }
     TrackVec &ref_tracks_nc() { return m_tracks; }
 
+    const EventOfCombCandidates &ref_eocc() const { return m_event_of_comb_cands; }
+
     // --------
 
-    void find_tracks_load_seeds_BH(const TrackVec &in_seeds);  // for FindTracksBestHit
-    void find_tracks_load_seeds(const TrackVec &in_seeds);
+    void find_tracks_load_seeds_BH(const TrackVec &in_seeds, const bool seeds_sorted);  // for FindTracksBestHit
+    void find_tracks_load_seeds(const TrackVec &in_seeds, const bool seeds_sorted);
 
     int find_tracks_unroll_candidates(std::vector<std::pair<int, int>> &seed_cand_vec,
                                       int start_seed,

@@ -362,8 +362,8 @@ void PFAlgo::egammaFilters(const reco::PFBlockRef& blockref,
         pfCandidates_->push_back(myPFPhoton);
 
       }  // end isSafe
-    }    // end isGoodPhoton
-  }      // end loop on EGM candidates
+    }  // end isGoodPhoton
+  }  // end loop on EGM candidates
   LogTrace("PFAlgo|egammaFilters") << "end of function PFAlgo::egammaFilters";
 }
 
@@ -944,7 +944,6 @@ void PFAlgo::relinkTrackToHcal(const reco::PFBlock& block,
                                const std::vector<bool>& active,
                                reco::PFBlock::LinkData& linkData,
                                unsigned int iTrack) {
-  unsigned ntt = 1;
   unsigned index = ecalElems.begin()->second;
   std::multimap<double, unsigned> sortedTracks;
   block.associatedElements(index, linkData, sortedTracks, reco::PFBlockElement::TRACK, reco::PFBlock::LINKTEST_ALL);
@@ -980,7 +979,6 @@ void PFAlgo::relinkTrackToHcal(const reco::PFBlock& block,
     if (sortedHCAL.empty())
       continue;
     LogTrace("PFAlgo|elementLoop") << "  and with an HCAL cluster " << sortedHCAL.begin()->second;
-    ntt++;
 
     // In that case establish a link with the first track
     block.setLink(iTrack, sortedHCAL.begin()->second, sortedECAL.begin()->first, linkData, PFBlock::LINKTEST_RECHIT);
@@ -1411,7 +1409,7 @@ void PFAlgo::createCandidatesHF(const reco::PFBlock& block,
           associatedHfEms.emplace(iTrack, associatedHfEm);
 
         }  // End loop hfem associated to iTrack
-      }    // sortedTracks
+      }  // sortedTracks
 
       // HfHad energy
       double uncalibratedenergyHfHad = hclusterRef->energy();
@@ -1465,8 +1463,8 @@ void PFAlgo::createCandidatesHF(const reco::PFBlock& block,
               energyHfHad = thepfEnergyCalibrationHF_.energyEmHad(
                   0.0, uncalibratedenergyHfHad, hclusterRef->positionREP().Eta(), hclusterRef->positionREP().Phi());
             }  // calib true
-          }    // loop over sortedHfEm
-        }      // if !sortedHfEms.empty()
+          }  // loop over sortedHfEm
+        }  // if !sortedHfEms.empty()
         //
         // Create HF candidates
         unsigned tmpi = reconstructCluster(*hclusterRef, energyHfEm + energyHfHad);
@@ -1544,7 +1542,7 @@ void PFAlgo::createCandidatesHF(const reco::PFBlock& block,
           }
           break;
         }  // loop over hfemsattelites ends
-      }    // if HFHAD is excessive or not
+      }  // if HFHAD is excessive or not
 
       //
       // Loop over all tracks associated to this HFHAD cluster *again* in order to produce charged hadrons
@@ -2044,7 +2042,7 @@ void PFAlgo::createCandidatesHCAL(const reco::PFBlock& block,
           associatedEcals.emplace(iTrack, associatedEcal);
 
         }  // End loop ecal associated to iTrack
-      }    // end case: at least one ecal element associated to iTrack
+      }  // end case: at least one ecal element associated to iTrack
 
       if (useHO_ && !sortedHOs.empty()) {  // start case: at least one ho element associated to iTrack
 
@@ -2086,7 +2084,7 @@ void PFAlgo::createCandidatesHCAL(const reco::PFBlock& block,
           associatedHOs.emplace(iTrack, associatedHO);
 
         }  // End loop ho associated to iTrack
-      }    // end case: at least one ho element associated to iTrack
+      }  // end case: at least one ho element associated to iTrack
 
     }  // end loop on tracks associated to hcal element iHcal
 
@@ -2425,7 +2423,15 @@ void PFAlgo::createCandidatesHCAL(const reco::PFBlock& block,
       if (iTrack == corrTrack) {
         if (corrFact < 0.)
           corrFact = 0.;  // protect against negative scaling
-        (*pfCandidates_)[tmpi].rescaleMomentum(corrFact);
+        auto& candRescale = (*pfCandidates_)[tmpi];
+        LogTrace("PFAlgo|createCandidatesHCAL")
+            << "\tBefore rescaling: momentum " << candRescale.p() << " pT " << candRescale.pt() << " energy "
+            << candRescale.energy() << " mass " << candRescale.mass() << std::endl
+            << "\tTo rescale by " << corrFact << std::endl;
+        candRescale.rescaleMomentum(corrFact);
+        LogTrace("PFAlgo|createCandidatesHCAL")
+            << "\tRescaled candidate momentum " << candRescale.p() << " pT " << candRescale.pt() << " energy "
+            << candRescale.energy() << " mass " << candRescale.mass() << std::endl;
         trackMomentum *= corrFact;
       }
       chargedHadronsIndices.push_back(tmpi);
@@ -2493,7 +2499,7 @@ void PFAlgo::createCandidatesHCAL(const reco::PFBlock& block,
               continue;
             a(i, j) = 1. / sigma2E;
           }  // end loop on j
-        }    // end loop on i
+        }  // end loop on i
 
         // solve ax = b
         TDecompChol decomp(a);
@@ -2508,7 +2514,15 @@ void PFAlgo::createCandidatesHCAL(const reco::PFBlock& block,
             double rescaleFactor = x(i) / hcalP[i];
             if (rescaleFactor < 0.)
               rescaleFactor = 0.;  // protect against negative scaling
-            (*pfCandidates_)[ich].rescaleMomentum(rescaleFactor);
+            auto& candRescale = (*pfCandidates_)[ich];
+            LogTrace("PFAlgo|createCandidatesHCAL")
+                << "\tBefore rescaling: momentum " << candRescale.p() << " pT " << candRescale.pt() << " energy "
+                << candRescale.energy() << " mass " << candRescale.mass() << std::endl
+                << "\tTo rescale by " << rescaleFactor << std::endl;
+            candRescale.rescaleMomentum(rescaleFactor);
+            LogTrace("PFAlgo|createCandidatesHCAL")
+                << "\tRescaled candidate momentum " << candRescale.p() << " pT " << candRescale.pt() << " energy "
+                << candRescale.energy() << " mass " << candRescale.mass() << std::endl;
 
             LogTrace("PFAlgo|createCandidatesHCAL")
                 << "\t\t\told p " << hcalP[i] << " new p " << x(i) << " rescale " << rescaleFactor;
@@ -3439,7 +3453,6 @@ void PFAlgo::associatePSClusters(unsigned iEcal,
   block.associatedElements(iEcal, linkData, sortedPS, psElementType, reco::PFBlock::LINKTEST_ALL);
 
   // Loop over these PS clusters
-  double totalPS = 0.;
   for (auto const& ps : sortedPS) {
     // CLuster index and distance to iEcal
     unsigned iPS = ps.second;
@@ -3461,7 +3474,6 @@ void PFAlgo::associatePSClusters(unsigned iEcal,
     assert(pstype == psElementType);
     PFClusterRef psclusterref = elements[iPS].clusterRef();
     assert(!psclusterref.isNull());
-    totalPS += psclusterref->energy();
     psEne[0] += psclusterref->energy();
     active[iPS] = false;
   }

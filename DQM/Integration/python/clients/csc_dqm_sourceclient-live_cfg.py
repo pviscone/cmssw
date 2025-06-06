@@ -63,8 +63,8 @@ process.load("DQM.Integration.config.environment_cfi")
 process.dqmEnv.subSystemFolder    = "CSC"
 process.dqmSaver.tag = "CSC"
 process.dqmSaver.runNumber = options.runNumber
-process.dqmSaverPB.tag = "CSC"
-process.dqmSaverPB.runNumber = options.runNumber
+# process.dqmSaverPB.tag = "CSC"
+# process.dqmSaverPB.runNumber = options.runNumber
 
 
 #process.DQM.collectorHost = 'pccmsdqm02.cern.ch'
@@ -134,7 +134,7 @@ del cscConditions
 
 # Condition for lxplus: change and possibly customise the GT
 #from Configuration.AlCa.GlobalTag import GlobalTag as gtCustomise
-#process.GlobalTag = gtCustomise(process.GlobalTag, 'auto:run2_data', '')
+#process.GlobalTag = gtCustomise(process.GlobalTag, 'auto:run3_data', '')
 
 #--------------------------
 # Service
@@ -173,14 +173,14 @@ MessageLogger = cms.Service("MessageLogger",
 # Sequences
 #--------------------------
 
-#process.p = cms.Path(process.dqmCSCClient+process.dqmEnv+process.dqmSaver+process.dqmSaverPB)
-process.p = cms.Path(process.dqmCSCClient * process.muonCSCDigis * process.csc2DRecHits * process.cscSegments * process.cscMonitor + process.dqmEnv + process.dqmSaver + process.dqmSaverPB)
+#process.p = cms.Path(process.dqmCSCClient+process.dqmEnv+process.dqmSaver)#+process.dqmSaverPB)
+process.p = cms.Path(process.dqmCSCClient * process.muonCSCDigis * process.csc2DRecHits * process.cscSegments * process.cscMonitor + process.dqmEnv + process.dqmSaver )#+ process.dqmSaverPB)
 
 
 process.castorDigis.InputLabel = "rawDataCollector"
 process.csctfDigis.producer = "rawDataCollector"
 process.dttfDigis.DTTF_FED_Source = "rawDataCollector"
-process.ecalDigis.cpu.InputLabel = "rawDataCollector"
+process.ecalDigisCPU.InputLabel = "rawDataCollector"
 process.ecalPreshowerDigis.sourceTag = "rawDataCollector"
 process.gctDigis.inputLabel = "rawDataCollector"
 process.gtDigis.DaqGtInputTag = "rawDataCollector"
@@ -205,7 +205,7 @@ if (process.runType.getRunType() == process.runType.hi_run):
     process.castorDigis.InputLabel = "rawDataRepacker"
     process.csctfDigis.producer = "rawDataRepacker"
     process.dttfDigis.DTTF_FED_Source = "rawDataRepacker"
-    process.ecalDigis.cpu.InputLabel = "rawDataRepacker"
+    process.ecalDigisCPU.InputLabel = "rawDataRepacker"
     process.ecalPreshowerDigis.sourceTag = "rawDataRepacker"
     process.gctDigis.inputLabel = "rawDataRepacker"
     process.gtDigis.DaqGtInputTag = "rawDataRepacker"

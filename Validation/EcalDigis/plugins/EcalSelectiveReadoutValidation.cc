@@ -646,10 +646,7 @@ void EcalSelectiveReadoutValidation::analyzeEB(const edm::Event& event, const ed
     }
   }
 
-  int nEbDigi = 0;
-
   for (EBDigiCollection::const_iterator it = ebDigis_->begin(); it != ebDigis_->end(); ++it) {
-    ++nEbDigi;
     const EBDataFrame& frame = *it;
     int iEta = static_cast<const EBDetId&>(frame.id()).ieta();
     int iPhi = static_cast<const EBDetId&>(frame.id()).iphi();
@@ -732,7 +729,6 @@ void EcalSelectiveReadoutValidation::analyzeEB(const edm::Event& event, const ed
 
   if (!localReco_) {
     for (RecHitCollection::const_iterator it = ebRecHits_->begin(); it != ebRecHits_->end(); ++it) {
-      ++nEbDigi;
       const RecHit& hit = *it;
       int iEta = static_cast<const EBDetId&>(hit.id()).ieta();
       int iPhi = static_cast<const EBDetId&>(hit.id()).iphi();
@@ -2187,14 +2183,11 @@ void EcalSelectiveReadoutValidation::configFirWeights(const vector<double>& weig
     log << weightsForZsFIR[i] << "\t";
   }
 
-  double s2 = 0.;
   log << "\nActual FIR weights: ";
   for (unsigned i = 0; i < firWeights_.size(); ++i) {
     log << firWeights_[i] << "\t";
-    s2 += firWeights_[i] * firWeights_[i];
   }
 
-  s2 = sqrt(s2);
   log << "\nNormalized FIR weights after hw representation rounding: ";
   for (unsigned i = 0; i < firWeights_.size(); ++i) {
     log << firWeights_[i] / (double)(1 << 10) << "\t";

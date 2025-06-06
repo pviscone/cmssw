@@ -21,6 +21,11 @@ information about the current state of global processing.
 #include "FWCore/Utilities/interface/RunIndex.h"
 
 #include <iosfwd>
+#include <string_view>
+
+namespace cms {
+  class Exception;
+}
 
 namespace edm {
 
@@ -49,6 +54,7 @@ namespace edm {
                   LuminosityBlockIndex const& luminosityBlockIndex,
                   Timestamp const& timestamp,
                   ProcessContext const* processContext);
+    GlobalContext(Transition transition, ProcessContext const* processContext);
 
     Transition transition() const { return transition_; }
     bool isAtEndTransition() const {
@@ -74,5 +80,8 @@ namespace edm {
 
   void exceptionContext(std::ostream&, GlobalContext const&);
   std::ostream& operator<<(std::ostream&, GlobalContext const&);
+  void exceptionContext(cms::Exception&, GlobalContext const&, char const* context);
+
+  std::string_view transitionName(GlobalContext::Transition);
 }  // namespace edm
 #endif

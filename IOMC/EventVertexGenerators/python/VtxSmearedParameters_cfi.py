@@ -780,6 +780,100 @@ Realistic25ns900GeV2021CollisionVtxSmearingParameters = cms.PSet(
     Z0 = cms.double(0.423776)
 )
 
+# From first Run 3 data at 13.6 TeV and 3.8T
+# BS parameters extracted from run 355100, fill 7920:
+# X0         =  0.172394 [cm]
+# Y0         = -0.180946 [cm]
+# Z0         =  0.94181  [cm]
+# sigmaZ0    =  3.81941  [cm]
+# BeamWidthX = 0.0008772 [cm]
+# BeamWidthY = 0.0010078 [cm]
+#
+# set SigmaZ0 = 3.8 [cm]
+# set BeamWidthX = BeamWidthY = 10.0 [um]
+# set beta* = 30 cm
+# energy = 13.6 TeV
+# From LHC calculator, emittance is 6.621e-8 cm
+# https://lpc.web.cern.ch/lumiCalc.html
+#
+# BPIX absolute position (https://twiki.cern.ch/twiki/bin/view/CMS/TkAlignmentPixelPosition?rev=45#Collisions_at_s_13_6_TeV):
+# X =  0.0717651 cm
+# Y = -0.165951  cm
+# Z = -0.356345  cm
+Realistic25ns13p6TeVEarly2022CollisionVtxSmearingParameters = cms.PSet(
+    Phi = cms.double(0.0),
+    BetaStar = cms.double(30.0),
+    Emittance = cms.double(6.621e-8),
+    Alpha = cms.double(0.0),
+    SigmaZ = cms.double(3.8),
+    TimeOffset = cms.double(0.0),
+    X0 = cms.double(0.100629),
+    Y0 = cms.double(-0.014995),
+    Z0 = cms.double(1.298155)
+)
+
+# BS parameters extracted from run 360459, Fill 8274:
+# X0         =  0.1742 [cm]
+# Y0         = -0.1831 [cm]
+# Z0         = -0.2531 [cm]
+# sigmaZ0    =  3.4019  [cm]
+# BeamWidthX = 0.0007519 [cm]
+# BeamWidthY = 0.0008636 [cm]
+#
+# set SigmaZ0 = 3.4 [cm]
+# set BeamWidthX = BeamWidthY = 8.0 [um]
+# set beta* = 30 cm
+# energy = 13.6 TeV
+# From LHC calculator, emittance is 4.276-8 cm
+# https://lpc.web.cern.ch/lumiCalc.html
+#
+# BPIX absolute position:
+# X =  0.0714025 cm
+# Y = -0.166338  cm
+# Z = -0.354856  cm
+Realistic25ns13p6TeVEOY2022CollisionVtxSmearingParameters = cms.PSet(
+    Phi = cms.double(0.0),
+    BetaStar = cms.double(30.0),
+    Emittance = cms.double(4.276e-8),
+    Alpha = cms.double(0.0),
+    SigmaZ = cms.double(3.4),
+    TimeOffset = cms.double(0.0),
+    X0 = cms.double(0.1027975),
+    Y0 = cms.double(-0.016762),
+    Z0 = cms.double(0.101756)
+)
+
+# BS parameters extracted averaging Fills 8728-8750 (2023C):
+# X0         =  0.117154 [cm]
+# Y0         = -0.186556 [cm]
+# Z0         = -0.431777 [cm]
+# sigmaZ0    =  3.599 cm [cm]
+# BeamWidthX = 0.0007333 [cm]
+# BeamWidthY = 0.0008046 [cm]
+#
+# set SigmaZ0 = 3.6 [cm]
+# set BeamWidthX = BeamWidthY = 7.7 [um]
+# set beta* = 30 cm
+# energy = 13.6 TeV
+# From LHC calculator, emittance is 3.931e-8 cm
+# https://lpc.web.cern.ch/lumiCalc.html
+#
+# BPIX absolute position (from Runs 367094-367589):
+# X =  0.0713008 cm
+# Y = -0.169590  cm
+# Z = -0.356785  cm
+Realistic25ns13p6TeVEarly2023CollisionVtxSmearingParameters = cms.PSet(
+    Phi = cms.double(0.0),
+    BetaStar = cms.double(30.0),
+    Emittance = cms.double(3.931e-8),
+    Alpha = cms.double(0.0),
+    SigmaZ = cms.double(3.6),
+    TimeOffset = cms.double(0.0),
+    X0 = cms.double(0.0458532),
+    Y0 = cms.double(-0.016966),
+    Z0 = cms.double(-0.074992)
+)
+
 # Test HF offset
 ShiftedCollision2015VtxSmearingParameters = cms.PSet(
     Phi = cms.double(0.0),
@@ -938,6 +1032,71 @@ Realistic8TeVPACollision2016VtxSmearingParameters = cms.PSet(
     Z0 = cms.double(1.3577)
 )
 
+# Guess for 2022 PbPb beam conditions, which takes the 2018 PbPb beam width parameters from RealisticPbPbCollision2018VtxSmearingParameters with the current pp MC beam centroid from Realistic25ns13p6TeVEarly2022Collision
+Nominal2022PbPbCollisionVtxSmearingParameters = cms.PSet(
+    Phi = cms.double(0.0),
+    BetaStar = cms.double(50),
+    Emittance = cms.double(3.36e-08),
+    Alpha = cms.double(0.0),
+    SigmaZ = cms.double(4.97),
+    TimeOffset = cms.double(0.0),
+    X0 = cms.double(0.100629),
+    Y0 = cms.double(-0.014995),
+    Z0 = cms.double(1.298155)
+)
+
+# From 2022 PbPb test data 362294
+Realistic2022PbPbCollisionVtxSmearingParameters = cms.PSet(
+    Phi = cms.double(0.0),
+    BetaStar = cms.double(50),
+    Emittance = cms.double(3.36e-08),
+    Alpha = cms.double(0.0),
+    SigmaZ = cms.double(5.01265),
+    TimeOffset = cms.double(0.0),
+    X0 = cms.double(0.1017599),
+    Y0 = cms.double(-0.015602),
+    Z0 = cms.double(0.131175)
+)
+
+# From 2023 PbPb data run 374719 
+Realistic2023PbPbCollisionVtxSmearingParameters = cms.PSet(
+    Phi = cms.double(0.0),
+    BetaStar = cms.double(50),
+    Emittance = cms.double(5.854e-08),
+    Alpha = cms.double(0.0),
+    SigmaZ = cms.double(4.60055),
+    TimeOffset = cms.double(0.0),
+    X0 = cms.double(0.0394727),
+    Y0 = cms.double(-0.0157799),
+    Z0 = cms.double(0.3064731)
+)
+
+# From 2024 ppRef data run 387590-387721
+Realistic2024ppRefCollisionVtxSmearingParameters = cms.PSet(
+    Phi = cms.double(0.0),
+    BetaStar = cms.double(310),
+    Emittance = cms.double(8.636e-08),
+    Alpha = cms.double(0.0),
+    SigmaZ = cms.double(5.82376),
+    TimeOffset = cms.double(0.0),
+    X0 = cms.double(0.0244619),
+    Y0 = cms.double(-0.0169181),
+    Z0 = cms.double(0.3513597)
+)
+
+# From 2024 PbPb data run 387998-388425
+Realistic2024PbPbCollisionVtxSmearingParameters = cms.PSet(
+    Phi = cms.double(0.0),
+    BetaStar = cms.double(50),
+    Emittance = cms.double(6.684e-08),
+    Alpha = cms.double(0.0),
+    SigmaZ = cms.double(4.9068349),
+    TimeOffset = cms.double(0.0),
+    X0 = cms.double(0.0302546),
+    Y0 = cms.double(-0.0170382),
+    Z0 = cms.double(0.2290316)
+)
+
 # Parameters for HL-LHC operation at 13TeV
 HLLHCVtxSmearingParameters = cms.PSet(
     MeanXIncm = cms.double(0.),
@@ -955,24 +1114,4 @@ HLLHCVtxSmearingParameters = cms.PSet(
     BunchLengthInm = cms.double(0.090),
     CrabbingAngleCrossingInurad = cms.double(380.0),
     CrabbingAngleSeparationInurad = cms.double(0.0)
-)
-
-# Parameters for HL-LHC Crab-kissing operation 13 TeV
-HLLHCCrabKissingVtxSmearingParameters = cms.PSet(
-    MeanXIncm = cms.double(0.),
-    MeanYIncm = cms.double(0.),
-    MeanZIncm = cms.double(0.),
-    TimeOffsetInns = cms.double(0.0),
-    EprotonInGeV = cms.double(6500.0),
-    HalfCrossingAngleInurad = cms.double(200.0),
-    CrabAngleCrossingPlaneInurad = cms.double(200.0),
-    CrabFrequencyCrossingPlaneInMHz = cms.double(400.0),
-    NormalizedEmittanceCrossingPlaneInum = cms.double(2.5),
-    BetaStarCrossingPlaneInm = cms.double(0.30),
-    CrabAngleParallelPlaneInurad = cms.double(100.0),
-    CrabFrequencyParallelPlaneInMHz = cms.double(400.0),
-    NormalizedEmittanceParallelPlaneInum = cms.double(2.5),
-    BetaStarParallelPlaneInm = cms.double(0.075),
-    ZsizeInm = cms.double(0.15),
-    BeamProfile=cms.string("Flat")
 )

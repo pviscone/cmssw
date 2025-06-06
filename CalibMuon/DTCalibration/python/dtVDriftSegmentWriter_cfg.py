@@ -1,6 +1,7 @@
 import FWCore.ParameterSet.Config as cms
+from Configuration.StandardSequences.Eras import eras
 
-process = cms.Process("DTVDriftWriter")
+process = cms.Process("DTVDriftWriter",eras.Run3)
 
 ### Set to true to switch to writing constants in the new DB format.
 NEWDBFORMAT = False 
@@ -12,7 +13,8 @@ process.MessageLogger.debugModules = cms.untracked.vstring('dtVDriftSegmentWrite
 process.load("Configuration.StandardSequences.GeometryDB_cff")
 process.load("Configuration.StandardSequences.MagneticField_AutoFromDBCurrent_cff")
 process.load("Configuration.StandardSequences.FrontierConditions_GlobalTag_cff")
-process.GlobalTag.globaltag = ''
+from Configuration.AlCa.autoCond import autoCond
+process.GlobalTag.globaltag=autoCond['run3_data']
 
 process.load("CondCore.CondDB.CondDB_cfi")
 

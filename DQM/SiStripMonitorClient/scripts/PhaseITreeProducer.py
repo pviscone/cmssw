@@ -2,7 +2,7 @@
 
 from __future__ import print_function
 import sys
-from ROOT import *
+from ROOT import TTree, TFile, gROOT, TClass
 from array import array
 from copy import deepcopy
 
@@ -314,8 +314,9 @@ class ModuleLvlValuesReader:
     print(len(self.availableNames))
       
   def __del__(self):
-    if self.inputFile.IsOpen():
-      self.inputFile.Close()
+    if self.inputFile:
+      if self.inputFile.IsOpen():
+        self.inputFile.Close()
     
 #--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--
 for i in range(1, len(sys.argv), 1):

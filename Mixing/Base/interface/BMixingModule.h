@@ -46,6 +46,8 @@ namespace edm {
     /**Default destructor*/
     ~BMixingModule() override;
 
+    void registerLateConsumes(eventsetup::ESRecordsToProductResolverIndices const&) override;
+
     /**Cumulates the pileup events onto this event*/
     void produce(edm::Event& e1, const edm::EventSetup& c) override;
 
@@ -64,7 +66,7 @@ namespace edm {
     static void globalEndJob(MixingCache::Config*) {}
 
     // to be overloaded by dependent class
-    virtual void reload(const edm::EventSetup& setup){};
+    virtual void reload(const edm::EventSetup& setup) {}
 
     // Should 'averageNumber' return 0 or 1 if there is no mixing? It is the average number of
     // *crossings*, including the hard scatter, or the average number of overlapping events?

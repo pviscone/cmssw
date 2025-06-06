@@ -202,12 +202,11 @@ hltPhase2L3MuonsNoID = cms.EDProducer("MuonIdProducer",
         useHO = cms.bool(False),
         useHcal = cms.bool(False),
         useME0 = cms.bool(False),
-#        useME0 = cms.bool(True), ### Thiago: in the offline RECO it is false...
         useMuon = cms.bool(True),
         usePreshower = cms.bool(False)
     ),
     TrackExtractorPSet = cms.PSet(
-        BeamSpotLabel = cms.InputTag("offlineBeamSpot"),
+        BeamSpotLabel = cms.InputTag("hltOnlineBeamSpot"),
         BeamlineOption = cms.string('BeamSpotFromEvent'),
         Chi2Ndof_Max = cms.double(1e+64),
         Chi2Prob_Min = cms.double(-1.0),

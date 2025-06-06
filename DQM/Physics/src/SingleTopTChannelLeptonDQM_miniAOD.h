@@ -11,7 +11,6 @@
 #include "DataFormats/Common/interface/ValueMap.h"
 #include "DataFormats/METReco/interface/CaloMET.h"
 #include "DataFormats/ParticleFlowCandidate/interface/PFCandidate.h"
-#include "JetMETCorrections/Objects/interface/JetCorrector.h"
 #include "DataFormats/EgammaCandidates/interface/GsfElectron.h"
 #include "DataFormats/VertexReco/interface/Vertex.h"
 #include "FWCore/Framework/interface/ConsumesCollector.h"
@@ -36,7 +35,7 @@ namespace SingleTopTChannelLepton_miniAOD {
     /// default contructor
     MonitorEnsemble(const char* label, const edm::ParameterSet& cfg, edm::ConsumesCollector&& iC);
     /// default destructor
-    ~MonitorEnsemble(){};
+    ~MonitorEnsemble() {}
 
     /// book histograms in subdirectory _directory_
     void book(DQMStore::IBooker& ibooker);
@@ -116,8 +115,6 @@ namespace SingleTopTChannelLepton_miniAOD {
     /// extra selection on muons
     std::unique_ptr<StringCutObjectSelector<pat::Muon> > muonSelect_;
 
-    /// jetCorrector
-    edm::ESGetToken<JetCorrector, JetCorrectionsRecord> jetCorrector_;
     /// jetID as an extra selection type
     edm::EDGetTokenT<reco::JetIDValueMap> jetIDLabel_;
     /// extra jetID selection on calo jets
@@ -187,7 +184,7 @@ public:
   /// default constructor
   SingleTopTChannelLeptonDQM_miniAOD(const edm::ParameterSet& cfg);
   /// default destructor
-  ~SingleTopTChannelLeptonDQM_miniAOD() override{};
+  ~SingleTopTChannelLeptonDQM_miniAOD() override {}
 
   /// do this during the event loop
   void analyze(const edm::Event& event, const edm::EventSetup& setup) override;

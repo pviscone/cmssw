@@ -38,6 +38,8 @@ public:
   void produce(edm::Event& e, const edm::EventSetup& c) override;
 
 private:
+  void returnEmptyCollections(edm::Event& e);
+
   using MVACollection = std::vector<float>;
   using QualityMaskCollection = std::vector<unsigned char>;
 
@@ -274,8 +276,6 @@ TrackListMerger::TrackListMerger(edm::ParameterSet const& conf) {
     produces<edm::ValueMap<int>>();
     produces<QualityMaskCollection>("QualityMasks");
   } else {
-    produces<reco::TrackCollection>();
-
     makeReKeyedSeeds_ = conf.getUntrackedParameter<bool>("makeReKeyedSeeds", false);
     if (makeReKeyedSeeds_) {
       copyExtras_ = true;
@@ -286,6 +286,12 @@ TrackListMerger::TrackListMerger(edm::ParameterSet const& conf) {
       produces<reco::TrackExtraCollection>();
       produces<TrackingRecHitCollection>();
     }
+
+    // TrackCollection refers to TrackingRechit and TrackExtra
+    // collections, need to declare its production after them to work
+    // around a rare race condition in framework scheduling
+    produces<reco::TrackCollection>();
+
     produces<std::vector<Trajectory>>();
     produces<TrajTrackAssociationCollection>();
   }
@@ -333,38 +339,9 @@ void TrackListMerger::produce(edm::Event& e, const edm::EventSetup& es) {
     }
   }
 
-  // output empty collections and early return
   if (trackColls.empty()) {
-    if (trkQualMod_) {
-      auto vm = std::make_unique<edm::ValueMap<int>>();
-      e.put(std::move(vm));
-      auto quals = std::make_unique<QualityMaskCollection>();
-      e.put(std::move(quals), "QualityMasks");
-    } else {
-      auto outputTrks = std::make_unique<reco::TrackCollection>();
-      e.put(std::move(outputTrks));
-
-      if (makeReKeyedSeeds_) {
-        auto outputSeeds = std::make_unique<TrajectorySeedCollection>();
-        e.put(std::move(outputSeeds));
-      }
-
-      if (copyExtras_) {
-        auto outputTrkExtras = std::make_unique<reco::TrackExtraCollection>();
-        auto outputTrkHits = std::make_unique<TrackingRecHitCollection>();
-        e.put(std::move(outputTrkExtras));
-        e.put(std::move(outputTrkHits));
-      }
-
-      auto outputTrajs = std::make_unique<std::vector<Trajectory>>();
-      outputTTAss = std::make_unique<TrajTrackAssociationCollection>();
-      e.put(std::move(outputTrajs));
-      e.put(std::move(outputTTAss));
-    }
-    auto vmMVA = std::make_unique<edm::ValueMap<float>>();
-    e.put(std::move(vmMVA), "MVAVals");
-    auto mvas = std::make_unique<MVACollection>();
-    e.put(std::move(mvas), "MVAValues");
+    // output empty collections and early return
+    this->returnEmptyCollections(e);
     return;
   }
 
@@ -376,6 +353,12 @@ void TrackListMerger::produce(edm::Event& e, const edm::EventSetup& es) {
     trackCollSizes[i] = trackColls[i]->size();
     trackCollFirsts[i] = rSize;
     rSize += trackCollSizes[i];
+  }
+
+  if (rSize == 0) {
+    // output empty collections and early return
+    this->returnEmptyCollections(e);
+    return;
   }
 
   statCount.begin(rSize);
@@ -460,8 +443,8 @@ void TrackListMerger::produce(edm::Event& e, const edm::EventSetup& es) {
         indexG[i] = ngood++;
         //if ( beVerb) std::cout << "inverb " << track->pt() << " " << selected[i] << std::endl;
       }  //end loop over tracks
-    }    //end more than 0 track
-  }      // loop over trackcolls
+    }  //end more than 0 track
+  }  // loop over trackcolls
 
   statCount.pre(ngood);
 
@@ -469,8 +452,8 @@ void TrackListMerger::produce(edm::Event& e, const edm::EventSetup& es) {
   typedef std::pair<unsigned int, const TrackingRecHit*> IHit;
   std::vector<std::vector<IHit>> rh1(ngood);  // "not an array" of vectors!
   //const TrackingRecHit*  fh1[ngood];  // first hit...
-  reco::TrackBase::TrackAlgorithm algo[ngood];
-  float score[ngood];
+  reco::TrackBase::TrackAlgorithm algo[std::max(1, ngood)];
+  float score[std::max(1, ngood)];
 
   for (unsigned int j = 0; j < rSize; j++) {
     if (selected[j] == 0)
@@ -667,8 +650,8 @@ void TrackListMerger::produce(edm::Event& e, const edm::EventSetup& es) {
           if (selected[i] == 0)
             break;
         }  //end track2 loop
-      }    //end track loop
-    }      //end loop over track list sets
+      }  //end track loop
+    }  //end loop over track list sets
 
   auto vmMVA = std::make_unique<edm::ValueMap<float>>();
   edm::ValueMap<float>::Filler fillerMVA(*vmMVA);
@@ -797,7 +780,7 @@ void TrackListMerger::produce(edm::Event& e, const edm::EventSetup& es) {
             clusterRemovalInfos = edm::InputTag(prov.moduleLabel(), prov.productInstanceName(), prov.processName());
             doRekeyOnThisSeed = e.getByLabel(clusterRemovalInfos, CRIh);
           }  //valid hit
-        }    //nhit!=0
+        }  //nhit!=0
 
         if (doRekeyOnThisSeed && !(clusterRemovalInfos == edm::InputTag(""))) {
           ClusterRemovalRefSetter refSetter(e, clusterRemovalInfos);
@@ -905,6 +888,40 @@ void TrackListMerger::produce(edm::Event& e, const edm::EventSetup& es) {
   return;
 
 }  //end produce
+
+void TrackListMerger::returnEmptyCollections(edm::Event& e) {
+  if (trkQualMod_) {
+    auto vm = std::make_unique<edm::ValueMap<int>>();
+    e.put(std::move(vm));
+    auto quals = std::make_unique<QualityMaskCollection>();
+    e.put(std::move(quals), "QualityMasks");
+  } else {
+    auto outputTrks = std::make_unique<reco::TrackCollection>();
+    e.put(std::move(outputTrks));
+
+    if (makeReKeyedSeeds_) {
+      auto outputSeeds = std::make_unique<TrajectorySeedCollection>();
+      e.put(std::move(outputSeeds));
+    }
+
+    if (copyExtras_) {
+      auto outputTrkExtras = std::make_unique<reco::TrackExtraCollection>();
+      auto outputTrkHits = std::make_unique<TrackingRecHitCollection>();
+      e.put(std::move(outputTrkExtras));
+      e.put(std::move(outputTrkHits));
+    }
+
+    auto outputTrajs = std::make_unique<std::vector<Trajectory>>();
+    outputTTAss = std::make_unique<TrajTrackAssociationCollection>();
+    e.put(std::move(outputTrajs));
+    e.put(std::move(outputTTAss));
+  }
+  auto vmMVA = std::make_unique<edm::ValueMap<float>>();
+  e.put(std::move(vmMVA), "MVAVals");
+  auto mvas = std::make_unique<MVACollection>();
+  e.put(std::move(mvas), "MVAValues");
+  return;
+}
 
 #include "FWCore/PluginManager/interface/ModuleDef.h"
 #include "FWCore/Framework/interface/MakerMacros.h"

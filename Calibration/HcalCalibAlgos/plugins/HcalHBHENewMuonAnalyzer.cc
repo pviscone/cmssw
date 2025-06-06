@@ -1,10 +1,6 @@
-#include <memory>
-#include <iostream>
 #include <fstream>
 #include <vector>
-#include <TFile.h>
 #include <TTree.h>
-#include "TPRegexp.h"
 
 // user include files
 #include "FWCore/Framework/interface/Frameworkfwd.h"
@@ -84,7 +80,7 @@ private:
 HcalHBHENewMuonAnalyzer::HcalHBHENewMuonAnalyzer(const edm::ParameterSet& iConfig)
     : labelHBHEMuonVar_(iConfig.getParameter<edm::InputTag>("hbheMuonLabel")),
       useRaw_(iConfig.getParameter<int>("useRaw")),
-      maxDepth_(iConfig.getUntrackedParameter<int>("maxDepth", 4)),
+      maxDepth_(iConfig.getUntrackedParameter<int>("maxDepth", 7)),
       tokHBHEMuonVar_(consumes<HcalHBHEMuonVariablesCollection>(labelHBHEMuonVar_)) {
   usesResource(TFileService::kSharedResource);
   //now do what ever initialization is needed
@@ -316,7 +312,7 @@ void HcalHBHENewMuonAnalyzer::fillDescriptions(edm::ConfigurationDescriptions& d
   edm::ParameterSetDescription desc;
   desc.add<edm::InputTag>("hbheMuonLabel", edm::InputTag("alcaHcalHBHEMuonProducer", "hbheMuon"));
   desc.add<int>("useRaw", 0);
-  desc.addUntracked<int>("maxDepth", 4);
+  desc.addUntracked<int>("maxDepth", 7);
   descriptions.add("hcalHBHEMuonAnalysis", desc);
 }
 

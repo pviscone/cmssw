@@ -53,11 +53,11 @@
 class TauL1TPair {
 public:
   TauL1TPair(const reco::PFTau* tau, const l1t::Tau* regTau)
-      : m_tau(tau), m_regTau(regTau), m_eta(999.), m_phi_bar(999.), m_phi_end(999.){};
+      : m_tau(tau), m_regTau(regTau), m_eta(999.), m_phi_bar(999.), m_phi_end(999.) {}
 
   TauL1TPair(const TauL1TPair& tauL1tPair);
-
-  ~TauL1TPair(){};
+  TauL1TPair& operator=(const TauL1TPair& tauL1tPair) = default;
+  ~TauL1TPair() {}
 
   double dR();
   double eta() const { return m_tau->eta(); };
@@ -171,6 +171,9 @@ private:
   float m_MaxHltTauDR;
 
   std::vector<int> m_trigIndices;
+
+  //V.M. 16.3.2023. Temporary variable for checking the anti-ele discriminator
+  bool m_AntiEleExists;
 
   // Histograms
   MonitorElement* h_nVertex_;

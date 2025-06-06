@@ -9,8 +9,8 @@ process.load('SimGeneral.HepPDTESSource.pythiapdt_cfi')
 process.load('FWCore.MessageService.MessageLogger_cfi')
 process.load('Configuration.EventContent.EventContent_cff')
 process.load('SimGeneral.MixingModule.mixNoPU_cfi')
-process.load('Configuration.Geometry.GeometryExtended2026D49Reco_cff')
-process.load('Configuration.Geometry.GeometryExtended2026D49_cff')
+process.load('Configuration.Geometry.GeometryExtendedRun4D49Reco_cff')
+process.load('Configuration.Geometry.GeometryExtendedRun4D49_cff')
 process.load('Configuration.StandardSequences.MagneticField_cff')
 process.load('Configuration.StandardSequences.Generator_cff')
 process.load('IOMC.EventVertexGenerators.VtxSmearedHLLHC14TeV_cfi')
@@ -104,10 +104,10 @@ process.load('L1Trigger.L1THGCal.hgcalTriggerPrimitives_cff')
 from L1Trigger.L1THGCal.customTriggerGeometry import custom_geometry_V11_Imp3
 process = custom_geometry_V11_Imp3(process)
 
-process.hgcaltriggergeomtester = cms.EDAnalyzer(
+process.L1THGCaltriggergeomtester = cms.EDAnalyzer(
     "HGCalTriggerGeomTesterV9Imp3"
     )
-process.test_step = cms.Path(process.hgcaltriggergeomtester)
+process.test_step = cms.Path(process.L1THGCaltriggergeomtester)
 
 # Schedule definition
 process.schedule = cms.Schedule(process.test_step,process.endjob_step)

@@ -7,9 +7,7 @@ from Configuration.DataProcessing.GetScenario import getScenario
 Example configuration for online reconstruction meant for visualization clients.
 """
 
-unitTest = False
-if 'unitTest=True' in sys.argv:
-    unitTest=True
+unitTest = 'unitTest=True' in sys.argv
 
 if unitTest:
     from DQM.Integration.config.unittestinputsource_cfi import options, runType, source
@@ -19,7 +17,7 @@ else:
 # this is needed to map the names of the run-types chosen by DQM to the scenarios, ideally we could converge to the same names
 #scenarios = {'pp_run': 'ppEra_Run2_2016','cosmic_run':'cosmicsEra_Run2_2016','hi_run':'HeavyIons'}
 #scenarios = {'pp_run': 'ppEra_Run2_2016','pp_run_stage1': 'ppEra_Run2_2016','cosmic_run':'cosmicsEra_Run2_2016','cosmic_run_stage1':'cosmicsEra_Run2_2016','hi_run':'HeavyIonsEra_Run2_HI'}
-scenarios = {'pp_run': 'ppEra_Run3','cosmic_run':'cosmicsEra_Run3','hi_run':'ppEra_Run2_2016_pA', 'commissioning_run':'cosmicsEra_Run3'}
+scenarios = {'pp_run': 'ppEra_Run3','cosmic_run':'cosmicsEra_Run3','hi_run':'ppEra_Run3_pp_on_PbPb_approxSiStripClusters', 'commissioning_run':'cosmicsEra_Run3'}
 
 if not runType.getRunTypeName() in scenarios.keys():
     msg = "Error getting the scenario out of the 'runkey', no mapping for: %s\n"%runType.getRunTypeName()
@@ -47,7 +45,8 @@ except Exception as ex:
 from DQM.Integration.config.FrontierCondition_GT_autoExpress_cfi import GlobalTag
 kwds = {
    'globalTag': GlobalTag.globaltag.value(),
-   'globalTagConnect': GlobalTag.connect.value()
+   'globalTagConnect': GlobalTag.connect.value(),
+   'beamSplashRun' : ":localreco+hcalOnlyGlobalRecoSequence+caloTowersRec" if options.BeamSplashRun else "",
 }
 
 # explicitly select the input collection, since we get multiple in online
@@ -72,13 +71,19 @@ if not unitTest:
     process.source.skipFirstLumis                = True
     process.source.minEventsPerLumi              = 0
     process.source.nextLumiTimeoutMillis         = 10000
-    process.source.streamLabel                   = 'streamDQMEventDisplay'
-    if options.BeamSplashRun :
-      set_BeamSplashRun_settings( process.source )
+
+    if options.BeamSplashRun:
+        set_BeamSplashRun_settings( process.source )
+
+    # stream label
+    if runType.getRunType() == runType.hi_run:
+        process.source.streamLabel = "streamHIDQMEventDisplay"
+    else:
+        process.source.streamLabel = "streamDQMEventDisplay"
 
     m = re.search(r"\((\w+)\)", str(source.runNumber))
     runno = str(m.group(1))
-    outDir= '/fff/BU0/output/EvD/run'+runno+'/streamEvDOutput2'
+    outDir= options.outputBaseDir+'/EvD/run'+runno+'/streamEvDOutput2'
 else:
     runno = options.runNumber
     outDir = "./upload"

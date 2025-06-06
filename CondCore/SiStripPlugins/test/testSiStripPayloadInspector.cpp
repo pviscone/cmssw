@@ -70,6 +70,14 @@ int main(int argc, char** argv) {
   histo7.process(connectionString, PI::mk_input(tag, start, end));
   edm::LogPrint("testSiStripPayloadInspector") << histo7.data() << std::endl;
 
+  SiStripApvGainCompareByPartitionSingleTag histoGainByPart;
+  histoGainByPart.process(connectionString, PI::mk_input(tag, start, end));
+  edm::LogPrint("testSiStripPayloadInspector") << histoGainByPart.data() << std::endl;
+
+  SiStripApvGainRatioByPartitionSingleTag histoGainRatioByPart;
+  histoGainRatioByPart.process(connectionString, PI::mk_input(tag, start, end));
+  edm::LogPrint("testSiStripPayloadInspector") << histoGainRatioByPart.data() << std::endl;
+
   // Noise
 
   tag = "SiStripNoise_GR10_v1_hlt";
@@ -100,6 +108,10 @@ int main(int argc, char** argv) {
   histoNoiseCorrelationByPartition.process(connectionString, PI::mk_input(tag, start, start));
   edm::LogPrint("testSiStripPayloadInspector") << histoNoiseCorrelationByPartition.data() << std::endl;
 
+  SiStripNoiseDiffByPartitionSingleTag histoNoiseDiffByPart;
+  histoNoiseDiffByPart.process(connectionString, PI::mk_input(tag, start, end));
+  edm::LogPrint("testSiStripPayloadInspector") << histoNoiseDiffByPart.data() << std::endl;
+
   // Pedestals
 
   tag = "SiStripPedestals_v2_prompt";
@@ -127,7 +139,11 @@ int main(int argc, char** argv) {
   histoPedestalCorrelationByPartition.process(connectionString, PI::mk_input(tag, start, start));
   edm::LogPrint("testSiStripPayloadInspector") << histoPedestalCorrelationByPartition.data() << std::endl;
 
-  //Latency
+  SiStripPedestalDiffByPartitionSingleTag histoPedDiffByPart;
+  histoPedDiffByPart.process(connectionString, PI::mk_input(tag, start, end));
+  edm::LogPrint("testSiStripPayloadInspector") << histoPedDiffByPart.data() << std::endl;
+
+  // Latency
 
   tag = "SiStripLatency_v2_prompt";
   start = static_cast<unsigned long long>(315347);
@@ -143,7 +159,7 @@ int main(int argc, char** argv) {
   histo13.process(connectionString, PI::mk_input(tag, start, end));
   edm::LogPrint("testSiStripPayloadInspector") << histo13.data() << std::endl;
 
-  //Threshold
+  // Threshold
   tag = "SiStripThreshold_v1_prompt";
   start = static_cast<unsigned long long>(315352);
   end = static_cast<unsigned long long>(315460);
@@ -161,9 +177,20 @@ int main(int argc, char** argv) {
 
   edm::LogPrint("testSiStripPayloadInspector") << "## Exercising SiStripTkMaps plots " << std::endl;
 
-  SiStripBadStripFractionTkMap histoTkMap;
+  SiStripBadStripFractionTH2PolyTkMap histoTkMap;
   histoTkMap.process(connectionString, PI::mk_input(tag, start, end));
   edm::LogPrint("testSiStripPayloadInspector") << histoTkMap.data() << std::endl;
+
+  // test FED cabling
+  tag = "SiStripFedCabling_GR10_v1_hlt";
+  start = static_cast<unsigned long long>(1);
+  end = static_cast<unsigned long long>(400000);
+
+  edm::LogPrint("testSiStripPayloadInspector") << "## Exercising FEDCabling plots " << std::endl;
+
+  SiStripFedCablingComparisonTrackerMapSingleTag histoFEDCablingCompare;
+  histoFEDCablingCompare.process(connectionString, PI::mk_input(tag, start, end));
+  edm::LogPrint("testSiStripPayloadInspector") << histoFEDCablingCompare.data() << std::endl;
 
   inputs.clear();
 #if PY_MAJOR_VERSION >= 3

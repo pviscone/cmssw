@@ -12,6 +12,8 @@
 #include "FWCore/Utilities/interface/EDGetToken.h"
 #include "DataFormats/TrackReco/interface/TrackFwd.h"
 #include "DataFormats/VertexReco/interface/VertexFwd.h"
+#include "DataFormats/Scalers/interface/LumiScalers.h"
+#include "DataFormats/OnlineMetaData/interface/OnlineLuminosityRecord.h"
 #include "DQMServices/Core/interface/MonitorElement.h"
 #include "DQMServices/Core/interface/DQMStore.h"
 #include "DQMServices/Core/interface/DQMEDAnalyzer.h"
@@ -41,6 +43,7 @@ public:
     MonitorElement *h_tracks, *h_pt, *h_eta, *h_phi, *h_dxy, *h_dz, *h_dxyWRTpv, *h_dzWRTpv, *h_charge, *h_hits;
     MonitorElement *h_dRmin, *h_dRmin_l;
     MonitorElement* h_pt_vs_eta;
+    MonitorElement *h_onlinelumi, *h_PU, *h_ls;
   };
 
   struct matchingME {
@@ -49,7 +52,7 @@ public:
     MonitorElement *h_dPt, *h_dEta, *h_dPhi, *h_dDxy, *h_dDz, *h_dDxyWRTpv, *h_dDzWRTpv, *h_dCharge, *h_dHits;
   };
 
-  typedef std::vector<std::pair<int, std::map<double, int> > > idx2idxByDoubleColl;
+  typedef std::vector<std::pair<int, std::map<double, int>>> idx2idxByDoubleColl;
 
   explicit TrackToTrackComparisonHists(const edm::ParameterSet&);
   ~TrackToTrackComparisonHists() override;
@@ -62,15 +65,24 @@ protected:
   void analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) override;
   void bookHistograms(DQMStore::IBooker& iBooker, edm::Run const& iRun, edm::EventSetup const& iSetup) override;
 
-  void fillMap(reco::TrackCollection tracks1, reco::TrackCollection tracks2, idx2idxByDoubleColl& map, float dRMin);
+  void fillMap(const edm::View<reco::Track>& tracks1,
+               const edm::View<reco::Track>& tracks2,
+               idx2idxByDoubleColl& map,
+               float dRMin);
 
   void initialize_parameter(const edm::ParameterSet& iConfig);
   void bookHistos(DQMStore::IBooker& ibooker, generalME& mes, TString label, std::string& dir);
   void book_generic_tracks_histos(DQMStore::IBooker& ibooker, generalME& mes, TString label, std::string& dir);
   void book_matching_tracks_histos(DQMStore::IBooker& ibooker, matchingME& mes, TString label, std::string& dir);
 
-  void fill_generic_tracks_histos(
-      generalME& mes, reco::Track* trk, reco::BeamSpot* bs, reco::Vertex* pv, bool requirePlateau = true);
+  void fill_generic_tracks_histos(generalME& mes,
+                                  reco::Track* trk,
+                                  reco::BeamSpot* bs,
+                                  reco::Vertex* pv,
+                                  unsigned int ls,
+                                  double onlinelumi,
+                                  double PU,
+                                  bool requirePlateau = true);
   void fill_matching_tracks_histos(
       matchingME& mes, reco::Track* mon, reco::Track* ref, reco::BeamSpot* bs, reco::Vertex* pv);
 
@@ -80,12 +92,14 @@ protected:
   edm::InputTag referenceTrackInputTag_;
 
   //these are used by MTVGenPs
-  edm::EDGetTokenT<reco::TrackCollection> monitoredTrackToken_;
-  edm::EDGetTokenT<reco::TrackCollection> referenceTrackToken_;
+  edm::EDGetTokenT<edm::View<reco::Track>> monitoredTrackToken_;
+  edm::EDGetTokenT<edm::View<reco::Track>> referenceTrackToken_;
   edm::EDGetTokenT<reco::BeamSpot> monitoredBSToken_;
   edm::EDGetTokenT<reco::BeamSpot> referenceBSToken_;
   edm::EDGetTokenT<reco::VertexCollection> monitoredPVToken_;
   edm::EDGetTokenT<reco::VertexCollection> referencePVToken_;
+  edm::EDGetTokenT<LumiScalersCollection> lumiScalersToken_;
+  edm::EDGetTokenT<OnlineLuminosityRecord> onlineMetaDataDigisToken_;
 
 private:
   //  edm::ParameterSet conf_;
@@ -130,4 +144,10 @@ private:
   unsigned int dxyRes_nbin;
   double dzRes_rangeMin, dzRes_rangeMax;
   unsigned int dzRes_nbin;
+  unsigned int ls_rangeMin, ls_rangeMax;
+  unsigned int ls_nbin;
+  double PU_rangeMin, PU_rangeMax;
+  unsigned int PU_nbin;
+  double onlinelumi_rangeMin, onlinelumi_rangeMax;
+  unsigned int onlinelumi_nbin;
 };

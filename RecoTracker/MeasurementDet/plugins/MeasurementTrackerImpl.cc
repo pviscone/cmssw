@@ -11,8 +11,6 @@
 
 #include "MagneticField/Records/interface/IdealMagneticFieldRecord.h"
 
-#include "DataFormats/DetId/interface/DetIdCollection.h"
-
 #include "DataFormats/SiStripDetId/interface/StripSubdetector.h"
 #include "DataFormats/SiPixelDetId/interface/PixelSubdetector.h"
 #include "DataFormats/SiStripDetId/interface/StripSubdetector.h"
@@ -241,7 +239,7 @@ void MeasurementTrackerImpl::addDets(const TrackingGeometry::DetContainer& dets,
       }
       if (gluedDet != nullptr)
         addGluedDet(gluedDet);
-      else
+      else if (stackDet != nullptr)
         addStackDet(stackDet);
     }
   }

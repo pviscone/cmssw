@@ -33,7 +33,7 @@ public:
     produces<nanoaod::FlatTable>();
   }
 
-  ~GenJetFlavourTableProducer() override{};
+  ~GenJetFlavourTableProducer() override {}
 
   static void fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
     edm::ParameterSetDescription desc;
@@ -57,25 +57,26 @@ private:
 
 // ------------ method called to produce the data  ------------
 void GenJetFlavourTableProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
-  edm::Handle<reco::GenJetCollection> jets;
-  iEvent.getByToken(src_, jets);
-
-  edm::Handle<reco::JetFlavourInfoMatchingCollection> jetFlavourInfos;
-  iEvent.getByToken(jetFlavourInfosToken_, jetFlavourInfos);
+  const auto& jetsProd = iEvent.get(src_);
+  const auto& jetFlavourInfosProd = iEvent.get(jetFlavourInfosToken_);
 
   unsigned int ncand = 0;
-  std::vector<int> partonFlavour;
+  std::vector<int16_t> partonFlavour;
   std::vector<uint8_t> hadronFlavour;
+  std::vector<uint8_t> nBHadrons;
+  std::vector<uint8_t> nCHadrons;
 
-  for (const reco::GenJet& jet : *jets) {
+  for (const reco::GenJet& jet : jetsProd) {
     if (!cut_(jet))
       continue;
     ++ncand;
     bool matched = false;
-    for (const reco::JetFlavourInfoMatching& jetFlavourInfoMatching : *jetFlavourInfos) {
+    for (const reco::JetFlavourInfoMatching& jetFlavourInfoMatching : jetFlavourInfosProd) {
       if (deltaR(jet.p4(), jetFlavourInfoMatching.first->p4()) < deltaR_) {
         partonFlavour.push_back(jetFlavourInfoMatching.second.getPartonFlavour());
         hadronFlavour.push_back(jetFlavourInfoMatching.second.getHadronFlavour());
+        nBHadrons.push_back(jetFlavourInfoMatching.second.getbHadrons().size());
+        nCHadrons.push_back(jetFlavourInfoMatching.second.getcHadrons().size());
         matched = true;
         break;
       }
@@ -83,12 +84,16 @@ void GenJetFlavourTableProducer::produce(edm::Event& iEvent, const edm::EventSet
     if (!matched) {
       partonFlavour.push_back(0);
       hadronFlavour.push_back(0);
+      nBHadrons.push_back(0);
+      nCHadrons.push_back(0);
     }
   }
 
   auto tab = std::make_unique<nanoaod::FlatTable>(ncand, name_, false, true);
-  tab->addColumn<int>("partonFlavour", partonFlavour, "flavour from parton matching");
+  tab->addColumn<int16_t>("partonFlavour", partonFlavour, "flavour from parton matching");
   tab->addColumn<uint8_t>("hadronFlavour", hadronFlavour, "flavour from hadron ghost clustering");
+  tab->addColumn<uint8_t>("nBHadrons", nBHadrons, "number of b-hadrons");
+  tab->addColumn<uint8_t>("nCHadrons", nCHadrons, "number of c-hadrons");
 
   iEvent.put(std::move(tab));
 }

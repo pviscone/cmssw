@@ -5,8 +5,8 @@
 #include "G4Track.hh"
 #include "G4Navigator.hh"
 #include "G4NavigationHistory.hh"
-#include "CLHEP/Units/PhysicalConstants.h"
-#include "CLHEP/Units/SystemOfUnits.h"
+#include <CLHEP/Units/PhysicalConstants.h>
+#include <CLHEP/Units/SystemOfUnits.h>
 
 #include "Randomize.hh"
 #include "G4TransportationManager.hh"
@@ -27,10 +27,13 @@
 #include "FWCore/ServiceRegistry/interface/Service.h"
 #include "CommonTools/UtilAlgos/interface/TFileService.h"
 
-#include "CLHEP/Units/GlobalPhysicalConstants.h"
-#include "CLHEP/Units/GlobalSystemOfUnits.h"
-
 #include <cmath>
+
+using CLHEP::cm;
+using CLHEP::degree;
+using CLHEP::GeV;
+using CLHEP::nanosecond;
+using CLHEP::twopi;
 
 //#define EDM_ML_DEBUG
 
@@ -233,8 +236,11 @@ std::vector<HFGflash::Hit> HFGflash::gfParameterization(const G4Step* aStep, boo
   z1 *= 9.76972e-01 - 3.85026e-01 * std::tanh(1.82790e+00 * std::log(energy) - 3.66237e+00);
   p1 *= 0.96;
 
+#ifdef EDM_ML_DEBUG
+  G4int nSpots_sd = 0;  // count total number of spots in SD
+#endif
+
   G4double stepLengthLeft = 10000;
-  G4int nSpots_sd = 0;                // count total number of spots in SD
   G4double zInX0 = 0.0;               // shower depth in X0 unit
   G4double deltaZInX0 = 0.0;          // segment of depth in X0 unit
   G4double deltaZ = 0.0;              // segment of depth in cm
@@ -440,7 +446,9 @@ std::vector<HFGflash::Hit> HFGflash::gfParameterization(const G4Step* aStep, boo
       oneHit.time = timeGlobal;
       oneHit.edep = emSpotEnergy * invgev;
       hit.push_back(oneHit);
+#ifdef EDM_ML_DEBUG
       nSpots_sd++;
+#endif
 
     }  // end of for spot iteration
 

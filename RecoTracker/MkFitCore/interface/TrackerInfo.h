@@ -2,12 +2,19 @@
 #define RecoTracker_MkFitCore_interface_TrackerInfo_h
 
 #include "RecoTracker/MkFitCore/interface/MatrixSTypes.h"
+#include "RecoTracker/MkFitCore/interface/PropagationConfig.h"
+#include "RecoTracker/MkFitCore/interface/Config.h"
 #include <string>
+#include <unordered_map>
 #include <vector>
+#include <unordered_map>
 
 namespace mkfit {
 
-  enum WithinSensitiveRegion_e { WSR_Undef = -1, WSR_Inside = 0, WSR_Edge, WSR_Outside };
+  //==============================================================================
+  // WSR -- WithinSensitiveRegion state
+
+  enum WithinSensitiveRegion_e { WSR_Undef = -1, WSR_Inside = 0, WSR_Edge, WSR_Outside, WSR_Failed };
 
   struct WSR_Result {
     // Could also store XHitSize count equivalent here : 16;
@@ -21,14 +28,43 @@ namespace mkfit {
 
   //==============================================================================
 
+  struct ModuleShape {
+    float dx1;  // half-extent along x (bottom edge for trap)
+    float dx2;  // 0 for rect; half-extent along x, top edge for trap
+    float dy;   // half extent along y / less precise direction
+    float dz;   // half thickness in z
+
+    // round to 1 mum precision
+    float rmu(float x) { return std::round(1e4f * x) * 1e-4f; }
+    void round_assign(float x1, float x2, float y, float z) {
+      dx1 = rmu(x1);
+      dx2 = rmu(x2);
+      dy = rmu(y);
+      dz = rmu(z);
+    }
+
+    bool is_rect() const { return dx2 == 0.f; }
+    bool is_trap() const { return dx2 != 0.f; }
+
+    bool operator==(const ModuleShape& s) const { return dx1 == s.dx1 && dx2 == s.dx2 && dy == s.dy && dz == s.dz; }
+  };
+
   struct ModuleInfo {
     SVector3 pos;
-    SVector3 zdir;
-    SVector3 xdir;
+    SVector3 zdir;  // normal to module plane
+    SVector3 xdir;  // the precise / "phi" direction
     unsigned int detid;
+    unsigned short shapeid;
 
     ModuleInfo() = default;
-    ModuleInfo(SVector3 p, SVector3 zd, SVector3 xd, unsigned int id) : pos(p), zdir(zd), xdir(xd), detid(id) {}
+    ModuleInfo(SVector3 p, SVector3 zd, SVector3 xd, unsigned int did, unsigned short sid)
+        : pos(p), zdir(zd), xdir(xd), detid(did), shapeid(sid) {}
+
+    SVector3 calc_ydir() const {
+      return {zdir[1] * xdir[2] - zdir[2] * xdir[1],
+              zdir[2] * xdir[0] - zdir[0] * xdir[2],
+              zdir[0] * zdir[1] - zdir[1] * xdir[0]};
+    }
   };
 
   //==============================================================================
@@ -52,6 +88,7 @@ namespace mkfit {
     void set_subdet(int sd) { m_subdet = sd; }
     void set_is_pixel(bool p) { m_is_pixel = p; }
     void set_is_stereo(bool s) { m_is_stereo = s; }
+    void set_has_charge(bool c) { m_has_charge = c; }
 
     int layer_id() const { return m_layer_id; }
     LayerType_e layer_type() const { return m_layer_type; }
@@ -68,6 +105,7 @@ namespace mkfit {
     bool is_barrel() const { return m_layer_type == Barrel; }
     bool is_pixel() const { return m_is_pixel; }
     bool is_stereo() const { return m_is_stereo; }
+    bool has_charge() const { return m_has_charge; }
 
     bool is_within_z_limits(float z) const { return z > m_zmin && z < m_zmax; }
     bool is_within_r_limits(float r) const { return r > m_rin && r < m_rout; }
@@ -113,9 +151,14 @@ namespace mkfit {
       return m_modules.size() - 1;
     }
 
+    void resize_shapes(int ns) { m_shapes.resize(ns); }
+    void register_shape(const ModuleShape& ms, unsigned short sid) { m_shapes[sid] = ms; }
+
     unsigned int short_id(unsigned int detid) const { return m_detid2sid.at(detid); }
     int n_modules() const { return m_modules.size(); }
+    int n_shapes() const { return m_shapes.size(); }
     const ModuleInfo& module_info(unsigned int sid) const { return m_modules[sid]; }
+    const ModuleShape& module_shape(unsigned short msid) const { return m_shapes[msid]; }
 
   private:
     bool is_in_r_hole_no_check(float r) const { return r > m_hole_r_min && r < m_hole_r_max; }
@@ -132,12 +175,45 @@ namespace mkfit {
     bool m_has_r_range_hole = false;
     bool m_is_stereo = false;
     bool m_is_pixel = false;
+    bool m_has_charge = true;
+    // NOTE: offset of the last element is used in write/read_bin file.
+    bool m_final_member_for_streaming = false;
 
     std::unordered_map<unsigned int, unsigned int> m_detid2sid;
     std::vector<ModuleInfo> m_modules;
+    std::vector<ModuleShape> m_shapes;
   };
 
   //==============================================================================
+
+  template <typename T>
+  class rectvec {
+  public:
+    rectvec(int n1 = 0, int n2 = 0) : m_n1(n1), m_n2(n2), m_vec(n1 * n2) {}
+
+    void rerect(int n1, int n2) {
+      m_n1 = n1;
+      m_n2 = n2;
+      m_vec.resize(n1 * n2);
+    }
+
+    const T& operator()(int i1, int i2) const { return m_vec[i1 * m_n2 + i2]; }
+    T& operator()(int i1, int i2) { return m_vec[i1 * m_n2 + i2]; }
+
+    const T* operator[](int i1) const { return &m_vec[i1 * m_n2]; }
+    T* operator[](int i1) { return &m_vec[i1 * m_n2]; }
+
+    const std::vector<T>& vector() const { return m_vec; }
+    std::vector<T>& vector() { return m_vec; }
+
+    int n1() const { return m_n1; }
+    int n2() const { return m_n2; }
+    bool check_idcs(int i1, int i2) const { return i1 >= 0 && i1 < m_n1 && i2 >= 0 && i2 < m_n2; }
+
+  private:
+    int m_n1, m_n2;
+    std::vector<T> m_vec;
+  };
 
   class TrackerInfo {
   public:
@@ -150,6 +226,9 @@ namespace mkfit {
       Reg_Endcap_Pos,
       Reg_End,
       Reg_Count = Reg_End
+    };
+    struct Material {
+      float bbxi{0}, radl{0};
     };
 
     void reserve_layers(int n_brl, int n_ec_pos, int n_ec_neg);
@@ -172,9 +251,31 @@ namespace mkfit {
     const std::vector<int>& endcap_pos_layers() const { return m_ecap_pos; }
     const std::vector<int>& endcap_neg_layers() const { return m_ecap_neg; }
 
+    const PropagationConfig& prop_config() const { return m_prop_config; }
+    PropagationConfig& prop_config_nc() { return m_prop_config; }
+
     void write_bin_file(const std::string& fname) const;
     void read_bin_file(const std::string& fname);
-    void print_tracker(int level) const;
+    void print_tracker(int level, int precision = 3) const;
+
+    void create_material(int nBinZ, float rngZ, int nBinR, float rngR);
+    int mat_nbins_z() const { return m_mat_vec.n1(); }
+    int mat_nbins_r() const { return m_mat_vec.n2(); }
+    float mat_range_z() const { return m_mat_range_z; }
+    float mat_range_r() const { return m_mat_range_r; }
+    int mat_bin_z(float z) const { return z * m_mat_fac_z; }
+    int mat_bin_r(float r) const { return r * m_mat_fac_r; }
+    bool check_bins(int bz, int br) const { return m_mat_vec.check_idcs(bz, br); }
+
+    float material_bbxi(int binZ, int binR) const { return m_mat_vec(binZ, binR).bbxi; }
+    float material_radl(int binZ, int binR) const { return m_mat_vec(binZ, binR).radl; }
+    float& material_bbxi(int binZ, int binR) { return m_mat_vec(binZ, binR).bbxi; }
+    float& material_radl(int binZ, int binR) { return m_mat_vec(binZ, binR).radl; }
+
+    Material material_checked(float z, float r) const {
+      const int zbin = mat_bin_z(z), rbin = mat_bin_r(r);
+      return check_bins(zbin, rbin) ? m_mat_vec(zbin, rbin) : Material();
+    }
 
   private:
     int new_layer(LayerInfo::LayerType_e type);
@@ -184,6 +285,12 @@ namespace mkfit {
     std::vector<int> m_barrel;
     std::vector<int> m_ecap_pos;
     std::vector<int> m_ecap_neg;
+
+    float m_mat_range_z, m_mat_range_r;
+    float m_mat_fac_z, m_mat_fac_r;
+    rectvec<Material> m_mat_vec;
+
+    PropagationConfig m_prop_config;
   };
 
 }  // end namespace mkfit

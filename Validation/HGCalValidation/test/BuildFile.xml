@@ -8,7 +8,7 @@
 <use name="SimDataFormats/CaloHit"/>
 <use name="SimDataFormats/CaloTest"/>
 <use name="SimG4CMS/Calo"/>
-<use name="geant4core"/>
+<use name="RecoLocalCalo/HGCalRecAlgos"/>
 <use name="clhep"/>
 <use name="hepmc"/>
 <flags EDM_PLUGIN="1"/>

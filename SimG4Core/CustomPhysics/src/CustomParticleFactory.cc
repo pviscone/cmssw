@@ -10,7 +10,7 @@
 #include "G4PhaseSpaceDecayChannel.hh"
 #include "G4ProcessManager.hh"
 #include "G4ParticleDefinition.hh"
-#include "G4SystemOfUnits.hh"
+#include <CLHEP/Units/SystemOfUnits.h>
 
 #include "SimG4Core/CustomPhysics/interface/CMSSIMP.h"
 #include "SimG4Core/CustomPhysics/interface/CMSAntiSIMP.h"
@@ -97,8 +97,8 @@ void CustomParticleFactory::addCustomParticle(int pdgCode, double mass, const st
   }
 
   if (CustomPDGParser::s_isSIMP(pdgCode)) {
-    CMSSIMP *simp = CMSSIMP::Definition(mass * GeV);
-    CMSAntiSIMP *antisimp = CMSAntiSIMP::Definition(mass * GeV);
+    CMSSIMP *simp = CMSSIMP::Definition(mass * CLHEP::GeV);
+    CMSAntiSIMP *antisimp = CMSAntiSIMP::Definition(mass * CLHEP::GeV);
     m_particles.push_back(simp);
     m_particles.push_back(antisimp);
     return;
@@ -302,7 +302,7 @@ void CustomParticleFactory::getMassTable(std::ifstream *configFile) {
       }
       if (sign == -1 && pdgId != 25 && pdgId != 35 && pdgId != 36 && pdgId != 37 && pdgId != 1000039) {
         tmp = "anti_" + name;
-        if (nullptr != theParticleTable->FindParticle(-pdgId)) {
+        if (theParticleTable->FindParticle(-pdgId) == nullptr) {
           edm::LogVerbatim("SimG4CoreCustomPhysics")
               << "CustomParticleFactory: Calling addCustomParticle for antiparticle with pdgId: " << -pdgId << ", mass "
               << mass << " GeV, name " << tmp;

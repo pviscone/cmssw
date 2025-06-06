@@ -25,7 +25,7 @@ public:
     size_t eesize = (size_t)632;
     ee_.checkAndResize(eesize);
   };
-  ~EcalCondTowerObjectContainer(){};
+  ~EcalCondTowerObjectContainer() {}
 
   inline const Items &barrelItems() const { return eb_.items(); };
 
@@ -75,7 +75,7 @@ public:
 
   inline Item &operator[](uint32_t rawId) {
     DetId id(rawId);
-    return ((id.subdetId() == EcalBarrel) | (id.subdetId() == EcalTriggerTower)) ? eb_[rawId] : ee_[rawId];
+    return ((id.subdetId() == EcalBarrel) || (id.subdetId() == EcalTriggerTower)) ? eb_[rawId] : ee_[rawId];
   }
 
   inline Item operator[](uint32_t rawId) const {

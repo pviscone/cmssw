@@ -25,6 +25,7 @@
 #include "FWCore/Framework/interface/PreallocationConfiguration.h"
 #include "FWCore/Framework/src/edmodule_mightGet_config.h"
 #include "FWCore/Framework/interface/TransitionInfoTypes.h"
+#include "FWCore/Framework/interface/EventForTransformer.h"
 #include "FWCore/ServiceRegistry/interface/ESParentContext.h"
 
 #include "FWCore/ParameterSet/interface/ConfigurationDescriptions.h"
@@ -54,11 +55,11 @@ namespace edm {
     bool EDProducerBase::doEvent(EventTransitionInfo const& info,
                                  ActivityRegistry* act,
                                  ModuleCallingContext const* mcc) {
+      EventSignalsSentry sentry(act, mcc);
       Event e(info, moduleDescription_, mcc);
       e.setConsumer(this);
       const auto streamIndex = e.streamID().value();
       e.setProducer(this, &previousParentages_[streamIndex]);
-      EventSignalsSentry sentry(act, mcc);
       ESParentContext parentC(mcc);
       const EventSetup c{
           info, static_cast<unsigned int>(Transition::Event), esGetTokenIndices(Transition::Event), parentC};
@@ -67,11 +68,31 @@ namespace edm {
       return true;
     }
 
+    void EDProducerBase::doTransformAsync(WaitingTaskHolder iTask,
+                                          size_t iTransformIndex,
+                                          EventPrincipal const& iEvent,
+                                          ActivityRegistry* iAct,
+                                          ModuleCallingContext iMCC,
+                                          ServiceWeakToken const& iToken) noexcept {
+      EventForTransformer ev(iEvent, iMCC);
+      transformAsync_(iTask, iTransformIndex, ev, iAct, iToken);
+    }
+
+    size_t EDProducerBase::transformIndex_(edm::BranchDescription const& iBranch) const noexcept { return -1; }
+    ProductResolverIndex EDProducerBase::transformPrefetch_(std::size_t iIndex) const noexcept { return 0; }
+    void EDProducerBase::transformAsync_(WaitingTaskHolder iTask,
+                                         std::size_t iIndex,
+                                         edm::EventForTransformer& iEvent,
+                                         edm::ActivityRegistry* iAct,
+                                         ServiceWeakToken const& iToken) const noexcept {}
+
     void EDProducerBase::doPreallocate(PreallocationConfiguration const& iPrealloc) {
       auto const nStreams = iPrealloc.numberOfStreams();
       previousParentages_ = std::make_unique<std::vector<BranchID>[]>(nStreams);
       previousParentageIds_ = std::make_unique<ParentageID[]>(nStreams);
       preallocStreams(nStreams);
+      preallocRuns(iPrealloc.numberOfRuns());
+      preallocRunsSummary(iPrealloc.numberOfRuns());
       preallocLumis(iPrealloc.numberOfLuminosityBlocks());
       preallocLumisSummary(iPrealloc.numberOfLuminosityBlocks());
       preallocate(iPrealloc);
@@ -215,6 +236,8 @@ namespace edm {
     }
 
     void EDProducerBase::preallocStreams(unsigned int) {}
+    void EDProducerBase::preallocRuns(unsigned int) {}
+    void EDProducerBase::preallocRunsSummary(unsigned int) {}
     void EDProducerBase::preallocLumis(unsigned int) {}
     void EDProducerBase::preallocLumisSummary(unsigned int) {}
     void EDProducerBase::preallocate(PreallocationConfiguration const&) {}

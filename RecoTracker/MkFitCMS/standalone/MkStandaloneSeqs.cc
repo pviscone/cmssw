@@ -3,6 +3,7 @@
 
 #include "RecoTracker/MkFitCore/interface/HitStructures.h"
 #include "RecoTracker/MkFitCore/standalone/Event.h"
+#include "RecoTracker/MkFitCore/interface/IterationConfig.h"
 
 #include "RecoTracker/MkFitCore/src/Debug.h"
 
@@ -21,7 +22,7 @@ namespace mkfit {
 
       // fill vector of hits in each layer
       // XXXXMT: Does it really makes sense to multi-thread this?
-      tbb::parallel_for(tbb::blocked_range<int>(0, ev.layerHits_.size()), [&](const tbb::blocked_range<int> &layers) {
+      TBB_PARALLEL_FOR(tbb::blocked_range<int>(0, ev.layerHits_.size()), [&](const tbb::blocked_range<int> &layers) {
         for (int ilay = layers.begin(); ilay < layers.end(); ++ilay) {
           eoh.suckInHits(ilay, ev.layerHits_[ilay]);
         }
@@ -29,20 +30,22 @@ namespace mkfit {
       eoh.setBeamSpot(ev.beamSpot_);
     }
 
-    void handle_duplicates(Event *event) {
+    void handle_duplicates(Event *) {
+      /*
       // Mark tracks as duplicates; if within CMSSW, remove duplicate tracks from fit or candidate track collection
       if (Config::removeDuplicates) {
         if (Config::quality_val || Config::sim_val || Config::cmssw_val) {
-          find_duplicates(event->candidateTracks_);
+          clean_duplicates(event->candidateTracks_);
           if (Config::backwardFit)
-            find_duplicates(event->fitTracks_);
+            clean_duplicates(event->fitTracks_);
         }
         // For the MEIF benchmarks and the stress tests, no validation flags are set so we will enter this block
         else {
           // Only care about the candidate tracks here; no need to run the duplicate removal on both candidate and fit tracks
-          find_duplicates(event->candidateTracks_);
+          clean_duplicates(event->candidateTracks_);
         }
       }
+      */
     }
 
     //=========================================================================
@@ -124,6 +127,7 @@ namespace mkfit {
       }
 
       quality_print();
+      add_to_quality_sum(*this);
     }
 
     void Quality::quality_reset() { m_cnt = m_cnt1 = m_cnt2 = m_cnt_8 = m_cnt1_8 = m_cnt2_8 = m_cnt_nomc = 0; }
@@ -136,7 +140,7 @@ namespace mkfit {
       const auto label = tkcand.label();
       TrackExtra extra(label);
 
-      // track_print(tkcand, "XXX");
+      // track_print(event, tkcand, "quality_process -> track_print:");
 
       // access temp seed trk and set matching seed hits
       const auto &seed = event->seedTracks_[itrack];
@@ -156,7 +160,7 @@ namespace mkfit {
 
       if (mctrk < 0 || static_cast<size_t>(mctrk) >= event->simTracks_.size()) {
         ++m_cnt_nomc;
-        dprint("XX bad track idx " << mctrk << ", orig label was " << label);
+        dprintf("XX bad track idx %d, orig label was %d\n", mctrk, label);
       } else {
         auto &simtrack = event->simTracks_[mctrk];
         pTmc = simtrack.pT();
@@ -184,11 +188,6 @@ namespace mkfit {
         // grep "FOUND_LABEL" | sort -n -k 8,8 -k 2,2
         // printf("FOUND_LABEL %6d  pT_mc= %8.2f eta_mc= %8.2f event= %d\n", label, pTmc, etamc, event->evtID());
       }
-
-#ifdef SELECT_SEED_LABEL
-      if (label == SELECT_SEED_LABEL)
-        track_print(tkcand, "MkBuilder::quality_process SELECT_SEED_LABEL:");
-#endif
 
       float pTcmssw = 0.f, etacmssw = 0.f, phicmssw = 0.f;
       int nfoundcmssw = -1;
@@ -232,6 +231,21 @@ namespace mkfit {
         std::cout << "  nH >= 80% =" << m_cnt_8 << "  in pT 10%=" << m_cnt1_8 << "  in pT 20%=" << m_cnt2_8
                   << std::endl;
       }
+    }
+
+    Quality Quality::s_quality_sum;
+
+    void Quality::add_to_quality_sum(const Quality &q) {
+      static std::mutex q_mutex;
+      std::lock_guard<std::mutex> q_lock(q_mutex);
+
+      s_quality_sum.m_cnt += q.m_cnt;
+      s_quality_sum.m_cnt1 += q.m_cnt1;
+      s_quality_sum.m_cnt2 += q.m_cnt2;
+      s_quality_sum.m_cnt_8 += q.m_cnt_8;
+      s_quality_sum.m_cnt1_8 += q.m_cnt1_8;
+      s_quality_sum.m_cnt2_8 += q.m_cnt2_8;
+      s_quality_sum.m_cnt_nomc += q.m_cnt_nomc;
     }
 
     //------------------------------------------------------------------------------
@@ -394,8 +408,9 @@ namespace mkfit {
     }
 
     void score_tracks(TrackVec &tracks) {
+      auto score_func = IterationConfig::get_track_scorer("default");
       for (auto &track : tracks) {
-        track.setScore(getScoreCand(track));
+        track.setScore(getScoreCand(score_func, track));
       }
     }
 

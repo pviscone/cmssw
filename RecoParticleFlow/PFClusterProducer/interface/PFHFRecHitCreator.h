@@ -60,10 +60,10 @@ public:
       auto energy = erh.energy();
       auto time = erh.time();
 
-      std::shared_ptr<const CaloCellGeometry> thisCell = hcalGeo->getGeometry(detid);
-      auto zp = dynamic_cast<IdealZPrism const*>(thisCell.get());
+      auto thisCellTemp = hcalGeo->getGeometry(detid);
+      auto zp = dynamic_cast<IdealZPrism const*>(thisCellTemp.get());
       assert(zp);
-      thisCell = zp->forPF();
+      CaloCellGeometryPtr thisCell{zp->forPF()};
 
       // find rechit geometry
       if (!thisCell) {
@@ -74,7 +74,7 @@ public:
 
       PFLayer::Layer layer = depth == 1 ? PFLayer::HF_EM : PFLayer::HF_HAD;
 
-      reco::PFRecHit rh(thisCell, detid.rawId(), layer, energy);
+      reco::PFRecHit rh(CaloCellGeometryMayOwnPtr(thisCell), detid.rawId(), layer, energy);
       rh.setTime(time);
       rh.setDepth(depth);
 
@@ -140,14 +140,16 @@ public:
             std::lower_bound(tmpOut.begin(), tmpOut.end(), longID, [](const reco::PFRecHit& a, HcalDetId b) {
               return a.detId() < b.rawId();
             });
-        double energy = 2 * sHORT;
+        double energy = sHORT;
         if (found_hit != tmpOut.end() && found_hit->detId() == longID.rawId()) {
           double lONG = found_hit->energy();
           //Ask for fraction
 
           //If in this case lONG-sHORT<0 add the energy to the sHORT
           if ((lONG - sHORT) < thresh_HF_)
-            energy = lONG + sHORT;
+            energy += lONG;
+          else
+            energy += sHORT;
 
           if (abs(detid.ieta()) <= 32)
             energy *= HFCalib_;

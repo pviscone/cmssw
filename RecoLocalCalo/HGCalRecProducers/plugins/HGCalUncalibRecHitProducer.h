@@ -5,6 +5,8 @@
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/EventSetup.h"
+#include "FWCore/ParameterSet/interface/ConfigurationDescriptions.h"
+#include "FWCore/ParameterSet/interface/ParameterSetDescription.h"
 
 #include "DataFormats/HGCDigi/interface/HGCDataFrame.h"
 
@@ -15,12 +17,18 @@ public:
   explicit HGCalUncalibRecHitProducer(const edm::ParameterSet& ps);
   ~HGCalUncalibRecHitProducer() override;
   void produce(edm::Event& evt, const edm::EventSetup& es) override;
+  static void fillDescriptions(edm::ConfigurationDescriptions& descriptions);
 
 private:
-  const edm::EDGetTokenT<HGCalDigiCollection> eeDigiCollection_;   // collection of HGCEE digis
-  const edm::EDGetTokenT<HGCalDigiCollection> hefDigiCollection_;  // collection of HGCHEF digis
-  edm::EDGetTokenT<HGCalDigiCollection> hebDigiCollection_;        // collection of HGCHEB digis
-  edm::EDGetTokenT<HGCalDigiCollection> hfnoseDigiCollection_;     // collection of HGCHFNose digis
+  const edm::EDGetTokenT<HGCalDigiCollection> eeDigiCollection_;      // collection of HGCEE digis
+  const edm::EDGetTokenT<HGCalDigiCollection> hefDigiCollection_;     // collection of HGCHEF digis
+  const edm::EDGetTokenT<HGCalDigiCollection> hebDigiCollection_;     // collection of HGCHEB digis
+  const edm::EDGetTokenT<HGCalDigiCollection> hfnoseDigiCollection_;  // collection of HGCHFNose digis
+
+  const edm::ESGetToken<HGCalGeometry, IdealGeometryRecord> ee_geometry_token_;
+  const edm::ESGetToken<HGCalGeometry, IdealGeometryRecord> hef_geometry_token_;
+  const edm::ESGetToken<HGCalGeometry, IdealGeometryRecord> heb_geometry_token_;
+  const edm::ESGetToken<HGCalGeometry, IdealGeometryRecord> hfnose_geometry_token_;
 
   const std::string eeHitCollection_;      // instance name of HGCEE collection of hits
   const std::string hefHitCollection_;     // instance name of HGCHEF collection of hits

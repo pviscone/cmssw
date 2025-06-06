@@ -31,6 +31,8 @@
 #include "FWCore/ServiceRegistry/interface/Service.h"
 #include "FWCore/Utilities/interface/Adler32Calculator.h"
 
+using namespace jsoncollector;
+
 struct L1TriggerJSONMonitoringData {
   // special values for prescale index checks
   static constexpr const int kPrescaleUndefined = -2;
@@ -161,7 +163,17 @@ constexpr const std::array<const char*, 16> L1TriggerJSONMonitoring::tcdsTrigger
 L1TriggerJSONMonitoring::L1TriggerJSONMonitoring(edm::ParameterSet const& config)
     : level1Results_(config.getParameter<edm::InputTag>("L1Results")),
       level1ResultsToken_(consumes<GlobalAlgBlkBxCollection>(level1Results_)),
-      l1tUtmTriggerMenuRcdToken_(esConsumes<edm::Transition::BeginRun>()) {}
+      l1tUtmTriggerMenuRcdToken_(esConsumes<edm::Transition::BeginRun>()) {
+  if (edm::Service<evf::EvFDaqDirector>().isAvailable()) {
+    //output initemp file. This lets hltd know number of streams early
+    std::string initFileName = edm::Service<evf::EvFDaqDirector>()->getInitTempFilePath("streamL1Rates");
+    std::ofstream file(initFileName);
+    if (!file)
+      throw cms::Exception("L1TriggerJsonMonitoring")
+          << "Cannot create INITEMP file: " << initFileName << " error: " << strerror(errno);
+    file.close();
+  }
+}
 
 // validate the configuration and optionally fill the default values
 void L1TriggerJSONMonitoring::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
@@ -354,9 +366,9 @@ void L1TriggerJSONMonitoring::globalEndLuminosityBlockSummary(edm::LuminosityBlo
   unsigned int run = lumi.run();
 
   bool writeFiles = true;
-  if (edm::Service<evf::MicroStateService>().isAvailable()) {
+  if (edm::Service<evf::FastMonitoringService>().isAvailable()) {
     evf::FastMonitoringService* fms =
-        (evf::FastMonitoringService*)(edm::Service<evf::MicroStateService>().operator->());
+        (evf::FastMonitoringService*)(edm::Service<evf::FastMonitoringService>().operator->());
     if (fms)
       writeFiles = fms->shouldWriteFiles(ls);
   }

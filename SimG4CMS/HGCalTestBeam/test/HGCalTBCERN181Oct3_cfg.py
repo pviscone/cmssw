@@ -10,8 +10,8 @@ process.load('SimGeneral.HepPDTESSource.pythiapdt_cfi')
 process.load('Configuration.EventContent.EventContent_cff')
 process.load('SimGeneral.MixingModule.mixNoPU_cfi')
 process.load('SimG4CMS.HGCalTestBeam.HGCalTB181Oct3XML_cfi')
-process.load('Geometry.HGCalCommonData.hgcalNumberingInitialization_cfi')
-process.load('Geometry.HGCalCommonData.hgcalParametersInitialization_cfi')
+process.load('Geometry.HGCalTBCommonData.hgcalTBNumberingInitialization_cfi')
+process.load('Geometry.HGCalTBCommonData.hgcalTBParametersInitialization_cfi')
 process.load('Geometry.HcalTestBeamData.hcalTB06Parameters_cff')
 process.load('Configuration.StandardSequences.MagneticField_0T_cff')
 process.load('Configuration.StandardSequences.Generator_cff')
@@ -96,12 +96,12 @@ process.VtxSmeared.MaxY                 =  7.5
 process.g4SimHits.HGCSD.RejectMouseBite = True
 process.g4SimHits.HGCSD.RotatedWafer    = True
 process.g4SimHits.Watchers = cms.VPSet(cms.PSet(
-		HGCPassive = cms.PSet(
+		HGCalTBPassive = cms.PSet(
                     LVNames = cms.vstring('HGCalEE','HGCalHE','HGCalAH', 'HGCalBeam', 'CMSE'),
                     MotherName = cms.string('OCMS'),
                     IfDD4hep = cms.bool(False),
                 ),
-		type = cms.string('HGCPassive'),
+		type = cms.string('HGCalTBPassive'),
 		)
 				       )
 process.HGCalTBAnalyzer.doDigis         = False

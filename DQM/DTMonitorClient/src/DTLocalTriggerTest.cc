@@ -149,8 +149,15 @@ void DTLocalTriggerTest::runClientDiagnostic(DQMStore::IBooker& ibooker, DQMStor
                 delete BXHH;
                 delete Flag1st;
 
-                corrFrac = besttrigsCorr / besttrigs;
-                secondFrac = trigsFlag2nd / trigs;
+                if (besttrigs != 0)
+                  corrFrac = besttrigsCorr / besttrigs;
+                else
+                  corrFrac = 1;
+                if (trigs != 0)
+                  secondFrac = trigsFlag2nd / trigs;
+                else
+                  secondFrac = 0;
+
                 if (corrFrac < parameters.getUntrackedParameter<double>("corrFracError", .5)) {
                   corrSummary = 2;
                 } else if (corrFrac < parameters.getUntrackedParameter<double>("corrFracWarning", .6)) {
@@ -314,7 +321,7 @@ void DTLocalTriggerTest::runClientDiagnostic(DQMStore::IBooker& ibooker, DQMStor
               }  // closes BXvsQual && Flag1stvsQual && BestQual
 
             }  // Check on TM source
-               //Theta part
+            //Theta part
             if (hwSource == "TM") {
               // Perform TM plot analysis (Theta ones)
               TH2F* ThetaPosvsBX = getHisto<TH2F>(igetter.get(getMEName("PositionvsBX", "LocalTriggerTheta", chId)));

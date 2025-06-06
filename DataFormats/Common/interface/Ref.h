@@ -120,15 +120,9 @@ Ref: A template for a interproduct reference to a member of a product_.
 #include "DataFormats/Common/interface/RefTraits.h"
 
 namespace edm {
-  //Use SFINAE to test for embedded type with name key_compare
-  template <typename, typename = void>
-  struct has_key_compare : std::false_type {};
-  template <typename T>
-  struct has_key_compare<T, std::void_t<typename T::key_compare>> : std::true_type {};
-
   template <typename C, typename K>
   bool compare_key(K const& lhs, K const& rhs) {
-    if constexpr (has_key_compare<C>::value) {
+    if constexpr (requires { typename C::key_compare; }) {
       using comparison_functor = typename C::key_compare;
       return comparison_functor()(lhs, rhs);
     } else {
@@ -257,6 +251,8 @@ namespace edm {
 
     /// Checks if collection is in memory or available
     /// in the Event. No type checking is done.
+    /// This function is potentially costly as it might cause a disk
+    /// read (note that it does not cause the data to be cached locally)
     bool isAvailable() const;
 
     /// Checks if this ref is transient (i.e. not persistable).
@@ -404,6 +400,8 @@ namespace edm {
 
     /// Checks if collection is in memory or available
     /// in the Event. No type checking is done.
+    /// This function is potentially costly as it might cause a disk
+    /// read (note that it does not cause the data to be cached locally)
     bool isAvailable() const;
 
     /// Checks if this ref is transient (i.e. not persistable).

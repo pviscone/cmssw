@@ -536,23 +536,6 @@ void JetAnalyzer_HeavyIons::bookHistograms(DQMStore::IBooker &ibooker,
 JetAnalyzer_HeavyIons::~JetAnalyzer_HeavyIons() {}
 
 //------------------------------------------------------------------------------
-// beginJob
-//------------------------------------------------------------------------------
-//void JetAnalyzer_HeavyIons::beginJob() {
-//}
-
-//------------------------------------------------------------------------------
-// endJob
-//------------------------------------------------------------------------------
-//void JetAnalyzer_HeavyIons::endJob()
-//{
-//  if (!mOutputFile.empty() && &*edm::Service<DQMStore>())
-//    {
-//      edm::Service<DQMStore>()->save(mOutputFile);
-//    }
-//}
-
-//------------------------------------------------------------------------------
 // analyze
 //------------------------------------------------------------------------------
 void JetAnalyzer_HeavyIons::analyze(const edm::Event &mEvent, const edm::EventSetup &mSetup) {
@@ -659,15 +642,15 @@ void JetAnalyzer_HeavyIons::analyze(const edm::Event &mEvent, const edm::EventSe
   edm::Handle<reco::Centrality> cent;
   mEvent.getByToken(centralityToken, cent);  //_centralitytag comes from the cfg
 
+  if (!cent.isValid())
+    return;
+
   mHF->Fill(cent->EtHFtowerSum());
   Float_t HF_energy = cent->EtHFtowerSum();
 
   //for later when centrality gets added to RelVal
   //edm::Handle<int> cbin;
   //mEvent.getByToken(centralityBinToken, cbin);
-
-  if (!cent.isValid())
-    return;
 
   /*int hibin = -999;
   if(cbin.isValid()){

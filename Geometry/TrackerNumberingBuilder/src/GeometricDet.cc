@@ -89,11 +89,16 @@ GeometricDet::GeometricDet(DDFilteredView* fv, GeometricEnumType type)
   if (type_ == DetUnit) {
     radLength_ = getDouble("TrackerRadLength", *fv);
     xi_ = getDouble("TrackerXi", *fv);
-    isBricked_ = (getString("isBricked", *fv) == strue);
     pixROCRows_ = getDouble("PixelROCRows", *fv);
     pixROCCols_ = getDouble("PixelROCCols", *fv);
     pixROCx_ = getDouble("PixelROC_X", *fv);
     pixROCy_ = getDouble("PixelROC_Y", *fv);
+    bigPixelsx_ = getDouble("BigPixels_X", *fv);
+    bigPixelsy_ = getDouble("BigPixels_Y", *fv);
+    bigPixelsPitchx_ = getDouble("BigPixels_Pitch_X", *fv);
+    bigPixelsPitchy_ = getDouble("BigPixels_Pitch_Y", *fv);
+    isFirstSensor_ = (getString("TrackerFirstDetectors", *fv) == strue);
+    isSecondSensor_ = (getString("TrackerSecondDetectors", *fv) == strue);
     stereo_ = (getString("TrackerStereoDetectors", *fv) == strue);
     isLowerSensor_ = (getString("TrackerLowerDetectors", *fv) == strue);
     isUpperSensor_ = (getString("TrackerUpperDetectors", *fv) == strue);
@@ -124,11 +129,18 @@ GeometricDet::GeometricDet(cms::DDFilteredView* fv, GeometricEnumType type)
   // Only look for sensor-related info on sensor volumes!
   if (type_ == DetUnit) {
     // IT sensors only (NB: hence could add a branch here, but not a critical part on perf)
-    isBricked_ = (fv->get<std::string_view>("isBricked") == strue);
     pixROCRows_ = fv->get<double>("PixelROCRows");
     pixROCCols_ = fv->get<double>("PixelROCCols");
     pixROCx_ = fv->get<double>("PixelROC_X");
     pixROCy_ = fv->get<double>("PixelROC_Y");
+    bigPixelsx_ = fv->get<double>("BigPixels_X");
+    bigPixelsy_ = fv->get<double>("BigPixels_Y");
+    bigPixelsPitchx_ = fv->get<double>("BigPixels_Pitch_X");
+    bigPixelsPitchy_ = fv->get<double>("BigPixels_Pitch_Y");
+
+    // Phase 2 IT 3D sensors only
+    isFirstSensor_ = (fv->get<std::string_view>("TrackerFirstDetectors") == strue);
+    isSecondSensor_ = (fv->get<std::string_view>("TrackerSecondDetectors") == strue);
 
     // Phase 1 OT sensors only (NB: hence could add a branch here, but not a critical part on perf)
     stereo_ = (fv->get<std::string_view>("TrackerStereoDetectors") == strue);
@@ -342,4 +354,14 @@ std::vector<double> GeometricDet::computeLegacyShapeParameters(const cms::DDSoli
   }
 
   return myOldDDShapeParameters;
+}
+
+std::string GeometricDet::printNavType(int const* n, size_t sz) {
+  std::ostringstream oss;
+  oss << '(';
+  for (int const* it = n; it != n + sz; ++it) {
+    oss << *it << ',';
+  }
+  oss << ')';
+  return oss.str();
 }

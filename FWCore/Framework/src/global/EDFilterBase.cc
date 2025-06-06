@@ -26,6 +26,7 @@
 #include "FWCore/Framework/interface/PreallocationConfiguration.h"
 #include "FWCore/Framework/src/edmodule_mightGet_config.h"
 #include "FWCore/Framework/interface/TransitionInfoTypes.h"
+#include "FWCore/Framework/interface/EventForTransformer.h"
 #include "FWCore/ServiceRegistry/interface/ESParentContext.h"
 
 #include "FWCore/ParameterSet/interface/ConfigurationDescriptions.h"
@@ -54,12 +55,12 @@ namespace edm {
     bool EDFilterBase::doEvent(EventTransitionInfo const& info,
                                ActivityRegistry* act,
                                ModuleCallingContext const* mcc) {
+      EventSignalsSentry sentry(act, mcc);
       Event e(info, moduleDescription_, mcc);
       e.setConsumer(this);
       const auto streamIndex = e.streamID().value();
       e.setProducer(
           this, &previousParentages_[streamIndex], hasAcquire() ? &gotBranchIDsFromAcquire_[streamIndex] : nullptr);
-      EventSignalsSentry sentry(act, mcc);
       ESParentContext parentC(mcc);
       const EventSetup c{
           info, static_cast<unsigned int>(Transition::Event), esGetTokenIndices(Transition::Event), parentC};
@@ -72,16 +73,34 @@ namespace edm {
                                  ActivityRegistry* act,
                                  ModuleCallingContext const* mcc,
                                  WaitingTaskWithArenaHolder& holder) {
+      EventAcquireSignalsSentry sentry(act, mcc);
       Event e(info, moduleDescription_, mcc);
       e.setConsumer(this);
       const auto streamIndex = e.streamID().value();
       e.setProducerForAcquire(this, nullptr, gotBranchIDsFromAcquire_[streamIndex]);
-      EventAcquireSignalsSentry sentry(act, mcc);
       ESParentContext parentC(mcc);
       const EventSetup c{
           info, static_cast<unsigned int>(Transition::Event), esGetTokenIndices(Transition::Event), parentC};
       this->doAcquire_(e.streamID(), e, c, holder);
     }
+
+    void EDFilterBase::doTransformAsync(WaitingTaskHolder iTask,
+                                        size_t iTransformIndex,
+                                        EventPrincipal const& iEvent,
+                                        ActivityRegistry* iAct,
+                                        ModuleCallingContext iMCC,
+                                        ServiceWeakToken const& iToken) noexcept {
+      EventForTransformer ev(iEvent, iMCC);
+      transformAsync_(iTask, iTransformIndex, ev, iAct, iToken);
+    }
+
+    size_t EDFilterBase::transformIndex_(edm::BranchDescription const& iBranch) const noexcept { return -1; }
+    ProductResolverIndex EDFilterBase::transformPrefetch_(std::size_t iIndex) const noexcept { return 0; }
+    void EDFilterBase::transformAsync_(WaitingTaskHolder iTask,
+                                       std::size_t iIndex,
+                                       edm::EventForTransformer& iEvent,
+                                       edm::ActivityRegistry* iAct,
+                                       ServiceWeakToken const& iToken) const noexcept {}
 
     void EDFilterBase::doPreallocate(PreallocationConfiguration const& iPrealloc) {
       const auto nStreams = iPrealloc.numberOfStreams();
@@ -91,6 +110,8 @@ namespace edm {
       }
       previousParentageIds_ = std::make_unique<ParentageID[]>(nStreams);
       preallocStreams(nStreams);
+      preallocRuns(iPrealloc.numberOfRuns());
+      preallocRunsSummary(iPrealloc.numberOfRuns());
       preallocLumis(iPrealloc.numberOfLuminosityBlocks());
       preallocLumisSummary(iPrealloc.numberOfLuminosityBlocks());
       preallocate(iPrealloc);
@@ -234,6 +255,8 @@ namespace edm {
     }
 
     void EDFilterBase::preallocStreams(unsigned int) {}
+    void EDFilterBase::preallocRuns(unsigned int) {}
+    void EDFilterBase::preallocRunsSummary(unsigned int) {}
     void EDFilterBase::preallocLumis(unsigned int) {}
     void EDFilterBase::preallocLumisSummary(unsigned int) {}
     void EDFilterBase::preallocate(PreallocationConfiguration const&) {}

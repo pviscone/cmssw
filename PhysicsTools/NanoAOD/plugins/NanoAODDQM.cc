@@ -1,20 +1,35 @@
 #include "FWCore/Framework/interface/Frameworkfwd.h"
 #include "FWCore/Framework/interface/MakerMacros.h"
 #include "FWCore/Utilities/interface/InputTag.h"
+#include "FWCore/ParameterSet/interface/ConfigurationDescriptions.h"
+#include "FWCore/ParameterSet/interface/ParameterSetDescription.h"
+//#include "FWCore/ParameterSet/interface/EmptyGroupDescription.h"
+#include "FWCore/ParameterSet/interface/allowedValues.h"
 #include "DQMServices/Core/interface/DQMStore.h"
 #include "DQMServices/Core/interface/DQMEDAnalyzer.h"
 #include "FWCore/Framework/interface/Event.h"
 #include "DataFormats/NanoAOD/interface/FlatTable.h"
 #include "CommonTools/Utils/interface/StringCutObjectSelector.h"
 
-#include <memory>
+#include "FWCore/Framework/interface/GetterOfProducts.h"
+#include "FWCore/Framework/interface/ProcessMatch.h"
 
+#include <memory>
+#include <limits>
 #include <numeric>
 #include <regex>
 #include <sstream>
+#include <type_traits>
 
 namespace {
-  std::string replaceStringsToColumGets(const std::string &expr, const nanoaod::FlatTable &table) {
+  bool notANumber(std::string const &iValue) {
+    auto find = iValue.find_first_not_of("0123456789");
+    return find != std::string::npos;
+  }
+  bool notRowMethod(std::string const &iValue) { return iValue != "row" and iValue != "table"; }
+
+  bool notAFunction(std::string const &iSuffix) { return (iSuffix.empty() or iSuffix[0] != '('); }
+  std::string replaceStringsToColumGets(const std::string &expr) {
     std::regex token("\\w+");
     std::sregex_iterator tbegin(expr.begin(), expr.end(), token), tend;
     if (tbegin == tend)
@@ -22,9 +37,9 @@ namespace {
     std::stringstream out;
     std::sregex_iterator last;
     for (std::sregex_iterator i = tbegin; i != tend; last = i, ++i) {
-      std::smatch match = *i;
+      const std::smatch &match = *i;
       out << match.prefix().str();
-      if (table.columnIndex(match.str()) != -1) {
+      if (notAFunction(i->suffix().str()) and notANumber(match.str()) and notRowMethod(match.str())) {
         out << "getAnyValue(\"" << match.str() << "\")";
       } else {
         out << match.str();
@@ -41,6 +56,8 @@ public:
 
   NanoAODDQM(const edm::ParameterSet &);
   void analyze(const edm::Event &, const edm::EventSetup &) override;
+
+  static void fillDescriptions(edm::ConfigurationDescriptions &descriptions);
 
 protected:
   //Book histograms
@@ -79,27 +96,37 @@ private:
                              cfg.getParameter<uint32_t>("nbins"),
                              cfg.getParameter<double>("min"),
                              cfg.getParameter<double>("max"))),
-          col_(cfg.getParameter<std::string>("column")) {}
+          col_(cfg.getParameter<std::string>("column")),
+          bitset_(cfg.getParameter<bool>("bitset")) {}
     ~Plot1D() override {}
     void fill(const FlatTable &table, const std::vector<bool> &rowsel) override {
       int icol = table.columnIndex(col_);
       if (icol == -1)
         return;  // columns may be missing (e.g. mc-only)
       switch (table.columnType(icol)) {
-        case FlatTable::ColumnType::Float:
-          vfill<float>(table, icol, rowsel);
-          break;
-        case FlatTable::ColumnType::Int:
-          vfill<int>(table, icol, rowsel);
-          break;
-        case FlatTable::ColumnType::Int8:
-          vfill<int8_t>(table, icol, rowsel);
-          break;
         case FlatTable::ColumnType::UInt8:
           vfill<uint8_t>(table, icol, rowsel);
           break;
+        case FlatTable::ColumnType::Int16:
+          vfill<int16_t>(table, icol, rowsel);
+          break;
+        case FlatTable::ColumnType::UInt16:
+          vfill<uint16_t>(table, icol, rowsel);
+          break;
+        case FlatTable::ColumnType::Int32:
+          vfill<int32_t>(table, icol, rowsel);
+          break;
+        case FlatTable::ColumnType::UInt32:
+          vfill<uint32_t>(table, icol, rowsel);
+          break;
         case FlatTable::ColumnType::Bool:
           vfill<bool>(table, icol, rowsel);
+          break;
+        case FlatTable::ColumnType::Float:
+          vfill<float>(table, icol, rowsel);
+          break;
+        case FlatTable::ColumnType::Double:
+          vfill<double>(table, icol, rowsel);
           break;
         default:
           throw cms::Exception("LogicError", "Unsupported type");
@@ -108,15 +135,30 @@ private:
 
   protected:
     std::string col_;
+    bool bitset_;
     template <typename T>
     void vfill(const FlatTable &table, int icol, const std::vector<bool> &rowsel) {
       const auto &data = table.columnData<T>(icol);
       for (unsigned int i = 0, n = data.size(); i < n; ++i) {
-        if (rowsel[i])
-          plot_->Fill(data[i]);
+        if (rowsel[i]) {
+          const T val = data[i];
+          if constexpr (std::is_integral<T>::value) {
+            if (bitset_) {
+              for (unsigned int b = 0; b < std::numeric_limits<T>::digits; b++) {
+                if ((val >> b) & 0b1)
+                  plot_->Fill(b);
+              }
+            } else {
+              plot_->Fill(val);
+            }
+          } else {
+            plot_->Fill(val);
+          }
+        }
       }
     }
   };
+
   class Profile1D : public Plot {
   public:
     Profile1D(DQMStore::IBooker &booker, const edm::ParameterSet &cfg)
@@ -168,16 +210,17 @@ private:
     std::unique_ptr<StringCutObjectSelector<FlatTable::RowView>> cutptr;
     std::vector<std::unique_ptr<Plot>> plots;
     SelGroupConfig() : name(), cutstr(), cutptr(), plots() {}
-    SelGroupConfig(const std::string &nam, const std::string &cut) : name(nam), cutstr(cut), cutptr(), plots() {}
+    SelGroupConfig(const std::string &nam, const std::string &cut) : name(nam), cutstr(cut), cutptr(), plots() {
+      if (not nullCut()) {
+        cutptr = std::make_unique<Selector>(replaceStringsToColumGets(cutstr));
+      }
+    }
     bool nullCut() const { return cutstr.empty(); }
     void fillSel(const FlatTable &table, std::vector<bool> &out) {
       out.resize(table.size());
       if (nullCut()) {
         std::fill(out.begin(), out.end(), true);
       } else {
-        if (!cutptr) {
-          cutptr = std::make_unique<Selector>(replaceStringsToColumGets(cutstr, table));
-        }
         for (unsigned int i = 0, n = table.size(); i < n; ++i) {
           out[i] = (*cutptr)(table.row(i));
         }
@@ -189,9 +232,10 @@ private:
     std::vector<SelGroupConfig> selGroups;
   };
   std::map<std::string, GroupConfig> groups_;
+  edm::GetterOfProducts<FlatTable> getterOfProducts_;
 };
 
-NanoAODDQM::NanoAODDQM(const edm::ParameterSet &iConfig) {
+NanoAODDQM::NanoAODDQM(const edm::ParameterSet &iConfig) : getterOfProducts_(edm::ProcessMatch("*"), this) {
   const edm::ParameterSet &vplots = iConfig.getParameter<edm::ParameterSet>("vplots");
   for (const std::string &name : vplots.getParameterNamesForType<edm::ParameterSet>()) {
     auto &group = groups_[name];
@@ -203,7 +247,50 @@ NanoAODDQM::NanoAODDQM(const edm::ParameterSet &iConfig) {
       group.selGroups.emplace_back(cname, cuts.getParameter<std::string>(cname));
     }
   }
-  consumesMany<FlatTable>();
+  callWhenNewProductsRegistered(getterOfProducts_);
+}
+
+void NanoAODDQM::fillDescriptions(edm::ConfigurationDescriptions &descriptions) {
+  edm::ParameterSetDescription desc;
+
+  edm::ParameterSetDescription sels;
+  sels.setComment("a paramerter set to define the selections to be made from the table row");
+  sels.addNode(edm::ParameterWildcard<std::string>("*", edm::RequireZeroOrMore, true));
+
+  edm::ParameterDescription<std::string> name("name", true, edm::Comment(""));
+  edm::ParameterDescription<std::string> title("title", true, edm::Comment("title of the plot"));
+  edm::ParameterDescription<uint32_t> nbins("nbins", true, edm::Comment("number of bins of the plot"));
+  edm::ParameterDescription<double> min("min", true, edm::Comment("starting value of the x axis"));
+  edm::ParameterDescription<double> max("max", true, edm::Comment("ending value of the x axis"));
+  edm::ParameterDescription<bool> bitset("bitset", false, true, edm::Comment("plot individual bits of values"));
+  edm::ParameterDescription<std::string> column(
+      "column", true, edm::Comment("name of the raw to fill the content of the plot"));
+  edm::ParameterDescription<std::string> xcolumn(
+      "xcolumn", true, edm::Comment("name of the raw to fill the x content of the plot"));
+  edm::ParameterDescription<std::string> ycolumn(
+      "ycolumn", true, edm::Comment("name of the raw to fill the y content of the plot"));
+
+  edm::ParameterSetDescription plot;
+  plot.setComment("a parameter set that defines a DQM histogram");
+  plot.ifValue(
+      edm::ParameterDescription<std::string>("kind", "none", true, edm::Comment("the type of histogram")),
+      "none" >> (name) or  //it should really be edm::EmptyGroupDescription(), but name is used in python by modifiers
+          "count1d" >> (name and title and nbins and min and max) or
+          "hist1d" >> (name and title and nbins and min and max and column and bitset) or
+          "prof1d" >> (name and title and nbins and min and max and xcolumn and ycolumn));
+
+  edm::ParameterSetDescription vplot;
+  vplot.setComment(
+      "a parameter set to define all the plots to be made from a table row selected from the name of the PSet");
+  vplot.add<edm::ParameterSetDescription>("sels", sels);
+  vplot.addVPSet("plots", plot);
+
+  edm::ParameterSetDescription vplots;
+  vplots.setComment("a parameter set to define all the set of plots to be made from the tables");
+  vplots.addNode(edm::ParameterWildcard<edm::ParameterSetDescription>("*", edm::RequireZeroOrMore, true, vplot));
+  desc.add<edm::ParameterSetDescription>("vplots", vplots);
+
+  descriptions.addWithDefaultLabel(desc);
 }
 
 void NanoAODDQM::bookHistograms(DQMStore::IBooker &booker, edm::Run const &, edm::EventSetup const &) {
@@ -230,7 +317,7 @@ void NanoAODDQM::bookHistograms(DQMStore::IBooker &booker, edm::Run const &, edm
 
 void NanoAODDQM::analyze(const edm::Event &iEvent, const edm::EventSetup &) {
   std::vector<edm::Handle<FlatTable>> alltables;
-  iEvent.getManyByType(alltables);
+  getterOfProducts_.fillHandles(iEvent, alltables);
   std::map<std::string, std::pair<const FlatTable *, std::vector<const FlatTable *>>> maintables;
 
   for (const auto &htab : alltables) {

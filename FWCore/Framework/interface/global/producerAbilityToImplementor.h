@@ -103,6 +103,11 @@ namespace edm {
       };
 
       template <>
+      struct AbilityToImplementor<edm::Transformer> {
+        using Type = edm::global::impl::Transformer<edm::global::EDProducerBase>;
+      };
+
+      template <>
       struct AbilityToImplementor<edm::Accumulator> {
         using Type = edm::global::impl::Accumulator<edm::global::EDProducerBase>;
       };
@@ -132,7 +137,7 @@ namespace edm {
         using Type = edm::global::impl::EmptyType;
       };
     }  // namespace producer
-  }    // namespace global
+  }  // namespace global
 }  // namespace edm
 
 #endif

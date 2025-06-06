@@ -12,7 +12,7 @@ from TrackingTools.TransientTrack.TransientTrackBuilder_cfi import *
 trackingMonitoringHLTsequence = cms.Sequence(
     pixelTracksMonitoringHLT # hltPixel tracks monitoring
     * iter2MergedTracksMonitoringHLT # hltIter2Merged tracks monitoring    
-    * iterHLTTracksMonitoringHLT # hltTracksMerged tracks monitoring
+    * iterHLTTracksMonitoringHLT # hltMergedTracks tracks monitoring
 )
 
 egmTrackingMonitorHLTsequence = cms.Sequence(
@@ -22,5 +22,5 @@ egmTrackingMonitorHLTsequence = cms.Sequence(
 )
 
 from Configuration.Eras.Modifier_run3_common_cff import run3_common
-run3_common.toReplaceWith(trackingMonitoringHLTsequence, cms.Sequence(pixelTracksMonitoringHLT * iterHLTTracksMonitoringHLT))
+run3_common.toReplaceWith(trackingMonitoringHLTsequence, cms.Sequence(pixelTracksMonitoringHLT * iterHLTTracksMonitoringHLT * doubletRecoveryHPTracksMonitoringHLT)) # * iter0HPTracksMonitoringHLT ))
 run3_common.toReplaceWith(egmTrackingMonitorHLTsequence, cms.Sequence(gsfTracksMonitoringHLT))

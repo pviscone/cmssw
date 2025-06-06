@@ -41,7 +41,6 @@
 #include "DataFormats/VertexReco/interface/Vertex.h"
 #include "DataFormats/Math/interface/deltaPhi.h"
 #include "DataFormats/Math/interface/deltaR.h"
-
 #include <string>
 
 using namespace std;
@@ -108,7 +107,6 @@ void JetPlusTrackProducer::produce(edm::Event& iEvent, const edm::EventSetup& iS
   auto pOut = std::make_unique<reco::JPTJetCollection>();
   auto pOut1 = std::make_unique<reco::CaloJetCollection>();
 
-  double scaleJPT = 1.;
   for (auto const& jet : iEvent.get(input_trackjets_token_)) {
     int icalo = -1;
     int i = 0;
@@ -145,7 +143,7 @@ void JetPlusTrackProducer::produce(edm::Event& iEvent, const edm::EventSetup& iS
           tracksincalo.push_back(ixtrp.track());
         }
       }  // Track extrapolations
-    }    // tracks
+    }  // tracks
 
     const reco::TrackJet& corrected = jet;
     math::XYZTLorentzVector p4;
@@ -153,8 +151,7 @@ void JetPlusTrackProducer::produce(edm::Event& iEvent, const edm::EventSetup& iS
     jpt::MatchedTracks muons;
     jpt::MatchedTracks elecs;
 
-    scaleJPT =
-        mJPTalgo->correction(corrected, mycalo, iEvent, iSetup, tracksinvert, tracksincalo, p4, pions, muons, elecs);
+    mJPTalgo->correction(corrected, mycalo, iEvent, iSetup, tracksinvert, tracksincalo, p4, pions, muons, elecs);
     if (p4.pt() > ptCUT_) {
       reco::JPTJet::Specific jptspe;
       jptspe.pionsInVertexInCalo = pions.inVertexInCalo_;
@@ -168,7 +165,7 @@ void JetPlusTrackProducer::produce(edm::Event& iEvent, const edm::EventSetup& iS
       jptspe.elecsOutVertexInCalo = elecs.outOfVertexInCalo_;
       reco::CaloJetRef myjet(pOut1RefProd, idxCaloJet++);
       jptspe.theCaloJetRef = edm::RefToBase<reco::Jet>(myjet);
-      jptspe.mZSPCor = 1.;
+      jptspe.JPTSeed = 1;
       reco::JPTJet fJet(p4, jet.primaryVertex()->position(), jptspe, mycalo.getJetConstituents());
       pOut->push_back(fJet);
       pOut1->push_back(mycalo);
@@ -185,29 +182,26 @@ void JetPlusTrackProducer::produce(edm::Event& iEvent, const edm::EventSetup& iS
       factorZSP = mZSPalgo->correction(corrected, iEvent, iSetup);
     corrected.scaleEnergy(factorZSP);
 
-    // JPT corrections
-    scaleJPT = 1.;
-
     math::XYZTLorentzVector p4;
 
     jpt::MatchedTracks pions;
     jpt::MatchedTracks muons;
     jpt::MatchedTracks elecs;
-    bool ok = false;
+    bool validMatches = false;
 
     if (!vectorial_) {
-      scaleJPT = mJPTalgo->correction(corrected, oldjet, iEvent, iSetup, pions, muons, elecs, ok);
+      double scaleJPT = mJPTalgo->correction(corrected, oldjet, iEvent, iSetup, pions, muons, elecs, validMatches);
       p4 = math::XYZTLorentzVector(corrected.px() * scaleJPT,
                                    corrected.py() * scaleJPT,
                                    corrected.pz() * scaleJPT,
                                    corrected.energy() * scaleJPT);
     } else {
-      scaleJPT = mJPTalgo->correction(corrected, oldjet, iEvent, iSetup, p4, pions, muons, elecs, ok);
+      mJPTalgo->correction(corrected, oldjet, iEvent, iSetup, p4, pions, muons, elecs, validMatches);
     }
 
     reco::JPTJet::Specific specific;
 
-    if (ok) {
+    if (validMatches) {
       specific.pionsInVertexInCalo = pions.inVertexInCalo_;
       specific.pionsInVertexOutCalo = pions.inVertexOutOfCalo_;
       specific.pionsOutVertexInCalo = pions.outOfVertexInCalo_;
@@ -221,7 +215,6 @@ void JetPlusTrackProducer::produce(edm::Event& iEvent, const edm::EventSetup& iS
 
     // Fill JPT Specific
     specific.theCaloJetRef = edm::RefToBase<reco::Jet>(jets_h.refAt(iJet));
-    specific.mZSPCor = factorZSP;
     specific.mResponseOfChargedWithEff = (float)mJPTalgo->getResponseOfChargedWithEff();
     specific.mResponseOfChargedWithoutEff = (float)mJPTalgo->getResponseOfChargedWithoutEff();
     specific.mSumPtOfChargedWithEff = (float)mJPTalgo->getSumPtWithEff();
@@ -231,6 +224,7 @@ void JetPlusTrackProducer::produce(edm::Event& iEvent, const edm::EventSetup& iS
     specific.mChargedHadronEnergy = (float)mJPTalgo->getSumEnergyWithoutEff();
 
     // Fill Charged Jet shape parameters
+
     double deR2Tr = 0.;
     double deEta2Tr = 0.;
     double dePhi2Tr = 0.;
@@ -256,7 +250,6 @@ void JetPlusTrackProducer::produce(edm::Event& iEvent, const edm::EventSetup& iS
         ntracks++;
       }
     }
-
     for (reco::TrackRefVector::const_iterator it = muons.inVertexInCalo_.begin(); it != muons.inVertexInCalo_.end();
          it++) {
       double deR = deltaR((*it)->eta(), (*it)->phi(), p4.eta(), p4.phi());
@@ -289,6 +282,7 @@ void JetPlusTrackProducer::produce(edm::Event& iEvent, const edm::EventSetup& iS
         ntracks++;
       }
     }
+
     for (reco::TrackRefVector::const_iterator it = pions.inVertexOutOfCalo_.begin();
          it != pions.inVertexOutOfCalo_.end();
          it++) {
@@ -324,7 +318,6 @@ void JetPlusTrackProducer::produce(edm::Event& iEvent, const edm::EventSetup& iS
     specific.Zch = Zch;
 
     // Create JPT jet
-
     reco::Particle::Point vertex_ = reco::Jet::Point(0, 0, 0);
 
     // If we add primary vertex

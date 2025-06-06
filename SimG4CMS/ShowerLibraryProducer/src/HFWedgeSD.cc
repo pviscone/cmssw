@@ -14,13 +14,13 @@
 #include "G4ios.hh"
 
 #include "G4PhysicalConstants.hh"
-#include "G4SystemOfUnits.hh"
+
+#include <CLHEP/Units/SystemOfUnits.h>
+using CLHEP::ns;
 
 //#define EDM_ML_DEBUG
 
-HFWedgeSD::HFWedgeSD(const std::string& iname,
-						   const SensitiveDetectorCatalog& clg,
-						   const SimTrackManager* manager)
+HFWedgeSD::HFWedgeSD(const std::string& iname, const SensitiveDetectorCatalog& clg, const SimTrackManager* manager)
     : SensitiveCaloDetector(iname, clg), hcID(-1), theHC(nullptr), currentHit(nullptr) {
   edm::LogVerbatim("FiberSim") << "HFWedgeSD : Instantiated for " << iname;
 }
@@ -33,7 +33,8 @@ void HFWedgeSD::Initialize(G4HCofThisEvent* HCE) {
   if (hcID < 0)
     hcID = G4SDManager::GetSDMpointer()->GetCollectionID(collectionName[0]);
   HCE->AddHitsCollection(hcID, theHC);
-  edm::LogVerbatim("FiberSim") << "HFWedgeSD : Add hit collectrion for " << collectionName[0] << ":" << hcID << ":" << theHC;
+  edm::LogVerbatim("FiberSim") << "HFWedgeSD : Add hit collectrion for " << collectionName[0] << ":" << hcID << ":"
+                               << theHC;
 
   clearHits();
 }
@@ -109,7 +110,8 @@ void HFWedgeSD::updateHit(HFShowerG4Hit* aHit) {
   if (edep != 0) {
     aHit->updateEnergy(edep);
 #ifdef EDM_ML_DEBUG
-    edm::LogVerbatim("FiberSim") << "HFWedgeSD: Add energy deposit in " << currentID << " edep " << edep / CLHEP::MeV << " MeV";
+    edm::LogVerbatim("FiberSim") << "HFWedgeSD: Add energy deposit in " << currentID << " edep " << edep / CLHEP::MeV
+                                 << " MeV";
 #endif
   }
   previousID = currentID;

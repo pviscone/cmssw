@@ -194,7 +194,15 @@ std::string Tracklet::trackletparstr() {
                       std::to_string(fpgapars_.t().value() * settings_.ktpars());
     return oss;
   } else {
-    std::string str = innerFPGAStub_->stubindex().str() + "|";
+    std::string str = "";
+    if (settings_.combined()) {
+      if (seedIndex() == Seed::L1D1 || seedIndex() == Seed::L2D1) {
+        str += outerFPGAStub_->phiregionstr() + "|";
+      } else {
+        str += innerFPGAStub_->phiregionstr() + "|";
+      }
+    }
+    str += innerFPGAStub_->stubindex().str() + "|";
     if (middleFPGAStub_) {
       str += middleFPGAStub_->stubindex().str() + "|";
     }
@@ -720,6 +728,17 @@ std::string Tracklet::trackfitstr() const {
 
     oss += "1|";  // valid bit
     oss += tmp.str() + "|";
+    if (settings_.combined()) {
+      if (seedIndex() == Seed::L1D1 || seedIndex() == Seed::L2D1) {
+        oss += outerFPGAStub()->phiregionstr() + "|";
+        oss += innerFPGAStub()->phiregionstr() + "|";
+      } else {
+        oss += innerFPGAStub()->phiregionstr() + "|";
+        oss += outerFPGAStub()->phiregionstr() + "|";
+      }
+    }
+    oss += innerFPGAStub()->stubindex().str() + "|";
+    oss += outerFPGAStub()->stubindex().str() + "|";
     oss += fpgapars_.rinv().str() + "|";
     oss += fpgapars_.phi0().str() + "|";
     oss += fpgapars_.z0().str() + "|";
@@ -735,9 +754,12 @@ std::string Tracklet::trackfitstr() const {
   return oss;
 }
 
+// Create a Track object from stubs & digitized track helix params
+
 Track Tracklet::makeTrack(const vector<const L1TStub*>& l1stubs) {
   assert(fit());
 
+  // Digitized track helix params
   TrackPars<int> ipars(fpgafitpars_.rinv().value(),
                        fpgafitpars_.phi0().value(),
                        fpgafitpars_.d0().value(),

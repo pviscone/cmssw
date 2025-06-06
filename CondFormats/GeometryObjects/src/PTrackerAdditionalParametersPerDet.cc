@@ -26,7 +26,6 @@ namespace {
   }
 
 }  // namespace
-
 int PTrackerAdditionalParametersPerDet::getGeographicalId(int theIndex) const {
   return getThisParam(intParams_, GEOGRAPHICAL_ID, theIndex);
 }
@@ -35,19 +34,58 @@ std::vector<int> PTrackerAdditionalParametersPerDet::getAllGeographicalIds() con
   return getAllParams(intParams_, GEOGRAPHICAL_ID);
 }
 
-bool PTrackerAdditionalParametersPerDet::getBricked(int theIndex) const {
-  return getThisParam(boolParams_, BRICKEDNESS, theIndex);
-}
-
-std::vector<bool> PTrackerAdditionalParametersPerDet::getAllBricked() const {
-  return getAllParams(boolParams_, BRICKEDNESS);
-}
-
 void PTrackerAdditionalParametersPerDet::setGeographicalId(int geographicalId) {
   setThisParam(intParams_, GEOGRAPHICAL_ID, geographicalId);
 }
-
-void PTrackerAdditionalParametersPerDet::setBricked(bool isBricked) {
-  setThisParam(boolParams_, BRICKEDNESS, isBricked);
+//
+int PTrackerAdditionalParametersPerDet::bigPixelsX(int theIndex) const {
+  return getThisParam(intParams_, BIGPIXELS_X, theIndex);
 }
+
+std::vector<int> PTrackerAdditionalParametersPerDet::allBigPixelsXs() const {
+  return getAllParams(intParams_, BIGPIXELS_X);
+}
+
+void PTrackerAdditionalParametersPerDet::setBigPixelsX(int bigpixelsX) {
+  setThisParam(intParams_, BIGPIXELS_X, bigpixelsX);
+}
+//
+int PTrackerAdditionalParametersPerDet::bigPixelsY(int theIndex) const {
+  return getThisParam(intParams_, BIGPIXELS_Y, theIndex);
+}
+
+std::vector<int> PTrackerAdditionalParametersPerDet::allBigPixelsYs() const {
+  return getAllParams(intParams_, BIGPIXELS_Y);
+}
+
+void PTrackerAdditionalParametersPerDet::setBigPixelsY(int bigpixelsY) {
+  setThisParam(intParams_, BIGPIXELS_Y, bigpixelsY);
+}
+//
+float PTrackerAdditionalParametersPerDet::bigPixelsPitchX(int theIndex) const {
+  return getThisParam(floatParams_, BIGPIXELS_PITCH_X, theIndex);
+}
+
+std::vector<float> PTrackerAdditionalParametersPerDet::allBigPixelsPitchXs() const {
+  return getAllParams(floatParams_, BIGPIXELS_PITCH_X);
+}
+
+void PTrackerAdditionalParametersPerDet::setBigPixelsPitchX(float bigpixelspitchX) {
+  setThisParam(floatParams_, BIGPIXELS_PITCH_X, bigpixelspitchX);
+}
+//
+float PTrackerAdditionalParametersPerDet::bigPixelsPitchY(int theIndex) const {
+  return getThisParam(floatParams_, BIGPIXELS_PITCH_Y, theIndex);
+}
+
+std::vector<float> PTrackerAdditionalParametersPerDet::allBigPixelsPitchYs() const {
+  return getAllParams(floatParams_, BIGPIXELS_PITCH_Y);
+}
+
+void PTrackerAdditionalParametersPerDet::setBigPixelsPitchY(float bigpixelspitchY) {
+  setThisParam(floatParams_, BIGPIXELS_PITCH_Y, bigpixelspitchY);
+}
+
+//
+
 //This doesn't work properly because intParams_ and boolParams_ are vectors of vecotrs - the outer vector should be the number of parameters and the inner vector the number of geometricDets.

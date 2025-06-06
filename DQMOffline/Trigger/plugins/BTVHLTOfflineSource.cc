@@ -84,14 +84,14 @@ private:
   float turnon_threshold_loose_;
   float turnon_threshold_medium_;
   float turnon_threshold_tight_;
+  float turnon_threshold_offline_loose_;
+  float turnon_threshold_offline_medium_;
+  float turnon_threshold_offline_tight_;
 
   edm::EDGetTokenT<reco::JetTagCollection> offlineDiscrTokenb_;
-  edm::EDGetTokenT<reco::JetTagCollection> offlineDiscrTokenbb_;
   edm::EDGetTokenT<edm::View<reco::BaseTagInfo>> offlineIPToken_;
 
-  edm::EDGetTokenT<std::vector<reco::Vertex>> hltFastPVToken_;
   edm::EDGetTokenT<std::vector<reco::Vertex>> hltPFPVToken_;
-  edm::EDGetTokenT<std::vector<reco::Vertex>> hltCaloPVToken_;
   edm::EDGetTokenT<std::vector<reco::Vertex>> offlinePVToken_;
 
   edm::EDGetTokenT<edm::TriggerResults> triggerResultsToken;
@@ -99,15 +99,11 @@ private:
   edm::EDGetTokenT<trigger::TriggerEvent> triggerSummaryToken;
   edm::EDGetTokenT<trigger::TriggerEvent> triggerSummaryFUToken;
 
-  edm::EDGetTokenT<std::vector<reco::ShallowTagInfo>> shallowTagInfosTokenCalo_;
   edm::EDGetTokenT<std::vector<reco::ShallowTagInfo>> shallowTagInfosTokenPf_;
 
-  edm::EDGetTokenT<std::vector<reco::SecondaryVertexTagInfo>> SVTagInfosTokenCalo_;
   edm::EDGetTokenT<std::vector<SVTagInfo>> SVTagInfosTokenPf_;
 
-  edm::EDGetTokenT<reco::JetTagCollection> caloTagsToken_;
   edm::EDGetTokenT<reco::JetTagCollection> pfTagsToken_;
-  edm::Handle<reco::JetTagCollection> caloTags;
   edm::Handle<reco::JetTagCollection> pfTags;
 
   float minDecayLength_;
@@ -161,6 +157,15 @@ private:
     ObjME Discr_turnon_loose;
     ObjME Discr_turnon_medium;
     ObjME Discr_turnon_tight;
+    ObjME Pt_turnon_loose;
+    ObjME Pt_turnon_medium;
+    ObjME Pt_turnon_tight;
+    ObjME Eta_turnon_loose;
+    ObjME Eta_turnon_medium;
+    ObjME Eta_turnon_tight;
+    ObjME Phi_turnon_loose;
+    ObjME Phi_turnon_medium;
+    ObjME Phi_turnon_tight;
     MonitorElement* PVz = nullptr;
     MonitorElement* fastPVz = nullptr;
     MonitorElement* PVz_HLTMinusRECO = nullptr;
@@ -172,6 +177,37 @@ private:
     MonitorElement* h_3d_ip_distance = nullptr;
     MonitorElement* h_3d_ip_error = nullptr;
     MonitorElement* h_3d_ip_sig = nullptr;
+
+    //NEW
+    MonitorElement* h_jetNSecondaryVertices = nullptr;
+    MonitorElement* h_jet_pt = nullptr;
+    MonitorElement* h_jet_eta = nullptr;
+    MonitorElement* h_trackSumJetEtRatio = nullptr;
+    MonitorElement* h_trackSip2dValAboveCharm = nullptr;
+    MonitorElement* h_trackSip2dSigAboveCharm = nullptr;
+    MonitorElement* h_trackSip3dValAboveCharm = nullptr;
+    MonitorElement* h_trackSip3dSigAboveCharm = nullptr;
+    MonitorElement* h_jetNSelectedTracks = nullptr;
+    MonitorElement* h_jetNTracksEtaRel = nullptr;
+    MonitorElement* h_vertexCategory = nullptr;
+    MonitorElement* h_trackSumJetDeltaR = nullptr;
+
+    MonitorElement* h_trackJetDistVal = nullptr;
+    MonitorElement* h_trackPtRel = nullptr;
+    MonitorElement* h_trackDeltaR = nullptr;
+    MonitorElement* h_trackPtRatio = nullptr;
+    MonitorElement* h_trackSip3dSig = nullptr;
+    MonitorElement* h_trackSip2dSig = nullptr;
+    MonitorElement* h_trackDecayLenVal = nullptr;
+    MonitorElement* h_trackEtaRel = nullptr;
+
+    MonitorElement* h_vertexEnergyRatio = nullptr;
+    MonitorElement* h_vertexJetDeltaR = nullptr;
+    MonitorElement* h_flightDistance2dVal = nullptr;
+    MonitorElement* h_flightDistance2dSig = nullptr;
+    MonitorElement* h_flightDistance3dVal = nullptr;
+    MonitorElement* h_flightDistance3dSig = nullptr;
+
     ObjME OnlineTrkEff_Pt;
     ObjME OnlineTrkEff_Eta;
     ObjME OnlineTrkEff_3d_ip_distance;
@@ -194,7 +230,7 @@ private:
 
   class PathInfoCollection : public std::vector<PathInfo> {
   public:
-    PathInfoCollection() : std::vector<PathInfo>(){};
+    PathInfoCollection() : std::vector<PathInfo>() {};
     std::vector<PathInfo>::iterator find(const std::string& pathName) { return std::find(begin(), end(), pathName); }
   };
 
@@ -215,14 +251,13 @@ BTVHLTOfflineSource::BTVHLTOfflineSource(const edm::ParameterSet& iConfig)
       turnon_threshold_loose_(iConfig.getParameter<double>("turnon_threshold_loose")),
       turnon_threshold_medium_(iConfig.getParameter<double>("turnon_threshold_medium")),
       turnon_threshold_tight_(iConfig.getParameter<double>("turnon_threshold_tight")),
+      turnon_threshold_offline_loose_(iConfig.getParameter<double>("turnon_threshold_offline_loose")),
+      turnon_threshold_offline_medium_(iConfig.getParameter<double>("turnon_threshold_offline_medium")),
+      turnon_threshold_offline_tight_(iConfig.getParameter<double>("turnon_threshold_offline_tight")),
       offlineDiscrTokenb_(consumes<reco::JetTagCollection>(iConfig.getParameter<edm::InputTag>("offlineDiscrLabelb"))),
-      offlineDiscrTokenbb_(
-          consumes<reco::JetTagCollection>(iConfig.getParameter<edm::InputTag>("offlineDiscrLabelbb"))),
       offlineIPToken_(consumes<View<BaseTagInfo>>(iConfig.getParameter<edm::InputTag>("offlineIPLabel"))),
 
-      hltFastPVToken_(consumes<std::vector<reco::Vertex>>(iConfig.getParameter<edm::InputTag>("hltFastPVLabel"))),
       hltPFPVToken_(consumes<std::vector<reco::Vertex>>(iConfig.getParameter<edm::InputTag>("hltPFPVLabel"))),
-      hltCaloPVToken_(consumes<std::vector<reco::Vertex>>(iConfig.getParameter<edm::InputTag>("hltCaloPVLabel"))),
       offlinePVToken_(consumes<std::vector<reco::Vertex>>(iConfig.getParameter<edm::InputTag>("offlinePVLabel"))),
       triggerResultsToken(consumes<edm::TriggerResults>(triggerResultsLabel_)),
       triggerResultsFUToken(consumes<edm::TriggerResults>(
@@ -230,14 +265,9 @@ BTVHLTOfflineSource::BTVHLTOfflineSource(const edm::ParameterSet& iConfig)
       triggerSummaryToken(consumes<trigger::TriggerEvent>(triggerSummaryLabel_)),
       triggerSummaryFUToken(consumes<trigger::TriggerEvent>(
           edm::InputTag(triggerSummaryLabel_.label(), triggerSummaryLabel_.instance(), std::string("FU")))),
-      shallowTagInfosTokenCalo_(
-          consumes<vector<reco::ShallowTagInfo>>(edm::InputTag("hltDeepCombinedSecondaryVertexBJetTagsInfosCalo"))),
       shallowTagInfosTokenPf_(
           consumes<vector<reco::ShallowTagInfo>>(edm::InputTag("hltDeepCombinedSecondaryVertexBJetTagsInfos"))),
-      SVTagInfosTokenCalo_(consumes<std::vector<reco::SecondaryVertexTagInfo>>(
-          edm::InputTag("hltInclusiveSecondaryVertexFinderTagInfos"))),
       SVTagInfosTokenPf_(consumes<std::vector<SVTagInfo>>(edm::InputTag("hltDeepSecondaryVertexTagInfosPF"))),
-      caloTagsToken_(consumes<reco::JetTagCollection>(iConfig.getParameter<edm::InputTag>("onlineDiscrLabelCalo"))),
       pfTagsToken_(consumes<reco::JetTagCollection>(iConfig.getParameter<edm::InputTag>("onlineDiscrLabelPF"))),
       minDecayLength_(iConfig.getParameter<double>("minDecayLength")),
       maxDecayLength_(iConfig.getParameter<double>("maxDecayLength")),
@@ -293,9 +323,6 @@ void BTVHLTOfflineSource::analyze(const edm::Event& iEvent, const edm::EventSetu
     }
   }
 
-  edm::Handle<reco::JetTagCollection> caloTags;
-  iEvent.getByToken(caloTagsToken_, caloTags);
-
   edm::Handle<reco::JetTagCollection> pfTags;
   iEvent.getByToken(pfTagsToken_, pfTags);
 
@@ -303,9 +330,6 @@ void BTVHLTOfflineSource::analyze(const edm::Event& iEvent, const edm::EventSetu
 
   Handle<reco::JetTagCollection> offlineJetTagHandlerb;
   iEvent.getByToken(offlineDiscrTokenb_, offlineJetTagHandlerb);
-
-  Handle<reco::JetTagCollection> offlineJetTagHandlerbb;
-  iEvent.getByToken(offlineDiscrTokenbb_, offlineJetTagHandlerbb);
 
   Handle<View<BaseTagInfo>> offlineIPTagHandle;
   iEvent.getByToken(offlineIPToken_, offlineIPTagHandle);
@@ -321,7 +345,6 @@ void BTVHLTOfflineSource::analyze(const edm::Event& iEvent, const edm::EventSetu
     return;
 
   edm::Handle<std::vector<SVTagInfo>> jetSVTagsCollPF;
-  edm::Handle<std::vector<reco::SecondaryVertexTagInfo>> jetSVTagsCollCalo;
 
   for (auto& v : hltPathsAll_) {
     unsigned index = triggerNames.triggerIndex(v.getPath());
@@ -335,16 +358,11 @@ void BTVHLTOfflineSource::analyze(const edm::Event& iEvent, const edm::EventSetu
       continue;
     }
 
-    if (v.getTriggerType() == "PF") {
-      iEvent.getByToken(SVTagInfosTokenPf_, jetSVTagsCollPF);
-    } else {
-      iEvent.getByToken(SVTagInfosTokenCalo_, jetSVTagsCollCalo);
-    }
+    iEvent.getByToken(SVTagInfosTokenPf_, jetSVTagsCollPF);
 
-    // PF and Calo btagging
-    if ((v.getTriggerType() == "PF" && pfTags.isValid()) ||
-        (v.getTriggerType() == "Calo" && caloTags.isValid() && !caloTags->empty())) {
-      const auto& iter = (v.getTriggerType() == "PF") ? pfTags->begin() : caloTags->begin();
+    // PF btagging
+    if (v.getTriggerType() == "PF" && pfTags.isValid()) {
+      const auto& iter = pfTags->begin();
 
       float Discr_online = iter->second;
       if (Discr_online < 0)
@@ -359,18 +377,9 @@ void BTVHLTOfflineSource::analyze(const edm::Event& iEvent, const edm::EventSetu
           float DR = reco::deltaR(iterOffb.first->eta(), iterOffb.first->phi(), iter->first->eta(), iter->first->phi());
           if (DR < 0.3) {
             float Discr_offline = iterOffb.second;
-
-            // offline probb and probbb must be added (if probbb isn't specified, it'll just use probb)
-            if (offlineJetTagHandlerbb.isValid()) {
-              for (auto const& iterOffbb : *offlineJetTagHandlerbb) {
-                DR = reco::deltaR(
-                    iterOffbb.first->eta(), iterOffbb.first->phi(), iter->first->eta(), iter->first->phi());
-                if (DR < 0.3) {
-                  Discr_offline += iterOffbb.second;
-                  break;
-                }
-              }
-            }
+            float Pt_offline = iterOffb.first->pt();
+            float Eta_offline = iterOffb.first->eta();
+            float Phi_offline = iterOffb.first->phi();
 
             if (Discr_offline < 0)
               Discr_offline = -0.05;
@@ -388,14 +397,44 @@ void BTVHLTOfflineSource::analyze(const edm::Event& iEvent, const edm::EventSetu
             if (Discr_online > turnon_threshold_tight_)
               v.Discr_turnon_tight.numerator->Fill(Discr_offline);
 
+            if (Discr_offline > turnon_threshold_offline_loose_) {
+              v.Pt_turnon_loose.denominator->Fill(Pt_offline);
+              v.Eta_turnon_loose.denominator->Fill(Eta_offline);
+              v.Phi_turnon_loose.denominator->Fill(Phi_offline);
+              if (Discr_online > turnon_threshold_loose_) {
+                v.Pt_turnon_loose.numerator->Fill(Pt_offline);
+                v.Eta_turnon_loose.numerator->Fill(Eta_offline);
+                v.Phi_turnon_loose.numerator->Fill(Phi_offline);
+              }
+            }
+            if (Discr_offline > turnon_threshold_offline_medium_) {
+              v.Pt_turnon_medium.denominator->Fill(Pt_offline);
+              v.Eta_turnon_medium.denominator->Fill(Eta_offline);
+              v.Phi_turnon_medium.denominator->Fill(Phi_offline);
+              if (Discr_online > turnon_threshold_medium_) {
+                v.Pt_turnon_medium.numerator->Fill(Pt_offline);
+                v.Eta_turnon_medium.numerator->Fill(Eta_offline);
+                v.Phi_turnon_medium.numerator->Fill(Phi_offline);
+              }
+            }
+            if (Discr_offline > turnon_threshold_offline_tight_) {
+              v.Pt_turnon_tight.denominator->Fill(Pt_offline);
+              v.Eta_turnon_tight.denominator->Fill(Eta_offline);
+              v.Phi_turnon_tight.denominator->Fill(Phi_offline);
+              if (Discr_online > turnon_threshold_tight_) {
+                v.Pt_turnon_tight.numerator->Fill(Pt_offline);
+                v.Eta_turnon_tight.numerator->Fill(Eta_offline);
+                v.Phi_turnon_tight.numerator->Fill(Phi_offline);
+              }
+            }
+
             break;
           }
         }
       }  ///offline
 
       bool pfSVTagCollValid = (v.getTriggerType() == "PF" && jetSVTagsCollPF.isValid());
-      bool caloSVTagCollValid = (v.getTriggerType() == "Calo" && jetSVTagsCollCalo.isValid());
-      if (offlineIPTagHandle.isValid() && (pfSVTagCollValid || caloSVTagCollValid)) {
+      if (offlineIPTagHandle.isValid() && pfSVTagCollValid) {
         std::vector<float> offlineIP3D;
         std::vector<float> offlineIP3DSig;
         std::vector<const reco::Track*> offlineTracks = getOfflineBTagTracks(
@@ -406,9 +445,6 @@ void BTVHLTOfflineSource::analyze(const edm::Event& iEvent, const edm::EventSetu
         if (pfSVTagCollValid)
           onlineTracks = getOnlineBTagTracks<SVTagInfo>(
               iter->first->eta(), iter->first->phi(), jetSVTagsCollPF, onlineIP3D, onlineIP3DSig);
-        if (caloSVTagCollValid)
-          onlineTracks = getOnlineBTagTracks<reco::SecondaryVertexTagInfo>(
-              iter->first->eta(), iter->first->phi(), jetSVTagsCollCalo, onlineIP3D, onlineIP3DSig);
 
         for (unsigned int iOffTrk = 0; iOffTrk < offlineTracks.size(); ++iOffTrk) {
           const reco::Track* offTrk = offlineTracks.at(iOffTrk);
@@ -473,35 +509,17 @@ void BTVHLTOfflineSource::analyze(const edm::Event& iEvent, const edm::EventSetu
         }
       }
 
-      if (v.getTriggerType() == "PF") {
-        iEvent.getByToken(hltPFPVToken_, VertexHandler);
-      } else {
-        iEvent.getByToken(hltFastPVToken_, VertexHandler);
-      }
+      iEvent.getByToken(hltPFPVToken_, VertexHandler);
       if (VertexHandler.isValid()) {
         v.PVz->Fill(VertexHandler->begin()->z());
         if (offlineVertexHandler.isValid()) {
           v.PVz_HLTMinusRECO->Fill(VertexHandler->begin()->z() - offlineVertexHandler->begin()->z());
         }
       }
-    }  // caloTagsValid
-
-    // specific to Calo b-tagging
-    if (caloTags.isValid() && v.getTriggerType() == "Calo" && !caloTags->empty()) {
-      iEvent.getByToken(hltCaloPVToken_, VertexHandler);
-      if (VertexHandler.isValid()) {
-        v.fastPVz->Fill(VertexHandler->begin()->z());
-        if (offlineVertexHandler.isValid()) {
-          v.fastPVz_HLTMinusRECO->Fill(VertexHandler->begin()->z() - offlineVertexHandler->begin()->z());
-        }
-      }
-    }
+    }  // PFTagsValid
 
     // additional plots from tag info collections
     /////////////////////////////////////////////
-
-    edm::Handle<std::vector<reco::ShallowTagInfo>> shallowTagInfosCalo;
-    iEvent.getByToken(shallowTagInfosTokenCalo_, shallowTagInfosCalo);
 
     edm::Handle<std::vector<reco::ShallowTagInfo>> shallowTagInfosPf;
     iEvent.getByToken(shallowTagInfosTokenPf_, shallowTagInfosPf);
@@ -513,29 +531,106 @@ void BTVHLTOfflineSource::analyze(const edm::Event& iEvent, const edm::EventSetu
     //    iEvent.getByToken(pfTagInfosToken_, pfTagInfos);
 
     // first try to get info from shallowTagInfos ...
-    if ((v.getTriggerType() == "PF" && shallowTagInfosPf.isValid()) ||
-        (v.getTriggerType() == "Calo" && shallowTagInfosCalo.isValid())) {
-      const auto& shallowTagInfoCollection = (v.getTriggerType() == "PF") ? shallowTagInfosPf : shallowTagInfosCalo;
+    if (v.getTriggerType() == "PF" && shallowTagInfosPf.isValid()) {
+      const auto& shallowTagInfoCollection = shallowTagInfosPf;
       for (const auto& shallowTagInfo : *shallowTagInfoCollection) {
         const auto& tagVars = shallowTagInfo.taggingVariables();
 
         // n secondary vertices and n selected tracks
         for (const auto& tagVar : tagVars.getList(reco::btau::jetNSecondaryVertices, false)) {
+          v.h_jetNSecondaryVertices->Fill(tagVar);
           v.n_vtx->Fill(tagVar);
         }
+
         for (const auto& tagVar : tagVars.getList(reco::btau::jetNSelectedTracks, false)) {
           v.n_sel_tracks->Fill(tagVar);
+          v.h_jetNSelectedTracks->Fill(tagVar);
+        }
+
+        for (const auto& tagVar : tagVars.getList(reco::btau::jetPt, false)) {
+          v.h_jet_pt->Fill(tagVar);
+        }
+
+        for (const auto& tagVar : tagVars.getList(reco::btau::jetEta, false)) {
+          v.h_jet_eta->Fill(tagVar);
+        }
+
+        for (const auto& tagVar : tagVars.getList(reco::btau::trackSumJetEtRatio, false)) {
+          v.h_trackSumJetEtRatio->Fill(tagVar);
+        }
+
+        for (const auto& tagVar : tagVars.getList(reco::btau::trackSumJetDeltaR, false)) {
+          v.h_trackSumJetDeltaR->Fill(tagVar);
+        }
+
+        for (const auto& tagVar : tagVars.getList(reco::btau::vertexCategory, false)) {
+          v.h_vertexCategory->Fill(tagVar);
+        }
+
+        for (const auto& tagVar : tagVars.getList(reco::btau::trackSip2dValAboveCharm, false)) {
+          v.h_trackSip2dValAboveCharm->Fill(tagVar);
+        }
+
+        for (const auto& tagVar : tagVars.getList(reco::btau::trackSip2dSigAboveCharm, false)) {
+          v.h_trackSip2dSigAboveCharm->Fill(tagVar);
+        }
+
+        for (const auto& tagVar : tagVars.getList(reco::btau::trackSip3dValAboveCharm, false)) {
+          v.h_trackSip3dValAboveCharm->Fill(tagVar);
+        }
+
+        for (const auto& tagVar : tagVars.getList(reco::btau::trackSip3dSigAboveCharm, false)) {
+          v.h_trackSip3dSigAboveCharm->Fill(tagVar);
+        }
+
+        for (const auto& tagVar : tagVars.getList(reco::btau::jetNTracksEtaRel, false)) {
+          v.h_jetNTracksEtaRel->Fill(tagVar);
         }
 
         // impact parameter
+        // and new info
         const auto& trackSip3dVal = tagVars.getList(reco::btau::trackSip3dVal, false);
         const auto& trackSip3dSig = tagVars.getList(reco::btau::trackSip3dSig, false);
+        const auto& trackJetDistVal = tagVars.getList(reco::btau::trackJetDistVal, false);
+        const auto& trackPtRel = tagVars.getList(reco::btau::trackPtRel, false);
+        const auto& trackSip2dSig = tagVars.getList(reco::btau::trackSip2dSig, false);
+        const auto& trackDeltaR = tagVars.getList(reco::btau::trackDeltaR, false);
+        const auto& trackPtRatio = tagVars.getList(reco::btau::trackPtRatio, false);
+        const auto& trackDecayLenVal = tagVars.getList(reco::btau::trackDecayLenVal, false);
+        const auto& trackEtaRel = tagVars.getList(reco::btau::trackEtaRel, false);
+
+        for (unsigned i_trk = 0; i_trk < trackEtaRel.size(); i_trk++) {
+          v.h_trackEtaRel->Fill(trackEtaRel[i_trk]);
+        }
+
+        for (unsigned i_trk = 0; i_trk < trackJetDistVal.size(); i_trk++) {
+          v.h_trackJetDistVal->Fill(trackJetDistVal[i_trk]);
+        }
+
+        for (unsigned i_trk = 0; i_trk < trackPtRel.size(); i_trk++) {
+          v.h_trackPtRel->Fill(trackPtRel[i_trk]);
+        }
+
+        for (unsigned i_trk = 0; i_trk < trackDeltaR.size(); i_trk++) {
+          v.h_trackDeltaR->Fill(trackDeltaR[i_trk]);
+        }
+
+        for (unsigned i_trk = 0; i_trk < trackPtRatio.size(); i_trk++) {
+          v.h_trackPtRatio->Fill(trackPtRatio[i_trk]);
+        }
+
+        for (unsigned i_trk = 0; i_trk < trackDecayLenVal.size(); i_trk++) {
+          v.h_trackDecayLenVal->Fill(trackDecayLenVal[i_trk]);
+        }
+
         for (unsigned i_trk = 0; i_trk < trackSip3dVal.size(); i_trk++) {
           float val = trackSip3dVal[i_trk];
           float sig = trackSip3dSig[i_trk];
           v.h_3d_ip_distance->Fill(val);
           v.h_3d_ip_error->Fill(val / sig);
           v.h_3d_ip_sig->Fill(sig);
+
+          v.h_trackSip2dSig->Fill(trackSip2dSig[i_trk]);
         }
 
         // vertex mass and tracks per vertex
@@ -544,6 +639,30 @@ void BTVHLTOfflineSource::analyze(const edm::Event& iEvent, const edm::EventSetu
         }
         for (const auto& tagVar : tagVars.getList(reco::btau::vertexNTracks, false)) {
           v.n_vtx_trks->Fill(tagVar);
+        }
+
+        for (const auto& tagVar : tagVars.getList(reco::btau::vertexEnergyRatio, false)) {
+          v.h_vertexEnergyRatio->Fill(tagVar);
+        }
+
+        for (const auto& tagVar : tagVars.getList(reco::btau::vertexJetDeltaR, false)) {
+          v.h_vertexJetDeltaR->Fill(tagVar);
+        }
+
+        for (const auto& tagVar : tagVars.getList(reco::btau::flightDistance2dVal, false)) {
+          v.h_flightDistance2dVal->Fill(tagVar);
+        }
+
+        for (const auto& tagVar : tagVars.getList(reco::btau::flightDistance2dSig, false)) {
+          v.h_flightDistance2dSig->Fill(tagVar);
+        }
+
+        for (const auto& tagVar : tagVars.getList(reco::btau::flightDistance3dVal, false)) {
+          v.h_flightDistance3dVal->Fill(tagVar);
+        }
+
+        for (const auto& tagVar : tagVars.getList(reco::btau::flightDistance3dSig, false)) {
+          v.h_flightDistance3dSig->Fill(tagVar);
         }
 
         // // track N total/pixel hits
@@ -589,7 +708,7 @@ void BTVHLTOfflineSource::analyze(const edm::Event& iEvent, const edm::EventSetu
     //     }
     //   }
     // }
-  }
+  }  //end paths loop
 }
 
 std::vector<const reco::Track*> BTVHLTOfflineSource::getOfflineBTagTracks(float hltJetEta,
@@ -661,11 +780,14 @@ std::vector<const reco::Track*> BTVHLTOfflineSource::getOnlineBTagTracks(float h
 
     unsigned int trackSize = ipInfo.selectedTracks().size();
     for (unsigned int itt = 0; itt < trackSize; ++itt) {
-      const auto ptrackRef = (ipInfo.selectedTracks()[itt]);  //TrackRef or
-      const reco::Track* ptrackPtr = reco::btag::toTrack(ptrackRef);
-      onlineTracks.push_back(ptrackPtr);
-      onlineIP3D.push_back(ip[itt].ip3d.value());
-      onlineIP3DSig.push_back(ip[itt].ip3d.significance());
+      const auto ptrackRef = (ipInfo.selectedTracks()[itt]);
+
+      if (ptrackRef.isAvailable()) {
+        const reco::Track* ptrackPtr = reco::btag::toTrack(ptrackRef);
+        onlineTracks.push_back(ptrackPtr);
+        onlineIP3D.push_back(ip[itt].ip3d.value());
+        onlineIP3DSig.push_back(ip[itt].ip3d.significance());
+      }
     }
   }
   return onlineTracks;
@@ -715,6 +837,42 @@ void BTVHLTOfflineSource::bookHistograms(DQMStore::IBooker& iBooker, edm::Run co
     title = "turn-on with tight threshold " + trigPath;
     v.bookME(iBooker, v.Discr_turnon_tight, histoname, title, 22, -0.1, 1.);
 
+    histoname = "Turnon_loose_Pt";
+    title = "turn-on with loose threshold " + trigPath;
+    v.bookME(iBooker, v.Pt_turnon_loose, histoname, title, 50, 0., 500.);
+
+    histoname = "Turnon_medium_Pt";
+    title = "turn-on with medium threshold " + trigPath;
+    v.bookME(iBooker, v.Pt_turnon_medium, histoname, title, 50, 0., 500.);
+
+    histoname = "Turnon_tight_Pt";
+    title = "turn-on with tight threshold " + trigPath;
+    v.bookME(iBooker, v.Pt_turnon_tight, histoname, title, 50, 0., 500.);
+
+    histoname = "Turnon_loose_Eta";
+    title = "turn-on with loose threshold " + trigPath;
+    v.bookME(iBooker, v.Eta_turnon_loose, histoname, title, 60, -3., 3.);
+
+    histoname = "Turnon_medium_Eta";
+    title = "turn-on with medium threshold " + trigPath;
+    v.bookME(iBooker, v.Eta_turnon_medium, histoname, title, 60, -3., 3.);
+
+    histoname = "Turnon_tight_Eta";
+    title = "turn-on with tight threshold " + trigPath;
+    v.bookME(iBooker, v.Eta_turnon_tight, histoname, title, 60, -3., 3.);
+
+    histoname = "Turnon_loose_Phi";
+    title = "turn-on with loose threshold " + trigPath;
+    v.bookME(iBooker, v.Phi_turnon_loose, histoname, title, 60, -3., 3.);
+
+    histoname = "Turnon_medium_Phi";
+    title = "turn-on with medium threshold " + trigPath;
+    v.bookME(iBooker, v.Phi_turnon_medium, histoname, title, 60, -3., 3.);
+
+    histoname = "Turnon_tight_Phi";
+    title = "turn-on with tight threshold " + trigPath;
+    v.bookME(iBooker, v.Phi_turnon_tight, histoname, title, 60, -3., 3.);
+
     histoname = labelname + "_PVz";
     title = "online z(PV) " + trigPath;
     v.PVz = iBooker.book1D(histoname.c_str(), title.c_str(), 80, -20, 20);
@@ -758,6 +916,111 @@ void BTVHLTOfflineSource::bookHistograms(DQMStore::IBooker& iBooker, edm::Run co
     histoname = "3d_ip_sig";
     title = "3D IP significance of tracks (cm)" + trigPath;
     v.h_3d_ip_sig = iBooker.book1D(histoname.c_str(), title.c_str(), 40, -40, 40);
+
+    //new
+    histoname = "jetNSecondaryVertices";
+    title = "jet N Secondary Vertices" + trigPath;
+    v.h_jetNSecondaryVertices = iBooker.book1D(histoname.c_str(), title.c_str(), 10, -0.5, 9.5);
+
+    histoname = "jet_pt";
+    title = "jet pt" + trigPath;
+    v.h_jet_pt = iBooker.book1D(histoname.c_str(), title.c_str(), 100, -0.1, 100);
+
+    histoname = "jet_eta";
+    title = "jet eta" + trigPath;
+    v.h_jet_eta = iBooker.book1D(histoname.c_str(), title.c_str(), 100, -2.5, 2.5);
+
+    histoname = "trackSumJetEtRatio";
+    title = "trackSumJetEtRatio" + trigPath;
+    v.h_trackSumJetEtRatio = iBooker.book1D(histoname.c_str(), title.c_str(), 100, -0.1, 1.5);
+
+    histoname = "trackSip2dValAboveCharm";
+    title = "trackSip2dSigAboveCharm" + trigPath;
+    v.h_trackSip2dSigAboveCharm = iBooker.book1D(histoname.c_str(), title.c_str(), 100, -0.2, 0.2);
+
+    histoname = "trackSip2dSigAboveCharm";
+    title = "trackSip2dSigAboveCharm" + trigPath;
+    v.h_trackSip2dValAboveCharm = iBooker.book1D(histoname.c_str(), title.c_str(), 100, -50, 50);
+
+    histoname = "trackSip3dValAboveCharm";
+    title = "trackSip3dValAboveCharm" + trigPath;
+    v.h_trackSip3dValAboveCharm = iBooker.book1D(histoname.c_str(), title.c_str(), 100, -0.2, 0.2);
+
+    histoname = "trackSip3dSigAboveCharm";
+    title = "trackSip3dSigAboveCharm" + trigPath;
+    v.h_trackSip3dSigAboveCharm = iBooker.book1D(histoname.c_str(), title.c_str(), 100, -50, 50);
+
+    histoname = "jetNSelectedTracks";
+    title = "jet N Selected Tracks" + trigPath;
+    v.h_jetNSelectedTracks = iBooker.book1D(histoname.c_str(), title.c_str(), 42, -1.5, 40.5);
+
+    histoname = "jetNTracksEtaRel";
+    title = "jetNTracksEtaRel" + trigPath;
+    v.h_jetNTracksEtaRel = iBooker.book1D(histoname.c_str(), title.c_str(), 42, -1.5, 40.5);
+
+    histoname = "vertexCategory";
+    title = "vertex category" + trigPath;
+    v.h_vertexCategory = iBooker.book1D(histoname.c_str(), title.c_str(), 4, -1.5, 2.5);
+
+    histoname = "trackSumJetDeltaR";
+    title = "trackSumJetDeltaR" + trigPath;
+    v.h_trackSumJetDeltaR = iBooker.book1D(histoname.c_str(), title.c_str(), 100, -0.1, 0.35);
+
+    //new 2 below
+    histoname = "trackJetDistVal";
+    title = "trackJetDistVal" + trigPath;
+    v.h_trackJetDistVal = iBooker.book1D(histoname.c_str(), title.c_str(), 100, -1, 0.01);
+
+    histoname = "trackPtRel";
+    title = "track pt rel" + trigPath;
+    v.h_trackPtRel = iBooker.book1D(histoname.c_str(), title.c_str(), 100, -0.1, 7);
+
+    histoname = "trackDeltaR";
+    title = "trackDeltaR" + trigPath;
+    v.h_trackDeltaR = iBooker.book1D(histoname.c_str(), title.c_str(), 160, -0.05, .47);
+
+    histoname = "trackPtRatio";
+    title = "trackPtRatio" + trigPath;
+    v.h_trackPtRatio = iBooker.book1D(histoname.c_str(), title.c_str(), 100, -0.01, 0.3);
+
+    histoname = "trackSip2dSig";
+    title = "trackSip2dSig" + trigPath;
+    v.h_trackSip2dSig = iBooker.book1D(histoname.c_str(), title.c_str(), 100, -55, 55);
+
+    histoname = "trackDecayLenVal";
+    title = "trackDecayLenVal" + trigPath;
+    v.h_trackDecayLenVal = iBooker.book1D(histoname.c_str(), title.c_str(), 100, -0.1, 22);
+
+    histoname = "trackEtaRel";
+    title = "trackEtaRel" + trigPath;
+    v.h_trackEtaRel = iBooker.book1D(histoname.c_str(), title.c_str(), 31, 0, 30);
+
+    //new 3 below
+    histoname = "vertexEnergyRatio";
+    title = "vertexEnergyRatio" + trigPath;
+    v.h_vertexEnergyRatio = iBooker.book1D(histoname.c_str(), title.c_str(), 100, -0.1, 3);
+
+    histoname = "vertexJetDeltaR";
+    title = "vertexJetDeltaR" + trigPath;
+    v.h_vertexJetDeltaR = iBooker.book1D(histoname.c_str(), title.c_str(), 100, -0.01, 0.4);
+
+    histoname = "flightDistance2dVal";
+    title = "flightDistance2dVal" + trigPath;
+    v.h_flightDistance2dVal = iBooker.book1D(histoname.c_str(), title.c_str(), 100, -0.1, 5);
+
+    histoname = "flightDistance2dSig";
+    title = "flightDistance2dSig" + trigPath;
+    v.h_flightDistance2dSig = iBooker.book1D(histoname.c_str(), title.c_str(), 100, -10, 150);
+
+    histoname = "flightDistance3dVal";
+    title = "flightDistance3dVal" + trigPath;
+    v.h_flightDistance3dVal = iBooker.book1D(histoname.c_str(), title.c_str(), 100, -0.1, 5);
+
+    histoname = "flightDistance3dSig";
+    title = "flightDistance3dSig" + trigPath;
+    v.h_flightDistance3dSig = iBooker.book1D(histoname.c_str(), title.c_str(), 100, -10, 150);
+
+    //end new
 
     histoname = "OnlineTrkEff_Pt";
     title = "Relative Online Trk Efficiency vs Pt " + trigPath;

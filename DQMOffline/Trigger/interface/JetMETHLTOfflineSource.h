@@ -17,10 +17,8 @@
 
 #include "FWCore/Common/interface/TriggerNames.h"
 #include "FWCore/Framework/interface/Frameworkfwd.h"
-#include "FWCore/Framework/interface/EDAnalyzer.h"
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/MakerMacros.h"
-#include "FWCore/ServiceRegistry/interface/Service.h"
 #include "FWCore/MessageLogger/interface/MessageLogger.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 
@@ -191,7 +189,7 @@ private:
           DenomfilterName_("unset"),
           processName_("unset"),
           objectType_(-1),
-          triggerType_("unset"){};
+          triggerType_("unset") {}
 
   public:
     void setHistos(MonitorElement* const N,
@@ -936,7 +934,7 @@ private:
   // simple collection
   class PathInfoCollection : public std::vector<PathInfo> {
   public:
-    PathInfoCollection() : std::vector<PathInfo>(){};
+    PathInfoCollection() : std::vector<PathInfo>() {}
     std::vector<PathInfo>::iterator find(const std::string& pathName) { return std::find(begin(), end(), pathName); }
   };
   PathInfoCollection hltPathsAllTriggerSummary_;

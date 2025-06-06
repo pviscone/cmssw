@@ -6,7 +6,6 @@
 
 #include <vector>
 
-#include "DataFormats/HGCalReco/interface/Common.h"
 #include "DataFormats/HGCalReco/interface/TICLLayerTile.h"
 #include "DataFormats/HGCalReco/interface/TICLSeedingRegion.h"
 #include "HGCDoublet.h"
@@ -59,7 +58,6 @@ public:
     isOuterClusterOfDoublets_.shrink_to_fit();
   }
   void setVerbosity(int level) { verbosity_ = level; }
-  enum VerbosityLevel { None = 0, Basic, Advanced, Expert, Guru };
 
 private:
   std::vector<HGCDoublet> allDoublets_;

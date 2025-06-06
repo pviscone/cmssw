@@ -74,16 +74,18 @@
 #include "FWCore/MessageLogger/interface/JobReport.h"
 #include "FWCore/MessageLogger/interface/MessageLogger.h"
 #include "FWCore/ServiceRegistry/interface/Service.h"
+#include "FWCore/ServiceRegistry/interface/ServiceRegistryfwd.h"
 #include "FWCore/Utilities/interface/Algorithms.h"
 #include "FWCore/Utilities/interface/BranchType.h"
-#include "FWCore/Utilities/interface/ConvertException.h"
 #include "FWCore/Utilities/interface/Exception.h"
 #include "FWCore/Utilities/interface/StreamID.h"
 #include "FWCore/Utilities/interface/get_underlying_safe.h"
 #include "FWCore/Utilities/interface/propagate_const.h"
 
+#include <array>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <set>
 #include <string>
 #include <vector>
@@ -96,22 +98,21 @@ namespace edm {
     class TriggerNamesService;
   }
   namespace evetnsetup {
-    class ESRecordsToProxyIndices;
+    class ESRecordsToProductResolverIndices;
   }
 
-  class ActivityRegistry;
   class BranchIDListHelper;
   class EventTransitionInfo;
   class ExceptionCollector;
   class MergeableRunProductMetadata;
   class OutputModuleCommunicator;
-  class ProcessContext;
   class ProductRegistry;
   class PreallocationConfiguration;
   class StreamSchedule;
   class GlobalSchedule;
   struct TriggerTimingReport;
   class ModuleRegistry;
+  class ModuleTypeResolverMaker;
   class ThinnedAssociationsHelper;
   class SubProcessParentageHelper;
   class TriggerResultInserter;
@@ -130,16 +131,24 @@ namespace edm {
     Schedule(ParameterSet& proc_pset,
              service::TriggerNamesService const& tns,
              ProductRegistry& pregistry,
-             BranchIDListHelper& branchIDListHelper,
-             ProcessBlockHelperBase&,
-             ThinnedAssociationsHelper& thinnedAssociationsHelper,
-             SubProcessParentageHelper const* subProcessParentageHelper,
              ExceptionToActionTable const& actions,
              std::shared_ptr<ActivityRegistry> areg,
-             std::shared_ptr<ProcessConfiguration> processConfiguration,
-             bool hasSubprocesses,
+             std::shared_ptr<ProcessConfiguration const> processConfiguration,
              PreallocationConfiguration const& config,
-             ProcessContext const* processContext);
+             ProcessContext const* processContext,
+             ModuleTypeResolverMaker const* resolverMaker);
+    void finishSetup(ParameterSet& proc_pset,
+                     service::TriggerNamesService const& tns,
+                     ProductRegistry& preg,
+                     BranchIDListHelper& branchIDListHelper,
+                     ProcessBlockHelperBase& processBlockHelper,
+                     ThinnedAssociationsHelper& thinnedAssociationsHelper,
+                     SubProcessParentageHelper const* subProcessParentageHelper,
+                     std::shared_ptr<ActivityRegistry> areg,
+                     std::shared_ptr<ProcessConfiguration> processConfiguration,
+                     bool hasSubprocesses,
+                     PreallocationConfiguration const& prealloc,
+                     ProcessContext const* processContext);
 
     void processOneEventAsync(WaitingTaskHolder iTask,
                               unsigned int iStreamID,
@@ -159,11 +168,16 @@ namespace edm {
                                ServiceToken const& token,
                                bool cleaningUpAfterException = false);
 
-    void beginJob(ProductRegistry const&, eventsetup::ESRecordsToProxyIndices const&, ProcessBlockHelperBase const&);
+    void beginJob(ProductRegistry const&,
+                  eventsetup::ESRecordsToProductResolverIndices const&,
+                  ProcessBlockHelperBase const&,
+                  PathsAndConsumesOfModulesBase const&,
+                  ProcessContext const&);
     void endJob(ExceptionCollector& collector);
+    void sendFwkSummaryToMessageLogger() const;
 
-    void beginStream(unsigned int);
-    void endStream(unsigned int);
+    void beginStream(unsigned int streamID);
+    void endStream(unsigned int streamID, ExceptionCollector& collector, std::mutex& collectorMutex) noexcept;
 
     // Write the luminosity block
     void writeLumiAsync(WaitingTaskHolder iTask,
@@ -272,12 +286,15 @@ namespace edm {
     bool changeModule(std::string const& iLabel,
                       ParameterSet const& iPSet,
                       const ProductRegistry& iRegistry,
-                      eventsetup::ESRecordsToProxyIndices const&);
+                      eventsetup::ESRecordsToProductResolverIndices const&);
 
     /// Deletes module with label iLabel
     void deleteModule(std::string const& iLabel, ActivityRegistry* areg);
 
-    void initializeEarlyDelete(std::vector<std::string> const& branchesToDeleteEarly, edm::ProductRegistry const& preg);
+    void initializeEarlyDelete(std::vector<std::string> const& branchesToDeleteEarly,
+                               std::multimap<std::string, std::string> const& referencesToBranches,
+                               std::vector<std::string> const& modulesToSkip,
+                               edm::ProductRegistry const& preg);
 
     /// returns the collection of pointers to workers
     AllWorkers const& allWorkers() const;

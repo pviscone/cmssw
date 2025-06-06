@@ -2,7 +2,6 @@
 #ifndef ElectronDqmHarvesterBase_h
 #define ElectronDqmHarvesterBase_h
 
-#include "FWCore/Framework/interface/EDAnalyzer.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 #include <Rtypes.h>
 #include <string>
@@ -27,8 +26,8 @@ protected:
   void dqmEndJob(DQMStore::IBooker &, DQMStore::IGetter &) override;  //performed in the endJob
 
   // interface to implement in derived classes
-  virtual void finalize(DQMStore::IBooker &iBooker,
-                        DQMStore::IGetter &iGetter){};  //  override ;, const edm::Event& e, const edm::EventSetup & c
+  virtual void finalize(DQMStore::IBooker &iBooker, DQMStore::IGetter &iGetter) {
+  }  //  override ;, const edm::Event& e, const edm::EventSetup & c
 
   // utility methods
   bool finalStepDone() { return finalDone_; }

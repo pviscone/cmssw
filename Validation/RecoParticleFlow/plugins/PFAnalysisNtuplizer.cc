@@ -73,7 +73,7 @@ public:
   size_t idx_block;
   size_t idx_elem;
   ElementWithIndex(const reco::PFBlockElement& _orig, size_t _idx_block, size_t _idx_elem)
-      : orig(_orig), idx_block(_idx_block), idx_elem(_idx_elem){};
+      : orig(_orig), idx_block(_idx_block), idx_elem(_idx_elem) {}
 };
 
 vector<int> find_element_ref(const vector<ElementWithIndex>& vec, const edm::RefToBase<reco::Track>& r) {
@@ -749,14 +749,14 @@ void PFAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
             break;
           }
         }  //trackingParticles
-      }    //simcluster tracks
+      }  //simcluster tracks
 
       simcluster_detids_.push_back(detid_energy);
       simcluster_idx_trackingparticle_.push_back(simcluster_to_trackingparticle);
 
       idx_simcluster += 1;
     }  //simclusters
-  }    //caloParticles
+  }  //caloParticles
 
   associateClusterToSimCluster(all_elements);
 
@@ -1176,17 +1176,7 @@ void PFAnalysis::associateClusterToSimCluster(const vector<ElementWithIndex>& al
   for (const auto& detids : detids_elements) {
     int isimcluster = 0;
     if (!detids.empty()) {
-      double sum_e_tot = 0.0;
-      for (const auto& c : detids) {
-        sum_e_tot += c.second;
-      }
-
       for (const auto& simcluster_detids : simcluster_detids_) {
-        double sum_e_tot_sc = 0.0;
-        for (const auto& c : simcluster_detids) {
-          sum_e_tot_sc += c.second;
-        }
-
         //get the energy of the simcluster hits that matches detids of the rechits
         double cmp = detid_compare(detids, simcluster_detids);
         if (cmp > 0) {

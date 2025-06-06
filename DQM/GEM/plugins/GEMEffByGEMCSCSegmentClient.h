@@ -9,16 +9,13 @@
  * \author Seungjin Yang <seungjin.yang@cern.ch>
  */
 
-#include "DQMServices/Core/interface/DQMEDHarvester.h"
-#include "DQMServices/Core/interface/DQMStore.h"
-#include "FWCore/ParameterSet/interface/ParameterSet.h"
+#include "DQM/GEM/interface/GEMDQMEfficiencyClientBase.h"
 #include "FWCore/ParameterSet/interface/ConfigurationDescriptions.h"
-#include "DQM/GEM/interface/GEMDQMEfficiencyCalculator.h"
 
-class GEMEffByGEMCSCSegmentClient : public DQMEDHarvester {
+class GEMEffByGEMCSCSegmentClient : public GEMDQMEfficiencyClientBase {
 public:
   GEMEffByGEMCSCSegmentClient(const edm::ParameterSet &);
-  ~GEMEffByGEMCSCSegmentClient() override{};
+  ~GEMEffByGEMCSCSegmentClient() override {}
   static void fillDescriptions(edm::ConfigurationDescriptions &descriptions);
 
 protected:
@@ -27,13 +24,9 @@ protected:
                              edm::LuminosityBlock const &,
                              edm::EventSetup const &) override;
 
-  void dqmEndJob(DQMStore::IBooker &, DQMStore::IGetter &) override{};
+  void dqmEndJob(DQMStore::IBooker &, DQMStore::IGetter &) override {}
 
-  // initialized in the constructor initializer list
   const std::string kFolder_;
-  const std::string kLogCategory_;
-
-  std::unique_ptr<GEMDQMEfficiencyCalculator> eff_calculator_;
 };
 
 #endif  // DQM_GEM_GEMEffByGEMCSCSegmentClient_h

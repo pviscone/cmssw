@@ -28,8 +28,8 @@
 class AlignmentMonitorTemplate : public AlignmentMonitorBase {
 public:
   AlignmentMonitorTemplate(const edm::ParameterSet& cfg, edm::ConsumesCollector iC)
-      : AlignmentMonitorBase(cfg, iC, "AlignmentMonitorTemplate"){};
-  ~AlignmentMonitorTemplate() override{};
+      : AlignmentMonitorBase(cfg, iC, "AlignmentMonitorTemplate") {}
+  ~AlignmentMonitorTemplate() override {}
 
   void book() override;
   void event(const edm::Event& iEvent,
@@ -102,7 +102,7 @@ void AlignmentMonitorTemplate::event(const edm::Event& iEvent,
 
     std::vector<TrajectoryMeasurement> measurements = traj->measurements();
     for (std::vector<TrajectoryMeasurement>::const_iterator im = measurements.begin(); im != measurements.end(); ++im) {
-      const TrajectoryMeasurement meas = *im;
+      const TrajectoryMeasurement& meas = *im;
       const TransientTrackingRecHit* hit = &(*meas.recHit());
       const DetId id = hit->geographicalId();
 
@@ -123,8 +123,8 @@ void AlignmentMonitorTemplate::event(const edm::Event& iEvent,
           search->second->Fill(tsosc.localPosition().x() - hit->localPosition().x());
         }
       }  // end if hit is valid
-    }    // end loop over hits
-  }      // end loop over tracks/trajectories
+    }  // end loop over hits
+  }  // end loop over tracks/trajectories
 }
 
 void AlignmentMonitorTemplate::afterAlignment() {

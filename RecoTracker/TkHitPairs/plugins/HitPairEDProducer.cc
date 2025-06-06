@@ -10,13 +10,15 @@
 #include "FWCore/Utilities/interface/RunningAverage.h"
 
 #include "RecoTracker/TkTrackingRegions/interface/TrackingRegion.h"
-#include "DataFormats/Common/interface/OwnVector.h"
 #include "TrackingTools/TransientTrackingRecHit/interface/SeedingLayerSetsHits.h"
 #include "RecoTracker/TkTrackingRegions/interface/TrackingRegionsSeedingLayerSets.h"
 #include "RecoTracker/TkHitPairs/interface/LayerHitMapCache.h"
 #include "RecoTracker/TkHitPairs/interface/HitPairGeneratorFromLayerPair.h"
 #include "RecoTracker/TkHitPairs/interface/IntermediateHitDoublets.h"
 #include "RecoTracker/TkHitPairs/interface/RegionsSeedingHitSets.h"
+
+#include <memory>
+#include <vector>
 
 namespace {
   class ImplBase;
@@ -51,6 +53,7 @@ namespace {
     edm::RunningAverage localRA_;
     const unsigned int maxElement_;
     const unsigned int maxElementTotal_;
+    const bool putEmptyIfMaxElementReached_;
 
     HitPairGeneratorFromLayerPair generator_;
     std::vector<unsigned> layerPairBegins_;
@@ -58,6 +61,7 @@ namespace {
   ImplBase::ImplBase(const edm::ParameterSet& iConfig, edm::ConsumesCollector iC)
       : maxElement_(iConfig.getParameter<unsigned int>("maxElement")),
         maxElementTotal_(iConfig.getParameter<unsigned int>("maxElementTotal")),
+        putEmptyIfMaxElementReached_(iConfig.getParameter<bool>("putEmptyIfMaxElementReached")),
         generator_(
             iC, 0, 1, nullptr, maxElement_),  // these indices are dummy, TODO: cleanup HitPairGeneratorFromLayerPair
         layerPairBegins_(iConfig.getParameter<std::vector<unsigned>>("layerPairs")) {
@@ -105,7 +109,16 @@ namespace {
         auto hitCachePtr = std::get<0>(hitCachePtr_filler_ihd);
 
         for (SeedingLayerSetsHits::SeedingLayerSet layerSet : regionLayers.layerPairs()) {
-          auto doublets = generator_.doublets(region, iEvent, iSetup, layerSet, *hitCachePtr);
+          auto doubletsOpt = generator_.doublets(region, iEvent, iSetup, layerSet, *hitCachePtr);
+          if (not doubletsOpt) {
+            if (putEmptyIfMaxElementReached_) {
+              putEmpty(iEvent, regionsLayers);
+              return;
+            } else {
+              continue;
+            }
+          }
+          auto& doublets = *doubletsOpt;
           LogTrace("HitPairEDProducer") << " created " << doublets.size() << " doublets for layers "
                                         << layerSet[0].index() << "," << layerSet[1].index();
           if (doublets.empty())
@@ -113,11 +126,7 @@ namespace {
           nDoublets += doublets.size();
           if (nDoublets >= maxElementTotal_) {
             edm::LogError("TooManyPairs") << "number of total pairs exceed maximum, no pairs produced";
-            auto seedingHitSetsProducerDummy = T_SeedingHitSets(&localRA_);
-            auto intermediateHitDoubletsProducerDummy =
-                T_IntermediateHitDoublets(regionsLayers.seedingLayerSetsHitsPtr());
-            seedingHitSetsProducerDummy.putEmpty(iEvent);
-            intermediateHitDoubletsProducerDummy.putEmpty(iEvent);
+            putEmpty(iEvent, regionsLayers);
             return;
           }
           seedingHitSetsProducer.fill(std::get<1>(hitCachePtr_filler_shs), doublets);
@@ -130,6 +139,14 @@ namespace {
     }
 
   private:
+    template <typename T>
+    void putEmpty(edm::Event& iEvent, T& regionsLayers) {
+      auto seedingHitSetsProducerDummy = T_SeedingHitSets(&localRA_);
+      auto intermediateHitDoubletsProducerDummy = T_IntermediateHitDoublets(regionsLayers.seedingLayerSetsHitsPtr());
+      seedingHitSetsProducerDummy.putEmpty(iEvent);
+      intermediateHitDoubletsProducerDummy.putEmpty(iEvent);
+    }
+
     T_RegionLayers regionsLayers_;
   };
 
@@ -245,7 +262,7 @@ namespace {
     public:
       class const_iterator {
       public:
-        using internal_iterator_type = edm::OwnVector<TrackingRegion>::const_iterator;
+        using internal_iterator_type = std::vector<std::unique_ptr<TrackingRegion>>::const_iterator;
         using value_type = RegionLayers;
         using difference_type = internal_iterator_type::difference_type;
 
@@ -253,7 +270,7 @@ namespace {
                        const std::vector<SeedingLayerSetsHits::SeedingLayerSet>* layerPairs)
             : iter_(iter), layerPairs_(layerPairs) {}
 
-        value_type operator*() const { return value_type(&(*iter_), layerPairs_); }
+        value_type operator*() const { return value_type(&(**iter_), layerPairs_); }
 
         const_iterator& operator++() {
           ++iter_;
@@ -274,7 +291,7 @@ namespace {
       };
 
       EventTmp(const SeedingLayerSetsHits* seedingLayerSetsHits,
-               const edm::OwnVector<TrackingRegion>* regions,
+               const std::vector<std::unique_ptr<TrackingRegion>>* regions,
                const std::vector<unsigned>& layerPairBegins)
           : seedingLayerSetsHits_(seedingLayerSetsHits), regions_(regions) {
         // construct the pairs from the sets
@@ -334,7 +351,7 @@ namespace {
 
     private:
       const SeedingLayerSetsHits* seedingLayerSetsHits_;
-      const edm::OwnVector<TrackingRegion>* regions_;
+      const std::vector<std::unique_ptr<TrackingRegion>>* regions_;
       std::vector<SeedingLayerSetsHits::SeedingLayerSet> layerPairs;
     };
 
@@ -344,7 +361,7 @@ namespace {
                           edm::ConsumesCollector iC)
         : layerPairBegins_(layerPairBegins),
           seedingLayerToken_(iC.consumes<SeedingLayerSetsHits>(seedingLayerTag)),
-          regionToken_(iC.consumes<edm::OwnVector<TrackingRegion>>(regionTag)) {}
+          regionToken_(iC.consumes(regionTag)) {}
 
     EventTmp beginEvent(const edm::Event& iEvent) const {
       edm::Handle<SeedingLayerSetsHits> hlayers;
@@ -355,16 +372,14 @@ namespace {
             << "HitPairEDProducer expects SeedingLayerSetsHits::numberOfLayersInSet() to be >= 2, got "
             << layers->numberOfLayersInSet()
             << ". This is likely caused by a configuration error of this module, or SeedingLayersEDProducer.";
-      edm::Handle<edm::OwnVector<TrackingRegion>> hregions;
-      iEvent.getByToken(regionToken_, hregions);
-
-      return EventTmp(layers, hregions.product(), *layerPairBegins_);
+      auto const& regions = iEvent.get(regionToken_);
+      return EventTmp(layers, &regions, *layerPairBegins_);
     }
 
   private:
     const std::vector<unsigned>* layerPairBegins_;
     edm::EDGetTokenT<SeedingLayerSetsHits> seedingLayerToken_;
-    edm::EDGetTokenT<edm::OwnVector<TrackingRegion>> regionToken_;
+    edm::EDGetTokenT<std::vector<std::unique_ptr<TrackingRegion>>> regionToken_;
   };
 
   /////
@@ -504,6 +519,11 @@ void HitPairEDProducer::fillDescriptions(edm::ConfigurationDescriptions& descrip
   desc.add<bool>("produceIntermediateHitDoublets", false);
   desc.add<unsigned int>("maxElement", 1000000);
   desc.add<unsigned int>("maxElementTotal", 50000000);
+  desc.add<bool>("putEmptyIfMaxElementReached", false)
+      ->setComment(
+          "If set to true (default is 'false'), abort processing and put empty data products also if any layer pair "
+          "yields at least maxElement doublets, in addition to aborting processing if the sum of doublets from all "
+          "layer pairs reaches maxElementTotal.");
   desc.add<std::vector<unsigned>>("layerPairs", std::vector<unsigned>{0})
       ->setComment("Indices to the pairs of consecutive layers, i.e. 0 means (0,1), 1 (1,2) etc.");
 

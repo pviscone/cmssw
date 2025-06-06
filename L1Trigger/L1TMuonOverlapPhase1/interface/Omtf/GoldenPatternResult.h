@@ -23,10 +23,14 @@ private:
   int eta = 0;
 
   ///Sum of pdfValues
-  //omtfPdfValueType
   double pdfSum = 0;
 
   ///Number of fired layers - excluding bending layers
+  ///Sum of pdfValues without vertex constraint (unconstrained pt)
+  //i.e. not counting the pdfValue of the phiB of the refLayer
+  double pdfSumUnconstr = 0;
+
+  ///Number of fired layers
   unsigned int firedLayerCnt = 0;
 
   ///bits representing fired logicLayers (including bending layers),
@@ -80,6 +84,8 @@ public:
    */
   PdfValueType getPdfSum() const { return pdfSum; }
 
+  PdfValueType getPdfSumUnconstr() const { return pdfSumUnconstr; }
+
   const StubResults& getStubResults() const { return stubResults; }
 
   int getPhi() const { return phi; }
@@ -92,7 +98,7 @@ public:
 
   bool isLayerFired(unsigned int iLayer) const { return firedLayerBits & (1 << iLayer); }
 
-  GoldenPatternResult(){};
+  GoldenPatternResult() {}
 
   //dont use this in the pattern construction, since the myOmtfConfig is null then
   GoldenPatternResult(const OMTFConfiguration* omtfConfig);
@@ -120,6 +126,10 @@ public:
   void finalise8();
 
   void finalise9();
+
+  void finalise10();
+
+  void finalise11();
   //bool empty() const;
 
   friend std::ostream& operator<<(std::ostream& out, const GoldenPatternResult& aResult);

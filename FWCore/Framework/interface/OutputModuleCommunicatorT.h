@@ -46,18 +46,18 @@ namespace edm {
     void writeProcessBlockAsync(WaitingTaskHolder iTask,
                                 ProcessBlockPrincipal const&,
                                 ProcessContext const*,
-                                ActivityRegistry*) override;
+                                ActivityRegistry*) noexcept override;
 
     void writeRunAsync(WaitingTaskHolder iTask,
                        edm::RunPrincipal const& rp,
                        ProcessContext const*,
                        ActivityRegistry*,
-                       MergeableRunProductMetadata const*) override;
+                       MergeableRunProductMetadata const*) noexcept override;
 
     void writeLumiAsync(WaitingTaskHolder iTask,
                         edm::LuminosityBlockPrincipal const& lbp,
                         ProcessContext const*,
-                        ActivityRegistry*) override;
+                        ActivityRegistry*) noexcept override;
 
     ///\return true if OutputModule has reached its limit on maximum number of events it wants to see
     bool limitReached() const override;
@@ -77,11 +77,11 @@ namespace edm {
     ModuleDescription const& description() const override;
 
     static std::unique_ptr<edm::OutputModuleCommunicator> createIfNeeded(T* iMod) {
-      return std::move(impl::createCommunicatorIfNeeded(iMod));
+      return impl::createCommunicatorIfNeeded(iMod);
     }
 
   private:
-    inline T& module() const { return *module_; }
+    inline T& module() const noexcept { return *module_; }
     T* module_;
   };
 }  // namespace edm

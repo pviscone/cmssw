@@ -8,8 +8,11 @@
  */
 // C++
 #include <map>
+#include <array>
 #include <vector>
 #include <string>
+#include <utility>
+
 // CMS
 #include "FWCore/Framework/interface/Frameworkfwd.h"
 #include "FWCore/Framework/interface/Event.h"
@@ -28,10 +31,29 @@ class BeamFitter;
 class PVFitter;
 
 namespace alcabeammonitor {
-  struct NoCache {};
+
+  struct pvPosAndErr {
+    // Array of pairs: (value, error) for x, y, z
+    std::array<std::pair<double, double>, 3> data;
+
+    // Constructor initializes the array with values and errors from a reco::Vertex
+    pvPosAndErr(const reco::Vertex& vertex)
+        : data{{{vertex.x(), vertex.xError()}, {vertex.y(), vertex.yError()}, {vertex.z(), vertex.zError()}}} {}
+
+    // Accessor functions that return pairs (value, error) directly
+    std::pair<double, double> xWithError() const { return data[0]; }
+    std::pair<double, double> yWithError() const { return data[1]; }
+    std::pair<double, double> zWithError() const { return data[2]; }
+  };
+
+  struct BeamSpotInfo {
+    std::vector<std::vector<pvPosAndErr>> vertices_;
+    typedef std::map<std::string, reco::BeamSpot> BeamSpotContainer;
+    BeamSpotContainer beamSpotMap_;
+  };
 }  // namespace alcabeammonitor
 
-class AlcaBeamMonitor : public DQMOneEDAnalyzer<edm::LuminosityBlockCache<alcabeammonitor::NoCache>> {
+class AlcaBeamMonitor : public DQMOneEDAnalyzer<edm::LuminosityBlockCache<alcabeammonitor::BeamSpotInfo>> {
 public:
   AlcaBeamMonitor(const edm::ParameterSet&);
   static void fillDescriptions(edm::ConfigurationDescriptions&);
@@ -39,8 +61,8 @@ public:
 protected:
   void bookHistograms(DQMStore::IBooker&, edm::Run const&, edm::EventSetup const&) override;
   void analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) override;
-  std::shared_ptr<alcabeammonitor::NoCache> globalBeginLuminosityBlock(const edm::LuminosityBlock& iLumi,
-                                                                       const edm::EventSetup& iSetup) const override;
+  std::shared_ptr<alcabeammonitor::BeamSpotInfo> globalBeginLuminosityBlock(
+      const edm::LuminosityBlock& iLumi, const edm::EventSetup& iSetup) const override;
   void globalEndLuminosityBlock(const edm::LuminosityBlock& iLumi, const edm::EventSetup& iSetup) override;
   void dqmEndRun(edm::Run const&, edm::EventSetup const&) override;
 
@@ -65,8 +87,7 @@ private:
   int numberOfValuesToSave_;
   std::unique_ptr<BeamFitter> theBeamFitter_;
   std::unique_ptr<PVFitter> thePVFitter_;
-  mutable int numberOfProcessedLumis_;
-  mutable std::vector<int> processedLumis_;
+  std::vector<int> processedLumis_;
 
   // MonitorElements:
   MonitorElement* hD0Phi0_;
@@ -74,12 +95,10 @@ private:
   //mutable MonitorElement* theValuesContainer_;
 
   //Containers
-  mutable BeamSpotContainer beamSpotsMap_;
   HistosContainer histosMap_;
   PositionContainer positionsMap_;
   std::vector<std::string> varNamesV_;                            //x,y,z,sigmax(y,z)
   std::multimap<std::string, std::string> histoByCategoryNames_;  //run, lumi
-  mutable std::vector<reco::VertexCollection> vertices_;
 };
 
 #endif

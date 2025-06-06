@@ -38,6 +38,8 @@ bool clangcms::support::isCmsLocalFile(const char *file) {
     if (LocalDir != nullptr)
       DirLen = strlen(LocalDir);
   }
+  if (strncmp(file, "src/", 4) == 0)
+    return true;
   if ((DirLen == 0) || (strncmp(file, LocalDir, DirLen) != 0) || (strncmp(&file[DirLen], "/src/", 5) != 0))
     return false;
   return true;
@@ -148,7 +150,9 @@ bool clangcms::support::isSafeClassName(const std::string &cname) {
                                                  "class TVirtualMutex",
                                                  "boost::(anonymous namespace)::extents",
                                                  "(anonymous namespace)::_1",
-                                                 "(anonymous namespace)::_2"};
+                                                 "(anonymous namespace)::_2",
+                                                 "struct PyModuleDef",
+                                                 "::pybind11::class module_::module_def"};
 
   for (auto &name : names)
     if (cname.substr(0, name.length()) == name)

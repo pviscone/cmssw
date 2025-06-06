@@ -1,5 +1,10 @@
+#include "FWCore/MessageLogger/interface/MessageLogger.h"
 #include "Geometry/HGCalCommonData/interface/HGCalCell.h"
+#include "Geometry/HGCalCommonData/interface/HGCalTypes.h"
 #include <vector>
+#include <iostream>
+
+//#define EDM_ML_DEBUG
 
 HGCalCell::HGCalCell(double waferSize, int32_t nFine, int32_t nCoarse) {
   ncell_[0] = nFine;
@@ -8,6 +13,10 @@ HGCalCell::HGCalCell(double waferSize, int32_t nFine, int32_t nCoarse) {
     cellX_[k] = waferSize / (3 * ncell_[k]);
     cellY_[k] = sqrt3By2_ * cellX_[k];
   }
+#ifdef EDM_ML_DEBUG
+  edm::LogVerbatim("HGCalGeom") << "HGCalCell initialized with waferSize " << waferSize << " number of cells " << nFine
+                                << ":" << nCoarse;
+#endif
 }
 
 std::pair<double, double> HGCalCell::cellUV2XY1(int32_t u, int32_t v, int32_t placementIndex, int32_t type) {
@@ -227,9 +236,16 @@ std::pair<int, int> HGCalCell::cellUV2Cell(int32_t u, int32_t v, int32_t placeme
   return std::make_pair(cell, cellt);
 }
 
-int HGCalCell::cellPlacementIndex(int32_t iz, int32_t fwdBack, int32_t orient) {
-  int32_t indx = ((iz * fwdBack) > 0) ? orient : (orient + HGCalCell::cellPlacementExtra);
+int HGCalCell::cellPlacementIndex(int32_t iz, int32_t frontBack, int32_t orient) {
+  int32_t indx = ((iz * frontBack) > 0) ? orient : (orient + HGCalCell::cellPlacementExtra);
   return indx;
+}
+
+std::pair<int32_t, int32_t> HGCalCell::cellOrient(int32_t placementIndex) {
+  int32_t orient = (placementIndex >= HGCalCell::cellPlacementExtra) ? (placementIndex - HGCalCell::cellPlacementExtra)
+                                                                     : placementIndex;
+  int32_t frontBackZside = (placementIndex >= HGCalCell::cellPlacementExtra) ? 1 : -1;
+  return std::make_pair(orient, frontBackZside);
 }
 
 std::pair<int32_t, int32_t> HGCalCell::cellType(int32_t u, int32_t v, int32_t ncell, int32_t placementIndex) {
@@ -334,21 +350,63 @@ std::pair<int32_t, int32_t> HGCalCell::cellType(int32_t u, int32_t v, int32_t nc
     } else if (u == 0) {
       cellx = 7;
       cellt = HGCalCell::truncatedCell;
+      if (v == 1) {
+        cellx = 1;
+        cellt = HGCalCell::truncatedMBCell;
+      } else if (v == ncell - 2) {
+        cellx = 2;
+        cellt = HGCalCell::truncatedMBCell;
+      }
     } else if ((v - u) == (ncell - 1)) {
-      cellx = 10;
-      cellt = HGCalCell::extendedCell;
-    } else if (v == (2 * ncell - 1)) {
       cellx = 8;
-      cellt = HGCalCell::truncatedCell;
-    } else if (u == (2 * ncell - 1)) {
-      cellx = 11;
       cellt = HGCalCell::extendedCell;
-    } else if ((u - v) == ncell) {
+      if (v == ncell) {
+        cellx = 2;
+        cellt = HGCalCell::extendedMBCell;
+      } else if (v == 2 * ncell - 2) {
+        cellx = 3;
+        cellt = HGCalCell::extendedMBCell;
+      }
+    } else if (v == (2 * ncell - 1)) {
       cellx = 9;
       cellt = HGCalCell::truncatedCell;
+      if (u == ncell + 1) {
+        cellx = 3;
+        cellt = HGCalCell::truncatedMBCell;
+      } else if (u == 2 * ncell - 2) {
+        cellx = 4;
+        cellt = HGCalCell::truncatedMBCell;
+      }
+    } else if (u == (2 * ncell - 1)) {
+      cellx = 10;
+      cellt = HGCalCell::extendedCell;
+      if (v == 2 * ncell - 2) {
+        cellx = 4;
+        cellt = HGCalCell::extendedMBCell;
+      } else if (v == ncell + 1) {
+        cellx = 5;
+        cellt = HGCalCell::extendedMBCell;
+      }
+    } else if ((u - v) == ncell) {
+      cellx = 11;
+      cellt = HGCalCell::truncatedCell;
+      if (u == 2 * ncell - 2) {
+        cellx = 5;
+        cellt = HGCalCell::truncatedMBCell;
+      } else if (u == ncell + 1) {
+        cellx = 6;
+        cellt = HGCalCell::truncatedMBCell;
+      }
     } else if (v == 0) {
       cellx = 12;
       cellt = HGCalCell::extendedCell;
+      if (u == ncell - 1) {
+        cellx = 6;
+        cellt = HGCalCell::extendedMBCell;
+      } else if (u == 1) {
+        cellx = 1;
+        cellt = HGCalCell::extendedMBCell;
+      }
     }
     switch (placementIndex) {
       case (HGCalCell::cellPlacementIndex6):
@@ -468,23 +526,65 @@ std::pair<int32_t, int32_t> HGCalCell::cellType(int32_t u, int32_t v, int32_t nc
       cellx = 6;
       cellt = HGCalCell::cornerCell;
     } else if (v == 0) {
-      cellx = 10;
-      cellt = HGCalCell::extendedCell;
-    } else if ((u - v) == ncell) {
       cellx = 7;
-      cellt = HGCalCell::truncatedCell;
-    } else if (u == (2 * ncell - 1)) {
-      cellx = 11;
       cellt = HGCalCell::extendedCell;
-    } else if (v == (2 * ncell - 1)) {
+      if (u == 1) {
+        cellx = 1;
+        cellt = HGCalCell::extendedMBCell;
+      } else if (u == ncell - 1) {
+        cellx = 2;
+        cellt = HGCalCell::extendedMBCell;
+      }
+    } else if ((u - v) == ncell) {
       cellx = 8;
       cellt = HGCalCell::truncatedCell;
-    } else if ((v - u) == (ncell - 1)) {
-      cellx = 12;
-      cellt = HGCalCell::extendedCell;
-    } else if (u == 0) {
+      if (u == 2 * ncell - 2) {
+        cellx = 3;
+        cellt = HGCalCell::truncatedMBCell;
+      } else if (u == ncell + 1) {
+        cellx = 2;
+        cellt = HGCalCell::truncatedMBCell;
+      }
+    } else if (u == (2 * ncell - 1)) {
       cellx = 9;
+      cellt = HGCalCell::extendedCell;
+      if (v == 2 * ncell - 2) {
+        cellx = 4;
+        cellt = HGCalCell::extendedMBCell;
+      } else if (v == ncell + 1) {
+        cellx = 3;
+        cellt = HGCalCell::extendedMBCell;
+      }
+    } else if (v == (2 * ncell - 1)) {
+      cellx = 10;
       cellt = HGCalCell::truncatedCell;
+      if (u == ncell + 1) {
+        cellx = 5;
+        cellt = HGCalCell::truncatedMBCell;
+      } else if (u == 2 * ncell - 2) {
+        cellx = 4;
+        cellt = HGCalCell::truncatedMBCell;
+      }
+    } else if ((v - u) == (ncell - 1)) {
+      cellx = 11;
+      cellt = HGCalCell::extendedCell;
+      if (v == ncell) {
+        cellx = 6;
+        cellt = HGCalCell::extendedMBCell;
+      } else if (v == 2 * ncell - 2) {
+        cellx = 5;
+        cellt = HGCalCell::extendedMBCell;
+      }
+    } else if (u == 0) {
+      cellx = 12;
+      cellt = HGCalCell::truncatedCell;
+      if (v == 1) {
+        cellx = 1;
+        cellt = HGCalCell::truncatedMBCell;
+      } else if (v == ncell - 2) {
+        cellx = 6;
+        cellt = HGCalCell::truncatedMBCell;
+      }
     }
     switch (placementIndex) {
       case (HGCalCell::cellPlacementIndex0):
@@ -508,4 +608,130 @@ std::pair<int32_t, int32_t> HGCalCell::cellType(int32_t u, int32_t v, int32_t nc
     }
   }
   return std::make_pair(cell, cellt);
+}
+
+std::pair<int32_t, int32_t> HGCalCell::cellType(
+    int32_t u, int32_t v, int32_t ncell, int32_t placementIndex, int32_t partialType) {
+  std::pair<int, int> cell = HGCalCell::cellType(u, v, ncell, placementIndex);
+  int cellx = cell.first;
+  int cellt = cell.second;
+  if ((partialType >= HGCalTypes::WaferPartLDOffset) &&
+      (partialType < (HGCalTypes::WaferPartLDOffset + HGCalTypes::WaferPartLDCount))) {
+    if ((u == 7 && v == 14) || (u == 7 && v == 0)) {
+      cellt = HGCalCell::LDPartial0714Cell;
+      if (u == 7 && v == 0) {
+        cellx = HGCalCell::leftCell;
+      } else {
+        cellx = HGCalCell::rightCell;
+      }
+    } else if ((u == 8 && v == 15) || (u == 8 && v == 0)) {
+      cellt = HGCalCell::LDPartial0815Cell;
+      if (u == 8 && v == 0) {
+        cellx = HGCalCell::leftCell;
+      } else {
+        cellx = HGCalCell::rightCell;
+      }
+    } else if (u == 2 && v == 9) {
+      cellt = HGCalCell::LDPartial0209Cell;
+    } else if (u == 0 && v == 7) {
+      cellt = HGCalCell::LDPartial0007Cell;
+    } else if (u == 14 && v == 15) {
+      cellt = HGCalCell::LDPartial1415Cell;
+    } else if (u == 15 && v == 15) {
+      cellt = HGCalCell::LDPartial1515Cell;
+    } else if (u == 7) {
+      cellt = HGCalCell::extendedCell;
+      cellx = HGCalCell::topCell;
+    } else if (u == 8) {
+      cellt = HGCalCell::truncatedCell;
+      cellx = HGCalCell::bottomCell;
+    } else if ((partialType == HGCalTypes::WaferLDLeft) || (partialType == HGCalTypes::WaferLDRight) ||
+               (partialType == HGCalTypes::WaferLDFive) || (partialType == HGCalTypes::WaferLDThree)) {
+      if (((u == 15 && v == 11) || (u == 7 && v == 7)) &&
+          ((partialType == HGCalTypes::WaferLDLeft) || (partialType == HGCalTypes::WaferLDRight))) {
+        cellt = HGCalCell::halfExtCell;
+        if (partialType == HGCalTypes::WaferLDLeft) {
+          cellx = HGCalCell::leftCell;
+        } else {
+          cellx = HGCalCell::rightCell;
+        }
+      } else if ((u == 7 && v == 11) &&
+                 ((partialType == HGCalTypes::WaferLDFive) || (partialType == HGCalTypes::WaferLDThree))) {
+        cellt = HGCalCell::halfExtCell;
+        if (partialType == HGCalTypes::WaferLDFive) {
+          cellx = HGCalCell::leftCell;
+        } else {
+          cellx = HGCalCell::rightCell;
+        }
+      } else if (2 * v - u == 7) {
+        cellt = HGCalCell::halfCell;
+        if (partialType == HGCalTypes::WaferLDLeft) {
+          cellx = HGCalCell::leftCell;
+        } else if (partialType == HGCalTypes::WaferLDRight) {
+          cellx = HGCalCell::rightCell;
+        }
+      } else if (2 * v - u == 15) {
+        if (partialType == HGCalTypes::WaferLDFive) {
+          cellx = HGCalCell::leftCell;
+        } else if (partialType == HGCalTypes::WaferLDThree) {
+          cellx = HGCalCell::rightCell;
+        }
+        cellt = HGCalCell::halfCell;
+        std::cout << u << ":" << v << " 1" << std::endl;
+      }
+    }
+  } else if ((partialType >= HGCalTypes::WaferPartHDOffset) &&
+             (partialType < (HGCalTypes::WaferPartHDOffset + HGCalTypes::WaferPartHDCount))) {
+    if ((u == 9 && v == 20) || (u == 9 && v == 0)) {
+      cellt = HGCalCell::HDPartial0920Cell;
+      if (u == 9 && v == 0) {
+        cellx = HGCalCell::leftCell;
+      } else {
+        cellx = HGCalCell::rightCell;
+      }
+    } else if ((u == 10 && v == 21) || (u == 10 && v == 0)) {
+      cellt = HGCalCell::HDPartial1021Cell;
+      if (u == 10 && v == 0) {
+        cellx = HGCalCell::leftCell;
+      } else {
+        cellx = HGCalCell::rightCell;
+      }
+    } else if (u == 9) {
+      cellt = HGCalCell::truncatedCell;
+      cellx = HGCalCell::topCell;
+    } else if (u == 10) {
+      cellt = HGCalCell::extendedCell;
+      cellx = HGCalCell::bottomCell;
+    } else if ((partialType == HGCalTypes::WaferHDLeft) || (partialType == HGCalTypes::WaferHDRight) ||
+               (partialType == HGCalTypes::WaferHDFive)) {
+      if ((u == 10 && v == 7) || (u == 10 && v == 14)) {
+        cellt = HGCalCell::halfExtCell;
+        if ((partialType == HGCalTypes::WaferHDLeft) || (partialType == HGCalTypes::WaferHDFive)) {
+          cellx = HGCalCell::leftCell;
+        } else {
+          cellx = HGCalCell::rightCell;
+        }
+      } else if ((u == 0 && v == 2) || (u == 0 && v == 9)) {
+        cellt = HGCalCell::halfTrunCell;
+        if ((partialType == HGCalTypes::WaferHDLeft) || (partialType == HGCalTypes::WaferHDFive)) {
+          cellx = HGCalCell::leftCell;
+        } else {
+          cellx = HGCalCell::rightCell;
+        }
+      } else if (2 * v - u == 4) {
+        cellt = HGCalCell::halfCell;
+        if (partialType == HGCalTypes::WaferHDLeft) {
+          cellx = HGCalCell::leftCell;
+        }
+      } else if (2 * v - u == 18) {
+        cellt = HGCalCell::halfCell;
+        if (partialType == HGCalTypes::WaferHDFive) {
+          cellx = HGCalCell::leftCell;
+        } else if (partialType == HGCalTypes::WaferHDRight) {
+          cellx = HGCalCell::rightCell;
+        }
+      }
+    }
+  }
+  return std::make_pair(cellx, cellt);
 }

@@ -1,11 +1,11 @@
+// -*- C++ -*-
 #ifndef FWCore_ServiceRegistry_ActivityRegistry_h
 #define FWCore_ServiceRegistry_ActivityRegistry_h
-// -*- C++ -*-
 //
 // Package:     ServiceRegistry
 // Class  :     ActivityRegistry
 //
-/**\class ActivityRegistry ActivityRegistry.h FWCore/ServiceRegistry/interface/ActivityRegistry.h
+/**\class edm::ActivityRegistry
 
  Description: Registry holding the signals that Services can subscribe to
 
@@ -28,11 +28,27 @@ to this file that go beyond the obvious cut and paste type of edits.
   1. The number at the end of the AR_WATCH_USING_METHOD_X macro definition
   is the number of function arguments. It will not compile if you use the
   wrong number there.
-  2. Use connect or connect_front depending on whether the callback function
+  2. Inside the watch function definition, choose either connect or
+  connect_front depending on whether the callback function
   should be called for different services in the order the Services were
-  constructed or in reverse order. Begin signals are usually forward and
-  End signals in reverse, but if the service does not depend on other services
-  and vice versa this does not matter.
+  constructed or in reverse order (actually the code base allows establishing
+  an order different from construction order, but in practice it is
+  usually the construction order). This only matters for services that
+  both depend on one another and where this dependence relies on the order
+  the services execute a particular transition. If a service does not
+  depend on another service, this choice does not matter (most services
+  fall in this category). Most transition signals are implemented with
+  the Pre signals forward and the Post signals in reverse order.
+  The transition level signals for BeginJob and EndJob are implemented with
+  the Begin signals forward and End signals in reverse order. As far as I
+  know, no one has ever carefully surveyed existing services to determine
+  which services depend on this ordering. My suspicion is that for most services
+  and most transitions it does not matter which ordering has been implemented.
+  If you are implementing a new transition, then the choice could only matter
+  for the services that start watching that transition. Unless there is some
+  reason to do otherwise, the recommended choice is following the pattern of
+  Pre transitions forward and Post transitions in reverse. If you make another
+  choice, please document your reasoning with comments in the code.
   3. The signal needs to be added to either connectGlobals or connectLocals
   in the ActivityRegistry.cc file, depending on whether a signal is seen
   by children or parents when there are SubProcesses. For example, source
@@ -93,6 +109,7 @@ namespace edm {
   class LuminosityBlock;
   class Run;
   class EventSetup;
+  class IOVSyncValue;
   class HLTPathStatus;
   class GlobalContext;
   class StreamContext;
@@ -105,6 +122,7 @@ namespace edm {
     struct ComponentDescription;
     class DataKey;
     class EventSetupRecordKey;
+    class ESRecordsToProductResolverIndices;
   }  // namespace eventsetup
   namespace service {
     class SystemBounds;
@@ -144,6 +162,15 @@ namespace edm {
     void watchPreallocate(Preallocate::slot_type const& iSlot) { preallocateSignal_.connect(iSlot); }
     AR_WATCH_USING_METHOD_1(watchPreallocate)
 
+    typedef signalslot::Signal<void(eventsetup::ESRecordsToProductResolverIndices const&, ProcessContext const&)>
+        EventSetupConfiguration;
+    ///signal is emitted before beginJob
+    EventSetupConfiguration eventSetupConfigurationSignal_;
+    void watchEventSetupConfiguration(EventSetupConfiguration::slot_type const& iSlot) {
+      eventSetupConfigurationSignal_.connect(iSlot);
+    }
+    AR_WATCH_USING_METHOD_2(watchEventSetupConfiguration)
+
     typedef signalslot::Signal<void(PathsAndConsumesOfModulesBase const&, ProcessContext const&)> PreBeginJob;
     ///signal is emitted before all modules have gotten their beginJob called
     PreBeginJob preBeginJobSignal_;
@@ -170,6 +197,26 @@ namespace edm {
     void watchPostEndJob(PostEndJob::slot_type const& iSlot) { postEndJobSignal_.connect_front(iSlot); }
     AR_WATCH_USING_METHOD_0(watchPostEndJob)
 
+    typedef signalslot::Signal<void(StreamContext const&)> PreBeginStream;
+    PreBeginStream preBeginStreamSignal_;
+    void watchPreBeginStream(PreBeginStream::slot_type const& iSlot) { preBeginStreamSignal_.connect(iSlot); }
+    AR_WATCH_USING_METHOD_1(watchPreBeginStream)
+
+    typedef signalslot::Signal<void(StreamContext const&)> PostBeginStream;
+    PostBeginStream postBeginStreamSignal_;
+    void watchPostBeginStream(PostBeginStream::slot_type const& iSlot) { postBeginStreamSignal_.connect_front(iSlot); }
+    AR_WATCH_USING_METHOD_1(watchPostBeginStream)
+
+    typedef signalslot::Signal<void(StreamContext const&)> PreEndStream;
+    PreEndStream preEndStreamSignal_;
+    void watchPreEndStream(PreEndStream::slot_type const& iSlot) { preEndStreamSignal_.connect(iSlot); }
+    AR_WATCH_USING_METHOD_1(watchPreEndStream)
+
+    typedef signalslot::Signal<void(StreamContext const&)> PostEndStream;
+    PostEndStream postEndStreamSignal_;
+    void watchPostEndStream(PostEndStream::slot_type const& iSlot) { postEndStreamSignal_.connect_front(iSlot); }
+    AR_WATCH_USING_METHOD_1(watchPostEndStream)
+
     typedef signalslot::Signal<void()> JobFailure;
     /// signal is emitted if event processing or end-of-job
     /// processing fails with an uncaught exception.
@@ -177,6 +224,22 @@ namespace edm {
     ///convenience function for attaching to signal
     void watchJobFailure(JobFailure::slot_type const& iSlot) { jobFailureSignal_.connect_front(iSlot); }
     AR_WATCH_USING_METHOD_0(watchJobFailure)
+
+    /// signal is emitted before the source is requested to find the next transition
+    typedef signalslot::Signal<void()> PreSourceNextTransition;
+    PreSourceNextTransition preSourceNextTransitionSignal_;
+    void watchPreSourceNextTransition(PreSourceNextTransition::slot_type const& iSlot) {
+      preSourceNextTransitionSignal_.connect(iSlot);
+    }
+    AR_WATCH_USING_METHOD_0(watchPreSourceNextTransition)
+
+    /// signal is emitted after the source has returned the next transition
+    typedef signalslot::Signal<void()> PostSourceNextTransition;
+    PostSourceNextTransition postSourceNextTransitionSignal_;
+    void watchPostSourceNextTransition(PostSourceNextTransition::slot_type const& iSlot) {
+      postSourceNextTransitionSignal_.connect_front(iSlot);
+    }
+    AR_WATCH_USING_METHOD_0(watchPostSourceNextTransition)
 
     /// signal is emitted before the source starts creating an Event
     typedef signalslot::Signal<void(StreamID)> PreSourceEvent;
@@ -325,6 +388,18 @@ namespace edm {
       postEndProcessBlockSignal_.connect_front(iSlot);
     }
     AR_WATCH_USING_METHOD_1(watchPostEndProcessBlock)
+
+    typedef signalslot::Signal<void()> BeginProcessing;
+    /// signal is emitted just before the transitions from the Source will begin to be processed
+    BeginProcessing beginProcessingSignal_;
+    void watchBeginProcessing(BeginProcessing::slot_type const& iSlot) { beginProcessingSignal_.connect(iSlot); }
+    AR_WATCH_USING_METHOD_0(watchBeginProcessing)
+
+    typedef signalslot::Signal<void()> EndProcessing;
+    /// signal is emitted after all work has been done processing all source transitions
+    EndProcessing endProcessingSignal_;
+    void watchEndProcessing(EndProcessing::slot_type const& iSlot) { endProcessingSignal_.connect(iSlot); }
+    AR_WATCH_USING_METHOD_0(watchEndProcessing)
 
     typedef signalslot::Signal<void(GlobalContext const&)> PreGlobalBeginRun;
     /// signal is emitted after the Run has been created by the InputSource but before any modules have seen the Run
@@ -479,6 +554,18 @@ namespace edm {
     void watchPostEvent(PostEvent::slot_type const& iSlot) { postEventSignal_.connect_front(iSlot); }
     AR_WATCH_USING_METHOD_1(watchPostEvent)
 
+    typedef signalslot::Signal<void(StreamContext const&)> PreClearEvent;
+    /// signal is emitted before the data products in the Event are cleared
+    PreClearEvent preClearEventSignal_;
+    void watchPreClearEvent(PreClearEvent::slot_type const& iSlot) { preClearEventSignal_.connect(iSlot); }
+    AR_WATCH_USING_METHOD_1(watchPreClearEvent)
+
+    typedef signalslot::Signal<void(StreamContext const&)> PostClearEvent;
+    /// signal is emitted after all data products in the Event have been cleared
+    PostClearEvent postClearEventSignal_;
+    void watchPostClearEvent(PostClearEvent::slot_type const& iSlot) { postClearEventSignal_.connect_front(iSlot); }
+    AR_WATCH_USING_METHOD_1(watchPostClearEvent)
+
     /// signal is emitted before starting to process a Path for an event
     typedef signalslot::Signal<void(StreamContext const&, PathContext const&)> PrePathEvent;
     PrePathEvent prePathEventSignal_;
@@ -526,6 +613,24 @@ namespace edm {
     }
     AR_WATCH_USING_METHOD_1(watchPostESModuleRegistration)
 
+    /// signal is emitted when a new IOV may be needed so we queue a task to do that
+    using ESSyncIOVQueuing = signalslot::Signal<void(IOVSyncValue const&)>;
+    ESSyncIOVQueuing esSyncIOVQueuingSignal_;
+    void watchESSyncIOVQueuing(ESSyncIOVQueuing::slot_type const& iSlot) { esSyncIOVQueuingSignal_.connect(iSlot); }
+    AR_WATCH_USING_METHOD_1(watchESSyncIOVQueuing)
+
+    /// signal is emitted just before a new IOV is synchronized
+    using PreESSyncIOV = signalslot::Signal<void(IOVSyncValue const&)>;
+    PreESSyncIOV preESSyncIOVSignal_;
+    void watchPreESSyncIOV(PreESSyncIOV::slot_type const& iSlot) { preESSyncIOVSignal_.connect(iSlot); }
+    AR_WATCH_USING_METHOD_1(watchPreESSyncIOV)
+
+    /// signal is emitted just after a new IOV is synchronized
+    using PostESSyncIOV = signalslot::Signal<void(IOVSyncValue const&)>;
+    PostESSyncIOV postESSyncIOVSignal_;
+    void watchPostESSyncIOV(PostESSyncIOV::slot_type const& iSlot) { postESSyncIOVSignal_.connect(iSlot); }
+    AR_WATCH_USING_METHOD_1(watchPostESSyncIOV)
+
     /// signal is emitted before the esmodule starts processing and before prefetching has started
     typedef signalslot::Signal<void(eventsetup::EventSetupRecordKey const&, ESModuleCallingContext const&)>
         PreESModulePrefetching;
@@ -556,15 +661,33 @@ namespace edm {
     void watchPostESModule(PostESModule::slot_type const& iSlot) { postESModuleSignal_.connect_front(iSlot); }
     AR_WATCH_USING_METHOD_2(watchPostESModule)
 
+    /// signal is emitted before an esmodule starts running its acquire method
+    typedef signalslot::Signal<void(eventsetup::EventSetupRecordKey const&, ESModuleCallingContext const&)>
+        PreESModuleAcquire;
+    PreESModuleAcquire preESModuleAcquireSignal_;
+    void watchPreESModuleAcquire(PreESModuleAcquire::slot_type const& iSlot) {
+      preESModuleAcquireSignal_.connect(iSlot);
+    }
+    AR_WATCH_USING_METHOD_2(watchPreESModuleAcquire)
+
+    /// signal is emitted after an esmodule finishes running its acquire method
+    typedef signalslot::Signal<void(eventsetup::EventSetupRecordKey const&, ESModuleCallingContext const&)>
+        PostESModuleAcquire;
+    PostESModuleAcquire postESModuleAcquireSignal_;
+    void watchPostESModuleAcquire(PostESModuleAcquire::slot_type const& iSlot) {
+      postESModuleAcquireSignal_.connect_front(iSlot);
+    }
+    AR_WATCH_USING_METHOD_2(watchPostESModuleAcquire)
+
     /* Note M:
 	   Concerning use of address of module descriptor
 	   during functions called before/after module or source construction:
 	       Unlike the case in the Run, Lumi, and Event loops,
 	       the Module descriptor (often passed by pointer or reference
 	       as an argument named desc) in the construction phase is NOT
-	       at some permanent fixed address during the construction phase.  
-	       Therefore, any optimization of caching the module name keying 
-	       off of address of the descriptor will NOT be valid during 
+	       at some permanent fixed address during the construction phase.
+	       Therefore, any optimization of caching the module name keying
+	       off of address of the descriptor will NOT be valid during
                such functions.  mf / cj 9/11/09
 	*/
 
@@ -676,6 +799,54 @@ namespace edm {
     }
     AR_WATCH_USING_METHOD_2(watchPostModuleEventAcquire)
 
+    /// signal is emitted before the module starts a transform during the Event and before prefetching for the transform has started
+    typedef signalslot::Signal<void(StreamContext const&, ModuleCallingContext const&)> PreModuleTransformPrefetching;
+    PreModuleTransformPrefetching preModuleTransformPrefetchingSignal_;
+    void watchPreModuleTransformPrefetching(PreModuleTransformPrefetching::slot_type const& iSlot) {
+      preModuleTransformPrefetchingSignal_.connect(iSlot);
+    }
+    AR_WATCH_USING_METHOD_2(watchPreModuleTransformPrefetching)
+
+    /// signal is emitted before the module starts a transform during the Event and after prefetching for the transform has finished
+    typedef signalslot::Signal<void(StreamContext const&, ModuleCallingContext const&)> PostModuleTransformPrefetching;
+    PostModuleTransformPrefetching postModuleTransformPrefetchingSignal_;
+    void watchPostModuleTransformPrefetching(PostModuleTransformPrefetching::slot_type const& iSlot) {
+      postModuleTransformPrefetchingSignal_.connect_front(iSlot);
+    }
+    AR_WATCH_USING_METHOD_2(watchPostModuleTransformPrefetching)
+
+    /// signal is emitted before the module starts a transform during the Event
+    typedef signalslot::Signal<void(StreamContext const&, ModuleCallingContext const&)> PreModuleTransform;
+    PreModuleTransform preModuleTransformSignal_;
+    void watchPreModuleTransform(PreModuleTransform::slot_type const& iSlot) {
+      preModuleTransformSignal_.connect(iSlot);
+    }
+    AR_WATCH_USING_METHOD_2(watchPreModuleTransform)
+
+    /// signal is emitted after the module finished a transform during  the Event
+    typedef signalslot::Signal<void(StreamContext const&, ModuleCallingContext const&)> PostModuleTransform;
+    PostModuleTransform postModuleTransformSignal_;
+    void watchPostModuleTransform(PostModuleTransform::slot_type const& iSlot) {
+      postModuleTransformSignal_.connect_front(iSlot);
+    }
+    AR_WATCH_USING_METHOD_2(watchPostModuleTransform)
+
+    /// signal is emitted before the module starts the acquire method for a transform during the Event
+    typedef signalslot::Signal<void(StreamContext const&, ModuleCallingContext const&)> PreModuleTransformAcquiring;
+    PreModuleTransformAcquiring preModuleTransformAcquiringSignal_;
+    void watchPreModuleTransformAcquiring(PreModuleTransformAcquiring::slot_type const& iSlot) {
+      preModuleTransformAcquiringSignal_.connect(iSlot);
+    }
+    AR_WATCH_USING_METHOD_2(watchPreModuleTransformAcquiring)
+
+    /// signal is emitted after the module finishes the acquire method for a transform during the Event
+    typedef signalslot::Signal<void(StreamContext const&, ModuleCallingContext const&)> PostModuleTransformAcquiring;
+    PostModuleTransformAcquiring postModuleTransformAcquiringSignal_;
+    void watchPostModuleTransformAcquiring(PostModuleTransformAcquiring::slot_type const& iSlot) {
+      postModuleTransformAcquiringSignal_.connect_front(iSlot);
+    }
+    AR_WATCH_USING_METHOD_2(watchPostModuleTransformAcquiring)
+
     /// signal is emitted after the module starts processing the Event and before a delayed get has started
     typedef signalslot::Signal<void(StreamContext const&, ModuleCallingContext const&)> PreModuleEventDelayedGet;
     PreModuleEventDelayedGet preModuleEventDelayedGetSignal_;
@@ -707,6 +878,22 @@ namespace edm {
       postEventReadFromSourceSignal_.connect_front(iSlot);
     }
     AR_WATCH_USING_METHOD_2(watchPostEventReadFromSource)
+
+    /// signal is emitted before the module starts processing a non-Event stream transition and before prefetching has started
+    typedef signalslot::Signal<void(StreamContext const&, ModuleCallingContext const&)> PreModuleStreamPrefetching;
+    PreModuleStreamPrefetching preModuleStreamPrefetchingSignal_;
+    void watchPreModuleStreamPrefetching(PreModuleStreamPrefetching::slot_type const& iSlot) {
+      preModuleStreamPrefetchingSignal_.connect(iSlot);
+    }
+    AR_WATCH_USING_METHOD_2(watchPreModuleStreamPrefetching)
+
+    /// signal is emitted before the module starts processing a non-Event stream transition and after prefetching has finished
+    typedef signalslot::Signal<void(StreamContext const&, ModuleCallingContext const&)> PostModuleStreamPrefetching;
+    PostModuleStreamPrefetching postModuleStreamPrefetchingSignal_;
+    void watchPostModuleStreamPrefetching(PostModuleStreamPrefetching::slot_type const& iSlot) {
+      postModuleStreamPrefetchingSignal_.connect_front(iSlot);
+    }
+    AR_WATCH_USING_METHOD_2(watchPostModuleStreamPrefetching)
 
     typedef signalslot::Signal<void(StreamContext const&, ModuleCallingContext const&)> PreModuleStreamBeginRun;
     PreModuleStreamBeginRun preModuleStreamBeginRunSignal_;
@@ -806,6 +993,22 @@ namespace edm {
       postModuleEndProcessBlockSignal_.connect_front(iSlot);
     }
     AR_WATCH_USING_METHOD_2(watchPostModuleEndProcessBlock)
+
+    /// signal is emitted before the module starts processing a global transition and before prefetching has started
+    typedef signalslot::Signal<void(GlobalContext const&, ModuleCallingContext const&)> PreModuleGlobalPrefetching;
+    PreModuleGlobalPrefetching preModuleGlobalPrefetchingSignal_;
+    void watchPreModuleGlobalPrefetching(PreModuleGlobalPrefetching::slot_type const& iSlot) {
+      preModuleGlobalPrefetchingSignal_.connect(iSlot);
+    }
+    AR_WATCH_USING_METHOD_2(watchPreModuleGlobalPrefetching)
+
+    /// signal is emitted before the module starts processing a global transition and after prefetching has finished
+    typedef signalslot::Signal<void(GlobalContext const&, ModuleCallingContext const&)> PostModuleGlobalPrefetching;
+    PostModuleGlobalPrefetching postModuleGlobalPrefetchingSignal_;
+    void watchPostModuleGlobalPrefetching(PostModuleGlobalPrefetching::slot_type const& iSlot) {
+      postModuleGlobalPrefetchingSignal_.connect_front(iSlot);
+    }
+    AR_WATCH_USING_METHOD_2(watchPostModuleGlobalPrefetching)
 
     typedef signalslot::Signal<void(GlobalContext const&, ModuleCallingContext const&)> PreModuleGlobalBeginRun;
     PreModuleGlobalBeginRun preModuleGlobalBeginRunSignal_;
@@ -920,39 +1123,6 @@ namespace edm {
     }
     // WARNING - ModuleDescription is not in fixed place.  See note M above.
     AR_WATCH_USING_METHOD_1(watchPostSourceConstruction)
-
-    //DEPRECATED
-    typedef signalslot::Signal<void(
-        eventsetup::ComponentDescription const*, eventsetup::EventSetupRecordKey const&, eventsetup::DataKey const&)>
-        PreLockEventSetupGet;
-    ///signal is emitted before lock taken in EventSetup DataProxy::get function
-    PreLockEventSetupGet preLockEventSetupGetSignal_;
-    void watchPreLockEventSetupGet(PreLockEventSetupGet::slot_type const& iSlot) {
-      preLockEventSetupGetSignal_.connect(iSlot);
-    }
-    AR_WATCH_USING_METHOD_3(watchPreLockEventSetupGet)
-
-    //DEPRECATED
-    typedef signalslot::Signal<void(
-        eventsetup::ComponentDescription const*, eventsetup::EventSetupRecordKey const&, eventsetup::DataKey const&)>
-        PostLockEventSetupGet;
-    ///signal is emitted after lock taken in EventSetup DataProxy::get function
-    PostLockEventSetupGet postLockEventSetupGetSignal_;
-    void watchPostLockEventSetupGet(PostLockEventSetupGet::slot_type const& iSlot) {
-      postLockEventSetupGetSignal_.connect_front(iSlot);
-    }
-    AR_WATCH_USING_METHOD_3(watchPostLockEventSetupGet)
-
-    //DEPRECATED
-    typedef signalslot::Signal<void(
-        eventsetup::ComponentDescription const*, eventsetup::EventSetupRecordKey const&, eventsetup::DataKey const&)>
-        PostEventSetupGet;
-    ///signal is emitted after getImpl has returned in the EventSetup DataProxy::get function
-    PostEventSetupGet postEventSetupGetSignal_;
-    void watchPostEventSetupGet(PostEventSetupGet::slot_type const& iSlot) {
-      postEventSetupGetSignal_.connect_front(iSlot);
-    }
-    AR_WATCH_USING_METHOD_3(watchPostEventSetupGet)
 
     // ---------- member functions ---------------------------
 

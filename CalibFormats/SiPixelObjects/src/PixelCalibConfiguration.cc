@@ -1148,7 +1148,7 @@ void PixelCalibConfiguration::nextFECState(std::map<unsigned int, PixelFECConfig
       }
 
     }  // end of instructions for the beginning of a scan
-  }    // end of loop over ROCs
+  }  // end of loop over ROCs
 
   if (_bufferData) {
     std::map<unsigned int, PixelFECConfigInterface*>::iterator iPixelFEC = pixelFECs.begin();
@@ -1309,7 +1309,7 @@ std::set<unsigned int> PixelCalibConfiguration::getTKFECCrates(
     const std::set<std::string> portCards = portcardmap->portcards(*imodule);
     for (std::set<std::string>::const_iterator portCards_itr = portCards.begin(); portCards_itr != portCards.end();
          ++portCards_itr) {
-      const std::string portcardname = *portCards_itr;
+      const std::string& portcardname = *portCards_itr;
       std::map<std::string, PixelPortCardConfig*>::const_iterator portcardconfig_itr =
           mapNamePortCard.find(portcardname);
       assert(portcardconfig_itr != mapNamePortCard.end());

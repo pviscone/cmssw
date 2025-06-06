@@ -52,20 +52,20 @@ VMStubsTEMemory::VMStubsTEMemory(string name, Settings const& settings)
   stubsbinnedvm_.resize(settings_.NLONGVMBINS());
 }
 
-bool VMStubsTEMemory::addVMStub(VMStubTE vmstub, int bin) {
+bool VMStubsTEMemory::addVMStub(VMStubTE vmstub, int bin, int ivmte, bool combined) {
   //If the pt of the stub is consistent with the allowed pt of tracklets
   //in that can be formed in this VM and the other VM used in the TE.
 
-  if (settings_.combined()) {
+  if (settings_.combined() && combined) {
     if (disk_ > 0) {
       assert(vmstub.stub()->isPSmodule());
     }
     bool negdisk = vmstub.stub()->disk().value() < 0.0;
     if (negdisk)
       bin += 4;
-    assert(bin < (int)stubsbinnedvm_.size());
-    if (stubsbinnedvm_[bin].size() < N_VMSTUBSMAX) {
-      stubsbinnedvm_[bin].push_back(vmstub);
+    assert(ivmte * settings_.NLONGVMBINS() + bin < stubsbinnedvm_.size());
+    if (stubsbinnedvm_[ivmte * settings_.NLONGVMBINS() + bin].size() < N_VMSTUBSMAX) {
+      stubsbinnedvm_[ivmte * settings_.NLONGVMBINS() + bin].push_back(vmstub);
       stubsvm_.push_back(vmstub);
     }
     return true;
@@ -92,22 +92,22 @@ bool VMStubsTEMemory::addVMStub(VMStubTE vmstub, int bin) {
       assert(bin < 4);
       if (negdisk)
         bin += 4;
-      if (stubsbinnedvm_[bin].size() >= settings_.maxStubsPerBin())
+      if (stubsbinnedvm_[ivmte * settings_.NLONGVMBINS() + bin].size() >= settings_.maxStubsPerBin())
         return false;
-      stubsbinnedvm_[bin].push_back(vmstub);
+      stubsbinnedvm_[ivmte * settings_.NLONGVMBINS() + bin].push_back(vmstub);
       if (settings_.debugTracklet())
         edm::LogVerbatim("Tracklet") << getName() << " Stub in disk = " << disk_ << "  in bin = " << bin;
     } else if (layer_ == 2) {
-      if (stubsbinnedvm_[bin].size() >= settings_.maxStubsPerBin())
+      if (stubsbinnedvm_[ivmte * settings_.NLONGVMBINS() + bin].size() >= settings_.maxStubsPerBin())
         return false;
-      stubsbinnedvm_[bin].push_back(vmstub);
+      stubsbinnedvm_[ivmte * settings_.NLONGVMBINS() + bin].push_back(vmstub);
     }
   } else {
     if (vmstub.stub()->layerdisk() < N_LAYER) {
       if (!isinner_) {
-        if (stubsbinnedvm_[bin].size() >= settings_.maxStubsPerBin())
+        if (stubsbinnedvm_[ivmte * settings_.NLONGVMBINS() + bin].size() >= settings_.maxStubsPerBin())
           return false;
-        stubsbinnedvm_[bin].push_back(vmstub);
+        stubsbinnedvm_[ivmte * settings_.NLONGVMBINS() + bin].push_back(vmstub);
       }
 
     } else {
@@ -115,15 +115,15 @@ bool VMStubsTEMemory::addVMStub(VMStubTE vmstub, int bin) {
         assert(bin < 4);
         if (negdisk)
           bin += 4;
-        if (stubsbinnedvm_[bin].size() >= settings_.maxStubsPerBin())
+        if (stubsbinnedvm_[ivmte * settings_.NLONGVMBINS() + bin].size() >= settings_.maxStubsPerBin())
           return false;
-        stubsbinnedvm_[bin].push_back(vmstub);
+        stubsbinnedvm_[ivmte * settings_.NLONGVMBINS() + bin].push_back(vmstub);
       }
     }
   }
   if (settings_.debugTracklet())
     edm::LogVerbatim("Tracklet") << "Adding stubs to " << getName();
-  if (stubsbinnedvm_[bin].size() >= settings_.maxStubsPerBin())
+  if (stubsbinnedvm_[ivmte * settings_.NLONGVMBINS() + bin].size() >= settings_.maxStubsPerBin())
     return false;
   stubsvm_.push_back(vmstub);
   return true;
@@ -227,17 +227,14 @@ void VMStubsTEMemory::writeStubs(bool first, unsigned int iSector) {
 
   if (isinner_) {  // inner VM for TE purpose
     for (unsigned int j = 0; j < stubsvm_.size(); j++) {
-      out_ << "0x";
-      out_ << std::setfill('0') << std::setw(2);
-      out_ << hex << j << dec;
       string stub = stubsvm_[j].str();
-      out_ << " " << stub << " " << trklet::hexFormat(stub) << endl;
+      out_ << hexstr(j) << " " << stub << " " << trklet::hexFormat(stub) << endl;
     }
   } else {  // outer VM for TE purpose
     for (unsigned int i = 0; i < stubsbinnedvm_.size(); i++) {
       for (unsigned int j = 0; j < stubsbinnedvm_[i].size(); j++) {
         string stub = stubsbinnedvm_[i][j].str();
-        out_ << hex << i << " " << j << dec << " " << stub << " " << trklet::hexFormat(stub) << endl;
+        out_ << hexstr(i) << " " << hexstr(j) << " " << stub << " " << trklet::hexFormat(stub) << endl;
       }
     }
   }

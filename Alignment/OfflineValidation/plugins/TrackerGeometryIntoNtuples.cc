@@ -57,7 +57,7 @@
 #include "DataFormats/TrackerCommon/interface/TrackerTopology.h"
 #include "Geometry/Records/interface/TrackerTopologyRcd.h"
 
-#include "Geometry/CommonTopologies/interface/GeometryAligner.h"
+#include "Geometry/GeometryAligner/interface/GeometryAligner.h"
 
 #include "Alignment/CommonAlignment/interface/Alignable.h"
 
@@ -77,6 +77,8 @@ class TrackerGeometryIntoNtuples : public edm::one::EDAnalyzer<> {
 public:
   explicit TrackerGeometryIntoNtuples(const edm::ParameterSet&);
   ~TrackerGeometryIntoNtuples() override;
+
+  static void fillDescriptions(edm::ConfigurationDescriptions& descriptions);
 
 private:
   void analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) override;
@@ -174,6 +176,15 @@ TrackerGeometryIntoNtuples::TrackerGeometryIntoNtuples(const edm::ParameterSet& 
 
 TrackerGeometryIntoNtuples::~TrackerGeometryIntoNtuples() { delete theCurrentTracker; }
 
+void TrackerGeometryIntoNtuples::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
+  edm::ParameterSetDescription desc;
+  desc.setComment(
+      "Validates alignment payloads by comparing the relative position and orientations of tracker modules");
+  desc.addUntracked<std::string>("outputFile", {});
+  desc.addUntracked<std::string>("outputTreename", {});
+  descriptions.addWithDefaultLabel(desc);
+}
+
 //
 // member functions
 //
@@ -259,14 +270,12 @@ void TrackerGeometryIntoNtuples::analyze(const edm::Event& iEvent, const edm::Ev
 
   // Get GeomDetUnits for the current tracker
   auto const& detUnits = theCurTracker->detUnits();
-  int detUnit(0);
   //\\for (unsigned int iDet = 0; iDet < detUnits.size(); ++iDet) {
   for (auto iunit = detUnits.begin(); iunit != detUnits.end(); ++iunit) {
     DetId detid = (*iunit)->geographicalId();
     m_rawid = detid.rawId();
     m_subdetid = detid.subdetId();
 
-    ++detUnit;
     //\\GeomDetUnit* geomDetUnit = detUnits.at(iDet) ;
     auto geomDetUnit = *iunit;
 

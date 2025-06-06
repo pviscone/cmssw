@@ -1,31 +1,45 @@
-#run with: cmsRun hgcGeomAnalyzer_cfg.py geom=v10
-
+###############################################################################
+# Way to use this:
+#   cmsRun hgcGeomAnalyzer_cfg.py geom=v17
+#
+#   Options for geometry v16, v17, v18
+#
+###############################################################################
 import FWCore.ParameterSet.Config as cms
 from FWCore.ParameterSet.VarParsing import VarParsing
 from Configuration.StandardSequences.Eras import eras
+from Configuration.Eras.Era_Phase2C17I13M9_cff import Phase2C17I13M9
 
 options = VarParsing()
-options.register ("geom", "",  VarParsing.multiplicity.singleton, VarParsing.varType.string)
+options.register ("geom",
+                  "v17",
+                  VarParsing.multiplicity.singleton, VarParsing.varType.string,
+                  "geom of operations: v16, v17, v18")
+
 options.parseArguments()
+
+process = cms.Process("demo",eras.Phase2C17I13M9)
+
+process.load("Configuration.StandardSequences.FrontierConditions_GlobalTag_cff")
+if options.geom == 'v16':
+    geomFile = 'Configuration.Geometry.GeometryExtendedRun4D100Reco_cff'
+elif options.geom == 'v17':
+    geomFile = 'Configuration.Geometry.GeometryExtendedRun4D110Reco_cff'
+elif options.geom == 'v18':
+    geomFile = 'Configuration.Geometry.GeometryExtendedRun4D104Reco_cff'
+else:
+    geomFile = 'UNKNOWN GEOMETRY!'
+    raise Exception(geomFile)
 
 fileName = "geom_output_"+options.geom
 
-process = cms.Process("demo",eras.Phase2C11)
+print("Geometry file: ", geomFile)
+print("Output   file: ", fileName)
 
-process.load("Configuration.StandardSequences.FrontierConditions_GlobalTag_cff")
-if options.geom == 'v11':
-    process.load('Configuration.Geometry.GeometryExtended2026D49Reco_cff')
-elif options.geom == 'v12':
-    process.load('Configuration.Geometry.GeometryExtended2026D68Reco_cff')
-elif options.geom == 'v13':
-    process.load('Configuration.Geometry.GeometryExtended202670Reco_cff')
-elif options.geom == 'v14':
-    process.load('Configuration.Geometry.GeometryExtended2026D71Reco_cff')
-else:
-    raise Exception('UNKNOWN GEOMETRY!')
-
+process.load(geomFile)
+ 
 from Configuration.AlCa.GlobalTag import GlobalTag
-process.GlobalTag = GlobalTag(process.GlobalTag, 'auto:phase2_realistic', '')
+process.GlobalTag = GlobalTag(process.GlobalTag, 'auto:phase2_realistic_T25', '')
 
 process.load('FWCore.MessageService.MessageLogger_cfi')
 if hasattr(process,'MessageLogger'):

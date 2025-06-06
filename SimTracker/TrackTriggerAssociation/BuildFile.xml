@@ -2,6 +2,7 @@
 <use name="DataFormats/DetId"/>
 <use name="DataFormats/GeometryVector"/>
 <use name="DataFormats/SiPixelDigi"/>
+<use name="SimDataFormats/Associations"/>
 <use name="SimDataFormats/Track"/>
 <use name="SimDataFormats/EncodedEventId"/>
 <use name="SimDataFormats/TrackingAnalysis"/>
@@ -14,6 +15,7 @@
 <use name="DataFormats/Phase2TrackerDigi"/>
 <use name="DataFormats/GeometryCommonDetAlgo"/>
 <use name="SimDataFormats/TrackerDigiSimLink"/>
+<use name="L1Trigger/TrackTrigger"/>
 <export>
   <flags SEALPLUGIN="1"/>
   <lib name="1"/>

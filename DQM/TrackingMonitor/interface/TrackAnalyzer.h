@@ -474,7 +474,7 @@ namespace tadqm {
       int det;
       int subdet;
       int monitoring;
-      explicit Key(int det, int subdet, int monitoring) : det(det), subdet(subdet), monitoring(monitoring){};
+      explicit Key(int det, int subdet, int monitoring) : det(det), subdet(subdet), monitoring(monitoring) {}
       bool operator==(const Key& other) const {
         return (det == other.det && subdet == other.subdet && monitoring == other.monitoring);
       }
@@ -497,9 +497,9 @@ namespace tadqm {
     unsigned int good_vertices_;
     unsigned int bx_;
     float pixel_lumi_;
-    float scal_lumi_;
-    enum monQuantity { VsPU, VsBX, VsPIXELLUMI, VsSCALLUMI, END };
-    std::string monName[monQuantity::END] = {"", "VsBX", "VsPIXELLUMI", "VsSCALLUMI"};
+    float online_lumi_;
+    enum monQuantity { VsPU, VsBX, VsPIXELLUMI, VsOnlineLUMI, END };
+    std::string monName[monQuantity::END] = {"", "VsBX", "VsPIXELLUMI", "VsOnlineLUMI"};
 
     std::string histname;  //for naming the histograms according to algorithm used
   };

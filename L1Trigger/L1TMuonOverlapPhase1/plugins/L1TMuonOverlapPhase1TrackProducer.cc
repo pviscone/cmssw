@@ -1,7 +1,4 @@
-#include "L1Trigger/L1TMuonOverlapPhase1/plugins/L1TMuonOverlapPhase1TrackProducer.h"
-#include "FWCore/Framework/interface/EDConsumerBase.h"
-#include "FWCore/Framework/interface/ProductRegistryHelper.h"
-#include "FWCore/PluginManager/interface/PluginFactory.h"
+#include "L1TMuonOverlapPhase1TrackProducer.h"
 #include "FWCore/Utilities/interface/EDGetToken.h"
 #include "FWCore/Utilities/interface/InputTag.h"
 
@@ -10,6 +7,7 @@
 #include "SimDataFormats/TrackingAnalysis/interface/TrackingParticleFwd.h"
 #include "SimDataFormats/TrackingHit/interface/PSimHitContainer.h"
 
+#include "DataFormats/HepMCCandidate/interface/GenParticle.h"
 #include "DataFormats/Common/interface/DetSetVector.h"
 #include "SimDataFormats/RPCDigiSimLink/interface/RPCDigiSimLink.h"
 #include "SimDataFormats/TrackerDigiSimLink/interface/StripDigiSimLink.h"
@@ -44,6 +42,9 @@ L1TMuonOverlapPhase1TrackProducer::L1TMuonOverlapPhase1TrackProducer(const edm::
     mayConsume<edm::SimVertexContainer>(edmParameterSet.getParameter<edm::InputTag>("simVertexesTag"));
   if (edmParameterSet.exists("trackingParticleTag"))
     mayConsume<TrackingParticleCollection>(edmParameterSet.getParameter<edm::InputTag>("trackingParticleTag"));
+
+  if (edmParameterSet.exists("genParticleTag"))
+    mayConsume<reco::GenParticleCollection>(edmParameterSet.getParameter<edm::InputTag>("genParticleTag"));
 
   if (edmParameterSet.exists("rpcSimHitsInputTag"))
     mayConsume<edm::PSimHitContainer>(edmParameterSet.getParameter<edm::InputTag>("rpcSimHitsInputTag"));

@@ -2,7 +2,6 @@
 #include "DataFormats/L1TrackTrigger/interface/TTTypes.h"
 #include "DataFormats/L1Trigger/interface/Vertex.h"
 #include "DataFormats/TrackerCommon/interface/TrackerTopology.h"
-#include "FWCore/Framework/interface/EDProducer.h"
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/EventSetup.h"
 #include "FWCore/Framework/interface/MakerMacros.h"
@@ -17,7 +16,7 @@ using namespace l1tVertexFinder;
 using namespace std;
 
 VertexProducer::VertexProducer(const edm::ParameterSet& iConfig)
-    : l1TracksToken_(consumes<TTTrackCollectionView>(iConfig.getParameter<edm::InputTag>("l1TracksInputTag"))),
+    : l1TracksToken_(consumes<TTTrackRefCollectionType>(iConfig.getParameter<edm::InputTag>("l1TracksInputTag"))),
       tTopoToken(esConsumes<TrackerTopology, TrackerTopologyRcd>()),
       outputCollectionName_(iConfig.getParameter<std::string>("l1VertexCollectionName")),
       settings_(AlgoSettings(iConfig)) {
@@ -57,18 +56,33 @@ VertexProducer::VertexProducer(const edm::ParameterSet& iConfig)
     case Algorithm::Kmeans:
       edm::LogInfo("VertexProducer") << "VertexProducer::Finding vertices using a kmeans algorithm";
       break;
+    case Algorithm::NNEmulation:
+      edm::LogInfo("VertexProducer") << "VertexProducer::Finding vertices using the Neural Network Emulation";
+      break;
   }
 
   //--- Define EDM output to be written to file (if required)
-  if (settings_.vx_algo() == Algorithm::fastHistoEmulation) {
+  if (settings_.vx_algo() == Algorithm::fastHistoEmulation || settings_.vx_algo() == Algorithm::NNEmulation) {
     produces<l1t::VertexWordCollection>(outputCollectionName_ + "Emulation");
   } else {
     produces<l1t::VertexCollection>(outputCollectionName_);
   }
+
+  if (settings_.vx_algo() == Algorithm::NNEmulation) {
+    // load graphs, create a new session and add the graphDef
+    if (settings_.debug() > 1) {
+      edm::LogInfo("VertexProducer") << "loading TrkWeight graph from " << settings_.vx_trkw_graph() << std::endl;
+      edm::LogInfo("VertexProducer") << "loading PatternRec graph from " << settings_.vx_pattrec_graph() << std::endl;
+    }
+    TrkWGraph_ = tensorflow::loadGraphDef(settings_.vx_trkw_graph());
+    TrkWSesh_ = tensorflow::createSession(TrkWGraph_);
+    PattRecGraph_ = tensorflow::loadGraphDef(settings_.vx_pattrec_graph());
+    PattRecSesh_ = tensorflow::createSession(PattRecGraph_);
+  }
 }
 
 void VertexProducer::produce(edm::StreamID, edm::Event& iEvent, const edm::EventSetup& iSetup) const {
-  edm::Handle<TTTrackCollectionView> l1TracksHandle;
+  edm::Handle<TTTrackRefCollectionType> l1TracksHandle;
   iEvent.getByToken(l1TracksToken_, l1TracksHandle);
 
   std::vector<l1tVertexFinder::L1Track> l1Tracks;
@@ -76,11 +90,8 @@ void VertexProducer::produce(edm::StreamID, edm::Event& iEvent, const edm::Event
   if (settings_.debug() > 1) {
     edm::LogInfo("VertexProducer") << "produce::Processing " << l1TracksHandle->size() << " tracks";
   }
-  for (const auto& track : l1TracksHandle->ptrs()) {
-    auto l1track = L1Track(track);
-    // Check the minimum pT of the tracks
-    // This is left here because it represents the smallest pT to be sent by the track finding boards
-    // This has less to do with the algorithms than the constraints of what will be sent to the vertexing algorithm
+  for (const auto& track : *l1TracksHandle) {
+    auto l1track = L1Track(edm::refToPtr(track));
     if (l1track.pt() >= settings_.vx_TrackMinPt()) {
       l1Tracks.push_back(l1track);
     } else {
@@ -90,6 +101,7 @@ void VertexProducer::produce(edm::StreamID, edm::Event& iEvent, const edm::Event
       }
     }
   }
+
   if (settings_.debug() > 1) {
     edm::LogInfo("VertexProducer") << "produce::Processing " << l1Tracks.size() << " tracks after minimum pt cut of"
                                    << settings_.vx_TrackMinPt() << " GeV";
@@ -130,13 +142,16 @@ void VertexProducer::produce(edm::StreamID, edm::Event& iEvent, const edm::Event
     case Algorithm::Kmeans:
       vf.Kmeans();
       break;
+    case Algorithm::NNEmulation:
+      vf.NNVtxEmulation(TrkWSesh_, PattRecSesh_);
+      break;
   }
 
   vf.sortVerticesInPt();
   vf.findPrimaryVertex();
 
   // //=== Store output EDM track and hardware stub collections.
-  if (settings_.vx_algo() == Algorithm::fastHistoEmulation) {
+  if (settings_.vx_algo() == Algorithm::fastHistoEmulation || settings_.vx_algo() == Algorithm::NNEmulation) {
     std::unique_ptr<l1t::VertexWordCollection> product_emulation =
         std::make_unique<l1t::VertexWordCollection>(vf.verticesEmulation().begin(), vf.verticesEmulation().end());
     iEvent.put(std::move(product_emulation), outputCollectionName_ + "Emulation");

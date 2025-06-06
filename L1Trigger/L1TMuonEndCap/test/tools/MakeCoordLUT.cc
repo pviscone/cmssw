@@ -8,7 +8,7 @@
 #include "TTree.h"
 
 #include "FWCore/Framework/interface/Frameworkfwd.h"
-#include "FWCore/Framework/interface/EDAnalyzer.h"
+#include "FWCore/Framework/interface/one/EDAnalyzer.h"
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/ESHandle.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
@@ -29,19 +29,19 @@
 
 #include "helper.h"
 
-class MakeCoordLUT : public edm::EDAnalyzer {
+class MakeCoordLUT : public edm::one::EDAnalyzer<edm::one::WatchRuns> {
 public:
   explicit MakeCoordLUT(const edm::ParameterSet&);
-  virtual ~MakeCoordLUT();
+  ~MakeCoordLUT() override;
 
 private:
   //virtual void beginJob();
   //virtual void endJob();
 
-  virtual void beginRun(const edm::Run&, const edm::EventSetup&);
-  virtual void endRun(const edm::Run&, const edm::EventSetup&);
+  void beginRun(const edm::Run&, const edm::EventSetup&) override;
+  void endRun(const edm::Run&, const edm::EventSetup&) override;
 
-  virtual void analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup);
+  void analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) override;
 
   // Generate LUTs
   void generateLUTs();
@@ -101,6 +101,7 @@ private:
   bool done_;
 
   /// Event setup
+  edm::ESGetToken<CSCGeometry, MuonGeometryRecord> theCSCGeometryToken_;
   const CSCGeometry* theCSCGeometry_;
 
   /// Constants
@@ -144,7 +145,8 @@ MakeCoordLUT::MakeCoordLUT(const edm::ParameterSet& iConfig)
       outdir_(iConfig.getParameter<std::string>("outdir")),
       please_validate_(iConfig.getParameter<bool>("please_validate")),
       verbose_sector_(2),
-      done_(false) {
+      done_(false),
+      theCSCGeometryToken_(esConsumes()) {
   // Zero multi-dimensional arrays
   memset(ph_init, 0, sizeof(ph_init));
   memset(ph_init_full, 0, sizeof(ph_init_full));
@@ -170,8 +172,7 @@ MakeCoordLUT::~MakeCoordLUT() {}
 
 void MakeCoordLUT::beginRun(const edm::Run& iRun, const edm::EventSetup& iSetup) {
   /// Geometry setup
-  edm::ESHandle<CSCGeometry> cscGeometryHandle;
-  iSetup.get<MuonGeometryRecord>().get(cscGeometryHandle);
+  edm::ESHandle<CSCGeometry> cscGeometryHandle = iSetup.getHandle(theCSCGeometryToken_);
   if (!cscGeometryHandle.isValid()) {
     std::cout << "ERROR: Unable to get MuonGeometryRecord!" << std::endl;
   } else {
@@ -496,13 +497,13 @@ void MakeCoordLUT::generateLUTs_run() {
 
                   ++index;
                 }  // end loop over strip
-              }    // end loop over wire
-            }      // end if ME1/1b
-          }        // end loop over chamber
-        }          // end loop over subsector
-      }            // end loop over station
-    }              // end loop over sector
-  }                // end loop over endcap
+              }  // end loop over wire
+            }  // end if ME1/1b
+          }  // end loop over chamber
+        }  // end loop over subsector
+      }  // end loop over station
+    }  // end loop over sector
+  }  // end loop over endcap
   return;
 }
 
@@ -523,8 +524,8 @@ void MakeCoordLUT::generateLUTs_final() {
         if (th_cover_max[st][ch_type] < th_cover[es][st][ch])
           th_cover_max[st][ch_type] = th_cover[es][st][ch];
       }  // end loop over ch
-    }    // end loop over st
-  }      // end loop over es
+    }  // end loop over st
+  }  // end loop over es
 
   for (int st = 0; st < 5; ++st) {
     for (int ch_type = 0; ch_type < 3; ++ch_type) {
@@ -534,7 +535,7 @@ void MakeCoordLUT::generateLUTs_final() {
                   << " th_cover_max: " << th_cover_max[st][ch_type] << std::endl;
       }
     }  // end loop over ch_type
-  }    // end loop over st
+  }  // end loop over st
   return;
 }
 
@@ -834,9 +835,9 @@ void MakeCoordLUT::validateLUTs() {
                       << " fth_sim: " << fth_sim << std::endl;
           }
         }  // end loop over strip
-      }    // end loop over wire
-    }      // end loop over lut_id
-  }        // end loop over es
+      }  // end loop over wire
+    }  // end loop over lut_id
+  }  // end loop over es
 
   ttree->Write();
   tfile->Close();
@@ -964,7 +965,7 @@ void MakeCoordLUT::writeFiles() {
           ++num_of_files;
         }
       }  // end loop over ch
-    }    // end loop over st
+    }  // end loop over st
 
   }  // end loop over es
 

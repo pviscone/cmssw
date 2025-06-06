@@ -178,7 +178,8 @@ namespace evf {
           edm::LogError("TestErrorMessage") << qualifier_;
           break;
         case 8:
-          *pi = 0;  //intentionally caused segfault by assigning null pointer (this produces static-checker warning)
+          [[clang::suppress]] *pi =
+              0;  //intentionally caused segfault by assigning null pointer (this produces static-checker warning)
           break;
         case 9:
           for (unsigned int j = 0; j < intqualifier_ * 1000 * 100; j++) {
@@ -209,12 +210,17 @@ namespace evf {
         case 12: {
           timeval tv_now;
           gettimeofday(&tv_now, nullptr);
-          if ((unsigned)(tv_now.tv_sec - tv_start_.tv_sec) > intqualifier_)
-            *pi = 0;  //intentionally caused segfault by assigning null pointer (this produces static-checker warning)
+          if ((unsigned)(tv_now.tv_sec - tv_start_.tv_sec) > intqualifier_) {
+            [[clang::suppress]] *pi =
+                0;  //intentionally caused segfault by assigning null pointer (this produces static-checker warning)
+          }
         } break;
         case 13: {
           void *vp = malloc(1024);
-          memset((char *)vp - 32, 0, 1024);
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstringop-overflow"
+          memset((char *)vp - 32 + intqualifier_, 0, 1024);
+#pragma GCC diagnostic pop
           free(vp);
         } break;
         case 14: {
@@ -237,12 +243,14 @@ namespace evf {
             dummy += sqrt(log(float(j + 1))) / float(j * j);
           }
         } break;
+        case 16: {
+          throw cms::Exception("FastMonitoringService") << "Random exception!";
+        } break;
+
         default:
           break;
       }
     }
   }
-
-  void ExceptionGenerator::endLuminosityBlock(edm::LuminosityBlock const &lb, edm::EventSetup const &es) {}
 
 }  // end namespace evf

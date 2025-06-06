@@ -346,7 +346,7 @@ bool MultiTrackSelector::select(unsigned int tsNum,
 
   //cuts on number of valid hits
   auto nhits = tk.numberOfValidHits();
-  if (nhits >= min_hits_bypass_[tsNum])
+  if ((nhits >= min_hits_bypass_[tsNum]) || (nhits == 0))
     return true;
   if (nhits < min_nhits_[tsNum])
     return false;
@@ -422,6 +422,8 @@ bool MultiTrackSelector::select(unsigned int tsNum,
   int minLost = std::min(lostIn, lostOut);
   if (minLost > max_minMissHitOutOrIn_[tsNum])
     return false;
+  //numberOfValidHits is not 0 here
+  [[clang::suppress]]
   float lostMidFrac = tk.numberOfLostHits() / (tk.numberOfValidHits() + tk.numberOfLostHits());
   if (lostMidFrac > max_lostHitFraction_[tsNum])
     return false;
@@ -515,7 +517,7 @@ void MultiTrackSelector::selectVertices(unsigned int tsNum,
   for (VertexCollection::const_iterator it = vtxs.begin(), ed = vtxs.end(); it != ed; ++it) {
     LogDebug("SelectVertex") << " select vertex with z position " << it->z() << " " << it->chi2() << " " << it->ndof()
                              << " " << TMath::Prob(it->chi2(), static_cast<int32_t>(it->ndof()));
-    Vertex vtx = *it;
+    const Vertex& vtx = *it;
     bool pass = vertexCut_[tsNum](vtx);
     if (pass) {
       points.push_back(it->position());

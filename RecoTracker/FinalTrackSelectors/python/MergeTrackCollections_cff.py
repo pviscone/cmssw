@@ -3,6 +3,7 @@ import FWCore.ParameterSet.Config as cms
 from RecoTracker.FinalTrackSelectors.DuplicateTrackMerger_cfi import *
 from RecoTracker.FinalTrackSelectors.DuplicateListMerger_cfi import *
 from RecoTracker.FinalTrackSelectors.trackAlgoPriorityOrder_cfi import trackAlgoPriorityOrder
+from RecoLocalTracker.SiPixelRecHits.SiPixelTemplateStoreESProducer_cfi import SiPixelTemplateStoreESProducer
 
 from TrackingTools.KalmanUpdators.Chi2MeasurementEstimator_cfi import Chi2MeasurementEstimator as _Chi2MeasurementEstimator
 duplicateTrackCandidatesChi2Est = _Chi2MeasurementEstimator.clone(
@@ -16,6 +17,8 @@ duplicateTrackCandidates = DuplicateTrackMerger.clone(
     ttrhBuilderName   = "WithAngleAndTemplate",
     chi2EstimatorName = "duplicateTrackCandidatesChi2Est"
 )
+from Configuration.ProcessModifiers.trackingIters01_cff import trackingIters01
+trackingIters01.toModify(duplicateTrackCandidates, source = "earlyGeneralTracks")
 
 import RecoTracker.TrackProducer.TrackProducer_cfi
 mergedDuplicateTracks = RecoTracker.TrackProducer.TrackProducer_cfi.TrackProducer.clone(
@@ -42,6 +45,10 @@ generalTracks = DuplicateListMerger.clone(
     mergedMVAVals       = "duplicateTrackClassifier:MVAValues",
     candidateSource     = "duplicateTrackCandidates:candidates",
     candidateComponents = "duplicateTrackCandidates:candidateMap"
+)
+trackingIters01.toModify(generalTracks,
+                         originalSource = "earlyGeneralTracks",
+                         originalMVAVals = "earlyGeneralTracks:MVAValues"
 )
 
 generalTracksTask = cms.Task(

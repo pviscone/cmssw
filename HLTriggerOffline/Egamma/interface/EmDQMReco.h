@@ -11,7 +11,6 @@
 #include "DataFormats/EgammaCandidates/interface/GsfElectron.h"
 #include "DataFormats/HLTReco/interface/TriggerEventWithRefs.h"
 #include "DataFormats/HepMCCandidate/interface/GenParticle.h"
-#include "FWCore/Framework/interface/EDAnalyzer.h"
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/Frameworkfwd.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
@@ -28,8 +27,8 @@ class EmDQMReco;
 template <class T>
 class HistoFillerReco {
 public:
-  HistoFillerReco(EmDQMReco *d) : dqm(d){};
-  ~HistoFillerReco(){};
+  HistoFillerReco(EmDQMReco *d) : dqm(d) {}
+  ~HistoFillerReco() {}
 
   void fillHistos(edm::Handle<trigger::TriggerEventWithRefs> &triggerObj,
                   const edm::Event &iEvent,

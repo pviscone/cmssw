@@ -14,6 +14,7 @@
 #include "FWCore/Utilities/interface/EDGetToken.h"
 #include "L1Trigger/L1TMuonOverlapPhase1/interface/MuonStub.h"
 #include "L1Trigger/L1TMuonOverlapPhase1/interface/RpcClusterization.h"
+#include "L1Trigger/L1TMuonOverlapPhase1/interface/Omtf/IOMTFEmulationObserver.h"
 #include <cstdint>
 #include <memory>
 #include <vector>
@@ -33,28 +34,36 @@ struct MuStubsInputTokens {
 
 class DigiToStubsConverterBase {
 public:
-  virtual ~DigiToStubsConverterBase(){};
+  virtual ~DigiToStubsConverterBase() {}
 
   virtual void loadDigis(const edm::Event& event) = 0;
 
-  virtual void makeStubs(
-      MuonStubPtrs2D& muonStubsInLayers, unsigned int iProcessor, l1t::tftype procTyp, int bxFrom, int bxTo) = 0;
+  virtual void makeStubs(MuonStubPtrs2D& muonStubsInLayers,
+                         unsigned int iProcessor,
+                         l1t::tftype procTyp,
+                         int bxFrom,
+                         int bxTo,
+                         std::vector<std::unique_ptr<IOMTFEmulationObserver> >& observers) = 0;
 };
 
 class DtDigiToStubsConverter : public DigiToStubsConverterBase {
 public:
   DtDigiToStubsConverter(edm::EDGetTokenT<L1MuDTChambPhContainer> inputTokenDtPh,
                          edm::EDGetTokenT<L1MuDTChambThContainer> inputTokenDtTh)
-      : inputTokenDtPh(inputTokenDtPh), inputTokenDtTh(inputTokenDtTh){};
+      : inputTokenDtPh(inputTokenDtPh), inputTokenDtTh(inputTokenDtTh) {}
 
-  ~DtDigiToStubsConverter() override{};
+  ~DtDigiToStubsConverter() override {}
 
   //virtual void initialize(const edm::ParameterSet& edmCfg, const edm::EventSetup& es, const ProcConfigurationBase* procConf) {} //TODO is it needed at all?
 
   void loadDigis(const edm::Event& event) override;
 
-  void makeStubs(
-      MuonStubPtrs2D& muonStubsInLayers, unsigned int iProcessor, l1t::tftype procTyp, int bxFrom, int bxTo) override;
+  void makeStubs(MuonStubPtrs2D& muonStubsInLayers,
+                 unsigned int iProcessor,
+                 l1t::tftype procTyp,
+                 int bxFrom,
+                 int bxTo,
+                 std::vector<std::unique_ptr<IOMTFEmulationObserver> >& observers) override;
 
   //dtThDigis is provided as argument, because in the OMTF implementation the phi and eta digis are merged (even thought it is artificial)
   virtual void addDTphiDigi(MuonStubPtrs2D& muonStubsInLayers,
@@ -86,16 +95,20 @@ class CscDigiToStubsConverter : public DigiToStubsConverterBase {
 public:
   CscDigiToStubsConverter(const ProcConfigurationBase* config,
                           edm::EDGetTokenT<CSCCorrelatedLCTDigiCollection> inputTokenCsc)
-      : config(config), inputTokenCsc(inputTokenCsc){};
+      : config(config), inputTokenCsc(inputTokenCsc) {}
 
-  ~CscDigiToStubsConverter() override{};
+  ~CscDigiToStubsConverter() override {}
 
   //virtual void initialize(const edm::ParameterSet& edmCfg, const edm::EventSetup& es, const ProcConfigurationBase* procConf) {} //TODO is it needed at all?
 
   void loadDigis(const edm::Event& event) override { event.getByToken(inputTokenCsc, cscDigis); }
 
-  void makeStubs(
-      MuonStubPtrs2D& muonStubsInLayers, unsigned int iProcessor, l1t::tftype procTyp, int bxFrom, int bxTo) override;
+  void makeStubs(MuonStubPtrs2D& muonStubsInLayers,
+                 unsigned int iProcessor,
+                 l1t::tftype procTyp,
+                 int bxFrom,
+                 int bxTo,
+                 std::vector<std::unique_ptr<IOMTFEmulationObserver> >& observers) override;
 
   //can add both phi and eta stubs
   virtual void addCSCstubs(MuonStubPtrs2D& muonStubsInLayers,
@@ -120,16 +133,20 @@ public:
   RpcDigiToStubsConverter(const ProcConfigurationBase* config,
                           edm::EDGetTokenT<RPCDigiCollection> inputTokenRpc,
                           const RpcClusterization* rpcClusterization)
-      : config(config), inputTokenRpc(inputTokenRpc), rpcClusterization(rpcClusterization){};
+      : config(config), inputTokenRpc(inputTokenRpc), rpcClusterization(rpcClusterization) {}
 
-  ~RpcDigiToStubsConverter() override{};
+  ~RpcDigiToStubsConverter() override {}
 
   //virtual void initialize(const edm::ParameterSet& edmCfg, const edm::EventSetup& es, const ProcConfigurationBase* procConf) {} //TODO is it needed at all?
 
   void loadDigis(const edm::Event& event) override { event.getByToken(inputTokenRpc, rpcDigis); }
 
-  void makeStubs(
-      MuonStubPtrs2D& muonStubsInLayers, unsigned int iProcessor, l1t::tftype procTyp, int bxFrom, int bxTo) override;
+  void makeStubs(MuonStubPtrs2D& muonStubsInLayers,
+                 unsigned int iProcessor,
+                 l1t::tftype procTyp,
+                 int bxFrom,
+                 int bxTo,
+                 std::vector<std::unique_ptr<IOMTFEmulationObserver> >& observers) override;
 
   virtual void addRPCstub(MuonStubPtrs2D& muonStubsInLayers,
                           const RPCDetId& roll,
@@ -166,8 +183,12 @@ public:
   void loadAndFilterDigis(const edm::Event& event);
 
   ///Method translating trigger digis into input matrix with global phi coordinates, fills the muonStubsInLayers
-  void buildInputForProcessor(
-      MuonStubPtrs2D& muonStubsInLayers, unsigned int iProcessor, l1t::tftype procTyp, int bxFrom = 0, int bxTo = 0);
+  void buildInputForProcessor(MuonStubPtrs2D& muonStubsInLayers,
+                              unsigned int iProcessor,
+                              l1t::tftype procTyp,
+                              int bxFrom,
+                              int bxTo,
+                              std::vector<std::unique_ptr<IOMTFEmulationObserver> >& observers);
 
 protected:
   const ProcConfigurationBase* config = nullptr;

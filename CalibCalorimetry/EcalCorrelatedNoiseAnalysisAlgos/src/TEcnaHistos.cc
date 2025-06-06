@@ -2060,9 +2060,9 @@ void TEcnaHistos::ViewMatrix(const TMatrixD& arg_read_matrix,
               fStatusDataExist = kFALSE;
             }
           }  // end of if ((BetweenWhat == fLFBetweenStins) || (BetweenWhat == fHFBetweenStins)  ) ||
-             //( (BetweenWhat == fBetweenSamples) && (i0StinEcha>= 0) && (i0StinEcha<fEcal->MaxCrysInStin())) ||
-             //( (BetweenWhat == fLFBetweenChannels || BetweenWhat == fHFBetweenChannels)
-             // /* && (i0Sample  >= 0) && (i0Sample  < fFapNbOfSamples ) */ ) )
+          //( (BetweenWhat == fBetweenSamples) && (i0StinEcha>= 0) && (i0StinEcha<fEcal->MaxCrysInStin())) ||
+          //( (BetweenWhat == fLFBetweenChannels || BetweenWhat == fHFBetweenChannels)
+          // /* && (i0Sample  >= 0) && (i0Sample  < fFapNbOfSamples ) */ ) )
           else {
             if (BetweenWhat == fBetweenSamples) {
               std::cout << "*TEcnaHistos::ViewMatrix(...)> *ERROR* ==> Wrong channel number in " << fFapStinName.Data()
@@ -3037,13 +3037,15 @@ void TEcnaHistos::ViewTowerGrid(const Int_t& SMNumber,
     fCnewRoot++;
   }
 
-  sup_axis_x->SetTitle(x_var_name);
-  sup_axis_x->SetTitleSize(tit_siz_x);
-  sup_axis_x->SetTitleOffset(tit_off_x);
-  sup_axis_x->SetLabelSize(lab_siz_x);
-  sup_axis_x->SetLabelOffset(lab_off_x);
-  sup_axis_x->SetTickSize(tic_siz_x);
-  sup_axis_x->Draw("SAME");
+  if (sup_axis_x != nullptr) {
+    sup_axis_x->SetTitle(x_var_name);
+    sup_axis_x->SetTitleSize(tit_siz_x);
+    sup_axis_x->SetTitleOffset(tit_off_x);
+    sup_axis_x->SetLabelSize(lab_siz_x);
+    sup_axis_x->SetLabelOffset(lab_off_x);
+    sup_axis_x->SetTickSize(tic_siz_x);
+    sup_axis_x->Draw("SAME");
+  }
 
   //...................................................... Axe phi (y right)  (ViewTowerGrid)
   Float_t tit_siz_y = fCnaParHistos->AxisTitleSize();
@@ -3083,13 +3085,15 @@ void TEcnaHistos::ViewTowerGrid(const Int_t& SMNumber,
       fCnewRoot++;
     }
 
-    sup_axis_y->SetTitle(y_var_name);
-    sup_axis_y->SetTitleSize(tit_siz_y);
-    sup_axis_y->SetTitleOffset(tit_off_y);
-    sup_axis_y->SetLabelSize(lab_siz_y);
-    sup_axis_y->SetLabelOffset(lab_off_y);
-    sup_axis_y->SetTickSize(tic_siz_y);
-    sup_axis_y->Draw("SAME");
+    if (sup_axis_y != nullptr) {
+      sup_axis_y->SetTitle(y_var_name);
+      sup_axis_y->SetTitleSize(tit_siz_y);
+      sup_axis_y->SetTitleOffset(tit_off_y);
+      sup_axis_y->SetLabelSize(lab_siz_y);
+      sup_axis_y->SetLabelOffset(lab_off_y);
+      sup_axis_y->SetTickSize(tic_siz_y);
+      sup_axis_y->Draw("SAME");
+    }
   }
   //...................................................... Axe j(phi) (y left)  (ViewTowerGrid)
 
@@ -3634,7 +3638,7 @@ void TEcnaHistos::ViewStex(const TVectorD& arg_read_histo, const Int_t& arg_Alre
 
       //      delete MainCanvas;              fCdeleteRoot++;
     }  // end of if OKData == kTRUE )
-  }    // end of if OKFileExists == kTRUE )
+  }  // end of if OKFileExists == kTRUE )
   else {
     fStatusFileFound = kFALSE;
 
@@ -4437,13 +4441,15 @@ void TEcnaHistos::ViewSMGrid(const Int_t& SMNumber, const TString& c_option) {
     fCnewRoot++;
   }
 
-  sup_axis_x->SetTitle(x_var_name);
-  sup_axis_x->SetTitleSize(tit_siz_x);
-  sup_axis_x->SetTitleOffset(tit_off_x);
-  sup_axis_x->SetLabelSize(lab_siz_x);
-  sup_axis_x->SetLabelOffset(lab_off_x);
-  sup_axis_x->SetTickSize(tic_siz_x);
-  sup_axis_x->Draw("SAME");
+  if (sup_axis_x != nullptr) {
+    sup_axis_x->SetTitle(x_var_name);
+    sup_axis_x->SetTitleSize(tit_siz_x);
+    sup_axis_x->SetTitleOffset(tit_off_x);
+    sup_axis_x->SetLabelSize(lab_siz_x);
+    sup_axis_x->SetLabelOffset(lab_off_x);
+    sup_axis_x->SetTickSize(tic_siz_x);
+    sup_axis_x->Draw("SAME");
+  }
 
   //...................................................... Axe phi (y) ViewSMGrid
   Double_t phi_min = fEcalNumbering->GetPhiMin(SMNumber);
@@ -4488,13 +4494,15 @@ void TEcnaHistos::ViewSMGrid(const Int_t& SMNumber, const TString& c_option) {
     fCnewRoot++;
   }
 
-  sup_axis_y->SetTitle(y_var_name);
-  sup_axis_y->SetTitleSize(tit_siz_y);
-  sup_axis_y->SetTitleOffset(tit_off_y);
-  sup_axis_y->SetLabelSize(lab_siz_y);
-  sup_axis_y->SetLabelOffset(lab_off_y);
-  sup_axis_y->SetTickSize(tic_siz_y);
-  sup_axis_y->Draw("SAME");
+  if (sup_axis_y != nullptr) {
+    sup_axis_y->SetTitle(y_var_name);
+    sup_axis_y->SetTitleSize(tit_siz_y);
+    sup_axis_y->SetTitleOffset(tit_off_y);
+    sup_axis_y->SetLabelSize(lab_siz_y);
+    sup_axis_y->SetLabelOffset(lab_off_y);
+    sup_axis_y->SetTickSize(tic_siz_y);
+    sup_axis_y->Draw("SAME");
+  }
 
   //...................................................... Axe jphi (jy) ViewSMGrid
   Double_t jphi_min = fEcalNumbering->GetJPhiMin(SMNumber);
@@ -5042,8 +5050,8 @@ void TEcnaHistos::ViewDeeGrid(const Int_t& DeeNumber, const TString& c_option) {
   Double_t yline_haut_bot = (Double_t)ymid_bid;
   Double_t yline_haut_top = (Double_t)ysup_bid;
 
-  Double_t yline_bas_bot = (Double_t)yinf_bid;
-  Double_t yline_bas_top = (Double_t)ymid_bid;
+  Double_t yline_bas_bot;
+  Double_t yline_bas_top;
 
   // coordonnees demi-lignes
   //           l  =   0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10
@@ -5449,9 +5457,9 @@ void TEcnaHistos::ViewStas(const TVectorD& arg_read_histo, const Int_t& arg_Alre
                 h_geo_bid->Fill((Double_t)i_xgeo, (Double_t)i_ygeo, (Double_t)read_matrix(i_xgeo, i_ygeo));
               }
             }  // end of if( fFlagSubDet == "EE" )
-          }    // end of if(i_xgeo >=0 && i_xgeo < nb_binx && i_ygeo >=0 && i_ygeo < nb_biny)
-        }      // end of for(Int_t i0StexStinEcna=0; i0StexStinEcna<fEcal->MaxStinEcnaInStex(); i0StexStinEcna++)
-      }        // end of if ( fMyRootFile->DataExist() == kTRUE )
+          }  // end of if(i_xgeo >=0 && i_xgeo < nb_binx && i_ygeo >=0 && i_ygeo < nb_biny)
+        }  // end of for(Int_t i0StexStinEcna=0; i0StexStinEcna<fEcal->MaxStinEcnaInStex(); i0StexStinEcna++)
+      }  // end of if ( fMyRootFile->DataExist() == kTRUE )
       else {
         fStatusDataExist = kFALSE;
 
@@ -5841,13 +5849,15 @@ void TEcnaHistos::ViewEBGrid() {
   Float_t tit_off_x = fCnaParHistos->AxisTitleOffset("EBx");
   Float_t lab_off_x = fCnaParHistos->AxisLabelOffset("EBx");
 
-  sup_axis_x->SetTitle(x_var_name);
-  sup_axis_x->SetTitleSize(tit_siz_x);
-  sup_axis_x->SetTitleOffset(tit_off_x);
-  sup_axis_x->SetLabelSize(lab_siz_x);
-  sup_axis_x->SetLabelOffset(lab_off_x);
-  sup_axis_x->SetTickSize(tic_siz_x);
-  sup_axis_x->Draw("SAME");
+  if (sup_axis_x != nullptr) {
+    sup_axis_x->SetTitle(x_var_name);
+    sup_axis_x->SetTitleSize(tit_siz_x);
+    sup_axis_x->SetTitleOffset(tit_off_x);
+    sup_axis_x->SetLabelSize(lab_siz_x);
+    sup_axis_x->SetLabelOffset(lab_off_x);
+    sup_axis_x->SetTickSize(tic_siz_x);
+    sup_axis_x->Draw("SAME");
+  }
 
   //...................................................... Axe eta (y) ViewEBGrid
   MatSize = fEcal->MaxTowEtaInSM();
@@ -6268,7 +6278,6 @@ void TEcnaHistos::EEDataSectors(const Float_t& coefcc_x,
     }
 
     //............................ numeros des dee's
-    ngmax = 4;
     Float_t xg_coord_dee[4] = {0, 0, 0, 0};
     Float_t yg_coord_dee[4] = {48, 48, 48, 48};
 
@@ -6310,7 +6319,6 @@ void TEcnaHistos::EEDataSectors(const Float_t& coefcc_x,
   //..................................... Numeros des Dee et indication EE+- (option "EE" seulement)
   if (opt_plot == "EE") {
     //............................ indication EE+-
-    ngmax = 4;
     Float_t xg_coord_eepm[4] = {0, 0, 0, 0};
     Float_t yg_coord_eepm[4] = {95, 95, 95, 95};
 
@@ -6761,7 +6769,6 @@ void TEcnaHistos::XtalSamplesEv(const TVectorD& arg_read_histo,
           ViewHisto(read_histo_samps, xAlreadyRead, StexStin_A, i0_stin_echa, fZerv, "D_MSp_SpNb", fAllXtalsInStinPlot);
           xAlreadyRead++;
         }
-        xAlreadyRead = 0;
       } else {
         std::cout << "!TEcnaHistos::XtalSamplesEv(...)> Data not available." << std::endl;
       }
@@ -6854,7 +6861,6 @@ void TEcnaHistos::EvSamplesXtals(const TVectorD& arg_read_histo,
           ViewHisto(read_histo_samps, xAlreadyRead, StexStin_A, i0_stin_echa, fZerv, "D_MSp_SpDs", fAllXtalsInStinPlot);
           xAlreadyRead++;
         }
-        xAlreadyRead = 0;
       } else {
         std::cout << "!TEcnaHistos::EvSamplesXtals(...)> Data not available." << std::endl;
       }
@@ -6947,7 +6953,6 @@ void TEcnaHistos::XtalSamplesSigma(const TVectorD& arg_read_histo,
           ViewHisto(read_histo_samps, xAlreadyRead, StexStin_A, i0StinEcha, fZerv, "D_SSp_SpNb", fAllXtalsInStinPlot);
           xAlreadyRead++;
         }
-        xAlreadyRead = 0;
       } else {
         std::cout << "!TEcnaHistos::XtalSamplesSigma(...)> Data not available." << std::endl;
       }
@@ -7040,7 +7045,6 @@ void TEcnaHistos::SigmaSamplesXtals(const TVectorD& arg_read_histo,
           ViewHisto(read_histo_samps, xAlreadyRead, StexStin_A, i0StinEcha, fZerv, "D_SSp_SpDs", fAllXtalsInStinPlot);
           xAlreadyRead++;
         }
-        xAlreadyRead = 0;
       } else {
         std::cout << "!TEcnaHistos::SigmaSamplesXtals(...)> Data not available." << std::endl;
       }
@@ -7556,7 +7560,7 @@ void TEcnaHistos::ViewHisto(const TVectorD& arg_read_histo,
                     //     << ". OUT OF RANGE ( range = [0,"<< SizeForPlot << "] " << std::endl;
                   }
                 }  // end of if( fFlagSubDet == "EE" )
-              }    // end of for(Int_t i0StexStinEcna=0; i0StexStinEcna<fEcal->MaxStinEcnaInStex(); i0StexStinEcna++)
+              }  // end of for(Int_t i0StexStinEcna=0; i0StexStinEcna<fEcal->MaxStinEcnaInStex(); i0StexStinEcna++)
             } else {
               std::cout << "!TEcnaHistos::ViewHisto(...)>  "
                         << " Data not available for " << fFapStexName << " " << iStasStex + 1
@@ -7752,7 +7756,7 @@ void TEcnaHistos::ViewHisto(const TVectorD& arg_read_histo,
                                         << ". OUT OF RANGE ( range = [0," << SizeForPlot << "] " << std::endl;
                             }
                           }  // end of  if( read_histo[i0DeeEcha] > 0 )
-                        }    // end of if( SC_in_DS >= 1 && SC_in_DS <= fEcalNumbering->GetMaxSCInDS(DataSector) )
+                        }  // end of if( SC_in_DS >= 1 && SC_in_DS <= fEcalNumbering->GetMaxSCInDS(DataSector) )
                         else {
                           std::cout << "!TEcnaHistos::ViewHisto(...)> <EE>  SC_in_DS = " << SC_in_DS
                                     << ". OUT OF RANGE ( range = [1," << fEcalNumbering->GetMaxSCInDS(DataSector)
@@ -7783,8 +7787,8 @@ void TEcnaHistos::ViewHisto(const TVectorD& arg_read_histo,
                   }
                 }
               }  // end of if( OKPlot == 1 && opt_plot != "ASCII" )
-            }    // end of if(fFlagSubDet == "EE")
-          }      // end of if(ok_view_histo == kTRUE)
+            }  // end of if(fFlagSubDet == "EE")
+          }  // end of if(ok_view_histo == kTRUE)
           else {
             std::cout << "!TEcnaHistos::ViewHisto(...)> *ERROR* =====> "
                       << " ok_view_histo != kTRUE " << fTTBELL << std::endl;
@@ -8000,9 +8004,9 @@ void TEcnaHistos::ViewHisto(const TVectorD& arg_read_histo,
                 SetXsupMemoFromValue(XsupProj);
               }
             }  // end of if( (opt_plot == fOnlyOnePlot) ||
-               // (opt_plot == fSeveralPlot  && GetMemoFlag(HistoCode, opt_plot) == "Free") ||
-               // (opt_plot == fSameOnePlot  && GetMemoFlag(HistoCode, opt_plot) == "Free") )
-          }    // end of  if( HistoType == "Proj" || HistoType == "SampProj" || HistoType == "H1BasicProj" )
+            // (opt_plot == fSeveralPlot  && GetMemoFlag(HistoCode, opt_plot) == "Free") ||
+            // (opt_plot == fSameOnePlot  && GetMemoFlag(HistoCode, opt_plot) == "Free") )
+          }  // end of  if( HistoType == "Proj" || HistoType == "SampProj" || HistoType == "H1BasicProj" )
 
           //===============  H I S T O   B O O K I N G   A N D   F I L L I N G  ========  (ViewHisto)
           //..............................  prepa histogram booking (ViewHisto)
@@ -10968,7 +10972,7 @@ void TEcnaHistos::HistoPlot(TH1D* h_his0,
         if (yinf >= ysup) {
           yinf = (Double_t)0.;
           ysup += ysup;
-        }                                           // ROOT default if ymin >= ymax
+        }  // ROOT default if ymin >= ymax
         Double_t MaxMarginFactor = (Double_t)0.05;  // frame top line = 5% above the maximum
         ysup += (ysup - yinf) * MaxMarginFactor;    // ROOT default if ymin < ymax
       }
@@ -11217,7 +11221,7 @@ void TEcnaHistos::HistoPlot(TH1D* h_his0,
         }
       }
     }  // end of if( ( opt_plot == fOnlyOnePlot )
-       // || ( (opt_plot == fSeveralPlot || opt_plot == fSameOnePlot) && xMemoPlotSame == 0 ) )
+    // || ( (opt_plot == fSeveralPlot || opt_plot == fSameOnePlot) && xMemoPlotSame == 0 ) )
 
     //..............................................Top Axis (HistoPlot)
     Int_t min_value = 0;
@@ -11272,7 +11276,6 @@ void TEcnaHistos::HistoPlot(TH1D* h_his0,
               << std::endl;
 
     ReInitCanvas(HistoCode, opt_plot);
-    xMemoPlotSame = 0;
   }
 
   //  delete MainCanvas;                  fCdeleteRoot++;
@@ -12158,7 +12161,6 @@ void TEcnaHistos::HistimePlot(TGraph* g_graph0,
               << std::endl;
 
     ReInitCanvas(HistoCode, opt_plot);
-    xMemoPlotSame = 0;
   }
 
   //  delete MainCanvas;                  fCdeleteRoot++;
@@ -12184,7 +12186,7 @@ void TEcnaHistos::TopAxisForHistos(TH1D* h_his0,
       if (Minih >= Maxih) {
         Minih = (Double_t)0.;
         Maxih += Maxih;
-      }                                            // ROOT default if ymin >= ymax
+      }  // ROOT default if ymin >= ymax
       Double_t MaxMarginFactor = (Double_t)0.05;   // frame top line = 5% above the maximum
       Maxih += (Maxih - Minih) * MaxMarginFactor;  // ROOT default if ymin < ymax
     }
@@ -13080,7 +13082,7 @@ TVectorD TEcnaHistos::GetHistoValues(const TVectorD& arg_read_histo,
                   << ", HisSizePlot = " << HisSizePlot << fTTBELL << std::endl;
       }
     }  // end of if( HistoCode == "D_MSp_SpNb" || HistoCode == "D_SSp_SpNb" " ||
-       //            HistoCode == "D_SSp_SpNb" || HistoCode == "D_SSp_SpDs" )
+    //            HistoCode == "D_SSp_SpNb" || HistoCode == "D_SSp_SpDs" )
 
     if (!(HistoCode == "D_MSp_SpNb" || HistoCode == "D_SSp_SpNb" || HistoCode == "D_MSp_SpDs" ||
           HistoCode == "D_SSp_SpDs"))  // = else of previous if
@@ -13164,7 +13166,7 @@ TVectorD TEcnaHistos::GetHistoValues(const TVectorD& arg_read_histo,
                   << " HisSizeRead = " << HisSizeRead << ", HisSizePlot = " << HisSizePlot << fTTBELL << std::endl;
       }
     }  // end of if( !(HistoCode == "D_MSp_SpNb" || HistoCode == "D_SSp_SpNb") )
-  }    // end of if( arg_AlreadyRead == 0 )
+  }  // end of if( arg_AlreadyRead == 0 )
 
   if (i_data_exist == 0) {
     std::cout << "!TEcnaHistos::GetHistoValues(...)> Histo not found." << fTTBELL << std::endl;

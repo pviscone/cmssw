@@ -10,7 +10,6 @@ from RecoHGCal.TICL.filteredLayerClustersProducer_cfi import filteredLayerCluste
 filteredLayerClustersHAD = _filteredLayerClustersProducer.clone(
     clusterFilter = "ClusterFilterByAlgoAndSize",
     min_cluster_size = 3, # inclusive
-    algo_number = 8,
     iteration_label = "HAD",
     LayerClustersInputMask = "ticlTrackstersTrk"
 )
@@ -34,6 +33,9 @@ ticlTrackstersHAD = _trackstersProducer.clone(
     itername = "HAD"
 )
 
+from Configuration.ProcessModifiers.ticl_v5_cff import ticl_v5
+ticl_v5.toModify(ticlTrackstersHAD.pluginPatternRecognitionByCA, computeLocalTime = cms.bool(True))
+
 ticlHADStepTask = cms.Task(ticlSeedingGlobal
     ,filteredLayerClustersHAD
     ,ticlTrackstersHAD)
@@ -42,7 +44,7 @@ ticlHADStepTask = cms.Task(ticlSeedingGlobal
 
 filteredLayerClustersHFNoseHAD = filteredLayerClustersHAD.clone(
     min_cluster_size = 2, # inclusive
-    algo_number = 9,
+    algo_number = [9], # reco::CaloCluster::hfnose
     iteration_label = "HADn",
     LayerClusters = 'hgcalLayerClustersHFNose',
     LayerClustersInputMask = "ticlTrackstersHFNoseTrk"
@@ -68,6 +70,8 @@ ticlTrackstersHFNoseHAD = ticlTrackstersHAD.clone(
     ),
     itername = "HADn"
     )
+
+ticl_v5.toModify(ticlTrackstersHFNoseHAD.pluginPatternRecognitionByCA, computeLocalTime = cms.bool(True))
 
 ticlHFNoseHADStepTask = cms.Task(ticlSeedingGlobalHFNose
                                  ,filteredLayerClustersHFNoseHAD

@@ -7,7 +7,7 @@ process.load("Geometry.EcalCommonData.ecalSimulationParameters_cff")
 process.load("Geometry.HcalCommonData.hcalDDDSimConstants_cff")
 process.load("Geometry.HGCalCommonData.hgcalParametersInitialization_cfi")
 process.load("Geometry.HGCalCommonData.hgcalNumberingInitialization_cfi")
-process.load("Geometry.CaloEventSetup.HGCalV9Topology_cfi")
+process.load("Geometry.CaloEventSetup.HGCalTopology_cfi")
 process.load("Geometry.HGCalGeometry.HGCalGeometryESProducer_cfi")
 process.load("Geometry.CaloEventSetup.CaloTopology_cfi")
 process.load("Geometry.CaloEventSetup.CaloGeometry_cff")
@@ -19,7 +19,7 @@ process.load("Geometry.HcalEventSetup.hcalTopologyIdeal_cfi")
 process.load("Geometry.HGCalGeometry.hgcalGeometryDump_cfi")
 
 process.DDDetectorESProducer = cms.ESSource("DDDetectorESProducer",
-                                            confGeomXMLFiles = cms.FileInPath('Geometry/CMSCommonData/data/dd4hep/cmsExtendedGeometry2026D71.xml'),
+                                            confGeomXMLFiles = cms.FileInPath('Geometry/CMSCommonData/data/dd4hep/cmsExtendedGeometryRun4D71.xml'),
                                             appendToDataLabel = cms.string('')
 )
 

@@ -7,10 +7,8 @@ using namespace std;
 // ============================================================================
 // Constructors and destructor
 // ============================================================================
-MotherGrouping::MotherGrouping(const ParameterSet& pset, edm::ConsumesCollector& iC) {
-  // Obtention of parameters
-  debug_ = pset.getUntrackedParameter<bool>("debug");
-}
+MotherGrouping::MotherGrouping(const ParameterSet& pset, edm::ConsumesCollector& iC)
+    : debug_(pset.getUntrackedParameter<bool>("debug")) {}
 
 MotherGrouping::~MotherGrouping() {}
 
@@ -24,4 +22,4 @@ void MotherGrouping::run(Event& iEvent,
                          const DTDigiCollection& digis,
                          MuonPathPtrs& mpaths) {}
 
-void MotherGrouping::finish(){};
+void MotherGrouping::finish() {}

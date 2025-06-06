@@ -12,6 +12,7 @@
 
 #include <limits>
 #include "CondFormats/Serialization/interface/Serializable.h"
+#include "tmEventSetup/esBin.hh"
 
 /**
  *  This class implements data structure for Bin
@@ -22,10 +23,14 @@ public:
       : hw_index(std::numeric_limits<unsigned int>::max()),
         minimum(std::numeric_limits<double>::min()),
         maximum(std::numeric_limits<double>::max()),
-        version(0){};
+        version(0) {}
 
   L1TUtmBin(const unsigned int id, const double min, const double max)
-      : hw_index(id), minimum(min), maximum(max), version(0){};
+      : hw_index(id), minimum(min), maximum(max), version(0) {}
+
+  L1TUtmBin(const tmeventsetup::esBin& bin) : L1TUtmBin(bin.hw_index, bin.minimum, bin.maximum) {}
+
+  operator tmeventsetup::esBin() const { return tmeventsetup::esBin(hw_index, minimum, maximum); }
 
   virtual ~L1TUtmBin() = default;
 

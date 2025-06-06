@@ -5,6 +5,7 @@
 
 // system include files
 #include <memory>
+#include <string_view>
 
 #include <vector>
 
@@ -97,7 +98,12 @@ namespace l1t {
     /// check that the L1TGlobalUtil has been properly initialised
     bool valid() const;
 
-    static void fillDescription(edm::ParameterSetDescription& desc) { L1TGlobalUtilHelper::fillDescription(desc); }
+    static void fillDescription(edm::ParameterSetDescription& desc,
+                                edm::InputTag const& iAlg,
+                                edm::InputTag const& iExt,
+                                bool readPrescalesFromFile) {
+      L1TGlobalUtilHelper::fillDescription(desc, iAlg, iExt, readPrescalesFromFile);
+    }
 
     // OverridePrescalesAndMasks
     // The ability to override the prescale/mask file will not be part of the permanent interface of this class.
@@ -121,7 +127,7 @@ namespace l1t {
     const bool getAlgBitFromName(const std::string& AlgName, int& bit) const;
 
     // get the name from the trigger bit
-    const bool getAlgNameFromBit(int& bit, std::string& AlgName) const;
+    const bool getAlgNameFromBit(int& bit, std::string_view& AlgName) const;
 
     // Access results for particular trigger bit
     const bool getInitialDecisionByBit(int& bit, bool& decision) const;
@@ -151,15 +157,15 @@ namespace l1t {
     const bool getMaskByName(const std::string& algName, std::vector<int>& mask) const;
 
     // Some inline commands to return the full vectors
-    inline const std::vector<std::pair<std::string, bool>>& decisionsInitial() { return m_decisionsInitial; }
-    inline const std::vector<std::pair<std::string, bool>>& decisionsInterm() { return m_decisionsInterm; }
-    inline const std::vector<std::pair<std::string, bool>>& decisionsFinal() { return m_decisionsFinal; }
+    inline const std::vector<std::pair<std::string_view, bool>>& decisionsInitial() { return m_decisionsInitial; }
+    inline const std::vector<std::pair<std::string_view, bool>>& decisionsInterm() { return m_decisionsInterm; }
+    inline const std::vector<std::pair<std::string_view, bool>>& decisionsFinal() { return m_decisionsFinal; }
 
     // Access all prescales
-    inline const std::vector<std::pair<std::string, double>>& prescales() { return m_prescales; }
+    inline const std::vector<std::pair<std::string_view, double>>& prescales() { return m_prescales; }
 
     // Access Masks (see note) above
-    inline const std::vector<std::pair<std::string, std::vector<int>>>& masks() { return m_masks; }
+    inline const std::vector<std::pair<std::string_view, std::vector<int>>>& masks() { return m_masks; }
 
     // Menu names
     inline const std::string& gtTriggerMenuName() const { return m_l1GtMenu->getName(); }
@@ -219,11 +225,12 @@ namespace l1t {
     bool m_finalOR;
 
     // Vectors containing the trigger name and information about that trigger
-    std::vector<std::pair<std::string, bool>> m_decisionsInitial;
-    std::vector<std::pair<std::string, bool>> m_decisionsInterm;
-    std::vector<std::pair<std::string, bool>> m_decisionsFinal;
-    std::vector<std::pair<std::string, double>> m_prescales;
-    std::vector<std::pair<std::string, std::vector<int>>> m_masks;  // vector stores the bx's that are mask for given algo
+    std::vector<std::pair<std::string_view, bool>> m_decisionsInitial;
+    std::vector<std::pair<std::string_view, bool>> m_decisionsInterm;
+    std::vector<std::pair<std::string_view, bool>> m_decisionsFinal;
+    std::vector<std::pair<std::string_view, double>> m_prescales;
+    std::vector<std::pair<std::string_view, std::vector<int>>>
+        m_masks;  // vector stores the bx's that are mask for given algo
 
     /// verbosity level
     int m_verbosity;

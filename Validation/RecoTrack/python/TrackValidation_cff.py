@@ -45,6 +45,7 @@ for _eraName, _postfix, _era in _cfg.allEras():
 _removeForFastSimSeedProducers =["initialStepSeedsPreSplitting",
                                  "jetCoreRegionalStepSeeds",
                                  "jetCoreRegionalStepSeedsBarrel","jetCoreRegionalStepSeedsEndcap",
+                                 "displacedRegionalStepSeeds",
                                  "muonSeededSeedsInOut",
                                  "muonSeededSeedsOutIn"]
 
@@ -52,6 +53,7 @@ _seedProducers_fastSim = [ x for x in _seedProducers if x not in _removeForFastS
 
 _removeForFastTrackProducers = ["initialStepTracksPreSplitting",
                                 "jetCoreRegionalStepTracks",
+                                "displacedRegionalStepTracks",
                                 "muonSeededTracksInOut",
                                 "muonSeededTracksOutIn"]
 _trackProducers_fastSim = [ x for x in _trackProducers if x not in _removeForFastTrackProducers]
@@ -391,7 +393,7 @@ for _eraName, _postfix, _era in _relevantEras:
                    locals()["_generalTracksHp"+_postfix],
                    "generalTracksPt09",
                    "cutsRecoTracksBtvLike",
-                   "cutsRecoTracksJetCoreRegionalStepByOriginalAlgo",
+                   "cutsRecoTracksJetCoreRegionalStepByOriginalAlgo"
                ]
     )
     _setForEra(trackValidator.histoProducerAlgoBlock, _eraName, _era, seedingLayerSets=locals()["_seedingLayerSets"+_postfix])
@@ -532,12 +534,12 @@ _trackValidatorSeedingBuilding = trackValidator.clone( # common for built tracks
     dodEdxPlots = False,
     doPVAssociationPlots = False,
     doSimPlots = False,
-    doResolutionPlotsForLabels = ["disabled"],
+    doResolutionPlotsForLabels = ["disabled"]
 )
 trackValidatorBuilding = _trackValidatorSeedingBuilding.clone(
     dirName = "Tracking/TrackBuilding/",
     doMVAPlots = True,
-    doResolutionPlotsForLabels = ['jetCoreRegionalStepTracks'],
+    doResolutionPlotsForLabels = ['jetCoreRegionalStepTracks']
 )
 trackValidatorBuildingPreSplitting = trackValidatorBuilding.clone(
     associators = ["quickTrackAssociatorByHitsPreSplitting"],
@@ -709,6 +711,29 @@ tracksValidationTruth = cms.Task(
     VertexAssociatorByPositionAndTracks,
     trackingParticleNumberOfLayersProducer
 )
+
+# HIon modifiers
+from Configuration.ProcessModifiers.pp_on_AA_cff import pp_on_AA
+
+trackingParticleHIPixelTrackAssociation = trackingParticleRecoTrackAsssociation.clone(
+    label_tr = "hiConformalPixelTracks",
+    associator = "quickTrackAssociatorByHits",
+)
+
+from Configuration.ProcessModifiers.pixelNtupletFit_cff import pixelNtupletFit
+
+pixelNtupletFit.toModify(trackingParticleHIPixelTrackAssociation,
+        associator = "quickTrackAssociatorByHitsPreSplitting")
+
+HIPixelVertexAssociatorByPositionAndTracks = VertexAssociatorByPositionAndTracks.clone(
+    trackAssociation = "trackingParticleHIPixelTrackAssociation"
+)
+
+pp_on_AA.toReplaceWith(tracksValidationTruth, cms.Task(
+    tracksValidationTruth.copy(),
+    trackingParticleHIPixelTrackAssociation,
+    HIPixelVertexAssociatorByPositionAndTracks
+))
 fastSim.toModify(tracksValidationTruth, lambda x: x.remove(tpClusterProducer))
 
 tracksPreValidation = cms.Task(
@@ -742,6 +767,29 @@ tracksValidation = cms.Sequence(
     trackValidatorGsfTracks,
     tracksPreValidation
 )
+
+trackValidatorHILowPtConformalValidator = trackValidator.clone(
+    dirName = "Tracking/HIPixelTrack/",
+    label = [
+        "hiConformalPixelTracks",
+    ],
+    doResolutionPlotsForLabels = ["hiConformalPixelTracks"],
+    trackCollectionForDrCalculation = "hiConformalPixelTracks",
+    associators = ["trackingParticleHIPixelTrackAssociation"],
+    vertexAssociator = "HIPixelVertexAssociatorByPositionAndTracks",
+    dodEdxPlots = False,
+    cores = "" 
+)
+
+tracksValidationHIonTask = cms.Task(trackValidatorHILowPtConformalValidator) 
+
+tracksValidationHIon = cms.Sequence(
+    tracksValidation.copy(),
+    tracksValidationHIonTask    
+)
+
+pp_on_AA.toReplaceWith(tracksValidation,tracksValidationHIon)
+
 
 from Configuration.ProcessModifiers.seedingDeepCore_cff import seedingDeepCore
 seedingDeepCore.toReplaceWith(tracksValidation, cms.Sequence(tracksValidation.copy()+trackValidatorJetCore))
@@ -884,6 +932,7 @@ tracksValidationSeedSelectorsTrackingOnly.add(tracksValidationSeedSelectorsPreSp
 # MTV instances
 trackValidatorTrackingOnly = trackValidatorStandalone.clone(
     label = [ x for x in trackValidatorStandalone.label if x != "cutsRecoTracksAK4PFJets"],
+    doResolutionPlotsForLabels = trackValidatorStandalone.doResolutionPlotsForLabels + locals()["_selectorsByOriginalAlgo"+_postfix],
     cores = "highPtJetsForTrk"
  )
 
@@ -949,7 +998,7 @@ trackValidatorsTrackingOnly.replace(trackValidatorConversionStandalone, trackVal
 trackValidatorsTrackingOnly.remove(trackValidatorGsfTracksStandalone)
 trackValidatorsTrackingOnly.replace(trackValidatorBHadronStandalone, trackValidatorBHadronTrackingOnly)
 
-seedingDeepCore.toReplaceWith(trackValidatorsTrackingOnly, cms.Sequence(
+(seedingDeepCore & ~fastSim).toReplaceWith(trackValidatorsTrackingOnly, cms.Sequence(
             trackValidatorsTrackingOnly.copy()+
             trackValidatorJetCore+
             trackValidatorJetCoreSeedingTrackingOnly
@@ -974,6 +1023,15 @@ tracksValidationTrackingOnly = cms.Sequence(
     tracksValidationSelectorsStandalone,
     tracksValidationSeedSelectorsTrackingOnly
 )
+
+
+tracksValidationHIonTrackingOnly = cms.Sequence(
+    tracksValidation.copy(),
+    tracksValidationHIonTask    
+)
+
+pp_on_AA.toReplaceWith(tracksValidationTrackingOnly,tracksValidationHIonTrackingOnly)
+
 
 ####################################################################################################
 ### Pixel tracking only mode (placeholder for now)
@@ -1033,8 +1091,9 @@ trackValidatorPixelTrackingOnly = trackValidator.clone(
     label_vertex = "pixelVertices",
     vertexAssociator = "PixelVertexAssociatorByPositionAndTracks",
     dodEdxPlots = False,
-    cores = cms.InputTag(""),
+    cores = "" 
 )
+
 trackValidatorFromPVPixelTrackingOnly = trackValidatorPixelTrackingOnly.clone(
     dirName = "Tracking/PixelTrackFromPV/",
     label = [
@@ -1159,10 +1218,6 @@ tracksValidationLite = cms.Sequence(
 
 ## customization for timing
 from Configuration.Eras.Modifier_phase2_timing_layer_cff import phase2_timing_layer
-phase2_timing_layer.toModify( generalTracksFromPV, 
-                              timesTag  = cms.InputTag('tofPID:t0'), 
-                              timeResosTag = cms.InputTag('tofPID:sigmat0'),
-                              nSigmaDtVertex = cms.double(3) )
 phase2_timing_layer.toModify( trackValidatorStandalone,
                               label_vertex = cms.untracked.InputTag('offlinePrimaryVertices4D') )
 phase2_timing_layer.toModify( trackValidatorFromPVStandalone,

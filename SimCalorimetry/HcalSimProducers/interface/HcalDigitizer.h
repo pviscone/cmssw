@@ -10,6 +10,7 @@
 #include "CalibCalorimetry/HcalAlgos/interface/HFRecalibration.h"
 #include "FWCore/Framework/interface/ESWatcher.h"
 #include "FWCore/Framework/interface/Frameworkfwd.h"
+#include "FWCore/Utilities/interface/EDGetToken.h"
 #include "Geometry/CaloGeometry/interface/CaloGeometry.h"
 #include "Geometry/HcalCommonData/interface/HcalDDDRecConstants.h"
 #include "Geometry/HcalCommonData/interface/HcalHitRelabeller.h"
@@ -37,6 +38,7 @@ class HcalBaseSignalGenerator;
 class HcalShapes;
 class PileUpEventPrincipal;
 class HcalTopology;
+class ZdcTopology;
 
 namespace CLHEP {
   class HepRandomEngine;
@@ -66,15 +68,27 @@ private:
                           edm::Handle<std::vector<PCaloHit>> const &zdcHits,
                           int bunchCrossing,
                           CLHEP::HepRandomEngine *,
-                          const HcalTopology *h);
+                          const HcalTopology *h,
+                          const ZdcTopology *z);
 
   /// some hits in each subdetector, just for testing purposes
   void fillFakeHits();
   /// make sure the digitizer has the correct list of all cells that
   /// exist in the geometry
   void checkGeometry(const edm::EventSetup &eventSetup);
+
+  void updateGeometry(const edm::EventSetup &eventSetup);
+
+  void buildHOSiPMCells(const std::vector<DetId> &allCells, const edm::EventSetup &eventSetup);
+  void buildHFQIECells(const std::vector<DetId> &allCells, const edm::EventSetup &eventSetup);
+  void buildHBHEQIECells(const std::vector<DetId> &allCells, const edm::EventSetup &eventSetup);
+
+  // function to evaluate aging at the digi level
+  void darkening(std::vector<PCaloHit> &hcalHits);
+
   const edm::ESGetToken<HcalDbService, HcalDbRecord> conditionsToken_;
   const edm::ESGetToken<HcalTopology, HcalRecNumberingRecord> topoToken_;
+  const edm::ESGetToken<ZdcTopology, HcalRecNumberingRecord> topoZToken_;
   edm::ESGetToken<HBHEDarkening, HBHEDarkeningRecord> m_HBDarkeningToken;
   edm::ESGetToken<HBHEDarkening, HBHEDarkeningRecord> m_HEDarkeningToken;
   const edm::ESGetToken<HcalTimeSlew, HcalTimeSlewRecord> hcalTimeSlew_delay_token_;
@@ -84,16 +98,9 @@ private:
   edm::ESGetToken<HcalMCParams, HcalMCParamsRcd> mcParamsToken_;
   edm::ESWatcher<CaloGeometryRecord> theGeometryWatcher_;
   edm::ESWatcher<HcalRecNumberingRecord> theRecNumberWatcher_;
+
   const CaloGeometry *theGeometry;
   const HcalDDDRecConstants *theRecNumber;
-  void updateGeometry(const edm::EventSetup &eventSetup);
-
-  void buildHOSiPMCells(const std::vector<DetId> &allCells, const edm::EventSetup &eventSetup);
-  void buildHFQIECells(const std::vector<DetId> &allCells, const edm::EventSetup &eventSetup);
-  void buildHBHEQIECells(const std::vector<DetId> &allCells, const edm::EventSetup &eventSetup);
-
-  // function to evaluate aging at the digi level
-  void darkening(std::vector<PCaloHit> &hcalHits);
 
   /** Reconstruction algorithm*/
   typedef CaloTDigitizer<HBHEDigitizerTraits, CaloTDigitizerQIE8Run> HBHEDigitizer;
@@ -174,6 +181,9 @@ private:
 
   double deliveredLumi;
   bool agingFlagHB, agingFlagHE;
+
+  edm::EDGetTokenT<std::vector<PCaloHit>> zdcToken_;
+  edm::EDGetTokenT<std::vector<PCaloHit>> hcalToken_;
   const HBHEDarkening *m_HBDarkening;
   const HBHEDarkening *m_HEDarkening;
   std::unique_ptr<HFRecalibration> m_HFRecalibration;

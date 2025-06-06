@@ -8,7 +8,9 @@
 #include "DataFormats/L1TMuon/interface/RegionalMuonCand.h"
 #include "DataFormats/L1TMuon/interface/RegionalMuonCandFwd.h"
 #include "DataFormats/L1TMuonPhase2/interface/MuonStub.h"
+#include "DataFormats/L1TMuonPhase2/interface/SAMuon.h"
 #include "FWCore/MessageLogger/interface/MessageLogger.h"
+#include "DataFormats/L1TMuonPhase2/interface/Constants.h"
 
 namespace l1t {
 
@@ -31,7 +33,7 @@ namespace l1t {
     ~TrackerMuon() override;
 
     const edm::Ptr<L1TTTrackType>& trkPtr() const { return trkPtr_; }
-    const edm::Ref<l1t::RegionalMuonCandBxCollection>& muonRef() const { return muRef_; }
+    const SAMuonRefVector muonRef() const { return muRef_; }
 
     const bool hwCharge() const { return hwCharge_; }
     const int hwZ0() const { return hwZ0_; }
@@ -40,16 +42,38 @@ namespace l1t {
     const int hwIsoSumAp() const { return hwIsoSumAp_; }
     const uint hwBeta() const { return hwBeta_; }
     void setBeta(uint beta) { hwBeta_ = beta; }
-    void setMuonRef(const edm::Ref<l1t::RegionalMuonCandBxCollection>& p) { muRef_ = p; }
+    void setMuonRef(const l1t::SAMuonRefVector& p) { muRef_ = p; }
     void setHwIsoSum(int isoSum) { hwIsoSum_ = isoSum; }
     void setHwIsoSumAp(int isoSum) { hwIsoSumAp_ = isoSum; }
 
+    // For GT, returning ap_ type
+    const Phase2L1GMT::valid_gt_t apValid() const { return Phase2L1GMT::valid_gt_t(hwPt() > 0); };
+    const Phase2L1GMT::pt_gt_t apPt() const { return Phase2L1GMT::pt_gt_t(hwPt()); };
+    const Phase2L1GMT::phi_gt_t apPhi() const { return Phase2L1GMT::phi_gt_t(hwPhi()); };
+    const Phase2L1GMT::eta_gt_t apEta() const { return Phase2L1GMT::eta_gt_t(hwEta()); };
+    const Phase2L1GMT::z0_gt_t apZ0() const { return Phase2L1GMT::z0_gt_t(hwZ0()); };
+    const Phase2L1GMT::d0_gt_t apD0() const { return Phase2L1GMT::d0_gt_t(hwD0()); };
+    const Phase2L1GMT::q_gt_t apCharge() const { return Phase2L1GMT::q_gt_t(hwCharge()); };
+    const Phase2L1GMT::qual_gt_t apQualFlags() const { return Phase2L1GMT::qual_gt_t(hwQual()); };
+    const Phase2L1GMT::iso_gt_t apIso() const { return Phase2L1GMT::iso_gt_t(hwIsoSumAp()); };
+    const Phase2L1GMT::beta_gt_t apBeta() const { return Phase2L1GMT::beta_gt_t(hwBeta()); };
+
+    // For HLT
+    const double phZ0() const { return Phase2L1GMT::LSBGTz0 * hwZ0(); }
+    const double phD0() const { return Phase2L1GMT::LSBGTd0 * hwD0(); }
+    const double phPt() const { return Phase2L1GMT::LSBpt * hwPt(); }
+    const double phEta() const { return Phase2L1GMT::LSBeta * hwEta(); }
+    const double phPhi() const { return Phase2L1GMT::LSBphi * hwPhi(); }
+    const double phIso() const { return Phase2L1GMT::LSBGTiso * hwIsoSumAp(); }
+    const int phCharge() const { return pow(-1, hwCharge()); }
+    const uint numberOfMatches() const { return numberOfMatches_; }
+    const uint numberOfStations() const { return stubs_.size(); }
     const std::array<uint64_t, 2> word() const { return word_; }
     void setWord(std::array<uint64_t, 2> word) { word_ = word; }
     void print() const;
     const MuonStubRefVector stubs() const { return stubs_; }
     void addStub(const MuonStubRef& stub) { stubs_.push_back(stub); }
-
+    void setNumberOfMatches(uint matches) { numberOfMatches_ = matches; }
     bool operator<(const TrackerMuon& other) const { return (hwPt() < other.hwPt()); }
     bool operator>(const TrackerMuon& other) const { return (hwPt() > other.hwPt()); }
 
@@ -66,8 +90,9 @@ namespace l1t {
     int hwIsoSum_;
     //Store the eneryg sum for isolation with ap_type
     int hwIsoSumAp_;
-
-    edm::Ref<l1t::RegionalMuonCandBxCollection> muRef_;
+    uint numberOfMatches_;
+    uint numberOfStations_;
+    SAMuonRefVector muRef_;
     MuonStubRefVector stubs_;
   };
 }  // namespace l1t

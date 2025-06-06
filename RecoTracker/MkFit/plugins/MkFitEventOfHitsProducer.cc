@@ -115,7 +115,7 @@ void MkFitEventOfHitsProducer::produce(edm::StreamID iID, edm::Event& iEvent, co
           deadvectors[ilay].push_back({surf.phiSpan().first, surf.phiSpan().second, q1, q2});
       }
     }
-
+    // For Phase-2, disable (momentarily?) SiStrip quality check
     if (useStripStripQualityDB_) {
       const auto& siStripQuality = iSetup.getData(stripQualityToken_);
       const auto& badStrips = siStripQuality.getBadComponentList();
@@ -186,7 +186,7 @@ void MkFitEventOfHitsProducer::produce(edm::StreamID iID, edm::Event& iEvent, co
 void MkFitEventOfHitsProducer::fill(const std::vector<const TrackingRecHit*>& hits,
                                     mkfit::EventOfHits& eventOfHits,
                                     const MkFitGeometry& mkFitGeom) const {
-  for (int i = 0, end = hits.size(); i < end; ++i) {
+  for (unsigned int i = 0, end = hits.size(); i < end; ++i) {
     const auto* hit = hits[i];
     if (hit != nullptr) {
       const auto ilay = mkFitGeom.mkFitLayerNumber(hit->geographicalId());

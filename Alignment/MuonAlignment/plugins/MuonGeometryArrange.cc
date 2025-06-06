@@ -102,9 +102,7 @@ MuonGeometryArrange::MuonGeometryArrange(const edm::ParameterSet& cfg)
   if (_weightById) {
     std::ifstream inFile;
     inFile.open(_weightByIdFile.c_str());
-    int ctr = 0;
     while (!inFile.eof()) {
-      ctr++;
       unsigned int listId;
       inFile >> listId;
       inFile.ignore(256, '\n');
@@ -855,8 +853,8 @@ void MuonGeometryArrange::compareGeometries(Alignable* refAli, Alignable* curAli
         TotalX += Rtotal;
         break;
       }  // end of else
-    }    // end of for on int i
-  }      // end of for on ich
+    }  // end of for on int i
+  }  // end of for on ich
 
   // At this point we should have a total displacement and total L
   TotalX = TotalX / nUsed;
@@ -1136,8 +1134,8 @@ bool MuonGeometryArrange::isMother(Alignable* ali) {
   for (int i = 0; i < size; i++) {
     if (checkChosen(aliComp[i]))
       return true;  // A ring has CSC chambers
-  }                 // as subcomponents
-  return false;     // 1'st layer of subcomponents weren't CSC chambers
+  }  // as subcomponents
+  return false;  // 1'st layer of subcomponents weren't CSC chambers
 }
 //////////////////////////////////////////////////
 
@@ -1192,8 +1190,8 @@ bool MuonGeometryArrange::passChosen(Alignable* ali) {
   for (int i = 0; i < size; i++) {
     if (checkChosen(aliComp[i]))
       return true;  // A ring has CSC chambers
-  }                 // as subcomponents
-  return false;     // 1'st layer of subcomponents weren't CSC chambers
+  }  // as subcomponents
+  return false;  // 1'st layer of subcomponents weren't CSC chambers
 }
 //////////////////////////////////////////////////
 bool MuonGeometryArrange::passIdCut(uint32_t id) {

@@ -122,9 +122,9 @@ public:
 
             return (bool)ret;
           }  // end if found 2 "loose" jet ID jets
-        }    // end if delta phi
-      }      // end calo kin cuts
-    }        // end if calo cuts
+        }  // end if delta phi
+      }  // end calo kin cuts
+    }  // end if calo cuts
 
     if (considerCut(pfCuts_)) {
       passCut(ret, pfCuts_);
@@ -150,9 +150,9 @@ public:
 
             return (bool)ret;
           }  // end if found 2 "loose" jet ID jets
-        }    // end if delta phi
-      }      // end pf kin cuts
-    }        // end if pf cuts
+        }  // end if delta phi
+      }  // end pf kin cuts
+    }  // end if pf cuts
 
     setIgnored(ret);
 
@@ -227,7 +227,7 @@ int main(int argc, char* argv[]) {
 
   cout << "Getting parameters" << endl;
   // Get the python configuration
-  ProcessDescImpl builder(argv[1]);
+  ProcessDescImpl builder(argv[1], true);
   std::shared_ptr<edm::ProcessDesc> b = builder.processDesc();
   std::shared_ptr<edm::ParameterSet> parameters = b->getProcessPSet();
   parameters->registerIt();
@@ -474,8 +474,8 @@ int main(int argc, char* argv[]) {
           hists["hist_good_nConstituents"]->Fill(jet1.nConstituents());
 
         }  // end if passed calo jet id
-      }    // end if passed dphi cuts
-    }      // end if passed kin cuts
+      }  // end if passed dphi cuts
+    }  // end if passed kin cuts
 
     ///------------------
     /// PF JETS

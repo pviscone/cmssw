@@ -73,7 +73,10 @@ void HGCalGeometry::newCell(
   } else {
     cells = m_topology.dddConstants().numberCellsHexagon(id.iLay, id.iSec1, id.iSec2, false);
 #ifdef EDM_ML_DEBUG
-    edm::LogVerbatim("HGCalGeom") << "NewCell " << HGCSiliconDetId(detId) << " GEOM " << HGCSiliconDetId(geomId);
+    if (detId.det() == DetId::Forward)
+      edm::LogVerbatim("HGCalGeom") << "NewCell " << HFNoseDetId(detId) << " GEOM " << HFNoseDetId(geomId);
+    else
+      edm::LogVerbatim("HGCalGeom") << "NewCell " << HGCSiliconDetId(detId) << " GEOM " << HGCSiliconDetId(geomId);
 #endif
   }
   const uint32_t cellIndex(m_topology.detId2denseGeomId(geomId));
@@ -132,11 +135,14 @@ void HGCalGeometry::newCell(
 #ifdef EDM_ML_DEBUG
           ++cellAll;
 #endif
-          if (m_topology.dddConstants().cellInLayer(id.iSec1, id.iSec2, u, v, id.iLay, true)) {
+          if (m_topology.dddConstants().cellInLayer(id.iSec1, id.iSec2, u, v, id.iLay, id.zSide, true)) {
             m_validIds.emplace_back(idc);
 #ifdef EDM_ML_DEBUG
             ++cellSelect;
-            edm::LogVerbatim("HGCalGeom") << "Valid Id [" << u << ", " << v << "] " << HGCSiliconDetId(idc);
+            if (idc.det() == DetId::Forward)
+              edm::LogVerbatim("HGCalGeom") << "Valid Id [" << u << ", " << v << "] " << HFNoseDetId(idc);
+            else
+              edm::LogVerbatim("HGCalGeom") << "Valid Id [" << u << ", " << v << "] " << HGCSiliconDetId(idc);
 #endif
           }
         }
@@ -178,9 +184,9 @@ void HGCalGeometry::newCell(
 #endif
 }
 
-std::shared_ptr<const CaloCellGeometry> HGCalGeometry::getGeometry(const DetId& detId) const {
+CaloCellGeometryMayOwnPtr HGCalGeometry::getGeometry(const DetId& detId) const {
   if (detId == DetId())
-    return nullptr;  // nothing to get
+    return CaloCellGeometryMayOwnPtr();  // nothing to get
   DetId geomId = getGeometryDetId(detId);
   const uint32_t cellIndex(m_topology.detId2denseGeomId(geomId));
   const GlobalPoint pos = (detId != geomId) ? getPosition(detId, false) : GlobalPoint();
@@ -196,6 +202,10 @@ bool HGCalGeometry::present(const DetId& detId) const {
 }
 
 GlobalPoint HGCalGeometry::getPosition(const DetId& detid, bool debug) const {
+  return getPosition(detid, false, debug);
+}
+
+GlobalPoint HGCalGeometry::getPosition(const DetId& detid, bool cog, bool debug) const {
   unsigned int cellIndex = indexFor(detid);
   GlobalPoint glob;
   unsigned int maxSize = (m_topology.tileTrapezoid() ? m_cellVec2.size() : m_cellVec.size());
@@ -217,12 +227,17 @@ GlobalPoint HGCalGeometry::getPosition(const DetId& detid, bool debug) const {
                                       << lcoord.y() << " ID " << id.iLay << ":" << id.iSec1 << ":" << id.iCell1
                                       << " Global " << glob;
     } else {
-      if (debug)
-        edm::LogVerbatim("HGCalGeom") << "getPosition for " << HGCSiliconDetId(detid) << " Layer " << id.iLay
-                                      << " Wafer " << id.iSec1 << ":" << id.iSec2 << " Cell " << id.iCell1 << ":"
-                                      << id.iCell2;
+      if (debug) {
+        if (detid.det() == DetId::Forward)
+          edm::LogVerbatim("HGCalGeom") << "getPosition for " << HFNoseDetId(detid) << " Layer " << id.iLay << " Wafer "
+                                        << id.iSec1 << ":" << id.iSec2 << " Cell " << id.iCell1 << ":" << id.iCell2;
+        else
+          edm::LogVerbatim("HGCalGeom") << "getPosition for " << HGCSiliconDetId(detid) << " Layer " << id.iLay
+                                        << " Wafer " << id.iSec1 << ":" << id.iSec2 << " Cell " << id.iCell1 << ":"
+                                        << id.iCell2;
+      }
       xy = m_topology.dddConstants().locateCell(
-          id.iLay, id.iSec1, id.iSec2, id.iCell1, id.iCell2, true, true, false, debug);
+          id.zSide, id.iLay, id.iSec1, id.iSec2, id.iCell1, id.iCell2, true, true, false, cog, debug);
       double xx = id.zSide * xy.first;
       double zz = id.zSide * m_topology.dddConstants().waferZ(id.iLay, true);
       glob = GlobalPoint(xx, xy.second, zz);
@@ -231,6 +246,9 @@ GlobalPoint HGCalGeometry::getPosition(const DetId& detid, bool debug) const {
                                       << xy.second << " ID " << id.iLay << ":" << id.iSec1 << ":" << id.iSec2 << ":"
                                       << id.iCell1 << ":" << id.iCell2 << " Global " << glob;
     }
+  } else {
+    edm::LogVerbatim("HGCalGeom") << "Cannot recognize " << std::hex << detid.rawId() << " cellIndex " << cellIndex
+                                  << ":" << maxSize << " Type " << m_topology.tileTrapezoid();
   }
   return glob;
 }
@@ -306,7 +324,7 @@ HGCalGeometry::CornersVec HGCalGeometry::getCorners(const DetId& detid) const {
       }
     } else {
       xy = m_topology.dddConstants().locateCell(
-          id.iLay, id.iSec1, id.iSec2, id.iCell1, id.iCell2, true, false, true, debugLocate);
+          id.zSide, id.iLay, id.iSec1, id.iSec2, id.iCell1, id.iCell2, true, false, true, false, debugLocate);
       float zz = m_topology.dddConstants().waferZ(id.iLay, true);
       float dx = k_fac2 * m_cellVec[cellIndex].param()[FlatHexagon::k_r];
       float dy = k_fac1 * m_cellVec[cellIndex].param()[FlatHexagon::k_R];
@@ -316,7 +334,7 @@ HGCalGeometry::CornersVec HGCalGeometry::getCorners(const DetId& detid) const {
       static const int signz[] = {-1, -1, -1, -1, -1, -1, 1, 1, 1, 1, 1, 1};
       for (unsigned int i = 0; i < ncorner; ++i) {
         auto xyglob = m_topology.dddConstants().localToGlobal8(
-            id.iLay, id.iSec1, id.iSec2, (xy.first + signx[i] * dx), (xy.second + signy[i] * dy), true, false);
+            id.zSide, id.iLay, id.iSec1, id.iSec2, (xy.first + signx[i] * dx), (xy.second + signy[i] * dy), true, false);
         double xx = id.zSide * xyglob.first;
         co[i] = GlobalPoint(xx, xyglob.second, id.zSide * (zz + signz[i] * dz));
       }
@@ -363,14 +381,14 @@ HGCalGeometry::CornersVec HGCalGeometry::get8Corners(const DetId& detid) const {
       }
     } else {
       xy = m_topology.dddConstants().locateCell(
-          id.iLay, id.iSec1, id.iSec2, id.iCell1, id.iCell2, true, false, true, debugLocate);
+          id.zSide, id.iLay, id.iSec1, id.iSec2, id.iCell1, id.iCell2, true, false, true, false, debugLocate);
       dx = k_fac2 * m_cellVec[cellIndex].param()[FlatHexagon::k_r];
       float dy = k_fac1 * m_cellVec[cellIndex].param()[FlatHexagon::k_R];
       float dz = -id.zSide * m_cellVec[cellIndex].param()[FlatHexagon::k_dZ];
       float zz = m_topology.dddConstants().waferZ(id.iLay, true);
       for (unsigned int i = 0; i < ncorner; ++i) {
         auto xyglob = m_topology.dddConstants().localToGlobal8(
-            id.iLay, id.iSec1, id.iSec2, (xy.first + signx[i] * dx), (xy.second + signy[i] * dy), true, false);
+            id.zSide, id.iLay, id.iSec1, id.iSec2, (xy.first + signx[i] * dx), (xy.second + signy[i] * dy), true, false);
         double xx = id.zSide * xyglob.first;
         co[i] = GlobalPoint(xx, xyglob.second, id.zSide * (zz + signz[i] * dz));
       }
@@ -402,7 +420,8 @@ HGCalGeometry::CornersVec HGCalGeometry::getNewCorners(const DetId& detid, bool 
       co[i] = GlobalPoint(
           (r + signr[i] * dr) * cos(fi + signf[i] * dfi), (r + signr[i] * dr) * sin(fi + signf[i] * dfi), (v.z() + dz));
     }
-    co[ncorner - 1] = co[0];
+    // Used to pass downstream the thickness of this cell
+    co[ncorner - 1] = GlobalPoint(0, 0, -2 * dz);
   } else if (cellIndex < m_cellVec.size() && m_det != DetId::HGCalHSc) {
     std::pair<float, float> xy;
     float dx = k_fac2 * m_cellVec[cellIndex].param()[FlatHexagon::k_r];
@@ -423,7 +442,7 @@ HGCalGeometry::CornersVec HGCalGeometry::getNewCorners(const DetId& detid, bool 
       }
     } else {
       xy = m_topology.dddConstants().locateCell(
-          id.iLay, id.iSec1, id.iSec2, id.iCell1, id.iCell2, true, false, true, debug);
+          id.zSide, id.iLay, id.iSec1, id.iSec2, id.iCell1, id.iCell2, true, false, true, false, debug);
       float zz = m_topology.dddConstants().waferZ(id.iLay, true);
       for (unsigned int i = 0; i < ncorner; ++i) {
         double xloc = xy.first + signx[i] * dx;
@@ -433,12 +452,14 @@ HGCalGeometry::CornersVec HGCalGeometry::getNewCorners(const DetId& detid, bool 
           edm::LogVerbatim("HGCalGeom") << "Corner " << i << " x " << xy.first << ":" << xloc << " y " << xy.second
                                         << ":" << yloc << " z " << zz << ":" << id.zSide * (zz + dz);
 #endif
-        auto xyglob = m_topology.dddConstants().localToGlobal8(id.iLay, id.iSec1, id.iSec2, xloc, yloc, true, debug);
+        auto xyglob =
+            m_topology.dddConstants().localToGlobal8(id.zSide, id.iLay, id.iSec1, id.iSec2, xloc, yloc, true, debug);
         double xx = id.zSide * xyglob.first;
         co[i] = GlobalPoint(xx, xyglob.second, id.zSide * (zz + dz));
       }
     }
-    co[ncorner - 1] = co[0];
+    // Used to pass downstream the thickness of this cell
+    co[ncorner - 1] = GlobalPoint(0, 0, -2 * dz);
   }
   return co;
 }
@@ -539,10 +560,13 @@ DetId HGCalGeometry::getClosestCell(const GlobalPoint& r) const {
       id.iType = kxy[2];
     } else {
       id.iLay = m_topology.dddConstants().getLayer(r.z(), true);
+      int zside = (r.z() > 0) ? 1 : -1;
 #ifdef EDM_ML_DEBUG
-      edm::LogVerbatim("HGCalGeom") << "ZZ " << r.z() << " Layer " << id.iLay << " Global " << r << "  Local " << local;
+      edm::LogVerbatim("HGCalGeom") << "ZZ " << r.z() << ":" << zside << " Layer " << id.iLay << " Global " << r
+                                    << "  Local " << local;
 #endif
-      const auto& kxy = m_topology.dddConstants().assignCellHex(local.x(), local.y(), id.iLay, false, true);
+      const auto& kxy =
+          m_topology.dddConstants().assignCellHex(local.x(), local.y(), zside, id.iLay, true, false, true);
       id.iSec1 = kxy[0];
       id.iSec2 = kxy[1];
       id.iType = kxy[2];
@@ -580,10 +604,13 @@ DetId HGCalGeometry::getClosestCellHex(const GlobalPoint& r, bool extend) const 
     }
     if (m_topology.waferHexagon8()) {
       id.iLay = m_topology.dddConstants().getLayer(r.z(), true);
+      int zside = (r.z() > 0) ? 1 : -1;
 #ifdef EDM_ML_DEBUG
-      edm::LogVerbatim("HGCalGeom") << "ZZ " << r.z() << " Layer " << id.iLay << " Global " << r << "  Local " << local;
+      edm::LogVerbatim("HGCalGeom") << "ZZ " << r.z() << ":" << zside << " Layer " << id.iLay << " Global " << r
+                                    << "  Local " << local;
 #endif
-      const auto& kxy = m_topology.dddConstants().assignCellHex(local.x(), local.y(), id.iLay, extend, true);
+      const auto& kxy =
+          m_topology.dddConstants().assignCellHex(local.x(), local.y(), zside, id.iLay, true, extend, true);
       id.iSec1 = kxy[0];
       id.iSec2 = kxy[1];
       id.iType = kxy[2];
@@ -636,63 +663,62 @@ unsigned int HGCalGeometry::indexFor(const DetId& detId) const {
 
 unsigned int HGCalGeometry::sizeForDenseIndex() const { return m_topology.totalGeomModules(); }
 
-const CaloCellGeometry* HGCalGeometry::getGeometryRawPtr(uint32_t index) const {
+CaloCellGeometryPtr HGCalGeometry::getGeometryRawPtr(uint32_t index) const {
   // Modify the RawPtr class
   if (m_det == DetId::HGCalHSc) {
     if (m_cellVec2.size() < index)
-      return nullptr;
+      return CaloCellGeometryPtr();
     const CaloCellGeometry* cell(&m_cellVec2[index]);
-    return (nullptr == cell->param() ? nullptr : cell);
+    return CaloCellGeometryPtr(nullptr == cell->param() ? nullptr : cell);
   } else {
-    if (m_cellVec2.size() < index)
-      return nullptr;
+    if (m_cellVec.size() < index)
+      return CaloCellGeometryPtr();
     const CaloCellGeometry* cell(&m_cellVec[index]);
-    return (nullptr == cell->param() ? nullptr : cell);
+    return CaloCellGeometryPtr(nullptr == cell->param() ? nullptr : cell);
   }
 }
 
-std::shared_ptr<const CaloCellGeometry> HGCalGeometry::cellGeomPtr(uint32_t index) const {
+CaloCellGeometryPtr HGCalGeometry::cellGeomPtr(uint32_t index) const {
   if ((index >= m_cellVec.size() && m_det != DetId::HGCalHSc) ||
       (index >= m_cellVec2.size() && m_det == DetId::HGCalHSc) || (m_validGeomIds[index].rawId() == 0))
-    return nullptr;
-  static const auto do_not_delete = [](const void*) {};
+    return CaloCellGeometryPtr();
   if (m_det == DetId::HGCalHSc) {
-    auto cell = std::shared_ptr<const CaloCellGeometry>(&m_cellVec2[index], do_not_delete);
+    auto cell = &m_cellVec2[index];
     if (nullptr == cell->param())
-      return nullptr;
-    return cell;
+      return CaloCellGeometryPtr();
+    return CaloCellGeometryPtr(cell);
   } else {
-    auto cell = std::shared_ptr<const CaloCellGeometry>(&m_cellVec[index], do_not_delete);
+    auto cell = &m_cellVec[index];
     if (nullptr == cell->param())
-      return nullptr;
-    return cell;
+      return CaloCellGeometryPtr(nullptr);
+    return CaloCellGeometryPtr(cell);
   }
 }
 
-std::shared_ptr<const CaloCellGeometry> HGCalGeometry::cellGeomPtr(uint32_t index, const GlobalPoint& pos) const {
+CaloCellGeometryMayOwnPtr HGCalGeometry::cellGeomPtr(uint32_t index, const GlobalPoint& pos) const {
   if ((index >= m_cellVec.size() && m_det != DetId::HGCalHSc) ||
       (index >= m_cellVec2.size() && m_det == DetId::HGCalHSc) || (m_validGeomIds[index].rawId() == 0))
-    return nullptr;
+    return CaloCellGeometryMayOwnPtr();
   if (pos == GlobalPoint())
-    return cellGeomPtr(index);
+    return CaloCellGeometryMayOwnPtr(cellGeomPtr(index));
   if (m_det == DetId::HGCalHSc) {
-    auto cell = std::make_shared<FlatTrd>(m_cellVec2[index]);
+    auto cell = std::make_unique<FlatTrd>(m_cellVec2[index]);
     cell->setPosition(pos);
 #ifdef EDM_ML_DEBUG
     edm::LogVerbatim("HGCalGeom") << "cellGeomPtr " << index << ":" << cell;
 #endif
     if (nullptr == cell->param())
-      return nullptr;
-    return cell;
+      return CaloCellGeometryMayOwnPtr();
+    return CaloCellGeometryMayOwnPtr(std::move(cell));
   } else {
-    auto cell = std::make_shared<FlatHexagon>(m_cellVec[index]);
+    auto cell = std::make_unique<FlatHexagon>(m_cellVec[index]);
     cell->setPosition(pos);
 #ifdef EDM_ML_DEBUG
     edm::LogVerbatim("HGCalGeom") << "cellGeomPtr " << index << ":" << cell;
 #endif
     if (nullptr == cell->param())
-      return nullptr;
-    return cell;
+      return CaloCellGeometryMayOwnPtr();
+    return CaloCellGeometryMayOwnPtr(std::move(cell));
   }
 }
 

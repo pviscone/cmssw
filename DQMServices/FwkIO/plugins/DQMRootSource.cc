@@ -194,20 +194,26 @@ struct DQMTTreeIO {
 
     void read(ULong64_t iIndex, DQMStore* dqmstore, int run, int lumi) override {
       // This will populate the fields as defined in setTree method
-      m_tree->GetEntry(iIndex);
+      try {
+        m_tree->GetEntry(iIndex);
 
-      auto key = makeKey(*m_fullName, run, lumi);
-      auto existing = dqmstore->findOrRecycle(key);
-      if (existing) {
-        // TODO: make sure there is sufficient locking here.
-        DQMMergeHelper::mergeTogether(existing->getTH1(), m_buffer);
-      } else {
-        // We make our own MEs here, to avoid a round-trip through the booking API.
-        MonitorElementData meData;
-        meData.key_ = key;
-        meData.value_.object_ = std::unique_ptr<T>((T*)(m_buffer->Clone()));
-        auto me = new MonitorElement(std::move(meData));
-        dqmstore->putME(me);
+        auto key = makeKey(*m_fullName, run, lumi);
+        auto existing = dqmstore->findOrRecycle(key);
+        if (existing) {
+          // TODO: make sure there is sufficient locking here.
+          DQMMergeHelper::mergeTogether(existing->getTH1(), m_buffer);
+        } else {
+          // We make our own MEs here, to avoid a round-trip through the booking API.
+          MonitorElementData meData;
+          meData.key_ = key;
+          meData.value_.object_ = std::unique_ptr<T>((T*)(m_buffer->Clone()));
+          auto me = new MonitorElement(std::move(meData));
+          dqmstore->putME(me);
+        }
+      } catch (cms::Exception& iExcept) {
+        using namespace std::string_literals;
+        iExcept.addContext("failed while reading "s + *m_fullName);
+        throw;
       }
     }
 
@@ -324,7 +330,7 @@ public:
   static void fillDescriptions(edm::ConfigurationDescriptions& descriptions);
 
 private:
-  edm::InputSource::ItemType getNextItemType() override;
+  edm::InputSource::ItemTypeInfo getNextItemType() override;
 
   std::shared_ptr<edm::FileBlock> readFile_() override;
   std::shared_ptr<edm::RunAuxiliary> readRunAuxiliary_() override;
@@ -434,7 +440,7 @@ DQMRootSource::DQMRootSource(edm::ParameterSet const& iPSet, const edm::InputSou
           {"LUMI", MonitorElementData::Scope::LUMI},
           {"RUN", MonitorElementData::Scope::RUN},
           {"JOB", MonitorElementData::Scope::JOB}}[iPSet.getUntrackedParameter<std::string>("reScope", "JOB")]),
-      m_nextItemType(edm::InputSource::IsFile),
+      m_nextItemType(edm::InputSource::ItemType::IsFile),
       m_treeReaders(kNIndicies, std::shared_ptr<TreeReaderBase>()),
       m_currentIndex(0),
       m_openFiles(std::vector<OpenFileInfo>()),
@@ -442,7 +448,7 @@ DQMRootSource::DQMRootSource(edm::ParameterSet const& iPSet, const edm::InputSou
   edm::sortAndRemoveOverlaps(m_lumisToProcess);
 
   if (m_catalog.fileNames(0).empty()) {
-    m_nextItemType = edm::InputSource::IsStop;
+    m_nextItemType = edm::InputSource::ItemType::IsStop;
   } else {
     m_treeReaders[kIntIndex].reset(new TreeSimpleReader<Long64_t>(MonitorElementData::Kind::INT, m_rescope));
     m_treeReaders[kFloatIndex].reset(new TreeSimpleReader<double>(MonitorElementData::Kind::REAL, m_rescope));
@@ -450,9 +456,11 @@ DQMRootSource::DQMRootSource(edm::ParameterSet const& iPSet, const edm::InputSou
     m_treeReaders[kTH1FIndex].reset(new TreeObjectReader<TH1F>(MonitorElementData::Kind::TH1F, m_rescope));
     m_treeReaders[kTH1SIndex].reset(new TreeObjectReader<TH1S>(MonitorElementData::Kind::TH1S, m_rescope));
     m_treeReaders[kTH1DIndex].reset(new TreeObjectReader<TH1D>(MonitorElementData::Kind::TH1D, m_rescope));
+    m_treeReaders[kTH1IIndex].reset(new TreeObjectReader<TH1I>(MonitorElementData::Kind::TH1I, m_rescope));
     m_treeReaders[kTH2FIndex].reset(new TreeObjectReader<TH2F>(MonitorElementData::Kind::TH2F, m_rescope));
     m_treeReaders[kTH2SIndex].reset(new TreeObjectReader<TH2S>(MonitorElementData::Kind::TH2S, m_rescope));
     m_treeReaders[kTH2DIndex].reset(new TreeObjectReader<TH2D>(MonitorElementData::Kind::TH2D, m_rescope));
+    m_treeReaders[kTH2IIndex].reset(new TreeObjectReader<TH2I>(MonitorElementData::Kind::TH2I, m_rescope));
     m_treeReaders[kTH3FIndex].reset(new TreeObjectReader<TH3F>(MonitorElementData::Kind::TH3F, m_rescope));
     m_treeReaders[kTProfileIndex].reset(new TreeObjectReader<TProfile>(MonitorElementData::Kind::TPROFILE, m_rescope));
     m_treeReaders[kTProfile2DIndex].reset(
@@ -475,7 +483,7 @@ DQMRootSource::~DQMRootSource() {
 // member functions
 //
 
-edm::InputSource::ItemType DQMRootSource::getNextItemType() { return m_nextItemType; }
+edm::InputSource::ItemTypeInfo DQMRootSource::getNextItemType() { return m_nextItemType; }
 
 // We will read the metadata of all files and fill m_fileMetadatas vector
 std::shared_ptr<edm::FileBlock> DQMRootSource::readFile_() {
@@ -483,7 +491,7 @@ std::shared_ptr<edm::FileBlock> DQMRootSource::readFile_() {
   m_openFiles.reserve(numFiles);
 
   for (auto& fileitem : m_catalog.fileCatalogItems()) {
-    TFile* file;
+    TFile* file = nullptr;
     std::string pfn;
     std::string lfn;
     std::list<std::string> exInfo;
@@ -548,7 +556,7 @@ std::shared_ptr<edm::FileBlock> DQMRootSource::readFile_() {
       }
     }  //end loop over names of the file
 
-    if (!isGoodFile && m_skipBadFiles)
+    if (!file || (!isGoodFile && m_skipBadFiles))
       continue;
 
     std::unique_ptr<std::string> guid{file->Get<std::string>(kCmsGuid)};
@@ -622,9 +630,9 @@ std::shared_ptr<edm::FileBlock> DQMRootSource::readFile_() {
 
   // Stop if there's nothing to process. Otherwise start the run.
   if (m_fileMetadatas.empty())
-    m_nextItemType = edm::InputSource::IsStop;
+    m_nextItemType = edm::InputSource::ItemType::IsStop;
   else
-    m_nextItemType = edm::InputSource::IsRun;
+    m_nextItemType = edm::InputSource::ItemType::IsRun;
 
   // We have to return something but not sure why
   return std::make_shared<edm::FileBlock>();
@@ -720,18 +728,18 @@ bool DQMRootSource::isRunOrLumiTransition() const {
 
 void DQMRootSource::readNextItemType() {
   if (m_currentIndex == 0) {
-    m_nextItemType = edm::InputSource::IsRun;
+    m_nextItemType = edm::InputSource::ItemType::IsRun;
   } else if (m_currentIndex > m_fileMetadatas.size() - 1) {
     // We reached the end
-    m_nextItemType = edm::InputSource::IsStop;
+    m_nextItemType = edm::InputSource::ItemType::IsStop;
   } else {
     FileMetadata previousMetadata = m_fileMetadatas[m_currentIndex - 1];
     FileMetadata metadata = m_fileMetadatas[m_currentIndex];
 
     if (previousMetadata.m_run != metadata.m_run) {
-      m_nextItemType = edm::InputSource::IsRun;
+      m_nextItemType = edm::InputSource::ItemType::IsRun;
     } else if (previousMetadata.m_lumi != metadata.m_lumi) {
-      m_nextItemType = edm::InputSource::IsLumi;
+      m_nextItemType = edm::InputSource::ItemType::IsLumi;
     }
   }
 }

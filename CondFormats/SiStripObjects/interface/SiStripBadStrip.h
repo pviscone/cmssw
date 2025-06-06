@@ -55,12 +55,8 @@ public:
   typedef Registry::const_iterator RegistryIterator;
   typedef Container InputVector;
 
-  SiStripBadStrip(){};
-  SiStripBadStrip(const SiStripBadStrip& orig) {
-    v_badstrips = orig.v_badstrips;
-    indexes = orig.indexes;
-  }
-  virtual ~SiStripBadStrip(){};
+  SiStripBadStrip() {}
+  virtual ~SiStripBadStrip() {}
 
   bool put(const uint32_t& detID, const InputVector& vect) { return put(detID, Range(vect.begin(), vect.end())); }
   bool put(const uint32_t& detID, Range input);

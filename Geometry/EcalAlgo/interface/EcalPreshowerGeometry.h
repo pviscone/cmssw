@@ -30,11 +30,11 @@ public:
   typedef CaloSubdetectorGeometry::ParVecVec ParVecVec;
   typedef ESDetId DetIdType;
 
-  enum { k_NumberOfCellsForCorners = ESDetId::kSizeForDenseIndexing };
+  static constexpr int k_NumberOfCellsForCorners = ESDetId::kSizeForDenseIndexing;
 
-  enum { k_NumberOfShapes = 4 };
+  static constexpr int k_NumberOfShapes = 4;
 
-  enum { k_NumberOfParametersPerShape = 4 };
+  static constexpr int k_NumberOfParametersPerShape = 4;
 
   static std::string dbString() { return "PEcalPreshowerRcd"; }
 
@@ -88,7 +88,7 @@ public:
 
 protected:
   // Modify the RawPtr class
-  const CaloCellGeometry* getGeometryRawPtr(uint32_t index) const override;
+  CaloCellGeometryPtr getGeometryRawPtr(uint32_t index) const override;
 
 private:
   const CCGFloat m_xWidWaf;

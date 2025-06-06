@@ -963,7 +963,7 @@ JetPlusTrackCorrector::P4 JetPlusTrackCorrector::calculateCorr(const P4& jet,
         }
         if (is_pion) {
           outer *= response_.value(ieta, ipt);
-        }                     //@@ Scale by pion response
+        }  //@@ Scale by pion response
         correction -= outer;  //@@ Subtract
 
         // Calculate the sum of responses
@@ -994,7 +994,7 @@ JetPlusTrackCorrector::P4 JetPlusTrackCorrector::calculateCorr(const P4& jet,
       }
 
     }  // loop through tracks
-  }    // ntracks != 0
+  }  // ntracks != 0
 
   if (in_cone_at_vertex) {
     theResponseOfChargedWithEff += theSumResp;
@@ -1183,8 +1183,6 @@ void JetPlusTrackCorrector::rebuildJta(const reco::Jet& fJet,
   TrackRefs tracks = tracksthis;
   tracksthis.clear();
 
-  int tr = 0;
-
   double jetEta = fJet.eta();
   double jetPhi = fJet.phi();
   double jetEtIn = 1.0 / fJet.et();
@@ -1203,7 +1201,6 @@ void JetPlusTrackCorrector::rebuildJta(const reco::Jet& fJet,
       scalethis = 1. * jetEtIn;
     if (jetSplitMerge_ == 2)
       scalethis = dR2this * jetEtIn;
-    tr++;
     int flag = 1;
     for (JetBaseRefIterator ii = theJets.begin(); ii != theJets.end(); ii++) {
       if (&(**ii) == &fJet) {
@@ -1324,6 +1321,7 @@ double JetPlusTrackCorrector::correctAA(const reco::Jet& fJet,
 
   //=================================================================>
 
+  /*
   //=================================================================>
   // Look for in-out tracks
 
@@ -1356,6 +1354,7 @@ double JetPlusTrackCorrector::correctAA(const reco::Jet& fJet,
   //===================================================================>
 
   //=>
+*/
   double SquareEtaRingWithoutJets = ja;
 
   EnergyOfBackgroundCharged = EnergyOfBackgroundCharged / SquareEtaRingWithoutJets;

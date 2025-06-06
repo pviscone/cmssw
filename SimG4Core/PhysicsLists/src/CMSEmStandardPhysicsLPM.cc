@@ -55,10 +55,12 @@
 #include "G4GammaGeneralProcess.hh"
 #include "G4EmBuilder.hh"
 
-#include "G4SystemOfUnits.hh"
+#include <CLHEP/Units/SystemOfUnits.h>
 
-CMSEmStandardPhysicsLPM::CMSEmStandardPhysicsLPM(G4int ver) : G4VPhysicsConstructor("CMSEmStandard_emm") {
+CMSEmStandardPhysicsLPM::CMSEmStandardPhysicsLPM(G4int ver, const edm::ParameterSet& p)
+    : G4VPhysicsConstructor("CMSEmStandard_emm") {
   SetVerboseLevel(ver);
+  // EM parameters specific for this EM physics configuration
   G4EmParameters* param = G4EmParameters::Instance();
   param->SetDefaults();
   param->SetVerbose(ver);
@@ -67,9 +69,10 @@ CMSEmStandardPhysicsLPM::CMSEmStandardPhysicsLPM(G4int ver) : G4VPhysicsConstruc
   param->SetMscRangeFactor(0.2);
   param->SetMscStepLimitType(fMinimal);
   SetPhysicsType(bElectromagnetic);
+  double tcut = p.getParameter<double>("G4TrackingCut") * CLHEP::MeV;
+  param->SetLowestElectronEnergy(tcut);
+  param->SetLowestMuHadEnergy(tcut);
 }
-
-CMSEmStandardPhysicsLPM::~CMSEmStandardPhysicsLPM() {}
 
 void CMSEmStandardPhysicsLPM::ConstructParticle() {
   // minimal set of particles for EM physics
@@ -111,7 +114,7 @@ void CMSEmStandardPhysicsLPM::ConstructProcess() {
   G4CoulombScattering* kss = nullptr;
 
   // high energy limit for e+- scattering models and bremsstrahlung
-  G4double highEnergyLimit = 100 * MeV;
+  G4double highEnergyLimit = 100 * CLHEP::MeV;
 
   G4Region* aRegion = G4RegionStore::GetInstance()->GetRegion("HcalRegion", false);
   G4Region* bRegion = G4RegionStore::GetInstance()->GetRegion("HGCalRegion", false);

@@ -224,8 +224,8 @@ void UnifiedSCCollectionProducer::produce(edm::Event& evt, const edm::EventSetup
       basicClusterOwner.push_back(std::make_pair(jsc, 1));
     }
   }  // end loop over clean SC _________________________________________________
-     //
-     //
+  //
+  //
 
   // Final check: in the endcap BC may exist that are not associated to SC,
   // we need to recover them as well (e.g. multi5x5 algo)
@@ -281,7 +281,6 @@ void UnifiedSCCollectionProducer::produce(edm::Event& evt, const edm::EventSetup
     edm::LogWarning("MissingInput") << "could not handle the new BasicClusters!";
     return;
   }
-  reco::BasicClusterCollection basicClustersProd = *bccHandle;
 
   LogTrace("UnifiedSC") << "Got the BasicClusters from the event again";
   //
@@ -294,7 +293,6 @@ void UnifiedSCCollectionProducer::produce(edm::Event& evt, const edm::EventSetup
     edm::LogWarning("MissingInput") << "could not handle the new BasicClusters (Unclean Only)!";
     return;
   }
-  reco::BasicClusterCollection basicClustersUncleanOnlyProd = *bccHandleUncleanOnly;
   LogTrace("UnifiedSC") << "Got the BasicClusters from the event again  (Unclean Only)";
   //
 

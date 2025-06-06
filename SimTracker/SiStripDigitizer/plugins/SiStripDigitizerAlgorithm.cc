@@ -60,7 +60,6 @@ SiStripDigitizerAlgorithm::SiStripDigitizerAlgorithm(const edm::ParameterSet& co
       inefficiency(conf.getParameter<double>("Inefficiency")),
       pedOffset((unsigned int)conf.getParameter<double>("PedestalsOffset")),
       PreMixing_(conf.getParameter<bool>("PreMixingMode")),
-      deadChannelToken_(iC.esConsumes()),
       pdtToken_(iC.esConsumes()),
       lorentzAngleToken_(iC.esConsumes(edm::ESInputTag("", conf.getParameter<std::string>("LorentzAngle")))),
       theSiHitDigitizer(new SiHitDigitizer(conf)),
@@ -108,9 +107,7 @@ SiStripDigitizerAlgorithm::SiStripDigitizerAlgorithm(const edm::ParameterSet& co
 
 SiStripDigitizerAlgorithm::~SiStripDigitizerAlgorithm() {}
 
-void SiStripDigitizerAlgorithm::initializeDetUnit(StripGeomDetUnit const* det, const edm::EventSetup& iSetup) {
-  auto const& deadChannel = iSetup.getData(deadChannelToken_);
-
+void SiStripDigitizerAlgorithm::initializeDetUnit(StripGeomDetUnit const* det, const SiStripBadStrip& deadChannel) {
   unsigned int detId = det->geographicalId().rawId();
   int numStrips = (det->specificTopology()).nstrips();
 
@@ -231,10 +228,10 @@ void SiStripDigitizerAlgorithm::accumulateSimHits(std::vector<PSimHit>::const_it
                 associationVector.push_back(AssociationInfo{
                     simHitIter->trackId(), simHitIter->eventId(), signalFromThisSimHit, simHitGlobalIndex, tofBin});
             }  // end of "if( signalFromThisSimHit!=0 )"
-          }    // end of loop over locAmpl strips
-        }      // end of "if( makeDigiSimLinks_ )"
-      }        // end of TOF check
-    }          // end for
+          }  // end of loop over locAmpl strips
+        }  // end of "if( makeDigiSimLinks_ )"
+      }  // end of TOF check
+    }  // end for
   }
   theSiPileUpSignals->add(detID, locAmpl, thisFirstChannelWithSignal, thisLastChannelWithSignal);
 
@@ -516,8 +513,8 @@ void SiStripDigitizerAlgorithm::digitize(edm::DetSet<SiStripDigi>& outdigi,
                                              iAssociationInfo.eventID,
                                              iAssociationInfo.contributionToADC / totalSimADC));
         }  // end of loop over associationInfo
-      }    // end of loop over the digis
-    }      // end of check that iAssociationInfoByChannel is a valid iterator
+      }  // end of loop over the digis
+    }  // end of check that iAssociationInfoByChannel is a valid iterator
     outdigi.data = digis;
   }  //if zeroSuppression
 
@@ -655,8 +652,8 @@ void SiStripDigitizerAlgorithm::digitize(edm::DetSet<SiStripDigi>& outdigi,
                                              iAssociationInfo.eventID,
                                              iAssociationInfo.contributionToADC / totalSimADC));
         }  // end of loop over associationInfo
-      }    // end of loop over the digis
-    }      // end of check that iAssociationInfoByChannel is a valid iterator
+      }  // end of loop over the digis
+    }  // end of check that iAssociationInfoByChannel is a valid iterator
 
     outrawdigi.data = rawdigis;
 

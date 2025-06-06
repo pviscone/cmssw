@@ -3,6 +3,7 @@
 #include "RecoParticleFlow/PFTracking/interface/PFDisplacedVertexCandidateFinder.h"
 
 #include "DataFormats/GeometryVector/interface/GlobalVector.h"
+#include "DataFormats/Math/interface/deltaPhi.h"
 #include "DataFormats/TrackReco/interface/Track.h"
 #include "DataFormats/VertexReco/interface/Vertex.h"
 
@@ -191,7 +192,7 @@ void PFDisplacedVertexCandidateFinder::link(const TrackBaseRef& el1,
     dist = -1;
     return;
   }
-  if (pt1 > 2 && pt2 > 2 && std::abs(phi1 - phi2) > 1) {
+  if (pt1 > 2 && pt2 > 2 && std::abs(::deltaPhi(phi1, phi2)) > 1) {
     dist = -1;
     return;
   }
@@ -313,10 +314,11 @@ bool PFDisplacedVertexCandidateFinder::goodPtResolution(const TrackBaseRef& trac
   double dxy = trackref->dxy(pvtx_);
 
   double pt_error = dpt / pt * 100;
+  double qoverpError = trackref->qoverpError();
 
   LogDebug("PFDisplacedVertexCandidateFinder")
       << " PFDisplacedVertexFinder: PFrecTrack->Track Pt= " << pt << " dPt/Pt = " << pt_error << "% nChi2 = " << nChi2;
-  if (nChi2 > nChi2_max_ || pt < pt_min_) {
+  if (nChi2 > nChi2_max_ || pt < pt_min_ || qoverpError > qoverpError_max_) {
     LogDebug("PFDisplacedVertexCandidateFinder") << " PFBlockAlgo: skip badly measured or low pt track"
                                                  << " nChi2_cut = " << 5 << " pt_cut = " << 0.2;
     return false;

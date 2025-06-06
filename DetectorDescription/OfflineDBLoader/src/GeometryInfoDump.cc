@@ -95,7 +95,6 @@ void GeometryInfoDump::dumpInfo(
     std::set<DDLogicalPart> lpStore;
     adjl_iterator git = gra.begin();
     adjl_iterator gend = gra.end();
-    Graph::index_type i = 0;
     for (; git != gend; ++git) {
       const DDLogicalPart& ddLP = gra.nodeData(git);
       if (lpStore.find(ddLP) != lpStore.end() && !ddLP.attachedSpecifics().empty()) {
@@ -104,7 +103,6 @@ void GeometryInfoDump::dumpInfo(
       }
       lpStore.insert(ddLP);
 
-      ++i;
       if (!git->empty()) {
         // ask for children of ddLP
         for (const auto& cit : *git) {
@@ -115,8 +113,8 @@ void GeometryInfoDump::dumpInfo(
           }
           lpStore.insert(ddcurLP);
         }  // iterate over children
-      }    // if (children)
-    }      // iterate over graph nodes
+      }  // if (children)
+    }  // iterate over graph nodes
     dump.close();
   }
 }

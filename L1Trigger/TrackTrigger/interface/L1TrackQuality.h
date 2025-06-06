@@ -1,6 +1,5 @@
 /*
 Track Quality Header file
-
 C.Brown 28/07/20
 */
 
@@ -16,21 +15,18 @@ C.Brown 28/07/20
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/EventSetup.h"
 #include "FWCore/Framework/interface/Frameworkfwd.h"
-#include "FWCore/Framework/interface/EDProducer.h"
-
 #include "FWCore/Framework/interface/MakerMacros.h"
-#include "FWCore/Framework/interface/ESHandle.h"
-
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
-
 #include "DataFormats/L1TrackTrigger/interface/TTTrack.h"
+#include "DataFormats/L1TrackTrigger/interface/TTTrack_TrackWord.h"
 #include "DataFormats/L1TrackTrigger/interface/TTTypes.h"
+#include <memory>
+
+#include "conifer.h"
+#include "ap_fixed.h"
 
 class L1TrackQuality {
 public:
-  // Enum class used for determining prediction behaviour in setL1TrackQuality
-  enum class QualityAlgorithm { Cut, GBDT, NN, None };
-
   //Default Constructor
   L1TrackQuality();
 
@@ -45,33 +41,33 @@ public:
 
   // Passed by reference a track without MVA filled, method fills the track's MVA field
   void setL1TrackQuality(TTTrack<Ref_Phase2TrackerDigi_>& aTrack);
+  // Function to run the BDT in isolation allowing a feature vector in the ap_fixed datatype to be passed
+  // and a single output to be returned which is then used to fill the bits in the Track Word for situations
+  // where a TTTrack datatype is unavailable to be passed to the track quality
+  float runEmulatedTQ(std::vector<ap_fixed<10, 5>> inputFeatures);
 
-  // To set private member data
-  void setCutParameters(std::string const& AlgorithmString,
-                        float maxZ0,
-                        float maxEta,
-                        float chi2dofMax,
-                        float bendchi2Max,
-                        float minPt,
-                        int nStubmin);
+  void setModel(edm::FileInPath const& model, std::vector<std::string> const& featureNames);
 
-  void setONNXModel(std::string const& AlgorithmString,
-                    edm::FileInPath const& ONNXmodel,
-                    std::string const& ONNXInputName,
-                    std::vector<std::string> const& featureNames);
+  void setBonusFeatures(std::vector<float> bonusFeatures);
+
+  // TQ MVA bin conversions
+  static constexpr double invSigmoid(double value) { return -log(1. / value - 1.); }
+  static constexpr std::array<double, 1 << TTTrack_TrackWord::TrackBitWidths::kMVAQualitySize> getTqMVAPreSigBins() {
+    return {{-16.,
+             invSigmoid(TTTrack_TrackWord::tqMVABins[1]),
+             invSigmoid(TTTrack_TrackWord::tqMVABins[2]),
+             invSigmoid(TTTrack_TrackWord::tqMVABins[3]),
+             invSigmoid(TTTrack_TrackWord::tqMVABins[4]),
+             invSigmoid(TTTrack_TrackWord::tqMVABins[5]),
+             invSigmoid(TTTrack_TrackWord::tqMVABins[6]),
+             invSigmoid(TTTrack_TrackWord::tqMVABins[7])}};
+  }
 
 private:
   // Private Member Data
-  QualityAlgorithm qualityAlgorithm_ = QualityAlgorithm::None;
-  edm::FileInPath ONNXmodel_;
-  std::string ONNXInputName_;
+  edm::FileInPath model_;
   std::vector<std::string> featureNames_;
-  float maxZ0_;
-  float maxEta_;
-  float chi2dofMax_;
-  float bendchi2Max_;
-  float minPt_;
-  int nStubsmin_;
-  float ONNXInvRScaling_;
+  bool useHPH_;
+  std::vector<float> bonusFeatures_;
 };
 #endif

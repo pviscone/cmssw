@@ -27,11 +27,17 @@ DEFINE_FWK_MODULE(L1TGMT);
 #include "DQM/L1TMonitor/interface/L1TStage2CaloLayer1.h"
 DEFINE_FWK_MODULE(L1TStage2CaloLayer1);
 
+#include "DQM/L1TMonitor/interface/L1TCaloLayer1Summary.h"
+DEFINE_FWK_MODULE(L1TCaloLayer1Summary);
+
 #include "DQM/L1TMonitor/interface/L1TStage2CaloLayer2.h"
 DEFINE_FWK_MODULE(L1TStage2CaloLayer2);
 
 #include "DQM/L1TMonitor/interface/L1TStage2uGMT.h"
 DEFINE_FWK_MODULE(L1TStage2uGMT);
+
+#include "DQM/L1TMonitor/interface/L1TStage2uGMTInputBxDistributions.h"
+DEFINE_FWK_MODULE(L1TStage2uGMTInputBxDistributions);
 
 #include "DQM/L1TMonitor/interface/L1TObjectsTiming.h"
 DEFINE_FWK_MODULE(L1TObjectsTiming);

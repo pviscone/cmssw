@@ -292,7 +292,7 @@ void SiStripSpyDisplayModule::analyze(const edm::Event& iEvent, const edm::Event
     const std::vector<const FedChannelConnection*>& conns = detCabling_->getConnections(*d);
     //cout << "________________________________________________" << endl;
     //cout << "FED channels found in detId " << *d << " is " << conns.size() << endl;
-    if (!(conns.size())) {
+    if (conns.empty()) {
       // TODO: Properly DEBUG/warning this...
       //cout << "Skipping detID " << uint32_t(*d) << endl;
       continue;
@@ -507,7 +507,7 @@ Bool_t SiStripSpyDisplayModule::MakeRawDigiHist_(const edm::Handle<edm::DetSetVe
   for (; idigi != digis_it->data.end(); ++idigi) {
     count++;
     hist->SetBinContent(count, static_cast<int>((*idigi).adc()));
-  }             // end of loop over the digis
+  }  // end of loop over the digis
   return true;  // Success! (Probably.)
 }
 
@@ -542,7 +542,7 @@ Bool_t SiStripSpyDisplayModule::MakeProcessedRawDigiHist_(
   for (; idigi != digis_it->data.end(); ++idigi) {
     count++;
     hist->SetBinContent(count, static_cast<float>((*idigi).adc()));
-  }             // end of loop over the digis
+  }  // end of loop over the digis
   return true;  // Success! (Probably.)
 }
 

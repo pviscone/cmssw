@@ -14,13 +14,18 @@
 
 #include <sstream>
 
-SensitiveDetector::SensitiveDetector(const std::string& iname, const SensitiveDetectorCatalog& clg, bool calo)
+SensitiveDetector::SensitiveDetector(const std::string& iname,
+                                     const SensitiveDetectorCatalog& clg,
+                                     bool calo,
+                                     const std::string& newcollname)
     : G4VSensitiveDetector(iname), m_isCalo(calo) {
   // for CMS hits
   m_namesOfSD.push_back(iname);
 
   // Geant4 hit collection
   collectionName.insert(iname);
+  if (!newcollname.empty())
+    collectionName.insert(newcollname);
 
   // register sensitive detector
   G4SDManager* SDman = G4SDManager::GetSDMpointer();
@@ -30,9 +35,14 @@ SensitiveDetector::SensitiveDetector(const std::string& iname, const SensitiveDe
   std::stringstream ss;
   for (auto& lvname : lvNames) {
     this->AssignSD({lvname.data(), lvname.size()});
-    ss << " " << lvname;
+    ss << " " << lvname << "\n";
   }
-  edm::LogVerbatim("SensitiveDetector") << " <" << iname << "> : Assigns SD to LVs " << ss.str();
+  if (newcollname.empty())
+    ss << " Collection " << iname;
+  else
+    ss << " Collections " << iname << " and " << newcollname;
+  edm::LogVerbatim("SensitiveDetector") << " <" << iname << "> : Assigns SD to " << lvNames.size() << " LVs "
+                                        << ss.str();
 }
 
 SensitiveDetector::~SensitiveDetector() {}
@@ -105,7 +115,16 @@ void SensitiveDetector::setNames(const std::vector<std::string>& hnames) {
 }
 
 void SensitiveDetector::NaNTrap(const G4Step* aStep) const {
-  const G4Track* currentTrk = aStep->GetTrack();
+  G4Track* currentTrk = aStep->GetTrack();
+  double ekin = currentTrk->GetKineticEnergy();
+  if (ekin < 0.0) {
+    const G4VPhysicalVolume* pCurrentVol = aStep->GetPreStepPoint()->GetPhysicalVolume();
+    edm::LogWarning("SensitiveDetector") << "Negative kinetic energy Ekin(MeV)=" << ekin / CLHEP::MeV << " of "
+                                         << currentTrk->GetDefinition()->GetParticleName()
+                                         << " trackID= " << currentTrk->GetTrackID() << " inside "
+                                         << pCurrentVol->GetName();
+    currentTrk->SetKineticEnergy(0.0);
+  }
   const G4ThreeVector& currentPos = currentTrk->GetPosition();
   double xyz = currentPos.x() + currentPos.y() + currentPos.z();
   const G4ThreeVector& currentMom = currentTrk->GetMomentum();

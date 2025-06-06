@@ -67,8 +67,13 @@
 #include "CondFormats/EcalObjects/interface/EcalTPGSpike.h"
 #include "CondFormats/EcalObjects/interface/EcalSRSettings.h"
 #include "CondFormats/EcalObjects/interface/EcalSimPulseShape.h"
+#include "CondFormats/EcalObjects/interface/EcalSimComponentShape.h"
 #include "CondFormats/EcalObjects/interface/EcalMustacheSCParameters.h"
 #include "CondFormats/EcalObjects/interface/EcalSCDynamicDPhiParameters.h"
 //ECAL PH2:
 #include "CondFormats/EcalObjects/interface/EcalLiteDTUPedestals.h"
 #include "CondFormats/EcalObjects/interface/EcalCATIAGainRatios.h"
+#include "CondFormats/EcalObjects/interface/EcalEBPhase2TPGAmplWeightIdMap.h"
+#include "CondFormats/EcalObjects/interface/EcalEBPhase2TPGTimeWeightIdMap.h"
+#include "CondFormats/EcalObjects/interface/EcalEBPhase2TPGLinearizationConst.h"
+#include "CondFormats/EcalObjects/interface/EcalEBPhase2TPGPedestals.h"

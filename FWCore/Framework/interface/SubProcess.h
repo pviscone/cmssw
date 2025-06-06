@@ -13,6 +13,7 @@
 #include "FWCore/Framework/interface/ProductSelector.h"
 #include "FWCore/ServiceRegistry/interface/ProcessContext.h"
 #include "FWCore/ServiceRegistry/interface/ServiceLegacy.h"
+#include "FWCore/ServiceRegistry/interface/ServiceRegistry.h"
 #include "FWCore/ServiceRegistry/interface/ServiceToken.h"
 #include "FWCore/Utilities/interface/Algorithms.h"
 #include "FWCore/Utilities/interface/BranchType.h"
@@ -23,6 +24,7 @@
 
 #include <map>
 #include <memory>
+#include <mutex>
 #include <set>
 #include <vector>
 
@@ -32,10 +34,12 @@ namespace edm {
   class BranchIDListHelper;
   class EventPrincipal;
   class EventSetupImpl;
+  class ExceptionCollector;
   class HistoryAppender;
   class LuminosityBlockPrincipal;
   class LumiTransitionInfo;
   class MergeableRunProductMetadata;
+  class ModuleTypeResolverMaker;
   class ParameterSet;
   class Principal;
   class ProcessBlockTransitionInfo;
@@ -63,7 +67,8 @@ namespace edm {
                ServiceToken const& token,
                serviceregistry::ServiceLegacy iLegacy,
                PreallocationConfiguration const& preallocConfig,
-               ProcessContext const* parentProcessContext);
+               ProcessContext const* parentProcessContext,
+               ModuleTypeResolverMaker const* typeResolverMaker);
 
     ~SubProcess() override;
 
@@ -84,7 +89,7 @@ namespace edm {
     std::vector<ModuleProcessName> keepOnlyConsumedUnscheduledModules(bool deleteModules);
 
     void doBeginJob();
-    void doEndJob();
+    void doEndJob(ExceptionCollector&);
 
     void doEventAsync(WaitingTaskHolder iHolder,
                       EventPrincipal const& principal,
@@ -111,8 +116,8 @@ namespace edm {
                                    LumiTransitionInfo const& iTransitionInfo,
                                    bool cleaningUpAfterException);
 
-    void doBeginStream(unsigned int);
-    void doEndStream(unsigned int);
+    void doBeginStream(unsigned int streamID);
+    void doEndStream(unsigned int streamID, ExceptionCollector& collector, std::mutex& collectorMutex) noexcept;
     void doStreamBeginRunAsync(WaitingTaskHolder iHolder, unsigned int iID, RunTransitionInfo const&);
 
     void doStreamEndRunAsync(WaitingTaskHolder iHolder,
@@ -129,17 +134,14 @@ namespace edm {
 
     void writeLumiAsync(WaitingTaskHolder, LuminosityBlockPrincipal&);
 
-    void deleteLumiFromCache(LuminosityBlockPrincipal&);
+    void clearLumiPrincipal(LuminosityBlockPrincipal&);
 
     using ProcessBlockType = PrincipalCache::ProcessBlockType;
     void writeProcessBlockAsync(edm::WaitingTaskHolder task, ProcessBlockType);
 
-    void writeRunAsync(WaitingTaskHolder,
-                       ProcessHistoryID const& parentPhID,
-                       int runNumber,
-                       MergeableRunProductMetadata const*);
+    void writeRunAsync(WaitingTaskHolder, RunPrincipal const&, MergeableRunProductMetadata const*);
 
-    void deleteRunFromCache(ProcessHistoryID const& parentPhID, int runNumber);
+    void clearRunPrincipal(RunPrincipal&);
 
     void clearProcessBlockPrincipal(ProcessBlockType);
 
@@ -239,7 +241,7 @@ namespace edm {
 
   private:
     void beginJob();
-    void endJob();
+    void endJob(ExceptionCollector&);
     void processAsync(WaitingTaskHolder iHolder,
                       EventPrincipal const& e,
                       std::vector<std::shared_ptr<const EventSetupImpl>> const*);
@@ -286,11 +288,11 @@ namespace edm {
     std::vector<ProcessHistoryRegistry> processHistoryRegistries_;
     std::vector<HistoryAppender> historyAppenders_;
     PrincipalCache principalCache_;
-    //vector index is principal lumi's index value
+    //vector index is principal's index value
+    std::vector<std::shared_ptr<RunPrincipal>> inUseRunPrincipals_;
     std::vector<std::shared_ptr<LuminosityBlockPrincipal>> inUseLumiPrincipals_;
     edm::propagate_const<std::shared_ptr<eventsetup::EventSetupProvider>> esp_;
     edm::propagate_const<std::unique_ptr<Schedule>> schedule_;
-    std::map<ProcessHistoryID, ProcessHistoryID> parentToChildPhID_;
     std::vector<SubProcess> subProcesses_;
     edm::propagate_const<std::unique_ptr<ParameterSet>> processParameterSet_;
 

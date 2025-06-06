@@ -16,9 +16,10 @@
 #ifndef PHASE2GMT_ISOLATION
 #define PHASE2GMT_ISOLATION
 
-#include "L1Trigger/Phase2L1GMT/interface/TopologicalAlgorithm.h"
+#include "TopologicalAlgorithm.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 #include "FWCore/MessageLogger/interface/MessageLogger.h"
+#include <atomic>
 
 namespace Phase2L1GMT {
   class Isolation : public TopoAlgo {
@@ -65,7 +66,6 @@ namespace Phase2L1GMT {
         reliso_thrT(iConfig.getParameter<double>("RelIsoThresholdT")),
         verbose_(iConfig.getParameter<int>("verbose")),
         dumpForHLS_(iConfig.getParameter<int>("IsodumpForHLS")) {
-    dumpForHLS_ = true;
     if (dumpForHLS_) {
       dumpInput.open("Isolation_Mu_Track_infolist.txt", std::ofstream::out);
       dumpOutput.open("Isolation_Mu_Isolation.txt", std::ofstream::out);
@@ -82,7 +82,8 @@ namespace Phase2L1GMT {
   inline Isolation::Isolation(const Isolation &cpy) : TopoAlgo(cpy) {}
 
   inline void Isolation::DumpOutputs(std::vector<l1t::TrackerMuon> &trkMus) {
-    static int nevto = 0;
+    static std::atomic<int> nevto = 0;
+    auto evto = nevto++;
     for (unsigned int i = 0; i < trkMus.size(); ++i) {
       auto mu = trkMus.at(i);
       if (mu.hwPt() != 0) {
@@ -90,11 +91,10 @@ namespace Phase2L1GMT {
         if (convertphi > M_PI) {
           convertphi -= 2 * M_PI;
         }
-        dumpOutput << nevto << " " << i << " " << mu.hwPt() * LSBpt << " " << mu.hwEta() * LSBeta << " " << convertphi
+        dumpOutput << evto << " " << i << " " << mu.hwPt() * LSBpt << " " << mu.hwEta() * LSBeta << " " << convertphi
                    << " " << mu.hwZ0() * LSBGTz0 << " " << mu.hwIso() << endl;
       }
     }
-    nevto++;
   }
 
   inline int Isolation::SetAbsIsolationBits(int accum) {
@@ -143,14 +143,13 @@ namespace Phase2L1GMT {
       DumpInputs();
     }
 
-    static int itest = 0;
+    static std::atomic<int> itest = 0;
     if (verbose_) {
       edm::LogInfo("Isolation") << "........ RUNNING TEST NUMBER .......... " << itest++;
     }
 
     for (auto &mu : trkMus) {
       int accum = 0;
-      int iso_ = 0;
       std::vector<unsigned> overlaps;
       for (auto t : convertedTracks) {
         unsigned ovrl = compute_trk_iso(mu, t);
@@ -159,18 +158,19 @@ namespace Phase2L1GMT {
         }
       }
 
-      // Only 8 bit for accumation?
+      // Accumation without fixed bit width
       mu.setHwIsoSum(accum);
 
+      // Accumation with fixed bit width
+      // Bit shifts with 3 bits with LSB of 0.25GeV
       iso_accum_t temp(accum);
-      accum = temp.to_int();
+      mu.setHwIsoSumAp(temp.to_int() >> 3);
 
-      mu.setHwIsoSumAp(accum);
+      //Disable isolation bit, sending isolation sumPT to GT
+      //iso_ |= SetAbsIsolationBits(accum);
+      //iso_ |= SetRelIsolationBits(accum, mu.hwPt());
 
-      iso_ |= SetAbsIsolationBits(accum);
-      iso_ |= SetRelIsolationBits(accum, mu.hwPt());
-
-      mu.setHwIso(iso_);
+      //mu.setHwIso(iso_);
     }
 
     if (dumpForHLS_) {

@@ -35,8 +35,8 @@ process.load("DQM.Integration.config.environment_cfi")
 process.dqmEnv.subSystemFolder = 'DT'
 process.dqmSaver.tag = "DT"
 process.dqmSaver.runNumber = options.runNumber
-process.dqmSaverPB.tag = "DT"
-process.dqmSaverPB.runNumber = options.runNumber
+# process.dqmSaverPB.tag = "DT"
+# process.dqmSaverPB.runNumber = options.runNumber
 #-----------------------------
 
 #Enable HLT*Mu* filtering to monitor on Muon events
@@ -46,13 +46,13 @@ if not unitTest:
 
 # DT reco and DQM sequences
 process.load("Configuration.StandardSequences.GeometryRecoDB_cff")
-process.load("Configuration/StandardSequences/MagneticField_cff")
+process.load("Configuration.StandardSequences.MagneticField_cff")
 process.load("DQM.DTMonitorModule.dt_dqm_sourceclient_common_cff")
 #---- for P5 (online) DB access
 process.load("DQM.Integration.config.FrontierCondition_GT_cfi")
 #---- for offline DB: change and possibly customise the GT
 #from Configuration.AlCa.GlobalTag import GlobalTag as gtCustomise
-#process.GlobalTag = gtCustomise(process.GlobalTag, 'auto:run2_data', '')
+#process.GlobalTag = gtCustomise(process.GlobalTag, 'auto:run3_data', '')
 
 # message logger
 process.MessageLogger = cms.Service("MessageLogger",
@@ -60,7 +60,7 @@ process.MessageLogger = cms.Service("MessageLogger",
                                     cout = cms.untracked.PSet(threshold = cms.untracked.string('WARNING'))
                                     )
 
-process.dqmmodules = cms.Sequence(process.dqmEnv + process.dqmSaver + process.dqmSaverPB)
+process.dqmmodules = cms.Sequence(process.dqmEnv + process.dqmSaver )#+ process.dqmSaverPB)
 
 process.dtDQMPathPhys = cms.Path(process.unpackers + process.dqmmodules + process.physicsEventsFilter *  process.dtDQMPhysSequence)
 
@@ -69,6 +69,7 @@ process.dtDQMPathPhys = cms.Path(process.unpackers + process.dqmmodules + proces
 process.twinMuxStage2Digis.DTTM7_FED_Source = "rawDataCollector"
 process.dtunpacker.inputLabel = "rawDataCollector"
 process.gtDigis.DaqGtInputTag = "rawDataCollector"
+process.gtStage2Digis.InputLabel = "rawDataCollector"
 process.scalersRawToDigi.scalersInputTag = "rawDataCollector"
 
 print("Running with run type = ", process.runType.getRunType())
@@ -86,7 +87,7 @@ if (process.runType.getRunType() == process.runType.pp_run):
 #----------------------------
 
 if (process.runType.getRunType() == process.runType.cosmic_run):
-    pass
+    process.dtNoiseAnalysisMonitor.isCosmics = True
 
 
 #----------------------------
@@ -97,11 +98,9 @@ if (process.runType.getRunType() == process.runType.hi_run):
     process.twinMuxStage2Digis.DTTM7_FED_Source = "rawDataRepacker"
     process.dtunpacker.inputLabel = "rawDataRepacker"
     process.gtDigis.DaqGtInputTag = "rawDataRepacker"
+    process.gtStage2Digis.InputLabel = "rawDataRepacker"
     process.scalersRawToDigi.scalersInputTag = "rawDataRepacker"
-    
     process.dtDigiMonitor.ResetCycle = 9999
-
-
 
 ### process customizations included here
 from DQM.Integration.config.online_customizations_cfi import *

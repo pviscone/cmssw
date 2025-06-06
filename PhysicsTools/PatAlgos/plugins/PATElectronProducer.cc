@@ -316,10 +316,7 @@ PATElectronProducer::PATElectronProducer(const edm::ParameterSet& iConfig)
       pvToken_(mayConsume<std::vector<reco::Vertex>>(iConfig.getParameter<edm::InputTag>("pvSrc"))),
       addElecID_(iConfig.getParameter<bool>("addElectronID")),
       pTComparator_(),
-      isolator_(iConfig.exists("userIsolation") ? iConfig.getParameter<edm::ParameterSet>("userIsolation")
-                                                : edm::ParameterSet(),
-                consumesCollector(),
-                false),
+      isolator_(iConfig.getParameter<edm::ParameterSet>("userIsolation"), consumesCollector(), false),
       addEfficiencies_(iConfig.getParameter<bool>("addEfficiencies")),
       addResolutions_(iConfig.getParameter<bool>("addResolutions")),
       useUserData_(iConfig.exists("userData")),
@@ -328,14 +325,8 @@ PATElectronProducer::PATElectronProducer(const edm::ParameterSet& iConfig)
   // MC matching configurables (scheduled mode)
 
   if (addGenMatch_) {
-    if (iConfig.existsAs<edm::InputTag>("genParticleMatch")) {
-      genMatchTokens_.push_back(consumes<edm::Association<reco::GenParticleCollection>>(
-          iConfig.getParameter<edm::InputTag>("genParticleMatch")));
-    } else {
-      genMatchTokens_ = edm::vector_transform(
-          iConfig.getParameter<std::vector<edm::InputTag>>("genParticleMatch"),
-          [this](edm::InputTag const& tag) { return consumes<edm::Association<reco::GenParticleCollection>>(tag); });
-    }
+    genMatchTokens_.push_back(consumes<edm::Association<reco::GenParticleCollection>>(
+        iConfig.getParameter<edm::InputTag>("genParticleMatch")));
   }
   // resolution configurables
   if (addResolutions_) {
@@ -544,6 +535,13 @@ void PATElectronProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSe
 
     // This is needed by the IPTools methods from the tracking group
     trackBuilder = iSetup.getHandle(trackBuilderToken_);
+
+    if (beamSpotHandle.isValid()) {
+      beamSpot = *beamSpotHandle;
+      beamSpotIsValid = true;
+    } else {
+      edm::LogError("DataNotAvailable") << "No beam spot available from EventSetup, not adding high level selection \n";
+    }
 
     if (pvHandle.isValid() && !pvHandle->empty()) {
       primaryVertex = pvHandle->at(0);

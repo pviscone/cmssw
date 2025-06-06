@@ -30,6 +30,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <memory>
 #include <set>
 #include <vector>
 #include <string>
@@ -45,7 +46,7 @@ public:
   ~PrintMaterialBudgetInfo() override;
 
 private:
-  void update(const BeginOfJob* job) override{};
+  void update(const BeginOfJob* job) override {}
   void update(const BeginOfRun* run) override;
   void dumpHeader(std::ostream& out = G4cout);
   void dumpLaTeXHeader(std::ostream& out = G4cout);
@@ -66,7 +67,6 @@ private:
   std::string name;
   int nchar;
   mpvpv thePVTree;
-  G4VPhysicalVolume* theTopPV;
   G4NavigationHistory fHistory;
   bool volumeFound;
   unsigned int levelFound;
@@ -76,7 +76,7 @@ private:
   std::vector<std::string> elementNames;
   std::vector<double> elementTotalWeight;
   std::vector<double> elementWeightFraction;
-  //
+
   std::string stringLaTeXUnderscore(std::string stringname);
   std::string stringLaTeXSuperscript(std::string stringname);
 };
@@ -104,9 +104,10 @@ PrintMaterialBudgetInfo::PrintMaterialBudgetInfo(const edm::ParameterSet& p) {
 PrintMaterialBudgetInfo::~PrintMaterialBudgetInfo() {}
 
 void PrintMaterialBudgetInfo::update(const BeginOfRun* run) {
-  G4Random::setTheEngine(new CLHEP::RanecuEngine);
+  [[clang::suppress]] G4Random::setTheEngine(new CLHEP::RanecuEngine);
   // Physical Volume
-  theTopPV = G4TransportationManager::GetTransportationManager()->GetNavigatorForTracking()->GetWorldVolume();
+  G4VPhysicalVolume* theTopPV =
+      G4TransportationManager::GetTransportationManager()->GetNavigatorForTracking()->GetWorldVolume();
   assert(theTopPV);
   // Logical Volume
   G4LogicalVolume* lv = theTopPV->GetLogicalVolume();

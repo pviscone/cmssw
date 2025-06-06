@@ -1,5 +1,3 @@
-#include "FWCore/ServiceRegistry/interface/ServiceMaker.h"
-
 #include "FWCore/Utilities/interface/RootHandlers.h"
 
 #include "FWCore/ServiceRegistry/interface/ActivityRegistry.h"
@@ -134,12 +132,14 @@ namespace edm {
       bool resetErrHandler_;
       bool loadAllDictionaries_;
       bool autoLibraryLoader_;
+      bool autoClassParser_;
       bool interactiveDebug_;
       std::shared_ptr<const void> sigBusHandler_;
       std::shared_ptr<const void> sigSegvHandler_;
       std::shared_ptr<const void> sigIllHandler_;
       std::shared_ptr<const void> sigTermHandler_;
       std::shared_ptr<const void> sigAbrtHandler_;
+      std::shared_ptr<const void> sigFpeHandler_;
     };
 
     inline bool isProcessWideService(InitRootHandlers const*) { return true; }
@@ -166,7 +166,7 @@ namespace {
   }
 
   //Contents of a message which should be reported as an INFO not a ERROR
-  constexpr std::array<const char* const, 9> in_message{
+  constexpr std::array<const char* const, 11> in_message{
       {"no dictionary for class",
        "already in TClassTable",
        "matrix not positive definite",
@@ -175,7 +175,9 @@ namespace {
        "Announced number of args different from the real number of argument passed",  // Always printed if gDebug>0 - regardless of whether warning message is real.
        "nbins is <=0 - set to nbins = 1",
        "nbinsy is <=0 - set to nbinsy = 1",
-       "oneapi::tbb::global_control is limiting"}};
+       "oneapi::tbb::global_control is limiting",
+       "ufirst < fXmin, fXmin is used",
+       "ulast > fXmax, fXmax is used"}};
 
   //Location generating messages which should be reported as an INFO not a ERROR
   constexpr std::array<const char* const, 7> in_location{{"Fit",
@@ -186,9 +188,11 @@ namespace {
                                                           "Inverter::Dinv",
                                                           "RTaskArenaWrapper"}};
 
-  constexpr std::array<const char* const, 3> in_message_print_error{{"number of iterations was insufficient",
-                                                                     "bad integrand behavior",
-                                                                     "integral is divergent, or slowly convergent"}};
+  constexpr std::array<const char* const, 4> in_message_print_error{
+      {"number of iterations was insufficient",
+       "bad integrand behavior",
+       "integral is divergent, or slowly convergent",
+       "VariableMetricBuilder Initial matrix not pos.def."}};
 
   void RootErrorHandlerImpl(int level, char const* location, char const* message) {
     bool die = false;
@@ -327,6 +331,7 @@ namespace {
     signal(SIGSEGV, SIG_DFL);
     signal(SIGBUS, SIG_DFL);
     signal(SIGTERM, SIG_DFL);
+    signal(SIGFPE, SIG_DFL);
     signal(SIGABRT, SIG_DFL);
   }
 
@@ -521,6 +526,10 @@ namespace {
         signalname = "illegal instruction";
         break;
       }
+      case SIGFPE: {
+        signalname = "floating point exception";
+        break;
+      }
       case SIGTERM: {
         signalname = "external termination request";
         break;
@@ -599,9 +608,10 @@ namespace {
     full_cerr_write(signalname);
     full_cerr_write("\n");
 
-    // For these five known cases, re-raise the signal to get the correct
+    // For these known cases, re-raise the signal to get the correct
     // exit code.
-    if ((sig == SIGILL) || (sig == SIGSEGV) || (sig == SIGBUS) || (sig == SIGTERM) || (sig == SIGABRT)) {
+    if ((sig == SIGILL) || (sig == SIGSEGV) || (sig == SIGBUS) || (sig == SIGTERM) || (sig == SIGFPE) ||
+        (sig == SIGABRT)) {
       signal(sig, SIG_DFL);
       raise(sig);
     } else {
@@ -766,6 +776,7 @@ namespace edm {
           resetErrHandler_(pset.getUntrackedParameter<bool>("ResetRootErrHandler")),
           loadAllDictionaries_(pset.getUntrackedParameter<bool>("LoadAllDictionaries")),
           autoLibraryLoader_(loadAllDictionaries_ or pset.getUntrackedParameter<bool>("AutoLibraryLoader")),
+          autoClassParser_(pset.getUntrackedParameter<bool>("AutoClassParser")),
           interactiveDebug_(pset.getUntrackedParameter<bool>("InteractiveDebug")) {
       stackTracePause_ = pset.getUntrackedParameter<int>("StackTracePauseTime");
 
@@ -798,6 +809,7 @@ namespace edm {
         gSystem->ResetSignal(kSigBus);
         gSystem->ResetSignal(kSigSegmentationViolation);
         gSystem->ResetSignal(kSigIllegalInstruction);
+        gSystem->ResetSignal(kSigFloatingException);
         installCustomHandler(SIGBUS, sig_dostack_then_abort);
         sigBusHandler_ = std::shared_ptr<const void>(nullptr, [](void*) { installCustomHandler(SIGBUS, sig_abort); });
         installCustomHandler(SIGSEGV, sig_dostack_then_abort);
@@ -806,6 +818,8 @@ namespace edm {
         sigIllHandler_ = std::shared_ptr<const void>(nullptr, [](void*) { installCustomHandler(SIGILL, sig_abort); });
         installCustomHandler(SIGTERM, sig_dostack_then_abort);
         sigTermHandler_ = std::shared_ptr<const void>(nullptr, [](void*) { installCustomHandler(SIGTERM, sig_abort); });
+        installCustomHandler(SIGFPE, sig_dostack_then_abort);
+        sigFpeHandler_ = std::shared_ptr<const void>(nullptr, [](void*) { installCustomHandler(SIGFPE, sig_abort); });
         installCustomHandler(SIGABRT, sig_dostack_then_abort);
         sigAbrtHandler_ = std::shared_ptr<const void>(nullptr, [](void*) {
           signal(SIGABRT, SIG_DFL);  // release SIGABRT to default
@@ -826,6 +840,15 @@ namespace edm {
       // Enable automatic Root library loading.
       if (autoLibraryLoader_) {
         gInterpreter->SetClassAutoloading(1);
+      }
+
+      // Enable/disable automatic parsing of headers
+      if (not autoClassParser_) {
+        // Disable automatic parsing of headers during module construction
+        iReg.watchPreModuleConstruction(
+            [](edm::ModuleDescription const&) { gInterpreter->SetClassAutoparsing(false); });
+        iReg.watchPostModuleConstruction(
+            [](edm::ModuleDescription const&) { gInterpreter->SetClassAutoparsing(true); });
       }
 
       // Set ROOT parameters.
@@ -894,6 +917,12 @@ namespace edm {
               "If True, ROOT messages (e.g. errors, warnings) are handled by this service, rather than by ROOT.");
       desc.addUntracked<bool>("AutoLibraryLoader", true)
           ->setComment("If True, enables automatic loading of data dictionaries.");
+      desc.addUntracked<bool>("AutoClassParser", true)
+          ->setComment(
+              "If False, the automatic parsing of class headers for dictionaries when pre-built dictionaries are "
+              "missing is disable during module construction. The current implementation of disabling the parsing is "
+              "fragile, and may work only in a single-thread job that does not use reco::parser::cutParser() or "
+              "reco::parser::expressionParser() (and it certainly does not work on multiple threads).");
       desc.addUntracked<bool>("LoadAllDictionaries", false)->setComment("If True, loads all ROOT dictionaries.");
       desc.addUntracked<bool>("EnableIMT", true)->setComment("If True, calls ROOT::EnableImplicitMT().");
       desc.addUntracked<bool>("AbortOnSignal", true)
@@ -977,6 +1006,8 @@ namespace edm {
 
   }  // end of namespace service
 }  // end of namespace edm
+
+#include "FWCore/ServiceRegistry/interface/ServiceMaker.h"
 
 using edm::service::InitRootHandlers;
 typedef edm::serviceregistry::AllArgsMaker<edm::RootHandlers, InitRootHandlers> RootHandlersMaker;

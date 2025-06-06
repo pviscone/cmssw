@@ -7,6 +7,7 @@
 #include "FWCore/MessageLogger/interface/MessageLogger.h"
 #include "FWCore/ParameterSet/interface/ConfigurationDescriptions.h"
 #include "FWCore/ParameterSet/interface/ParameterSetDescription.h"
+#include "FWCore/Utilities/interface/UnixSignalHandlers.h"
 
 #include "EventFilter/Utilities/interface/EvFDaqDirector.h"
 #include "EventFilter/Utilities/interface/FastMonitoringService.h"
@@ -23,12 +24,14 @@
 #include <unistd.h>
 #include <cstdio>
 #include <boost/algorithm/string.hpp>
+#include <fmt/printf.h>
 
 //using boost::asio::ip::tcp;
 
 //#define DEBUG
 
 using namespace jsoncollector;
+using namespace edm::streamer;
 
 namespace evf {
 
@@ -38,18 +41,17 @@ namespace evf {
   EvFDaqDirector::EvFDaqDirector(const edm::ParameterSet& pset, edm::ActivityRegistry& reg)
       : base_dir_(pset.getUntrackedParameter<std::string>("baseDir")),
         bu_base_dir_(pset.getUntrackedParameter<std::string>("buBaseDir")),
+        bu_base_dirs_all_(pset.getUntrackedParameter<std::vector<std::string>>("buBaseDirsAll")),
+        bu_base_dirs_nSources_(pset.getUntrackedParameter<std::vector<int>>("buBaseDirsNumStreams")),
         run_(pset.getUntrackedParameter<unsigned int>("runNumber")),
         useFileBroker_(pset.getUntrackedParameter<bool>("useFileBroker")),
-        fileBrokerHostFromCfg_(pset.getUntrackedParameter<bool>("fileBrokerHostFromCfg", true)),
+        fileBrokerHostFromCfg_(pset.getUntrackedParameter<bool>("fileBrokerHostFromCfg", false)),
         fileBrokerHost_(pset.getUntrackedParameter<std::string>("fileBrokerHost", "InValid")),
         fileBrokerPort_(pset.getUntrackedParameter<std::string>("fileBrokerPort", "8080")),
         fileBrokerKeepAlive_(pset.getUntrackedParameter<bool>("fileBrokerKeepAlive", true)),
         fileBrokerUseLocalLock_(pset.getUntrackedParameter<bool>("fileBrokerUseLocalLock", true)),
         fuLockPollInterval_(pset.getUntrackedParameter<unsigned int>("fuLockPollInterval", 2000)),
         outputAdler32Recheck_(pset.getUntrackedParameter<bool>("outputAdler32Recheck", false)),
-        requireTSPSet_(pset.getUntrackedParameter<bool>("requireTransfersPSet", false)),
-        selectedTransferMode_(pset.getUntrackedParameter<std::string>("selectedTransferMode", "")),
-        mergeTypePset_(pset.getUntrackedParameter<std::string>("mergingPset", "")),
         directorBU_(pset.getUntrackedParameter<bool>("directorIsBU", false)),
         hltSourceDirectory_(pset.getUntrackedParameter<std::string>("hltSourceDirectory", "")),
         hostname_(""),
@@ -70,7 +72,6 @@ namespace evf {
         fu_rw_flk(make_flock(F_WRLCK, SEEK_SET, 0, 0, getpid())),
         fu_rw_fulk(make_flock(F_UNLCK, SEEK_SET, 0, 0, getpid())) {
     reg.watchPreallocate(this, &EvFDaqDirector::preallocate);
-    reg.watchPreBeginJob(this, &EvFDaqDirector::preBeginJob);
     reg.watchPreGlobalBeginRun(this, &EvFDaqDirector::preBeginRun);
     reg.watchPostGlobalEndRun(this, &EvFDaqDirector::postEndRun);
     reg.watchPreGlobalEndLumi(this, &EvFDaqDirector::preGlobalEndLumi);
@@ -143,9 +144,24 @@ namespace evf {
         edm::LogWarning("EvFDaqDirector") << "Bad lexical cast in parsing: " << std::string(fileBrokerUseLockParamPtr);
       }
     }
-  }
 
-  void EvFDaqDirector::initRun() {
+    // set number of streams in each BU's ramdisk
+    if (bu_base_dirs_nSources_.empty()) {
+      // default is 1 stream per ramdisk
+      for (unsigned int i = 0; i < bu_base_dirs_all_.size(); i++) {
+        bu_base_dirs_nSources_.push_back(1);
+      }
+    } else if (bu_base_dirs_nSources_.size() != bu_base_dirs_all_.size()) {
+      throw cms::Exception("DaqDirector")
+          << " Error while setting number of sources: size mismatch with BU base directory vector";
+    } else {
+      for (unsigned int i = 0; i < bu_base_dirs_all_.size(); i++) {
+        bu_base_dirs_nSources_.push_back(bu_base_dirs_nSources_[i]);
+        edm::LogInfo("EvFDaqDirector") << "Setting " << bu_base_dirs_nSources_[i] << " sources"
+                                       << " for ramdisk " << bu_base_dirs_all_[i];
+      }
+    }
+
     std::stringstream ss;
     ss << "run" << std::setfill('0') << std::setw(6) << run_;
     run_string_ = ss.str();
@@ -154,10 +170,13 @@ namespace evf {
     run_nstring_ = ss.str();
     run_dir_ = base_dir_ + "/" + run_string_;
     input_throttled_file_ = run_dir_ + "/input_throttle";
+    discard_ls_filestem_ = run_dir_ + "/discard_ls";
     ss = std::stringstream();
     ss << getpid();
     pid_ = ss.str();
+  }
 
+  void EvFDaqDirector::initRun() {
     // check if base dir exists or create it accordingly
     int retval = mkdir(base_dir_.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     if (retval != 0 && errno != EEXIST) {
@@ -203,13 +222,13 @@ namespace evf {
       retval = mkdir(bu_run_dir_.c_str(), S_IRWXU | S_IRWXG | S_IRWXO);
       if (retval != 0 && errno != EEXIST) {
         throw cms::Exception("DaqDirector")
-            << " Error creating bu run dir -: " << bu_run_dir_ << " mkdir error:" << strerror(errno) << "\n";
+            << " Error creating bu run dir -: " << bu_run_dir_ << " mkdir error:" << strerror(errno);
       }
       bu_run_open_dir_ = bu_run_dir_ + "/open";
       retval = mkdir(bu_run_open_dir_.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
       if (retval != 0 && errno != EEXIST) {
         throw cms::Exception("DaqDirector")
-            << " Error creating bu run open dir -: " << bu_run_open_dir_ << " mkdir error:" << strerror(errno) << "\n";
+            << " Error creating bu run open dir -: " << bu_run_open_dir_ << " mkdir error:" << strerror(errno);
       }
 
       // the BU director does not need to know about the fu lock
@@ -237,7 +256,7 @@ namespace evf {
           retval = mkdir(tmphltdir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
           if (retval != 0 && errno != EEXIST)
             throw cms::Exception("DaqDirector")
-                << " Error creating bu run dir -: " << hltdir << " mkdir error:" << strerror(errno) << "\n";
+                << " Error creating bu run dir -: " << hltdir << " mkdir error:" << strerror(errno);
 
           std::filesystem::copy_file(hltSourceDirectory_ + "/HltConfig.py", tmphltdir + "/HltConfig.py");
           std::filesystem::copy_file(hltSourceDirectory_ + "/fffParameters.jsn", tmphltdir + "/fffParameters.jsn");
@@ -258,15 +277,49 @@ namespace evf {
     } else {
       // for FU, check if bu base dir exists
 
-      retval = mkdir(bu_base_dir_.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-      if (retval != 0 && errno != EEXIST) {
-        throw cms::Exception("DaqDirector")
-            << " Error checking for bu base dir -: " << bu_base_dir_ << " mkdir error:" << strerror(errno) << "\n";
+      auto checkExists = [=](std::string const& bu_base_dir) -> void {
+        int retval = mkdir(bu_base_dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+        if (retval != 0 && errno != EEXIST) {
+          throw cms::Exception("DaqDirector")
+              << " Error checking for bu base dir -: " << bu_base_dir << " mkdir error:" << strerror(errno);
+        }
+      };
+
+      auto waitForDir = [=](std::string const& bu_base_dir) -> void {
+        int cnt = 0;
+        while (!edm::shutdown_flag.load(std::memory_order_relaxed)) {
+          //stat should trigger autofs mount (mkdir could fail with access denied first time)
+          struct stat statbuf;
+          stat(bu_base_dir.c_str(), &statbuf);
+          int retval = mkdir(bu_base_dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+          if (retval != 0 && errno != EEXIST) {
+            usleep(500000);
+            cnt++;
+            if (cnt % 20 == 0)
+              edm::LogWarning("DaqDirector") << "waiting for " << bu_base_dir;
+            if (cnt > 120)
+              throw cms::Exception("DaqDirector") << " Error checking for bu base dir after 1 minute -: " << bu_base_dir
+                                                  << " mkdir error:" << strerror(errno);
+            continue;
+          }
+          break;
+        }
+      };
+
+      if (!bu_base_dirs_all_.empty()) {
+        std::string check_dir = bu_base_dir_.empty() ? bu_base_dirs_all_[0] : bu_base_dir_;
+        checkExists(check_dir);
+        bu_run_dir_ = check_dir + "/" + run_string_;
+        for (unsigned int i = 0; i < bu_base_dirs_all_.size(); i++)
+          waitForDir(bu_base_dirs_all_[i]);
+      } else {
+        checkExists(bu_base_dir_);
+        bu_run_dir_ = bu_base_dir_ + "/" + run_string_;
       }
 
-      bu_run_dir_ = bu_base_dir_ + "/" + run_string_;
       fulockfile_ = bu_run_dir_ + "/fu.lock";
-      openFULockfileStream(false);
+      if (!useFileBroker_)
+        openFULockfileStream(false);
     }
 
     pthread_mutex_init(&init_lock_, nullptr);
@@ -322,6 +375,7 @@ namespace evf {
 
     nThreads_ = bounds.maxNumberOfStreams();
     nStreams_ = bounds.maxNumberOfThreads();
+    nConcurrentLumis_ = bounds.maxNumberOfConcurrentLuminosityBlocks();
   }
 
   void EvFDaqDirector::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
@@ -330,6 +384,10 @@ namespace evf {
         "Service used for file locking arbitration and for propagating information between other EvF components");
     desc.addUntracked<std::string>("baseDir", ".")->setComment("Local base directory for run output");
     desc.addUntracked<std::string>("buBaseDir", ".")->setComment("BU base ramdisk directory ");
+    desc.addUntracked<std::vector<std::string>>("buBaseDirsAll", std::vector<std::string>())
+        ->setComment("BU base ramdisk directories for multi-file DAQSource models");
+    desc.addUntracked<std::vector<int>>("buBaseDirsNumStreams", std::vector<int>())
+        ->setComment("Number of streams for each BU base ramdisk directories for multi-file DAQSource models");
     desc.addUntracked<unsigned int>("runNumber", 0)->setComment("Run Number in ramdisk to open");
     desc.addUntracked<bool>("useFileBroker", false)
         ->setComment("Use BU file service to grab input data instead of NFS file locking");
@@ -345,20 +403,11 @@ namespace evf {
         ->setComment("Lock polling interval in microseconds for the input directory file lock");
     desc.addUntracked<bool>("outputAdler32Recheck", false)
         ->setComment("Check Adler32 of per-process output files while micro-merging");
-    desc.addUntracked<bool>("requireTransfersPSet", false)
-        ->setComment("Require complete transferSystem PSet in the process configuration");
-    desc.addUntracked<std::string>("selectedTransferMode", "")
-        ->setComment("Selected transfer mode (choice in Lvl0 propagated as Python parameter");
     desc.addUntracked<bool>("directorIsBU", false)->setComment("BU director mode used for testing");
     desc.addUntracked<std::string>("hltSourceDirectory", "")->setComment("BU director mode source directory");
     desc.addUntracked<std::string>("mergingPset", "")
         ->setComment("Name of merging PSet to look for merging type definitions for streams");
     descriptions.add("EvFDaqDirector", desc);
-  }
-
-  void EvFDaqDirector::preBeginJob(edm::PathsAndConsumesOfModulesBase const&, edm::ProcessContext const& pc) {
-    checkTransferSystemPSet(pc);
-    checkMergeTypePSet(pc);
   }
 
   void EvFDaqDirector::preBeginRun(edm::GlobalContext const& globalContext) {
@@ -391,7 +440,7 @@ namespace evf {
     std::unique_lock<std::mutex> lkw(*fileDeleteLockPtr_);
     auto it = filesToDeletePtr_->begin();
     while (it != filesToDeletePtr_->end()) {
-      if (it->second->lumi_ == ls) {
+      if (it->second->lumi_ == ls && (!fms_ || !fms_->isExceptionOnData(it->second->lumi_))) {
         it = filesToDeletePtr_->erase(it);
       } else
         it++;
@@ -446,6 +495,10 @@ namespace evf {
     return run_dir_ + "/" + fffnaming::initFileNameWithPid(run_, 0, stream);
   }
 
+  std::string EvFDaqDirector::getInitTempFilePath(std::string const& stream) const {
+    return run_dir_ + "/" + fffnaming::initTempFileNameWithPid(run_, 0, stream);
+  }
+
   std::string EvFDaqDirector::getOpenProtocolBufferHistogramFilePath(const unsigned int ls,
                                                                      std::string const& stream) const {
     return run_dir_ + "/open/" + fffnaming::protocolBufferHistogramFileNameWithPid(run_, ls, stream);
@@ -487,6 +540,8 @@ namespace evf {
 
   std::string EvFDaqDirector::getEoRFilePath() const { return bu_run_dir_ + "/" + fffnaming::eorFileName(run_); }
 
+  std::string EvFDaqDirector::getEoRFileName() const { return fffnaming::eorFileName(run_); }
+
   std::string EvFDaqDirector::getEoRFilePathOnFU() const { return run_dir_ + "/" + fffnaming::eorFileName(run_); }
 
   std::string EvFDaqDirector::getFFFParamsFilePathOnBU() const { return bu_run_dir_ + "/hlt/fffParameters.jsn"; }
@@ -497,8 +552,6 @@ namespace evf {
       edm::LogError("EvFDaqDirector") << "Could not remove used file -: " << filename
                                       << ". error = " << strerror(errno);
   }
-
-  void EvFDaqDirector::removeFile(unsigned int ls, unsigned int index) { removeFile(getRawFilePath(ls, index)); }
 
   EvFDaqDirector::FileStatus EvFDaqDirector::updateFuLock(unsigned int& ls,
                                                           std::string& nextFile,
@@ -785,7 +838,7 @@ namespace evf {
                                 bool& setExceptionState) {
     if (previousFileSize_ != 0) {
       if (!fms_) {
-        fms_ = (FastMonitoringService*)(edm::Service<evf::MicroStateService>().operator->());
+        fms_ = (FastMonitoringService*)(edm::Service<evf::FastMonitoringService>().operator->());
       }
       if (fms_)
         fms_->accumulateFileSize(ls, previousFileSize_);
@@ -799,8 +852,6 @@ namespace evf {
 
     struct stat buf;
     std::stringstream ss;
-    unsigned int nextIndex = index;
-    nextIndex++;
 
     // 1. Check suggested file
     std::string nextFileJson = getInputJsonFilePath(ls, index);
@@ -965,6 +1016,7 @@ namespace evf {
   int EvFDaqDirector::parseFRDFileHeader(std::string const& rawSourcePath,
                                          int& rawFd,
                                          uint16_t& rawHeaderSize,
+                                         uint16_t& rawDataType,
                                          uint32_t& lsFromHeader,
                                          int32_t& eventsFromHeader,
                                          int64_t& fileSizeFromHeader,
@@ -980,6 +1032,7 @@ namespace evf {
         return parseFRDFileHeader(rawSourcePath,
                                   rawFd,
                                   rawHeaderSize,
+                                  rawDataType,
                                   lsFromHeader,
                                   eventsFromHeader,
                                   fileSizeFromHeader,
@@ -998,37 +1051,19 @@ namespace evf {
       }
     }
 
-    constexpr std::size_t buf_sz = sizeof(FRDFileHeader_v1);  //try to read v1 FRD header size
-    FRDFileHeader_v1 fileHead;
-
-    ssize_t sz_read = ::read(infile, (char*)&fileHead, buf_sz);
-    if (closeFile) {
-      close(infile);
-      infile = -1;
-    }
-
-    if (sz_read < 0) {
-      edm::LogError("EvFDaqDirector") << "parseFRDFileHeader - unable to read " << rawSourcePath << " : "
-                                      << strerror(errno);
-      if (infile != -1)
-        close(infile);
+    //v2 is the largest possible read
+    char hdr[sizeof(FRDFileHeader_v2)];
+    if (!checkFileRead(hdr, infile, sizeof(FRDFileHeaderIdentifier), rawSourcePath))
       return -1;
-    }
-    if ((size_t)sz_read < buf_sz) {
-      edm::LogError("EvFDaqDirector") << "parseFRDFileHeader - file smaller than header: " << rawSourcePath;
-      if (infile != -1)
-        close(infile);
-      return -1;
-    }
 
-    uint16_t frd_version = getFRDFileHeaderVersion(fileHead.id_, fileHead.version_);
+    FRDFileHeaderIdentifier* fileId = (FRDFileHeaderIdentifier*)hdr;
+    uint16_t frd_version = getFRDFileHeaderVersion(fileId->id_, fileId->version_);
 
     if (frd_version == 0) {
       //no header (specific sequence not detected)
       if (requireHeader) {
         edm::LogError("EvFDaqDirector") << "no header or invalid version string found in:" << rawSourcePath;
-        if (infile != -1)
-          close(infile);
+        close(infile);
         return -1;
       } else {
         //no header, but valid file
@@ -1038,24 +1073,69 @@ namespace evf {
         eventsFromHeader = -1;
         fileSizeFromHeader = -1;
       }
-    } else {
+    } else if (frd_version == 1) {
       //version 1 header
-      uint32_t headerSizeRaw = fileHead.headerSize_;
-      if (headerSizeRaw < buf_sz) {
+      if (!checkFileRead(hdr, infile, sizeof(FRDFileHeaderContent_v1), rawSourcePath))
+        return -1;
+      FRDFileHeaderContent_v1* fhContent = (FRDFileHeaderContent_v1*)hdr;
+      uint32_t headerSizeRaw = fhContent->headerSize_;
+      if (headerSizeRaw != sizeof(FRDFileHeader_v1)) {
         edm::LogError("EvFDaqDirector") << "inconsistent header size: " << rawSourcePath << " size: " << headerSizeRaw
                                         << " v:" << frd_version;
-        if (infile != -1)
-          close(infile);
+        close(infile);
         return -1;
       }
       //allow header size to exceed read size. Future header versions will not break this, but the size can change.
-      lsFromHeader = fileHead.lumiSection_;
-      eventsFromHeader = (int32_t)fileHead.eventCount_;
-      fileSizeFromHeader = (int64_t)fileHead.fileSize_;
-      rawHeaderSize = fileHead.headerSize_;
+      rawDataType = 0;
+      lsFromHeader = fhContent->lumiSection_;
+      eventsFromHeader = (int32_t)fhContent->eventCount_;
+      fileSizeFromHeader = (int64_t)fhContent->fileSize_;
+      rawHeaderSize = fhContent->headerSize_;
+
+    } else if (frd_version == 2) {
+      //version 2 heade
+      if (!checkFileRead(hdr, infile, sizeof(FRDFileHeaderContent_v2), rawSourcePath))
+        return -1;
+      FRDFileHeaderContent_v2* fhContent = (FRDFileHeaderContent_v2*)hdr;
+      uint32_t headerSizeRaw = fhContent->headerSize_;
+      if (headerSizeRaw != sizeof(FRDFileHeader_v2)) {
+        edm::LogError("EvFDaqDirector") << "inconsistent header size: " << rawSourcePath << " size: " << headerSizeRaw
+                                        << " v:" << frd_version;
+        close(infile);
+        return -1;
+      }
+      //allow header size to exceed read size. Future header versions will not break this, but the size can change.
+      rawDataType = fhContent->dataType_;
+      lsFromHeader = fhContent->lumiSection_;
+      eventsFromHeader = (int32_t)fhContent->eventCount_;
+      fileSizeFromHeader = (int64_t)fhContent->fileSize_;
+      rawHeaderSize = fhContent->headerSize_;
     }
+
+    if (closeFile) {
+      close(infile);
+      infile = -1;
+    }
+
     rawFd = infile;
     return 0;  //OK
+  }
+
+  bool EvFDaqDirector::checkFileRead(char* buf, int infile, std::size_t buf_sz, std::string const& path) {
+    ssize_t sz_read = ::read(infile, buf, buf_sz);
+    if (sz_read < 0) {
+      edm::LogError("EvFDaqDirector") << "rawFileHasHeader - unable to read " << path << " : " << strerror(errno);
+      if (infile != -1)
+        close(infile);
+      return false;
+    }
+    if ((size_t)sz_read < buf_sz) {
+      edm::LogError("EvFDaqDirector") << "rawFileHasHeader - file smaller than header: " << path;
+      if (infile != -1)
+        close(infile);
+      return false;
+    }
+    return true;
   }
 
   bool EvFDaqDirector::rawFileHasHeader(std::string const& rawSourcePath, uint16_t& rawHeaderSize) {
@@ -1065,34 +1145,31 @@ namespace evf {
                                         << strerror(errno);
       return false;
     }
-    constexpr std::size_t buf_sz = sizeof(FRDFileHeader_v1);  //try to read v1 FRD header size
-    FRDFileHeader_v1 fileHead;
-
-    ssize_t sz_read = ::read(infile, (char*)&fileHead, buf_sz);
-
-    if (sz_read < 0) {
-      edm::LogError("EvFDaqDirector") << "rawFileHasHeader - unable to read " << rawSourcePath << " : "
-                                      << strerror(errno);
-      if (infile != -1)
-        close(infile);
+    //try to read FRD header size (v2 is the biggest, use read buffer of that size)
+    char hdr[sizeof(FRDFileHeader_v2)];
+    if (!checkFileRead(hdr, infile, sizeof(FRDFileHeaderIdentifier), rawSourcePath))
       return false;
-    }
-    if ((size_t)sz_read < buf_sz) {
-      edm::LogError("EvFDaqDirector") << "rawFileHasHeader - file smaller than header: " << rawSourcePath;
-      if (infile != -1)
-        close(infile);
-      return false;
-    }
+    FRDFileHeaderIdentifier* fileId = (FRDFileHeaderIdentifier*)hdr;
+    uint16_t frd_version = getFRDFileHeaderVersion(fileId->id_, fileId->version_);
 
-    uint16_t frd_version = getFRDFileHeaderVersion(fileHead.id_, fileHead.version_);
+    if (frd_version == 1) {
+      if (!checkFileRead(hdr, infile, sizeof(FRDFileHeaderContent_v1), rawSourcePath))
+        return false;
+      FRDFileHeaderContent_v1* fhContent = (FRDFileHeaderContent_v1*)hdr;
+      rawHeaderSize = fhContent->headerSize_;
+      close(infile);
+      return true;
+    } else if (frd_version == 2) {
+      if (!checkFileRead(hdr, infile, sizeof(FRDFileHeaderContent_v2), rawSourcePath))
+        return false;
+      FRDFileHeaderContent_v2* fhContent = (FRDFileHeaderContent_v2*)hdr;
+      rawHeaderSize = fhContent->headerSize_;
+      close(infile);
+      return true;
+    } else
+      edm::LogError("EvFDaqDirector") << "rawFileHasHeader - unknown version: " << frd_version;
 
     close(infile);
-
-    if (frd_version > 0) {
-      rawHeaderSize = fileHead.headerSize_;
-      return true;
-    }
-
     rawHeaderSize = 0;
     return false;
   }
@@ -1103,7 +1180,8 @@ namespace evf {
                                           int64_t& fileSizeFromHeader,
                                           bool& fileFound,
                                           uint32_t serverLS,
-                                          bool closeFile) {
+                                          bool closeFile,
+                                          bool requireHeader) {
     fileFound = true;
 
     //take only first three tokens delimited by "_" in the renamed raw file name
@@ -1125,8 +1203,17 @@ namespace evf {
     uint32_t lsFromRaw;
     int32_t nbEventsWrittenRaw;
     int64_t fileSizeFromRaw;
-    auto ret = parseFRDFileHeader(
-        rawSourcePath, rawFd, rawHeaderSize, lsFromRaw, nbEventsWrittenRaw, fileSizeFromRaw, true, true, closeFile);
+    uint16_t rawDataType;
+    auto ret = parseFRDFileHeader(rawSourcePath,
+                                  rawFd,
+                                  rawHeaderSize,
+                                  rawDataType,
+                                  lsFromRaw,
+                                  nbEventsWrittenRaw,
+                                  fileSizeFromRaw,
+                                  requireHeader,
+                                  true,
+                                  closeFile);
     if (ret != 0) {
       if (ret == 1)
         fileFound = false;
@@ -1239,7 +1326,7 @@ namespace evf {
     //copy contents
     const std::size_t buf_sz = 512;
     std::size_t tot_written = 0;
-    std::unique_ptr<char> buf(new char[buf_sz]);
+    std::unique_ptr<char[]> buf(new char[buf_sz]);
 
     ssize_t sz, sz_read = 1, sz_write;
     while (sz_read > 0 && (sz_read = ::read(infile, buf.get(), buf_sz)) > 0) {
@@ -1464,6 +1551,7 @@ namespace evf {
                                                                int maxLS) {
     EvFDaqDirector::FileStatus fileStatus = noFile;
     serverError = false;
+    std::string dest = fmt::sprintf(" on connection to %s:%s", fileBrokerHost_, fileBrokerPort_);
 
     boost::system::error_code ec;
     try {
@@ -1473,7 +1561,7 @@ namespace evf {
           boost::asio::connect(*socket_, *endpoint_iterator_, ec);
 
           if (ec) {
-            edm::LogWarning("EvFDaqDirector") << "boost::asio::connect error -:" << ec;
+            edm::LogWarning("EvFDaqDirector") << "boost::asio::connect error -:" << ec << dest;
             serverError = true;
             break;
           }
@@ -1496,17 +1584,17 @@ namespace evf {
         boost::asio::write(*socket_, request, ec);
         if (ec) {
           if (fileBrokerKeepAlive_ && ec == boost::asio::error::connection_reset) {
-            edm::LogInfo("EvFDaqDirector") << "reconnecting socket on received connection_reset";
+            edm::LogInfo("EvFDaqDirector") << "reconnecting socket on received connection_reset" << dest;
             //we got disconnected, try to reconnect to the server before writing the request
             boost::asio::connect(*socket_, *endpoint_iterator_, ec);
             if (ec) {
-              edm::LogWarning("EvFDaqDirector") << "boost::asio::connect error -:" << ec;
+              edm::LogWarning("EvFDaqDirector") << "boost::asio::connect error -:" << ec << dest;
               serverError = true;
               break;
             }
             continue;
           }
-          edm::LogWarning("EvFDaqDirector") << "boost::asio::write error -:" << ec;
+          edm::LogWarning("EvFDaqDirector") << "boost::asio::write error -:" << ec << dest;
           serverError = true;
           break;
         }
@@ -1514,7 +1602,7 @@ namespace evf {
         boost::asio::streambuf response;
         boost::asio::read_until(*socket_, response, "\r\n", ec);
         if (ec) {
-          edm::LogWarning("EvFDaqDirector") << "boost::asio::read_until error -:" << ec;
+          edm::LogWarning("EvFDaqDirector") << "boost::asio::read_until error -:" << ec << dest;
           serverError = true;
           break;
         }
@@ -1683,7 +1771,7 @@ namespace evf {
           while (boost::asio::read(*socket_, response, boost::asio::transfer_at_least(1), ec)) {
           }
           if (ec != boost::asio::error::eof) {
-            edm::LogWarning("EvFDaqDirector") << "boost::asio::read_until error -:" << ec;
+            edm::LogWarning("EvFDaqDirector") << "boost::asio::read_until error -:" << ec << dest;
             serverError = true;
           }
         }
@@ -1699,11 +1787,11 @@ namespace evf {
     if (!fileBrokerKeepAlive_ && socket_->is_open()) {
       socket_->shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
       if (ec) {
-        edm::LogWarning("EvFDaqDirector") << "socket shutdown error -:" << ec;
+        edm::LogWarning("EvFDaqDirector") << "socket shutdown error -:" << ec << dest;
       }
       socket_->close(ec);
       if (ec) {
-        edm::LogWarning("EvFDaqDirector") << "socket close error -:" << ec;
+        edm::LogWarning("EvFDaqDirector") << "socket close error -:" << ec << dest;
       }
     }
 
@@ -1711,7 +1799,7 @@ namespace evf {
       if (socket_->is_open())
         socket_->close(ec);
       if (ec) {
-        edm::LogWarning("EvFDaqDirector") << "socket close error -:" << ec;
+        edm::LogWarning("EvFDaqDirector") << "socket close error -:" << ec << dest;
       }
       fileStatus = noFile;
       sleep(1);  //back-off if error detected
@@ -1727,7 +1815,8 @@ namespace evf {
                                                                    uint16_t& rawHeaderSize,
                                                                    int32_t& serverEventsInNewFile,
                                                                    int64_t& fileSizeFromMetadata,
-                                                                   uint64_t& thisLockWaitTimeUs) {
+                                                                   uint64_t& thisLockWaitTimeUs,
+                                                                   bool requireHeader) {
     EvFDaqDirector::FileStatus fileStatus = noFile;
 
     //int retval = -1;
@@ -1805,8 +1894,8 @@ namespace evf {
 
     if (fileStatus == newFile) {
       if (rawHeader > 0)
-        serverEventsInNewFile =
-            grabNextJsonFromRaw(nextFileRaw, rawFd, rawHeaderSize, fileSizeFromMetadata, fileFound, serverLS, false);
+        serverEventsInNewFile = grabNextJsonFromRaw(
+            nextFileRaw, rawFd, rawHeaderSize, fileSizeFromMetadata, fileFound, serverLS, false, requireHeader);
       else
         serverEventsInNewFile = grabNextJsonFile(nextFileJson, nextFileRaw, fileSizeFromMetadata, fileFound);
     }
@@ -1908,146 +1997,6 @@ namespace evf {
   }
 
   //if transferSystem PSet is present in the menu, we require it to be complete and consistent for all specified streams
-  void EvFDaqDirector::checkTransferSystemPSet(edm::ProcessContext const& pc) {
-    if (transferSystemJson_)
-      return;
-
-    transferSystemJson_.reset(new Json::Value);
-    edm::ParameterSet const& topPset = edm::getParameterSet(pc.parameterSetID());
-    if (topPset.existsAs<edm::ParameterSet>("transferSystem", true)) {
-      const edm::ParameterSet& tsPset(topPset.getParameterSet("transferSystem"));
-
-      Json::Value destinationsVal(Json::arrayValue);
-      std::vector<std::string> destinations = tsPset.getParameter<std::vector<std::string>>("destinations");
-      for (auto& dest : destinations)
-        destinationsVal.append(dest);
-      (*transferSystemJson_)["destinations"] = destinationsVal;
-
-      Json::Value modesVal(Json::arrayValue);
-      std::vector<std::string> modes = tsPset.getParameter<std::vector<std::string>>("transferModes");
-      for (auto& mode : modes)
-        modesVal.append(mode);
-      (*transferSystemJson_)["transferModes"] = modesVal;
-
-      for (auto psKeyItr = tsPset.psetTable().begin(); psKeyItr != tsPset.psetTable().end(); ++psKeyItr) {
-        if (psKeyItr->first != "destinations" && psKeyItr->first != "transferModes") {
-          const edm::ParameterSet& streamDef = tsPset.getParameterSet(psKeyItr->first);
-          Json::Value streamVal;
-          for (auto& mode : modes) {
-            //validation
-            if (!streamDef.existsAs<std::vector<std::string>>(mode, true))
-              throw cms::Exception("EvFDaqDirector")
-                  << " Missing transfer system specification for -:" << psKeyItr->first << " (transferMode " << mode
-                  << ")";
-            std::vector<std::string> streamDestinations = streamDef.getParameter<std::vector<std::string>>(mode);
-
-            Json::Value sDestsValue(Json::arrayValue);
-
-            if (streamDestinations.empty())
-              throw cms::Exception("EvFDaqDirector")
-                  << " Missing transter system destination(s) for -: " << psKeyItr->first << ", mode:" << mode;
-
-            for (auto& sdest : streamDestinations) {
-              bool sDestValid = false;
-              sDestsValue.append(sdest);
-              for (auto& dest : destinations) {
-                if (dest == sdest)
-                  sDestValid = true;
-              }
-              if (!sDestValid)
-                throw cms::Exception("EvFDaqDirector")
-                    << " Invalid transter system destination specified for -: " << psKeyItr->first << ", mode:" << mode
-                    << ", dest:" << sdest;
-            }
-            streamVal[mode] = sDestsValue;
-          }
-          (*transferSystemJson_)[psKeyItr->first] = streamVal;
-        }
-      }
-    } else {
-      if (requireTSPSet_)
-        throw cms::Exception("EvFDaqDirector") << "transferSystem PSet not found";
-    }
-  }
-
-  std::string EvFDaqDirector::getStreamDestinations(std::string const& stream) const {
-    std::string streamRequestName;
-    if (transferSystemJson_->isMember(stream.c_str()))
-      streamRequestName = stream;
-    else {
-      std::stringstream msg;
-      msg << "Transfer system mode definitions missing for -: " << stream;
-      if (requireTSPSet_)
-        throw cms::Exception("EvFDaqDirector") << msg.str();
-      else {
-        edm::LogWarning("EvFDaqDirector") << msg.str() << " (permissive mode)";
-        return std::string("Failsafe");
-      }
-    }
-    //return empty if strict check parameter is not on
-    if (!requireTSPSet_ && (selectedTransferMode_.empty() || selectedTransferMode_ == "null")) {
-      edm::LogWarning("EvFDaqDirector")
-          << "Selected mode string is not provided as DaqDirector parameter."
-          << "Switch on requireTSPSet parameter to enforce this requirement. Setting mode to empty string.";
-      return std::string("Failsafe");
-    }
-    if (requireTSPSet_ && (selectedTransferMode_.empty() || selectedTransferMode_ == "null")) {
-      throw cms::Exception("EvFDaqDirector") << "Selected mode string is not provided as DaqDirector parameter.";
-    }
-    //check if stream has properly listed transfer stream
-    if (!transferSystemJson_->get(streamRequestName, "").isMember(selectedTransferMode_.c_str())) {
-      std::stringstream msg;
-      msg << "Selected transfer mode " << selectedTransferMode_ << " is not specified for stream " << streamRequestName;
-      if (requireTSPSet_)
-        throw cms::Exception("EvFDaqDirector") << msg.str();
-      else
-        edm::LogWarning("EvFDaqDirector") << msg.str() << " (permissive mode)";
-      return std::string("Failsafe");
-    }
-    Json::Value destsVec = transferSystemJson_->get(streamRequestName, "").get(selectedTransferMode_, "");
-
-    //flatten string json::Array into CSV std::string
-    std::string ret;
-    for (Json::Value::iterator it = destsVec.begin(); it != destsVec.end(); it++) {
-      if (!ret.empty())
-        ret += ",";
-      ret += (*it).asString();
-    }
-    return ret;
-  }
-
-  void EvFDaqDirector::checkMergeTypePSet(edm::ProcessContext const& pc) {
-    if (mergeTypePset_.empty())
-      return;
-    if (!mergeTypeMap_.empty())
-      return;
-    edm::ParameterSet const& topPset = edm::getParameterSet(pc.parameterSetID());
-    if (topPset.existsAs<edm::ParameterSet>(mergeTypePset_, true)) {
-      const edm::ParameterSet& tsPset(topPset.getParameterSet(mergeTypePset_));
-      for (const std::string& pname : tsPset.getParameterNames()) {
-        std::string streamType = tsPset.getParameter<std::string>(pname);
-        tbb::concurrent_hash_map<std::string, std::string>::accessor ac;
-        mergeTypeMap_.insert(ac, pname);
-        ac->second = streamType;
-        ac.release();
-      }
-    }
-  }
-
-  std::string EvFDaqDirector::getStreamMergeType(std::string const& stream, MergeType defaultType) {
-    tbb::concurrent_hash_map<std::string, std::string>::const_accessor search_ac;
-    if (mergeTypeMap_.find(search_ac, stream))
-      return search_ac->second;
-
-    edm::LogInfo("EvFDaqDirector") << " No merging type specified for stream " << stream << ". Using default value";
-    std::string defaultName = MergeTypeNames_[defaultType];
-    tbb::concurrent_hash_map<std::string, std::string>::accessor ac;
-    mergeTypeMap_.insert(ac, stream);
-    ac->second = defaultName;
-    ac.release();
-    return defaultName;
-  }
-
   void EvFDaqDirector::createProcessingNotificationMaybe() const {
     std::string proc_flag = run_dir_ + "/processing";
     int proc_flag_fd = open(proc_flag.c_str(), O_RDWR | O_CREAT, S_IRWXU | S_IWGRP | S_IRGRP | S_IWOTH | S_IROTH);
@@ -2065,6 +2014,11 @@ namespace evf {
   bool EvFDaqDirector::inputThrottled() {
     struct stat buf;
     return (stat(input_throttled_file_.c_str(), &buf) == 0);
+  }
+
+  bool EvFDaqDirector::lumisectionDiscarded(unsigned int ls) {
+    struct stat buf;
+    return (stat((discard_ls_filestem_ + std::to_string(ls)).c_str(), &buf) == 0);
   }
 
 }  // namespace evf

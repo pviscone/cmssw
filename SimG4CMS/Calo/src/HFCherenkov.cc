@@ -11,7 +11,8 @@
 #include "TMath.h"
 
 #include "Randomize.hh"
-#include "G4SystemOfUnits.hh"
+
+#include <CLHEP/Units/SystemOfUnits.h>
 
 //#define EDM_ML_DEBUG
 
@@ -150,7 +151,6 @@ int HFCherenkov::computeNPE(const G4Step* aStep,
 #endif
         if (rand < prob_HF) {  // survived in HF
           wlatten.push_back(lambda);
-          rand = G4UniformRand();
           double effHEM = computeHEMEff(lambda);
           // compute number of bounces in air guide
           rand = G4UniformRand();
@@ -166,6 +166,7 @@ int HFCherenkov::computeNPE(const G4Step* aStep,
           double tang = sin_air / std::sqrt(1. - sin_air * sin_air);
           int nbounce = length_lg / tlength * tang + 0.5;
           double eff = pow(effHEM, nbounce);
+          rand = G4UniformRand();
 #ifdef EDM_ML_DEBUG
           edm::LogVerbatim("HFShower") << "HFCherenkov::computeNPE: w_ph " << w_ph << " effHEM " << effHEM << " eff "
                                        << eff << " Random " << rand << " Survive? " << (rand < eff);
@@ -183,12 +184,12 @@ int HFCherenkov::computeNPE(const G4Step* aStep,
               momZ.push_back(w_ph);
               wl.push_back(lambda);
               wlqeff.push_back(lambda);
-            }          // made pe
-          }            // passed HEM
-        }              // passed fiber
-      }                // end of  if(w_ph < w_aperture), trapped inside fiber
-    }                  // end of ++NbOfPhotons
-  }                    // end of if(NbOfPhotons)}
+            }  // made pe
+          }  // passed HEM
+        }  // passed fiber
+      }  // end of  if(w_ph < w_aperture), trapped inside fiber
+    }  // end of ++NbOfPhotons
+  }  // end of if(NbOfPhotons)}
   int npe = npe_Dose;  // Nb of photoelectrons
 #ifdef EDM_ML_DEBUG
   edm::LogVerbatim("HFShower") << "HFCherenkov::computeNPE: npe " << npe;
@@ -262,10 +263,10 @@ int HFCherenkov::computeNPEinPMT(
             wl.push_back(lambda);
             wlqeff.push_back(lambda);
           }  // made pe
-        }    // accepted all Cherenkov photons
-      }      // end of  if(w_ph < w_aperture), trapped inside glass
-    }        // end of ++NbOfPhotons
-  }          // end of if(NbOfPhotons)}
+        }  // accepted all Cherenkov photons
+      }  // end of  if(w_ph < w_aperture), trapped inside glass
+    }  // end of ++NbOfPhotons
+  }  // end of if(NbOfPhotons)}
 #ifdef EDM_ML_DEBUG
   edm::LogVerbatim("HFShower") << "HFCherenkov::computeNPEinPMT: npe " << npe_;
 #endif

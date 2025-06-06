@@ -16,6 +16,18 @@
 #include <cstdlib>
 #endif
 
+#ifndef MPLEX_ALIGN
+#if defined(__AVX512F__)
+#define MPLEX_ALIGN 64
+#elif defined(__AVX__) || defined(__AVX2__)
+#define MPLEX_ALIGN 32
+#elif defined(__SSE3__)
+#define MPLEX_ALIGN 16
+#else
+#define MPLEX_ALIGN 32
+#endif
+#endif
+
 #if defined(MPLEX_USE_INTRINSICS)
 // This seems unnecessary: __AVX__ is usually defined for all higher ISA extensions
 #if defined(__AVX__) || defined(__AVX512F__)
@@ -86,6 +98,18 @@ namespace Matriplex {
   typedef int idx_t;
 
   void align_check(const char *pref, void *adr);
+
+  namespace internal {
+    template <typename T>
+    void sincos4(const T x, T &sin, T &cos) {
+      // Had this writen with explicit division by factorial.
+      // The *whole* fitting test ran like 2.5% slower on MIC, sigh.
+
+      const T x2 = x * x;
+      cos = T(1.0) - T(0.5) * x2 + T(0.0416666666666666667) * x2 * x2;
+      sin = x - T(0.166666666666666667) * x * x2;
+    }
+  }  // namespace internal
 }  // namespace Matriplex
 
 #endif

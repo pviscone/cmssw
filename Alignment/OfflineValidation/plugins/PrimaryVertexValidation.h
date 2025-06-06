@@ -1,5 +1,5 @@
-#ifndef PrimaryVertexValidation_h
-#define PrimaryVertexValidation_h
+#ifndef Alignment_OfflineValidation_PrimaryVertexValidation_h
+#define Alignment_OfflineValidation_PrimaryVertexValidation_h
 
 // system include files
 #include <string>
@@ -81,7 +81,7 @@ private:
   void beginJob() override;
   void beginRun(edm::Run const& iRun, edm::EventSetup const& iSetup) override;
   void analyze(const edm::Event&, const edm::EventSetup&) override;
-  void endRun(edm::Run const&, edm::EventSetup const&) override{};
+  void endRun(edm::Run const&, edm::EventSetup const&) override {}
   void endJob() override;
 
   // user defined methods

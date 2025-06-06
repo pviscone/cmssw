@@ -68,8 +68,11 @@ namespace edm {
       FileNameInconsistentWithGUID = 8034,
 
       UnavailableAccelerator = 8035,
+      ExternalFailure = 8036,
 
       EventGenerationFailure = 8501,
+
+      UnexpectedJobTermination = 8901,
 
       CaughtSignal = 9000
     };
@@ -100,18 +103,18 @@ namespace edm {
 
     static const std::string& codeToString(Code);
 
-    static void throwThis(Code category,
-                          char const* message0 = "",
-                          char const* message1 = "",
-                          char const* message2 = "",
-                          char const* message3 = "",
-                          char const* message4 = "");
-    static void throwThis(Code category, char const* message0, int intVal, char const* message2 = "");
+    [[noreturn]] static void throwThis(Code category,
+                                       char const* message0 = "",
+                                       char const* message1 = "",
+                                       char const* message2 = "",
+                                       char const* message3 = "",
+                                       char const* message4 = "");
+    [[noreturn]] static void throwThis(Code category, char const* message0, int intVal, char const* message2 = "");
 
     Exception* clone() const override;
 
   private:
-    void rethrow() override;
+    [[noreturn]] void rethrow() override;
     int returnCode_() const override;
 
     Code category_;

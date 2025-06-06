@@ -56,7 +56,16 @@ public:
   void run(edm::Event &iEvent,
            const edm::EventSetup &iEventSetup,
            MuonPathPtrs &inMpath,
-           MuonPathPtrs &outMPath) override{};
+           std::vector<lat_vector> &lateralities,
+           std::vector<cmsdt::metaPrimitive> &metaPrimitives) override {};
+  void run(edm::Event &iEvent,
+           const edm::EventSetup &iEventSetup,
+           std::vector<cmsdt::metaPrimitive> &inMPaths,
+           std::vector<cmsdt::metaPrimitive> &outMPaths) override {};
+  void run(edm::Event &iEvent,
+           const edm::EventSetup &iEventSetup,
+           MuonPathPtrs &inMpath,
+           MuonPathPtrs &outMPath) override {};
 
   void finish() override;
 
@@ -98,7 +107,7 @@ private:
 
   // Private attributes
 
-  bool debug_;
+  const bool debug_;
   double chi2Th_;
   double tanPhiTh_;
   double tanPhiThw2max_;
@@ -107,7 +116,6 @@ private:
   double tanPhiThw1min_;
   double tanPhiThw0_;
   int cellLayout_[cmsdt::NUM_LAYERS];
-  std::string geometry_tag_;
   std::vector<CELL_VALID_LAYOUT_CONSTANTS> LAYOUT_VALID_TO_LATCOMB_CONSTS_ENCODER;
 
   // global coordinates

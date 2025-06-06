@@ -43,10 +43,11 @@
 #include "DataFormats/L1Trigger/interface/L1JetParticleFwd.h"
 #include "DataFormats/L1Trigger/interface/L1EtMissParticleFwd.h"
 #include "DataFormats/L1Trigger/interface/L1HFRingsFwd.h"
+#include "DataFormats/L1Trigger/interface/P2GTCandidate.h"
 #include "DataFormats/JetReco/interface/PFJetCollection.h"
 #include "DataFormats/TauReco/interface/PFTauFwd.h"
 
-#include "DataFormats/L1TCorrelator/interface/TkMuon.h"
+#include "DataFormats/L1TMuonPhase2/interface/TrackerMuon.h"
 #include "DataFormats/L1TCorrelator/interface/TkElectron.h"
 #include "DataFormats/L1TCorrelator/interface/TkEm.h"
 #include "DataFormats/L1TParticleFlow/interface/PFJet.h"
@@ -96,7 +97,7 @@ private:
   /// InputTag ordering class
   struct OrderInputTag {
     bool ignoreProcess_;
-    OrderInputTag(bool ignoreProcess) : ignoreProcess_(ignoreProcess){};
+    OrderInputTag(bool ignoreProcess) : ignoreProcess_(ignoreProcess) {}
     inline bool operator()(const edm::InputTag& l, const edm::InputTag& r) const {
       int c = l.label().compare(r.label());
       if (0 == c) {
@@ -210,12 +211,13 @@ private:
   edm::GetterOfProducts<l1t::JetBxCollection> getL1TJetParticleCollection_;
   edm::GetterOfProducts<l1t::TauBxCollection> getL1TTauParticleCollection_;
   edm::GetterOfProducts<l1t::EtSumBxCollection> getL1TEtSumParticleCollection_;
-  edm::GetterOfProducts<l1t::TkMuonCollection> getL1TTkMuonCollection_;
+  edm::GetterOfProducts<l1t::TrackerMuonCollection> getL1TTkMuonCollection_;
   edm::GetterOfProducts<l1t::TkElectronCollection> getL1TTkElectronCollection_;
   edm::GetterOfProducts<l1t::TkEmCollection> getL1TTkEmCollection_;
   edm::GetterOfProducts<l1t::PFJetCollection> getL1TPFJetCollection_;
   edm::GetterOfProducts<l1t::PFTauCollection> getL1TPFTauCollection_;
   edm::GetterOfProducts<l1t::HPSPFTauCollection> getL1THPSPFTauCollection_;
   edm::GetterOfProducts<l1t::PFTrackCollection> getL1TPFTrackCollection_;
+  edm::GetterOfProducts<l1t::P2GTCandidateCollection> getL1TP2GTCandCollection_;
 };
 #endif

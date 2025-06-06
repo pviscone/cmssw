@@ -4,7 +4,6 @@
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/Run.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
-#include "FWCore/ServiceRegistry/interface/Service.h"
 #include "FWCore/Utilities/interface/Transition.h"
 #include "FWCore/Utilities/interface/ESInputTag.h"
 
@@ -221,7 +220,7 @@ int HcalRecHitsDQMClient::HcalRecHitsEndjob(const std::vector<MonitorElement *> 
   }
 
   // mean energies and occupancies evaluation
-
+  assert(Nhf);                        // Avoid LLVM analyzer warning
   double nevtot = Nhf->getEntries();  // Use the number of entries in the Nhf histogram to
                                       // give the total number of events
 
@@ -316,7 +315,7 @@ int HcalRecHitsDQMClient::HcalRecHitsEndjob(const std::vector<MonitorElement *> 
         occupancy_vs_ieta[vsIetaIdx]->setBinError(ietabin, enorm);
 
       }  // Fill occupancy_vs_ieta
-    }    // if omatched
+    }  // if omatched
   }
 
   // Status Word

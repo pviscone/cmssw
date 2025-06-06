@@ -8,10 +8,8 @@
 // user include files
 #include "FWCore/Common/interface/TriggerNames.h"
 #include "FWCore/Framework/interface/Frameworkfwd.h"
-#include "FWCore/Framework/interface/EDAnalyzer.h"
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/MakerMacros.h"
-#include "FWCore/ServiceRegistry/interface/Service.h"
 #include "FWCore/MessageLogger/interface/MessageLogger.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 
@@ -42,7 +40,6 @@
 
 #include <iostream>
 #include <fstream>
-#include <utility>
 #include <utility>
 #include <vector>
 #include <string>
@@ -183,7 +180,7 @@ private:
           filterName_("unset"),
           processName_("unset"),
           objectType_(-1),
-          triggerType_("unset"){};
+          triggerType_("unset") {}
     //
   public:
     //
@@ -289,7 +286,7 @@ private:
   // simple collection
   class PathInfoCollection : public std::vector<PathInfo> {
   public:
-    PathInfoCollection() : std::vector<PathInfo>(){};
+    PathInfoCollection() : std::vector<PathInfo>() {}
     std::vector<PathInfo>::iterator find(const std::string& pathName) { return std::find(begin(), end(), pathName); }
   };
   PathInfoCollection hltPathsAll_;

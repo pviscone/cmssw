@@ -1,5 +1,5 @@
-#ifndef TrackerTrackerValidationVariables_h
-#define TrackerTrackerValidationVariables_h
+#ifndef Alignment_OfflineValidation_TrackerTrackerValidationVariables_h
+#define Alignment_OfflineValidation_TrackerTrackerValidationVariables_h
 
 // system include files
 #include <vector>
@@ -17,6 +17,7 @@ namespace edm {
   class Event;
   class EventSetup;
   class ParameterSet;
+  class ParameterSetDescription;
 }  // namespace edm
 
 class TrackerValidationVariables {
@@ -85,7 +86,7 @@ public:
           dz(-999.),
           charge(-999),
           numberOfValidHits(0),
-          numberOfLostHits(0){};
+          numberOfLostHits(0) {}
     float p;
     float pt;
     float ptError;
@@ -117,6 +118,8 @@ public:
                            const edm::EventSetup& eventSetup,
                            std::function<bool(const reco::Track&)> trackFilter,
                            std::vector<AVTrackStruct>& v_avtrackout);
+
+  static void fillPSetDescription(edm::ParameterSetDescription& descriptions);
 
 private:
   edm::EDGetTokenT<std::vector<Trajectory>> trajCollectionToken_;

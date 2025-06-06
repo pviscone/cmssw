@@ -64,7 +64,9 @@ EgammaRecHitIsolation::EgammaRecHitIsolation(double extRadius,
 
 EgammaRecHitIsolation::~EgammaRecHitIsolation() {}
 
-double EgammaRecHitIsolation::getSum_(const reco::Candidate* emObject, bool returnEt) const {
+double EgammaRecHitIsolation::getSum_(const reco::Candidate* emObject,
+                                      bool returnEt,
+                                      const EcalPFRecHitThresholds* thresholds) const {
   double energySum = 0.;
   if (!caloHits_.empty()) {
     //Take the SC position
@@ -95,6 +97,10 @@ double EgammaRecHitIsolation::getSum_(const reco::Candidate* emObject, bool retu
           float etaDiff = eta - etaclus;
           float phiDiff = reco::deltaPhi(phi, phiclus);
           float energy = j->energy();
+
+          float rhThres = (thresholds != nullptr) ? (*thresholds)[j->detid()] : 0.f;
+          if (energy <= rhThres)
+            continue;
 
           if (useNumCrystals_) {
             if (fabs(etaclus) < 1.479) {  // Barrel num crystals, crystal width = 0.0174
@@ -167,14 +173,16 @@ double EgammaRecHitIsolation::getSum_(const reco::Candidate* emObject, bool retu
           }
 
         }  //End if not end of list
-      }    //End loop over rechits
-    }      //End loop over barrel/endcap
-  }        //End if caloHits_
+      }  //End loop over rechits
+    }  //End loop over barrel/endcap
+  }  //End if caloHits_
 
   return energySum;
 }
 
-double EgammaRecHitIsolation::getSum_(const reco::SuperCluster* sc, bool returnEt) const {
+double EgammaRecHitIsolation::getSum_(const reco::SuperCluster* sc,
+                                      bool returnEt,
+                                      const EcalPFRecHitThresholds* thresholds) const {
   double energySum = 0.;
   if (!caloHits_.empty()) {
     //Take the SC position
@@ -204,6 +212,10 @@ double EgammaRecHitIsolation::getSum_(const reco::SuperCluster* sc, bool returnE
           double etaDiff = eta - etaclus;
           double phiDiff = reco::deltaPhi(phi, phiclus);
           double energy = j->energy();
+
+          float rhThres = (thresholds != nullptr) ? (*thresholds)[j->detid()] : 0.f;
+          if (energy <= rhThres)
+            continue;
 
           if (useNumCrystals_) {
             if (fabs(etaclus) < 1.479) {  // Barrel num crystals, crystal width = 0.0174
@@ -273,9 +285,9 @@ double EgammaRecHitIsolation::getSum_(const reco::SuperCluster* sc, bool returnE
           }
 
         }  //End if not end of list
-      }    //End loop over rechits
-    }      //End loop over barrel/endcap
-  }        //End if caloHits_
+      }  //End loop over rechits
+    }  //End loop over barrel/endcap
+  }  //End if caloHits_
 
   return energySum;
 }

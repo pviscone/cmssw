@@ -1,7 +1,7 @@
 import FWCore.ParameterSet.Config as cms
 
 hltDeepInclusiveVertexFinderPF = cms.EDProducer("InclusiveCandidateVertexFinder",
-    beamSpot = cms.InputTag("offlineBeamSpot"),
+    beamSpot = cms.InputTag("hltOnlineBeamSpot"),
     clusterizer = cms.PSet(
         clusterMaxDistance = cms.double(0.05),
         clusterMaxSignificance = cms.double(4.5),
@@ -22,8 +22,8 @@ hltDeepInclusiveVertexFinderPF = cms.EDProducer("InclusiveCandidateVertexFinder"
     mightGet = cms.optional.untracked.vstring,
     minHits = cms.uint32(8),
     minPt = cms.double(1.4),
-    primaryVertices = cms.InputTag("offlinePrimaryVertices"),
-    tracks = cms.InputTag("particleFlowTmp"),
+    primaryVertices = cms.InputTag("hltOfflinePrimaryVertices"),
+    tracks = cms.InputTag("hltParticleFlowTmp"),
     useDirectVertexFitter = cms.bool(True),
     useVertexReco = cms.bool(True),
     vertexMinAngleCosine = cms.double(0.95),

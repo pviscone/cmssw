@@ -1,4 +1,9 @@
 #ifndef RecoTracker_MkFitCore_src_Debug_h
+
+namespace mkfit {
+  extern bool g_debug;
+}
+
 #ifdef DEBUG
 #define RecoTracker_MkFitCore_src_Debug_h
 
@@ -36,7 +41,7 @@
   All are protected by a file scope mutex to avoid mixed printouts.
   This mutex can also be acquired within a block via dmutex_guard:
 
-  if (debug) {
+  if (debug && g_debug) {
     dmutex_guard;
     [do complicated stuff]
   }
@@ -48,30 +53,30 @@
 
 #define dmutex_guard std::lock_guard<std::mutex> dlock(debug_mutex)
 #define dprint(x)                \
-  if (debug) {                   \
+  if (debug && g_debug) {        \
     dmutex_guard;                \
     std::cout << x << std::endl; \
   }
 #define dprint_np(n, x)                       \
-  if (debug && n < N_proc) {                  \
+  if (debug && g_debug && n < N_proc) {       \
     dmutex_guard;                             \
     std::cout << n << ": " << x << std::endl; \
   }
-#define dcall(x)  \
-  if (debug) {    \
-    dmutex_guard; \
-    x;            \
+#define dcall(x)          \
+  if (debug && g_debug) { \
+    dmutex_guard;         \
+    x;                    \
   }
-#define dprintf(...)     \
-  if (debug) {           \
-    dmutex_guard;        \
-    printf(__VA_ARGS__); \
+#define dprintf(...)      \
+  if (debug && g_debug) { \
+    dmutex_guard;         \
+    printf(__VA_ARGS__);  \
   }
-#define dprintf_np(n, ...)   \
-  if (debug && n < N_proc) { \
-    dmutex_guard;            \
-    std::cout << n << ": ";  \
-    printf(__VA_ARGS__);     \
+#define dprintf_np(n, ...)              \
+  if (debug && g_debug && n < N_proc) { \
+    dmutex_guard;                       \
+    std::cout << n << ": ";             \
+    printf(__VA_ARGS__);                \
   }
 
 namespace {
@@ -92,6 +97,51 @@ namespace {
 #define dcall(x) (void(0))
 #define dprintf(...) (void(0))
 #define dprintf_np(n, ...) (void(0))
+
+#endif
+
+// Convert TBB execution to simple loops for debugging, perfomance measeurements.
+
+#ifdef TBB_DISABLE
+#include "oneapi/tbb/blocked_range.h"
+#include "oneapi/tbb/partitioner.h"
+
+#define TBB_PARALLEL_FOR mkfit_tbb::parallel_for
+#define TBB_PARALLEL_FOR_EACH mkfit_tbb::parallel_for_each
+
+namespace mkfit_tbb {
+
+  template <typename Range, typename Body>
+  void parallel_for(const Range& range, const Body& body) {
+    typename Range::const_iterator step = range.grainsize();
+    for (auto i = range.begin(); i < range.end(); i += step) {
+      step = std::min(step, range.end() - i);
+      body(Range(i, i + step, 1));
+    }
+  }
+
+  template <typename Range, typename Body>
+  void parallel_for(const Range& range, const Body& body, const tbb::simple_partitioner& partitioner) {
+    typename Range::const_iterator step = range.grainsize();
+    for (auto i = range.begin(); i < range.end(); i += step) {
+      step = std::min(step, range.end() - i);
+      body(Range(i, i + step, 1));
+    }
+  }
+
+  template <typename InputIterator, typename Function>
+  void parallel_for_each(InputIterator first, InputIterator last, const Function& f) {
+    for (auto& i = first; i != last; ++i) {
+      f(*i);
+    }
+  }
+
+}  // namespace mkfit_tbb
+
+#else
+
+#define TBB_PARALLEL_FOR tbb::parallel_for
+#define TBB_PARALLEL_FOR_EACH tbb::parallel_for_each
 
 #endif
 

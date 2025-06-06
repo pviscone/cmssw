@@ -23,7 +23,7 @@ test_codes={"EMPTY":-101,
             "NO_HIST":-105,
             "FEW_BINS":-105}
 #-------------------------------------------------------------------------------  
-relmon_mainpage="https://cms-pdmv.cern.ch/relmon"
+relmon_mainpage="https://cms-pdmv-prod.web.cern.ch/relmon"
 
 #-------------------------------------------------------------------------------  
 
@@ -196,4 +196,12 @@ data_pattern_blist_pairs=(\
           ("!(wzEG20+|electron20+|photon20+|run20+)","Egamma@1"),
           ("!(mu20+|wzMu20+|jet20+)","Btag@1"))
 data_pattern_blist_pairs=()
+
+## colors for gauge
+from  matplotlib.colors import LinearSegmentedColormap
+gauge_cmap=LinearSegmentedColormap.from_list('rg',["r", "orange","y","lime"], N=256) 
+
+## cms logo
+cms_logo_url = "https://cms-docdb.cern.ch/cgi-bin/PublicDocDB/RetrieveFile?docid=3045&amp;filename=CMSlogo_color_label_1024_May2014.png&amp;version=3"
+
 

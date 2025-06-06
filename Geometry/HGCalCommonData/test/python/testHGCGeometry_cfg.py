@@ -1,13 +1,41 @@
+###############################################################################
+# Way to use this:
+#   cmsRun testHGCGeometry_cfg.py geometry=D110
+#
+#   Options for geometry D95, D96, D98, D99, D100, D101, D102, D103, D104, D105,
+#                        D106, D107, D108, D109, D110, D111, D112, D113, D114,
+#                        D115, D116Y
+#
+###############################################################################
 import FWCore.ParameterSet.Config as cms
+import os, sys, imp, re
+import FWCore.ParameterSet.VarParsing as VarParsing
 
-process = cms.Process("PROD")
+####################################################################
+### SETUP OPTIONS
+options = VarParsing.VarParsing('standard')
+options.register('geometry',
+                 "D110",
+                  VarParsing.VarParsing.multiplicity.singleton,
+                  VarParsing.VarParsing.varType.string,
+                  "geometry of operations: D95, D96, D98, D99, D100, D101, D102, D103, D104, D105, D106, D107, D108, D109, D110, D111, D112, D113, D114, D115, D116")
+
+### get and parse the command line arguments
+options.parseArguments()
+
+print(options)
+
+####################################################################
+# Use the options
+from Configuration.Eras.Era_Phase2C17I13M9_cff import Phase2C17I13M9
+process = cms.Process('TestHGCalGeometry',Phase2C17I13M9)
+
+geomFile = "Geometry.CMSCommonData.cmsExtendedGeometryRun4" + options.geometry + "XML_cfi"
+
+print("Geometry file: ", geomFile)
+
 process.load("SimGeneral.HepPDTESSource.pdt_cfi")
-
-#process.load("Geometry.CMSCommonData.cmsExtendedGeometry2026D49XML_cfi")
-#process.load("Geometry.CMSCommonData.cmsExtendedGeometry2026D68XML_cfi")
-#process.load("Geometry.CMSCommonData.cmsExtendedGeometry2026D70XML_cfi")
-#process.load("Geometry.CMSCommonData.cmsExtendedGeometry2026D71XML_cfi")
-process.load("Geometry.HGCalCommonData.testHGCXML_cfi")
+process.load(geomFile)
 process.load("Geometry.TrackerNumberingBuilder.trackerNumberingGeometry_cfi")
 process.load("Geometry.MuonNumbering.muonNumberingInitialization_cfi")
 process.load("Geometry.EcalCommonData.ecalSimulationParameters_cff")

@@ -16,6 +16,8 @@
 #include "RecoParticleFlow/PFClusterProducer/plugins/SimMappers/RealisticHitToClusterAssociator.h"
 #include "SimDataFormats/CaloAnalysis/interface/SimCluster.h"
 #include "SimDataFormats/CaloAnalysis/interface/SimClusterFwd.h"
+#include "CondFormats/DataRecord/interface/HcalPFCutsRcd.h"
+#include "CondTools/Hcal/interface/HcalPFCutsHandler.h"
 
 #include <unordered_map>
 
@@ -36,7 +38,7 @@ public:
         hadronCalib_(conf.getParameter<std::vector<double> >("hadronCalib")),
         egammaCalib_(conf.getParameter<std::vector<double> >("egammaCalib")),
         simClusterToken_(cc.consumes<SimClusterCollection>(conf.getParameter<edm::InputTag>("simClusterSrc"))),
-        geomToken_(cc.esConsumes<edm::Transition::BeginLuminosityBlock>()) {}
+        geomToken_(cc.esConsumes<edm::Transition::BeginRun>()) {}
 
   ~RealisticSimClusterMapper() override {}
   RealisticSimClusterMapper(const RealisticSimClusterMapper&) = delete;
@@ -48,7 +50,8 @@ public:
   void buildClusters(const edm::Handle<reco::PFRecHitCollection>&,
                      const std::vector<bool>&,
                      const std::vector<bool>&,
-                     reco::PFClusterCollection&) override;
+                     reco::PFClusterCollection&,
+                     const HcalPFCuts*) override;
 
 private:
   hgcal::RecHitTools rhtools_;
@@ -107,7 +110,8 @@ void RealisticSimClusterMapper::update(const edm::EventSetup& es) { rhtools_.set
 void RealisticSimClusterMapper::buildClusters(const edm::Handle<reco::PFRecHitCollection>& input,
                                               const std::vector<bool>& rechitMask,
                                               const std::vector<bool>& seedable,
-                                              reco::PFClusterCollection& output) {
+                                              reco::PFClusterCollection& output,
+                                              const HcalPFCuts* hcalCuts) {
   const SimClusterCollection& simClusters = *simClusterH_;
   auto const& hits = *input;
   RealisticHitToClusterAssociator realisticAssociator;
@@ -195,7 +199,7 @@ void RealisticSimClusterMapper::buildClusters(const edm::Handle<reco::PFRecHitCo
             float distanceSquared =
                 std::pow((ref->position().x() - scPosition[0]), 2) + std::pow((ref->position().y() - scPosition[1]), 2);
             if (distanceSquared < maxDforTimingSquared_) {
-              timeHits.push_back(ref->time() - timeOffset_);
+              timeHits.push_back(ref->time());
             }
           }
         }

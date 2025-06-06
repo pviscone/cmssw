@@ -20,11 +20,13 @@ public:
 
   bool operator()(const reco::TransientTrack& tracks) const;
   std::vector<reco::TransientTrack> select(const std::vector<reco::TransientTrack>& tracks) const override;
+  std::vector<reco::TransientTrack> selectTight(const std::vector<reco::TransientTrack>& tracks,
+                                                double minPtTight) const;
 
 private:
   float maxD0Sig_, minPt_, maxEta_;
   float maxD0Error_, maxDzError_;
-  int minSiLayers_, minPxLayers_;
+  int minSiLayers_, minPxLayers_, minStripHits_;
   float maxNormChi2_;
   reco::TrackBase::TrackQuality quality_;
 };

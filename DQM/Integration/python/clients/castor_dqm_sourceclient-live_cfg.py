@@ -35,8 +35,8 @@ process.load("DQM.Integration.config.environment_cfi")
 process.dqmEnv.subSystemFolder = "Castor"
 process.dqmSaver.tag = "Castor"
 process.dqmSaver.runNumber = options.runNumber
-process.dqmSaverPB.tag = "Castor"
-process.dqmSaverPB.runNumber = options.runNumber
+# process.dqmSaverPB.tag = "Castor"
+# process.dqmSaverPB.runNumber = options.runNumber
 
 process.load("FWCore.MessageLogger.MessageLogger_cfi")
 
@@ -51,7 +51,7 @@ process.load("FWCore.MessageLogger.MessageLogger_cfi")
 process.load("DQM.Integration.config.FrontierCondition_GT_cfi")
 ##
 #from Configuration.AlCa.GlobalTag import GlobalTag as gtCustomise
-#process.GlobalTag = gtCustomise(process.GlobalTag, 'auto:run2_data', '')
+#process.GlobalTag = gtCustomise(process.GlobalTag, 'auto:run3_data', '')
 
 #-----------------------------
 # Castor DQM Source + SimpleReconstrctor
@@ -116,9 +116,9 @@ process.options = cms.untracked.PSet(
 # castorreco    -> CastorSimpleReconstructor_cfi
 # castorMonitor -> CastorMonitorModule_cfi
 
-process.p = cms.Path(process.castorDigis*process.castorreco*process.castorMonitor*process.dqmEnv*process.dqmSaver*process.dqmSaverPB)
-#process.p = cms.Path(process.castorDigis*process.castorMonitor*process.dqmEnv*process.dqmSaver*process.dqmSaverPB)
-#process.p = cms.Path(process.castorMonitor*process.dqmEnv*process.dqmSaver*process.dqmSaverPB)
+process.p = cms.Path(process.castorDigis*process.castorreco*process.castorMonitor*process.dqmEnv*process.dqmSaver)#*process.dqmSaverPB)
+#process.p = cms.Path(process.castorDigis*process.castorMonitor*process.dqmEnv*process.dqmSaver)#*process.dqmSaverPB)
+#process.p = cms.Path(process.castorMonitor*process.dqmEnv*process.dqmSaver)#*process.dqmSaverPB)
 
 
 process.castorDigis.InputLabel = "rawDataCollector"

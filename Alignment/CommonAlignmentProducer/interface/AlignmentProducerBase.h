@@ -55,7 +55,7 @@
 #include "Geometry/DTGeometry/interface/DTGeometry.h"
 #include "Geometry/CSCGeometry/interface/CSCGeometry.h"
 #include "Geometry/GEMGeometry/interface/GEMGeometry.h"
-#include "Geometry/CommonTopologies/interface/GeometryAligner.h"
+#include "Geometry/GeometryAligner/interface/GeometryAligner.h"
 #include "Geometry/TrackerGeometryBuilder/interface/TrackerGeometry.h"
 #include "Geometry/Records/interface/IdealGeometryRecord.h"
 #include "Geometry/Records/interface/MuonGeometryRecord.h"
@@ -250,6 +250,7 @@ private:
   const bool saveToDB_, saveApeToDB_, saveDeformationsToDB_;
   const bool useSurvey_;
   const bool enableAlignableUpdates_;
+  const std::string tkAliRcdName_;
 
   /*** ESTokens ***/
   const edm::ESGetToken<TrackerTopology, TrackerTopologyRcd> ttopoToken_;

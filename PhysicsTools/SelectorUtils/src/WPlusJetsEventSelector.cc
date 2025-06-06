@@ -155,13 +155,11 @@ bool WPlusJetsEventSelector::operator()(edm::EventBase const& event, pat::strbit
       edm::Handle<vector<pat::MET> > metHandle;
       event.getByLabel(metTag_, metHandle);
 
-      int nElectrons = 0;
       for (std::vector<pat::Electron>::const_iterator electronBegin = electronHandle->begin(),
                                                       electronEnd = electronHandle->end(),
                                                       ielectron = electronBegin;
            ielectron != electronEnd;
            ++ielectron) {
-        ++nElectrons;
         // Tight cuts
         if (ielectron->et() > eleEtMin_ && fabs(ielectron->eta()) < eleEtaMax_ && electronIdTight_(*ielectron) &&
             ielectron->electronID("eidRobustTight") > 0) {
@@ -233,7 +231,7 @@ bool WPlusJetsEventSelector::operator()(edm::EventBase const& event, pat::strbit
             if (!indeltaR) {
               cleanedJets_.push_back(scaledJet);
             }  // end if jet is not within dR of a muon
-          }    // end if mu+jets
+          }  // end if mu+jets
           else {
             //Remove some jets
             bool indeltaR = false;
@@ -249,9 +247,9 @@ bool WPlusJetsEventSelector::operator()(edm::EventBase const& event, pat::strbit
             if (!indeltaR) {
               cleanedJets_.push_back(scaledJet);
             }  // end if jet is not within dR of an electron
-          }    // end if e+jets
-        }      // end if pass id and kin cuts
-      }        // end loop over jets
+          }  // end if e+jets
+        }  // end if pass id and kin cuts
+      }  // end loop over jets
 
       int nleptons = 0;
       if (muPlusJets_)

@@ -8,6 +8,8 @@
 //
 // author:      Alexx Perloff
 // created:     March 17, 2021
+// modified by:    Nick Manganelli
+// modified:    November 18, 2022
 //
 ///////
 
@@ -30,11 +32,11 @@ namespace l1t {
       kZ0Size = 15,           // Width of z-position
       kZ0MagSize = 6,         // Width of z-position magnitude (signed)
       kNTrackInPVSize = 8,    // Width of the multiplicity in the PV (unsigned)
-      kSumPtSize = 10,        // Width of pT
-      kSumPtMagSize = 8,      // Width of pT magnitude (unsigned)
+      kSumPtSize = 12,        // Width of pT
+      kSumPtMagSize = 10,     // Width of pT magnitude (unsigned)
       kQualitySize = 3,       // Width of the quality field
       kNTrackOutPVSize = 10,  // Width of the multiplicity outside the PV (unsigned)
-      kUnassignedSize = 17,   // Width of the unassigned bits
+      kUnassignedSize = 15,   // Width of the unassigned bits
 
       kVertexWordSize = kValidSize + kZ0Size + kNTrackInPVSize + kSumPtSize + kQualitySize + kNTrackOutPVSize +
                         kUnassignedSize,  // Width of the vertex word in bits
@@ -143,9 +145,9 @@ namespace l1t {
     // These functions return the packed bits in integer format for each quantity
     // Signed quantities have the sign enconded in the left-most bit.
     unsigned int validBits() const { return validWord().to_uint(); }
-    unsigned int z0Bits() const { return z0Word().to_uint(); }
+    unsigned int z0Bits() const { return z0Word().range().to_uint(); }
     unsigned int multiplicityBits() const { return multiplicityWord().to_uint(); }
-    unsigned int ptBits() const { return ptWord().to_uint(); }
+    unsigned int ptBits() const { return ptWord().range().to_uint(); }
     unsigned int qualityBits() const { return qualityWord().to_uint(); }
     unsigned int inverseMultiplicityBits() const { return inverseMultiplicityWord().to_uint(); }
     unsigned int unassignedBits() const { return unassignedWord().to_uint(); }
@@ -193,7 +195,7 @@ namespace l1t {
   };
 
   typedef std::vector<VertexWord> VertexWordCollection;
-
+  typedef edm::Ref<VertexWordCollection> VertexWordRef;
 }  // namespace l1t
 
 #endif

@@ -36,6 +36,8 @@ namespace edm {
   class PreallocationConfiguration;
   class ActivityRegistry;
   class ThinnedAssociationsHelper;
+  class EventForTransformer;
+  class ServiceWeakToken;
 
   namespace maker {
     template <typename T>
@@ -62,12 +64,12 @@ namespace edm {
       // Warning: the returned moduleDescription will be invalid during construction
       ModuleDescription const& moduleDescription() const { return moduleDescription_; }
 
-      virtual bool wantsProcessBlocks() const = 0;
-      virtual bool wantsInputProcessBlocks() const = 0;
-      virtual bool wantsGlobalRuns() const = 0;
-      virtual bool wantsGlobalLuminosityBlocks() const = 0;
-      bool wantsStreamRuns() const { return false; }
-      bool wantsStreamLuminosityBlocks() const { return false; };
+      virtual bool wantsProcessBlocks() const noexcept = 0;
+      virtual bool wantsInputProcessBlocks() const noexcept = 0;
+      virtual bool wantsGlobalRuns() const noexcept = 0;
+      virtual bool wantsGlobalLuminosityBlocks() const noexcept = 0;
+      bool wantsStreamRuns() const noexcept { return false; }
+      bool wantsStreamLuminosityBlocks() const noexcept { return false; };
 
       virtual SerialTaskQueue* globalRunsQueue();
       virtual SerialTaskQueue* globalLuminosityBlocksQueue();
@@ -77,9 +79,16 @@ namespace edm {
       //For now this is a placeholder
       /*virtual*/ void preActionBeforeRunEventAsync(WaitingTaskHolder,
                                                     ModuleCallingContext const&,
-                                                    Principal const&) const {}
+                                                    Principal const&) const noexcept {}
 
+      void doTransformAsync(WaitingTaskHolder iTask,
+                            size_t iTransformIndex,
+                            EventPrincipal const& iEvent,
+                            ActivityRegistry*,
+                            ModuleCallingContext,
+                            ServiceWeakToken const&) noexcept;
       void doPreallocate(PreallocationConfiguration const&);
+      virtual void preallocRuns(unsigned int);
       virtual void preallocLumis(unsigned int);
       void doBeginJob();
       void doEndJob();
@@ -125,10 +134,18 @@ namespace edm {
       virtual void doBeginLuminosityBlockProduce_(LuminosityBlock& lbp, EventSetup const& c);
       virtual void doEndLuminosityBlockProduce_(LuminosityBlock& lbp, EventSetup const& c);
 
-      virtual void clearInputProcessBlockCaches();
-      virtual bool hasAccumulator() const { return false; }
+      virtual size_t transformIndex_(edm::BranchDescription const& iBranch) const noexcept;
+      virtual ProductResolverIndex transformPrefetch_(std::size_t iIndex) const noexcept;
+      virtual void transformAsync_(WaitingTaskHolder iTask,
+                                   std::size_t iIndex,
+                                   edm::EventForTransformer& iEvent,
+                                   edm::ActivityRegistry* iAct,
+                                   ServiceWeakToken const& iToken) const noexcept;
 
-      bool hasAcquire() const { return false; }
+      virtual void clearInputProcessBlockCaches();
+      virtual bool hasAccumulator() const noexcept { return false; }
+
+      bool hasAcquire() const noexcept { return false; }
 
       virtual SharedResourcesAcquirer createAcquirer();
 
