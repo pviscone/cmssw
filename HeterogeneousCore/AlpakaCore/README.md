@@ -170,7 +170,7 @@ Also note that the `fillDescription()` function must have the same content for a
 * All Event data products in the host memory space are guaranteed to be accessible for all operations (after the data product has been obtained from the `edm::Event` or `device::Event`).
 * All EventSetup data products in the device memory space are guaranteed to be accessible only for operations enqueued in the `Queue` given by `device::Event::queue()` when accessed via the `device::EventSetup` (ED modules), or by `device::Record<TRecord>::queue()` when accessed via the `device::Record<TRecord>` (ESProducers).
 * The EDM Stream does not proceed to the next Event until after all asynchronous work of the current Event has finished.
-  * **Note**: currently this guarantee does not hold if the job has any EDModule that launches asynchronous work but does not explicitly synchronize or produce any device-side data products.
+  * **Note**: this implies if an EDProducer in its `produce()` function uses the `Event::queue()` or gets a device-side data product, and does not produce any device-side data products, the `produce()` call will be synchronous (i.e. will block the CPU thread until the asynchronous work finishes)
 
 ## Examples
 
@@ -358,13 +358,8 @@ There are a few different options for using Alpaka-based modules in the CMSSW co
 In all cases the configuration must load the necessary `ProcessAccelerator` objects (see below) For accelerators used in production, these are aggregated in `Configuration.StandardSequences.Accelerators_cff`. The `runTheMatrix.py` handles the loading of this `Accelerators_cff` automatically. The HLT menus also load the necessary `ProcessAccelerator`s.
 ```python
 ## Load explicitly
-# One ProcessAccelerator for each accelerator technology
+# One ProcessAccelerator for each accelerator technology, plus a generic one for Alpaka
 process.load("Configuration.StandardSequences.Accelerators_cff")
-
-# And one ProcessAccelerator for Alpaka
-# (eventually to be absorbed to Accelerators_cff)
-process.load("HeterogeneousCore.AlpakaCore.ProcessAcceleratorAlpaka_cfi")
-
 ```
 
 ### Explicit module type (non-portable)
@@ -442,4 +437,31 @@ process.ProcessAcceleratorAlpaka.setBackend("serial_sync") # or "cuda_async" or 
 ```python
 process.options.accelerators = ["cpu"] # or "gpu-nvidia" or "gpu-amd"
 ```
+
+
+## Unit tests
+
+Unit tests that depend on Alpaka and define `<flags ALPAKA_BACKENDS="1"/>`, e.g. as a binary along
+```xml
+<bin name="<unique test binary name>" file="<comma-separated list of files">
+  <use name="alpaka"/>
+  <flags ALPAKA_BACKENDS="1"/>
+</bin>
+```
+or as a command (e.g. `cmsRun` or a shell script) to run
+
+```xml
+<test name="<unique name of the test>" command="<command to run>">
+  <use name="alpaka"/>
+  <flags ALPAKA_BACKENDS="1"/>
+</test>
+```
+
+will be run as part of `scram build runtests` according to the
+availability of the hardware:
+- `serial_sync` version is run always
+- `cuda_async` version is run if NVIDIA GPU is present (i.e. `cudaIsEnabled` returns 0)
+- `rocm_async` version is run if AMD GPU is present (i.e. `rocmIsEnabled` returns 0)
+
+Tests for specific backend (or hardware) can be explicitly specified to be run by setting `USER_UNIT_TESTS=cuda` or `USER_UNIT_TESTS=rocm` environment variable. Tests not depending on the hardware are skipped. If the corresponding hardware is not available, the tests will fail.
 

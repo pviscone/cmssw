@@ -7,6 +7,7 @@
 
 // user includes
 #include "DQMServices/Core/interface/DQMStore.h"
+#include "CalibFormats/SiStripObjects/interface/SiStripHashedDetId.h"
 
 struct SiStripLorentzAngleCalibrationHistograms {
 public:
@@ -28,9 +29,11 @@ public:
   std::map<std::string, dqm::reco::MonitorElement*> p_;
 
   // These are vectors since std:map::find is expensive
-  // we're going to profi of the dense indexing offered by
+  // we're going to profit of the dense indexing offered by
   // SiStripHashedDetId and index the histogram position
   // with the natural booking order
+  SiStripHashedDetId hash_;
+
   std::vector<dqm::reco::MonitorElement*> h2_ct_w_m_;
   std::vector<dqm::reco::MonitorElement*> h2_ct_var2_m_;
   std::vector<dqm::reco::MonitorElement*> h2_ct_var3_m_;
@@ -40,6 +43,9 @@ public:
   std::vector<dqm::reco::MonitorElement*> h2_t_var3_m_;
 
   std::map<std::string, dqm::reco::MonitorElement*> hp_;
+
+  dqm::reco::MonitorElement* h2_byLayerLA_;
+  dqm::reco::MonitorElement* h2_byLayerDiff_;
 
   // info
   std::map<std::string, int> nlayers_;

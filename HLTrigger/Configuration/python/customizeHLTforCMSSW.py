@@ -231,34 +231,33 @@ def customiseForOffline(process):
     for prod in esproducers_by_type(process, 'OnlineBeamSpotESProducer'):
         prod.timeThreshold = int(1e6)
 
+    # For running HLT offline and relieve the strain on Frontier so it will no longer inject a
+    # transaction id which tells Frontier to add a unique "&freshkey" to many query URLs.
+    # That was intended as a feature to only be used by the Online HLT, to guarantee that fresh conditions
+    # from the database were loaded at each Lumi section
+    # Seee CMSHLT-3123 for further details
+    if hasattr(process, 'GlobalTag'):
+        # Set ReconnectEachRun and RefreshEachRun to False
+        process.GlobalTag.ReconnectEachRun = cms.untracked.bool(False)
+        process.GlobalTag.RefreshEachRun = cms.untracked.bool(False)
+
+        if hasattr(process.GlobalTag, 'toGet'):
+            # Filter out PSet objects containing only 'record' and 'refreshTime'
+            process.GlobalTag.toGet = [
+                pset for pset in process.GlobalTag.toGet
+                if set(pset.parameterNames_()) != {'record', 'refreshTime'}
+            ]
+
     return process
 
-
-def customizeHLTfor42497(process):
-    for producer in esproducers_by_type(process, 'SiPixelQualityESProducer'):
-        producer.siPixelQualityFromDbLabel = cms.string('')
-        producer.appendToDataLabel = cms.string('')
-        for parName in [
-            'siPixelQualityLabel',
-            'siPixelQualityLabel_RawToDigi',
-        ]:
-            if hasattr(producer, parName):
-                producer.__delattr__(parName)
-
-    return process
-
-def customizeHLTfor42943(process):
-
-    for prod in producers_by_type(process, 'ClusterCheckerEDProducer'):
-        if hasattr(prod, "MaxNumberOfCosmicClusters"):
-            prod.MaxNumberOfStripClusters = getattr(prod,"MaxNumberOfCosmicClusters")
-            prod.__delattr__("MaxNumberOfCosmicClusters")
-
-    for prod in producers_by_type(process, 'SeedGeneratorFromRegionHitsEDProducer'):
-        if hasattr(prod, "ClusterCheckPSet"):
-            clustCheckPSet = getattr(prod,"ClusterCheckPSet")
-            prod.ClusterCheckPSet.MaxNumberOfStripClusters = getattr(clustCheckPSet,"MaxNumberOfCosmicClusters")
-            clustCheckPSet.__delattr__("MaxNumberOfCosmicClusters")
+def checkHLTfor43774(process):
+    filt_types = ["HLTEgammaGenericFilter","HLTEgammaGenericQuadraticEtaFilter","HLTEgammaGenericQuadraticFilter","HLTElectronGenericFilter"]
+    absAbleVar = ["DEta","deta","DetaSeed","Dphi","OneOESuperMinusOneOP","OneOESeedMinusOneOP"]
+    for filt_type in filt_types:
+        for filt in filters_by_type(process, filt_type):
+            if filt.varTag.productInstanceLabel in absAbleVar:
+                if (filt.useAbs != cms.bool(True)):
+                    print('# TSG WARNING: check value of parameter "useAbs" in',filt,'(expect True but is False)!')
 
     return process
 
@@ -270,7 +269,6 @@ def customizeHLTforCMSSW(process, menuType="GRun"):
     # add call to action function in proper order: newest last!
     # process = customiseFor12718(process)
 
-    process = customizeHLTfor42497(process)
-    process = customizeHLTfor42943(process)
+    process = checkHLTfor43774(process)
 
     return process

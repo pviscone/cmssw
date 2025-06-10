@@ -1,8 +1,8 @@
 import FWCore.ParameterSet.Config as cms
 
 import sys
-from Configuration.Eras.Era_Run3_cff import Run3
-process = cms.Process("L1TStage2DQM", Run3)
+from Configuration.Eras.Era_Run3_2024_cff import Run3_2024
+process = cms.Process("L1TStage2DQM", Run3_2024)
 
 unitTest = False
 if 'unitTest=True' in sys.argv:
@@ -132,7 +132,7 @@ if process.runType.getRunType() == process.runType.hi_run:
     process.castorDigis.InputLabel = rawDataRepackerLabel
     process.ctppsDiamondRawToDigi.rawDataTag = rawDataRepackerLabel
     process.ctppsPixelDigis.inputLabel = rawDataRepackerLabel
-    process.ecalDigis.cpu.InputLabel = rawDataRepackerLabel
+    process.ecalDigisCPU.InputLabel = rawDataRepackerLabel
     process.ecalPreshowerDigis.sourceTag = rawDataRepackerLabel
     process.hcalDigis.InputLabel = rawDataRepackerLabel
     process.muonCSCDigis.InputObjects = rawDataRepackerLabel

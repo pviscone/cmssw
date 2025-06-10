@@ -7,11 +7,13 @@
 #include <memory>
 
 #include "SimG4CMS/Forward/interface/ZdcSD.h"
+#include "SimG4CMS/Forward/interface/ForwardName.h"
 #include "FWCore/MessageLogger/interface/MessageLogger.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 #include "Geometry/Records/interface/IdealGeometryRecord.h"
 #include "SimG4Core/Notification/interface/G4TrackToParticleID.h"
 #include "SimG4Core/Notification/interface/TrackInformation.h"
+#include "SimG4CMS/Forward/interface/ZdcNumberingScheme.h"
 
 #include "G4SDManager.hh"
 #include "G4Step.hh"
@@ -37,7 +39,8 @@ ZdcSD::ZdcSD(const std::string& name,
   edm::ParameterSet m_ZdcSD = p.getParameter<edm::ParameterSet>("ZdcSD");
   useShowerLibrary = m_ZdcSD.getParameter<bool>("UseShowerLibrary");
   useShowerHits = m_ZdcSD.getParameter<bool>("UseShowerHits");
-  zdcHitEnergyCut = m_ZdcSD.getParameter<double>("ZdcHitEnergyCut") * GeV;
+  zdcHitEnergyCut = m_ZdcSD.getParameter<double>("ZdcHitEnergyCut") * CLHEP::GeV;
+  thFibDir = m_ZdcSD.getParameter<double>("FiberDirection");
   verbosity = m_ZdcSD.getParameter<int>("Verbosity");
   int verbn = verbosity / 10;
   verbosity %= 10;
@@ -71,12 +74,9 @@ void ZdcSD::initRun() {
 }
 
 bool ZdcSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
-  NaNTrap(aStep);
-
-  /*
-    if (useShowerLibrary)
+  if (useShowerLibrary)
     getFromLibrary(aStep);
-  */
+
 #ifdef EDM_ML_DEBUG
   edm::LogVerbatim("ZdcSD") << "ZdcSD::" << GetName() << " ID= " << aStep->GetTrack()->GetTrackID()
                             << " prID= " << aStep->GetTrack()->GetParentID()
@@ -96,6 +96,13 @@ bool ZdcSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     int primaryID = getTrackID(theTrack);
     currentID[0].setID(unitID, time, primaryID, depth);
     double energy = calculateCherenkovDeposit(aStep);
+
+    // Russian Roulette
+    double wt2 = theTrack->GetWeight();
+    if (wt2 > 0.0) {
+      energy *= wt2;
+    }
+
     if (G4TrackToParticleID::isGammaElectronPositron(theTrack)) {
       edepositEM = energy;
       edepositHAD = 0;
@@ -103,7 +110,7 @@ bool ZdcSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
       edepositEM = 0;
       edepositHAD = energy;
     }
-    if (!hitExists(aStep, 0) && edepositEM + edepositHAD > 0.) {
+    if (!hitExists(aStep, 0) && energy > 0.) {
 #ifdef EDM_ML_DEBUG
       G4ThreeVector pre = aStep->GetPreStepPoint()->GetPosition();
       edm::LogVerbatim("ZdcSD") << pre.x() << " " << pre.y() << " " << pre.z();
@@ -112,6 +119,229 @@ bool ZdcSD::ProcessHits(G4Step* aStep, G4TouchableHistory*) {
     }
   }
   return true;
+}
+
+bool ZdcSD::getFromLibrary(const G4Step* aStep) {
+  bool ok = true;
+
+  auto const preStepPoint = aStep->GetPreStepPoint();
+
+  double etrack = preStepPoint->GetKineticEnergy();
+  int primaryID = setTrackID(aStep);
+
+  hits.clear();
+
+  // Reset entry point for new primary
+  resetForNewPrimary(aStep);
+
+  if (etrack >= zdcHitEnergyCut) {
+    // create hits only if above threshold
+
+#ifdef EDM_ML_DEBUG
+    auto const theTrack = aStep->GetTrack();
+    edm::LogVerbatim("ForwardSim") << "----------------New track------------------------------\n"
+                                   << "Incident EnergyTrack: " << etrack << " MeV \n"
+                                   << "Zdc Cut Energy for Hits: " << zdcHitEnergyCut << " MeV \n"
+                                   << "ZdcSD::getFromLibrary " << hits.size() << " hits for " << GetName() << " of "
+                                   << primaryID << " with " << theTrack->GetDefinition()->GetParticleName() << " of "
+                                   << etrack << " MeV\n";
+#endif
+    hits.swap(showerLibrary.get()->getHits(aStep, ok));
+  }
+
+  incidentEnergy = etrack;
+  entrancePoint = preStepPoint->GetPosition();
+  for (unsigned int i = 0; i < hits.size(); i++) {
+    posGlobal = hits[i].position;
+    entranceLocal = hits[i].entryLocal;
+    double time = hits[i].time;
+    unsigned int unitID = hits[i].detID;
+    edepositHAD = hits[i].DeHad;
+    edepositEM = hits[i].DeEM;
+    currentID[0].setID(unitID, time, primaryID, 0);
+    processHit(aStep);
+
+#ifdef EDM_ML_DEBUG
+    edm::LogVerbatim("ForwardSim") << "ZdcSD: Final Hit number:" << i << "-->"
+                                   << "New HitID: " << currentHit[0]->getUnitID()
+                                   << " New Hit trackID: " << currentHit[0]->getTrackID()
+                                   << " New EM Energy: " << currentHit[0]->getEM() / CLHEP::GeV
+                                   << " New HAD Energy: " << currentHit[0]->getHadr() / CLHEP::GeV
+                                   << " New HitEntryPoint: " << currentHit[0]->getEntryLocal()
+                                   << " New IncidentEnergy: " << currentHit[0]->getIncidentEnergy() / CLHEP::GeV
+                                   << " New HitPosition: " << posGlobal;
+#endif
+  }
+  return ok;
+}
+
+double ZdcSD::getEnergyDeposit(const G4Step* aStep) {
+  double NCherPhot = 0.;
+
+  // preStepPoint information
+  G4StepPoint* preStepPoint = aStep->GetPreStepPoint();
+
+  const G4ThreeVector& hitPoint = preStepPoint->GetPosition();
+  const G4ThreeVector& hit_mom = preStepPoint->GetMomentumDirection();
+  G4double stepL = aStep->GetStepLength() / cm;
+  G4double beta = preStepPoint->GetBeta();
+  G4double charge = preStepPoint->GetCharge();
+  if (charge == 0.0)
+    return 0.0;
+
+  // theTrack information
+  G4Track* theTrack = aStep->GetTrack();
+  G4String particleType = theTrack->GetDefinition()->GetParticleName();
+  G4ThreeVector localPoint = theTrack->GetTouchable()->GetHistory()->GetTopTransform().TransformPoint(hitPoint);
+
+#ifdef EDM_ML_DEBUG
+  const G4ThreeVector& vert_mom = theTrack->GetVertexMomentumDirection();
+
+  // calculations
+  float costheta =
+      vert_mom.z() / sqrt(vert_mom.x() * vert_mom.x() + vert_mom.y() * vert_mom.y() + vert_mom.z() * vert_mom.z());
+  float theta = std::acos(std::min(std::max(costheta, -1.f), 1.f));
+  float eta = -std::log(std::tan(theta * 0.5f));
+  float phi = -100.;
+  if (vert_mom.x() != 0)
+    phi = std::atan2(vert_mom.y(), vert_mom.x());
+  if (phi < 0.)
+    phi += twopi;
+
+  // Get the total energy deposit
+  double stepE = aStep->GetTotalEnergyDeposit();
+
+  // postStepPoint information
+  G4StepPoint* postStepPoint = aStep->GetPostStepPoint();
+  G4VPhysicalVolume* postPV = postStepPoint->GetPhysicalVolume();
+  std::string postnameVolume = ForwardName::getName(postPV->GetName());
+  std::string nameVolume = preStepPoint->GetPhysicalVolume()->GetName();
+  edm::LogVerbatim("ForwardSim") << "ZdcSD::  getEnergyDeposit: \n"
+                                 << "  preStepPoint: " << nameVolume << "," << stepL << "," << stepE << "," << beta
+                                 << "," << charge << "\n"
+                                 << "  postStepPoint: " << postnameVolume << "," << costheta << "," << theta << ","
+                                 << eta << "," << phi << "," << particleType << " id= " << theTrack->GetTrackID()
+                                 << " Etot(GeV)= " << theTrack->GetTotalEnergy() / CLHEP::GeV;
+#endif
+  const double bThreshold = 0.67;
+  if (beta > bThreshold) {
+#ifdef EDM_ML_DEBUG
+    edm::LogVerbatim("ForwardSim") << "ZdcSD::  getEnergyDeposit:  pass ";
+#endif
+    const float nMedium = 1.4925;
+    // float photEnSpectrDL = 10714.285714;
+    //       photEnSpectrDL = (1./400.nm-1./700.nm)*10000000.cm/nm; /* cm-1  */
+
+    const float photEnSpectrDE = 1.24;
+    // E = 2pi*(1./137.)*(eV*cm/370.)/lambda = 12.389184*(eV*cm)/lambda
+    // Emax = 12.389184*(eV*cm)/400nm*10-7cm/nm  = 3.01 eV
+    // Emin = 12.389184*(eV*cm)/700nm*10-7cm/nm  = 1.77 eV
+    // delE = Emax - Emin = 1.24 eV
+
+    const float effPMTandTransport = 0.15;
+
+    // Check these values
+    const float thFullRefl = 23.;
+    float thFullReflRad = thFullRefl * pi / 180.;
+
+    float thFibDirRad = thFibDir * pi / 180.;
+
+    // at which theta the point is located:
+    //   float th1 = hitPoint.theta();
+
+    // theta of charged particle in LabRF(hit momentum direction):
+    float costh = hit_mom.z() / sqrt(hit_mom.x() * hit_mom.x() + hit_mom.y() * hit_mom.y() + hit_mom.z() * hit_mom.z());
+    float th = acos(std::min(std::max(costh, -1.f), 1.f));
+    // just in case (can do both standard ranges of phi):
+    if (th < 0.)
+      th += CLHEP::twopi;
+
+    // theta of cone with Cherenkov photons w.r.t.direction of charged part.:
+    float costhcher = 1. / (nMedium * beta);
+    float thcher = acos(std::min(std::max(costhcher, -1.f), 1.f));
+
+    // diff thetas of charged part. and quartz direction in LabRF:
+    float DelFibPart = std::abs(th - thFibDirRad);
+
+    // define real distances:
+    float d = std::abs(std::tan(th) - std::tan(thFibDirRad));
+
+    float a = std::tan(thFibDirRad) + std::tan(std::abs(thFibDirRad - thFullReflRad));
+    float r = std::tan(th) + std::tan(std::abs(th - thcher));
+
+    // define losses d_qz in cone of full reflection inside quartz direction
+    float d_qz = -1;
+#ifdef EDM_ML_DEBUG
+    float variant = -1;
+#endif
+    // if (d > (r+a))
+    if (DelFibPart > (thFullReflRad + thcher)) {
+#ifdef EDM_ML_DEBUG
+      variant = 0.;
+#endif
+      d_qz = 0.;
+    } else {
+      // if ((DelFibPart + thcher) < thFullReflRad )  [(d+r) < a]
+      if ((th + thcher) < (thFibDirRad + thFullReflRad) && (th - thcher) > (thFibDirRad - thFullReflRad)) {
+#ifdef EDM_ML_DEBUG
+        variant = 1.;
+#endif
+        d_qz = 1.;
+      } else {
+        // if ((thcher - DelFibPart ) > thFullReflRad )  [(r-d) > a]
+        if ((thFibDirRad + thFullReflRad) < (th + thcher) && (thFibDirRad - thFullReflRad) > (th - thcher)) {
+#ifdef EDM_ML_DEBUG
+          variant = 2.;
+#endif
+          d_qz = 0.;
+        } else {
+#ifdef EDM_ML_DEBUG
+          variant = 3.;  // d_qz is calculated below
+#endif
+          // use crossed length of circles(cone projection) - dC1/dC2 :
+          float arg_arcos = 0.;
+          float tan_arcos = 2. * a * d;
+          if (tan_arcos != 0.)
+            arg_arcos = (r * r - a * a - d * d) / tan_arcos;
+          arg_arcos = std::abs(arg_arcos);
+          float th_arcos = acos(std::min(std::max(arg_arcos, -1.f), 1.f));
+          d_qz = th_arcos / CLHEP::twopi;
+          d_qz = std::abs(d_qz);
+#ifdef EDM_ML_DEBUG
+          edm::LogVerbatim("ForwardSim") << "  d_qz: " << r << "," << a << "," << d << " " << tan_arcos << " "
+                                         << arg_arcos;
+          edm::LogVerbatim("ForwardSim") << "," << arg_arcos;
+          edm::LogVerbatim("ForwardSim") << " " << d_qz;
+          edm::LogVerbatim("ForwardSim") << " " << th_arcos;
+          edm::LogVerbatim("ForwardSim") << "," << d_qz;
+#endif
+        }
+      }
+    }
+    double meanNCherPhot = 0.;
+    int poissNCherPhot = 0;
+    if (d_qz > 0) {
+      meanNCherPhot = 370. * charge * charge * (1. - 1. / (nMedium * nMedium * beta * beta)) * photEnSpectrDE * stepL;
+
+      poissNCherPhot = std::max((int)G4Poisson(meanNCherPhot), 0);
+      NCherPhot = poissNCherPhot * effPMTandTransport * d_qz;
+    }
+
+#ifdef EDM_ML_DEBUG
+    edm::LogVerbatim("ForwardSim") << "ZdcSD::  getEnergyDeposit:  gED: " << stepE << "," << costh << "," << th << ","
+                                   << costhcher << "," << thcher << "," << DelFibPart << "," << d << "," << a << ","
+                                   << r << "," << hitPoint << "," << hit_mom << "," << vert_mom << "," << localPoint
+                                   << "," << charge << "," << beta << "," << stepL << "," << d_qz << "," << variant
+                                   << "," << meanNCherPhot << "," << poissNCherPhot << "," << NCherPhot;
+#endif
+
+  } else {
+    // determine failure mode: beta, charge, and/or nameVolume
+    if (beta <= bThreshold)
+      edm::LogVerbatim("ForwardSim") << "ZdcSD::  getEnergyDeposit: fail beta=" << beta;
+  }
+
+  return NCherPhot;
 }
 
 ///////////////////////////////////////
@@ -129,131 +359,120 @@ const double HBARC = 6.582119514E-16 /*eV*s*/ * 2.99792458E8 /*m/s*/;  // hbar *
 
 // Calculate the Cherenkov deposit corresponding to a G4Step
 double ZdcSD::calculateCherenkovDeposit(const G4Step* aStep) {
-  G4Material* material = aStep->GetTrack()->GetMaterial();
+  const G4StepPoint* pPreStepPoint = aStep->GetPreStepPoint();
+  G4double charge = pPreStepPoint->GetCharge() / CLHEP::eplus;
+  if (charge == 0.0 || aStep->GetStepLength() < 1e-9 * CLHEP::mm)
+    return 0.0;
 
-  if (material->GetName() != "quartz")
-    return 0.0;  // 0 deposit if material is not quartz
-  else {
-    const G4StepPoint* pPreStepPoint = aStep->GetPreStepPoint();
-    const G4StepPoint* pPostStepPoint = aStep->GetPostStepPoint();
-    const G4String volumeName = pPreStepPoint->GetTouchable()->GetVolume(0)->GetLogicalVolume()->GetName();
+  const G4StepPoint* pPostStepPoint = aStep->GetPostStepPoint();
 
-    G4ThreeVector pre = pPreStepPoint->GetPosition();
-    G4ThreeVector post = pPostStepPoint->GetPosition();
+  G4ThreeVector pre = pPreStepPoint->GetPosition();
+  G4ThreeVector post = pPostStepPoint->GetPosition();
 
-    if ((post - pre).mag() < 1E-9)
-      return 0.0;
+  //Convert step coordinates to local (fiber) coodinates
+  const G4ThreeVector localPre = setToLocal(pre, pPreStepPoint->GetTouchable());
+  const G4ThreeVector localPost = setToLocal(post, pPreStepPoint->GetTouchable());
 
-    //Convert step coordinates to local (fiber) coodinates
-    const G4ThreeVector localPre = setToLocal(pre, pPreStepPoint->GetTouchable());
-    const G4ThreeVector localPost = setToLocal(post, pPreStepPoint->GetTouchable());
-    // Calculate the unit direction vector in local coordinates
+  // Calculate the unit direction vector in local coordinates
+  const G4ThreeVector particleDirection = (localPost - localPre) / (localPost - localPre).mag();
 
-    const G4ThreeVector particleDirection = (localPost - localPre) / (localPost - localPre).mag();
+  double beta = 0.5 * (pPreStepPoint->GetBeta() + pPostStepPoint->GetBeta());
+  double stepLength = aStep->GetStepLength() / 1000;  // Geant4 stepLength is in "mm"
 
-    const G4DynamicParticle* aParticle = aStep->GetTrack()->GetDynamicParticle();
-    int charge = round(aParticle->GetDefinition()->GetPDGCharge());
+  int nPhotons;  // Number of Cherenkov photons
 
-    if (charge == 0)
-      return 0.0;
+  nPhotons = G4Poisson(calculateMeanNumberOfPhotons(charge, beta, stepLength));
 
-    double beta = 0.5 * (pPreStepPoint->GetBeta() + pPostStepPoint->GetBeta());
-    double stepLength = aStep->GetStepLength() / 1000;  // Geant4 stepLength is in "mm"
+  double totalE = 0.0;
 
-    int nPhotons;  // Number of Cherenkov photons
+  for (int i = 0; i < nPhotons; ++i) {
+    // uniform refractive index in PMT range -> uniform energy distribution
+    double photonE = EMIN + G4UniformRand() * (EMAX - EMIN);
+    // UPDATE: taking into account dispersion relation -> energy distribution
 
-    nPhotons = G4Poisson(calculateMeanNumberOfPhotons(charge, beta, stepLength));
+    if (G4UniformRand() > pmtEfficiency(convertEnergyToWavelength(photonE)))
+      continue;
 
-    double totalE = 0.0;
-
-    for (int i = 0; i < nPhotons; i++) {
-      // uniform refractive index in PMT range -> uniform energy distribution
-      double photonE = EMIN + G4UniformRand() * (EMAX - EMIN);
-      // UPDATE: taking into account dispersion relation -> energy distribution
-
-      if (G4UniformRand() > pmtEfficiency(convertEnergyToWavelength(photonE)))
-        continue;
-
-      double omega = G4UniformRand() * twopi;
-      double thetaC = acos(1.0 / (beta * RINDEX));
+    double omega = G4UniformRand() * twopi;
+    double cosTheta = std::min(1.0 / (beta * RINDEX), 1.0);
+    double sinTheta = std::sqrt((1. - cosTheta) * (1.0 + cosTheta));
 
 #ifdef EDM_ML_DEBUG
-      edm::LogVerbatim("ZdcSD") << "E_gamma: " << photonE << "\t omega: " << omega << "\t thetaC: " << thetaC;
+    edm::LogVerbatim("ZdcSD") << "E_gamma: " << photonE << "\t omega: " << omega << "\t thetaC: " << cosTheta;
 #endif
-      // Calculate momentum direction w.r.t primary particle (z-direction)
-      double px = photonE * sin(thetaC) * cos(omega);
-      double py = photonE * sin(thetaC) * sin(omega);
-      double pz = photonE * cos(thetaC);
-      G4ThreeVector photonMomentum(px, py, pz);
+    // Calculate momentum direction w.r.t primary particle (z-direction)
+    double px = photonE * sinTheta * std::cos(omega);
+    double py = photonE * sinTheta * std::sin(omega);
+    double pz = photonE * cosTheta;
+    G4ThreeVector photonMomentum(px, py, pz);
 
 #ifdef EDM_ML_DEBUG
-      edm::LogVerbatim("ZdcSD") << "pPR = (" << particleDirection.x() << "," << particleDirection.y() << ","
-                                << particleDirection.z() << ")";
-      edm::LogVerbatim("ZdcSD") << "pCH = (" << px << "," << py << "," << pz << ")";
+    edm::LogVerbatim("ZdcSD") << "pPR = (" << particleDirection.x() << "," << particleDirection.y() << ","
+                              << particleDirection.z() << ")";
+    edm::LogVerbatim("ZdcSD") << "pCH = (" << px << "," << py << "," << pz << ")";
 #endif
-      // Rotate to the fiber reference frame
-      photonMomentum.rotateUz(particleDirection);
+    // Rotate to the fiber reference frame
+    photonMomentum.rotateUz(particleDirection);
 
 #ifdef EDM_ML_DEBUG
-      edm::LogVerbatim("ZdcSD") << "pLAB = (" << photonMomentum.x() << "," << photonMomentum.y() << ","
-                                << photonMomentum.z() << ")";
+    edm::LogVerbatim("ZdcSD") << "pLAB = (" << photonMomentum.x() << "," << photonMomentum.y() << ","
+                              << photonMomentum.z() << ")";
 #endif
-      // Get random position along G4Step
-      G4ThreeVector photonPosition = localPre + G4UniformRand() * (localPost - localPre);
+    // Get random position along G4Step
+    G4ThreeVector photonPosition = localPre + G4UniformRand() * (localPost - localPre);
 
-      // 2D vectors to calculate impact position (x*,y*)
-      G4TwoVector r0(photonPosition);
-      G4TwoVector v0(photonMomentum);
+    // 2D vectors to calculate impact position (x*,y*)
+    G4TwoVector r0(photonPosition);
+    G4TwoVector v0(photonMomentum);
 
-      double R = 0.3; /*mm, fiber radius*/
-      double R2 = 0.3 * 0.3;
+    double R = 0.3; /*mm, fiber radius*/
+    double R2 = 0.3 * 0.3;
 
-      if (r0.mag() < R && photonMomentum.z() < 0.0) {
-        // 2nd order polynomial coefficients
-        double a = v0.mag2();
-        double b = 2.0 * r0 * v0;
-        double c = r0.mag2() - R2;
+    if (r0.mag() < R && photonMomentum.z() < 0.0) {
+      // 2nd order polynomial coefficients
+      double a = v0.mag2();
+      double b = 2.0 * r0 * v0;
+      double c = r0.mag2() - R2;
 
-        if (a < 1E-6)
-          totalE += 1;  //photonE /*eV*/;
-        else {
-          // calculate intersection point - solving 2nd order polynomial
-          double t = (-b + sqrt(b * b - 4.0 * a * c)) / (2.0 * a);
-          G4ThreeVector n(r0.x() + v0.x() * t, r0.y() + v0.y() * t, 0.0);  // surface normal
-          double cosTheta = (n * photonMomentum) / (n.mag() * photonE);    // cosine of incident angle
+      if (a < 1E-6)
+        totalE += 1;  //photonE /*eV*/;
+      else {
+        // calculate intersection point - solving 2nd order polynomial
+        double t = (-b + sqrt(b * b - 4.0 * a * c)) / (2.0 * a);
+        G4ThreeVector n(r0.x() + v0.x() * t, r0.y() + v0.y() * t, 0.0);  // surface normal
+        double cosTheta = (n * photonMomentum) / (n.mag() * photonE);    // cosine of incident angle
 
-          if (cosTheta >= NAperRINDEX)  // lightguide condition
-            totalE += 1;                //photonE /*eV*/;
-        }
+        if (cosTheta >= NAperRINDEX)  // lightguide condition
+          totalE += 1;                //photonE /*eV*/;
       }
-
-#ifdef EDM_ML_DEBUG
-      edm::LogVerbatim("ZdcSD") << "r = (" << photonPosition.x() << "," << photonPosition.y() << ","
-                                << photonPosition.z() << ")" << std::endl;
-#endif
     }
 
 #ifdef EDM_ML_DEBUG
-    if (nPhotons > 30) {
-      edm::LogVerbatim("ZdcSD") << totalE;
-
-      if (totalE > 0)
-        edm::LogVerbatim("ZdcSD") << pre.x() << " " << pre.y() << " " << pre.z() << " " << totalE << std::endl;
-    }
+    edm::LogVerbatim("ZdcSD") << "r = (" << photonPosition.x() << "," << photonPosition.y() << "," << photonPosition.z()
+                              << ")" << std::endl;
 #endif
-    return totalE;
   }
+
+#ifdef EDM_ML_DEBUG
+  if (nPhotons > 30) {
+    edm::LogVerbatim("ZdcSD") << totalE;
+
+    if (totalE > 0)
+      edm::LogVerbatim("ZdcSD") << pre.x() << " " << pre.y() << " " << pre.z() << " " << totalE;
+  }
+#endif
+  return totalE;
 }
 
 // Calculate mean number of Cherenkov photons in the sensitivity range (300-650 nm)
 // for a given step length for a particle with given charge and beta
-double ZdcSD::calculateMeanNumberOfPhotons(int charge, double beta, double stepLength) {
+double ZdcSD::calculateMeanNumberOfPhotons(double charge, double beta, double stepLength) {
   // Return mean number of Cherenkov photons
   return (ALPHA * charge * charge * stepLength) / HBARC * (EMAX - EMIN) * (1.0 - 1.0 / (beta * beta * RINDEX * RINDEX));
 }
 
 // Evaluate photon pdf
-double ZdcSD::photonEnergyDist(int charge, double beta, double E) {
+double ZdcSD::photonEnergyDist(double charge, double beta, double E) {
   const std::vector<double> ENERGY_TAB{1.75715, 1.81902, 1.88311, 1.94944, 2.0183,  2.08939, 2.16302, 2.23919,
                                        2.31789, 2.39954, 2.48416, 2.57175, 2.66232, 2.75643, 2.85349, 2.95411,
                                        3.05756, 3.16528, 3.2774,  3.39218, 3.5123,  3.6359,  3.76394, 3.89642,
@@ -268,7 +487,7 @@ double ZdcSD::photonEnergyDist(int charge, double beta, double E) {
 }
 
 // Generate a photon with the given minimum energy accourding to the energy distribution
-double ZdcSD::generatePhotonEnergy(int charge, double beta, double Emin) {
+double ZdcSD::generatePhotonEnergy(double charge, double beta, double Emin) {
   double photonE;
 
   // Use rejection method

@@ -161,6 +161,15 @@ namespace dqm {
         });
       }
       template <typename FUNC = NOOP, std::enable_if_t<not std::is_arithmetic<FUNC>::value, int> = 0>
+      MonitorElement* book1DD(
+          TString const& name, TString const& title, int nchX, float const* xbinsize, FUNC onbooking = NOOP()) {
+        return bookME(name, MonitorElementData::Kind::TH1D, [=]() {
+          auto th1 = new TH1D(name, title, nchX, xbinsize);
+          onbooking(th1);
+          return th1;
+        });
+      }
+      template <typename FUNC = NOOP, std::enable_if_t<not std::is_arithmetic<FUNC>::value, int> = 0>
       MonitorElement* book1DD(TString const& name, TH1D* object, FUNC onbooking = NOOP()) {
         return bookME(
             name,
@@ -554,7 +563,8 @@ namespace dqm {
 
       DQMStore* store_ = nullptr;
       MonitorElementData::Scope scope_ = MonitorElementData::Scope::JOB;
-      uint64_t moduleID_ = 0;
+      static constexpr uint64_t kInvalidModuleID = std::numeric_limits<uint64_t>::max();
+      uint64_t moduleID_ = kInvalidModuleID;
       edm::LuminosityBlockID runlumi_ = edm::LuminosityBlockID();
     };
 
@@ -684,8 +694,8 @@ namespace dqm {
             oldid_ = booker_.setModuleID(newid);
             oldscope_ = booker_.setScope(newscope);
             oldrunlumi_ = booker_.setRunLumi(newrunlumi);
-            assert(newid != 0 || !"moduleID must be set for normal booking transaction");
-            assert(oldid_ == 0 || !"Nested booking transaction?");
+            assert(newid != kInvalidModuleID || !"moduleID must be set for normal booking transaction");
+            assert(oldid_ == kInvalidModuleID || !"Nested booking transaction?");
           }
           ~ModuleIdScope() {
             booker_.setModuleID(oldid_);

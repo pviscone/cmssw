@@ -29,6 +29,8 @@
 #include "DataFormats/Provenance/interface/Timestamp.h"
 #include "EventFilter/Utilities/interface/crc32c.h"
 
+using namespace edm::streamer;
+
 void DataModeFRD::readEvent(edm::EventPrincipal& eventPrincipal) {
   std::unique_ptr<FEDRawDataCollection> rawData(new FEDRawDataCollection);
   bool tcdsInRange;
@@ -153,7 +155,9 @@ std::string DataModeFRD::getChecksumError() const {
  * FRD Multi Test
  */
 
-void DataModeFRDStriped::makeDirectoryEntries(std::vector<std::string> const& baseDirs, std::string const& runDir) {
+void DataModeFRDStriped::makeDirectoryEntries(std::vector<std::string> const& baseDirs,
+                                              std::vector<int> const& numSources,
+                                              std::string const& runDir) {
   std::filesystem::path runDirP(runDir);
   for (auto& baseDir : baseDirs) {
     std::filesystem::path baseDirP(baseDir);
