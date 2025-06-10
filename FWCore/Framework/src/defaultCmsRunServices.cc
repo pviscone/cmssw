@@ -23,8 +23,11 @@ namespace edm {
                                             "AdaptorConfig",
                                             "SiteLocalConfigService",
                                             "StatisticsSenderService",
+                                            "ResourceInformationService",
+                                            "CPU",
                                             "CondorStatusService",
-                                            "XrdStatisticsService"};
+                                            "XrdStatisticsService",
+                                            "AsyncService"};
 
     return returnValue;
   }

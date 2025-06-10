@@ -2,18 +2,21 @@ from __future__ import print_function
 import FWCore.ParameterSet.Config as cms
 import sys
 
-from Configuration.Eras.Era_Run3_cff import Run3
-process = cms.Process("PixelLumiDQM", Run3)
+if 'runkey=hi_run' in sys.argv:
+  from Configuration.Eras.Era_Run3_pp_on_PbPb_approxSiStripClusters_cff import Run3_pp_on_PbPb_approxSiStripClusters
+  process = cms.Process("PixelLumiDQM", Run3_pp_on_PbPb_approxSiStripClusters)
+else:
+  from Configuration.Eras.Era_Run3_cff import Run3
+  process = cms.Process("PixelLumiDQM", Run3)
 
 unitTest=False
 if 'unitTest=True' in sys.argv:
     unitTest=True
 
-process.MessageLogger = cms.Service("MessageLogger",
-    debugModules = cms.untracked.vstring('siPixelDigis', 
-					 'sipixelEDAClient'),
-    cout = cms.untracked.PSet(threshold = cms.untracked.string('ERROR')),
-    destinations = cms.untracked.vstring('cout')
+process.load('FWCore.MessageService.MessageLogger_cfi')
+process.MessageLogger.debugModules = cms.untracked.vstring('siPixelDigis','sipixelEDAClient')
+process.MessageLogger.cout = cms.untracked.PSet(
+    threshold = cms.untracked.string('ERROR')
 )
 
 #----------------------------
@@ -73,7 +76,7 @@ process.load("Configuration.StandardSequences.GeometryRecoDB_cff")
 process.load("DQM.Integration.config.FrontierCondition_GT_cfi")
 # Condition for lxplus: change and possibly customise the GT
 #from Configuration.AlCa.GlobalTag import GlobalTag as gtCustomise
-#process.GlobalTag = gtCustomise(process.GlobalTag, 'auto:run2_data', '')
+#process.GlobalTag = gtCustomise(process.GlobalTag, 'auto:run3_data', '')
 
 #-----------------------
 #  Reconstruction Modules

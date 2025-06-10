@@ -9,12 +9,17 @@ _seedingThresholdsHB = cms.vdouble(1.0, 1.0, 1.0, 1.0)
 _seedingThresholdsHE = cms.vdouble(1.1, 1.1, 1.1, 1.1, 1.1, 1.1, 1.1)
 _seedingThresholdsHBphase1 = cms.vdouble(0.125, 0.25, 0.35, 0.35)
 _seedingThresholdsHEphase1 = cms.vdouble(0.1375, 0.275, 0.275, 0.275, 0.275, 0.275, 0.275)
+#updated HB RecHit threshold for 2023
+_thresholdsHBphase1_2023 = cms.vdouble(0.4, 0.3, 0.3, 0.3)
+#updated HB seeding threshold for 2023
+_seedingThresholdsHBphase1_2023 = cms.vdouble(0.6, 0.5, 0.5, 0.5)
 
 
 #### PF CLUSTER HCAL ####
 particleFlowClusterHBHE = cms.EDProducer(
     "PFClusterProducer",
     recHitsSource = cms.InputTag("particleFlowRecHitHBHE"),
+    usePFThresholdsFromDB = cms.bool(False),
     recHitCleaners = cms.VPSet(),
     seedCleaners = cms.VPSet(),
     seedFinder = cms.PSet(
@@ -31,7 +36,7 @@ particleFlowClusterHBHE = cms.EDProducer(
                         seedingThresholdPt = cms.vdouble(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
                         )
               ),
-        nNeighbours = cms.int32(4)
+        nNeighbours = cms.int32(4),
     ),
     initialClusteringStep = cms.PSet(
         algoName = cms.string("Basic2DGenericTopoClusterizer"),    
@@ -142,7 +147,25 @@ run3_HB.toModify(particleFlowClusterHBHE,
     ),
 )
 
+# offline 2023
+from Configuration.Eras.Modifier_run3_egamma_2023_cff import run3_egamma_2023
+run3_egamma_2023.toModify(particleFlowClusterHBHE,
+    seedFinder = dict(thresholdsByDetector = {0 : dict(seedingThreshold = _seedingThresholdsHBphase1_2023) } ),
+    initialClusteringStep = dict(thresholdsByDetector = {0 : dict(gatheringThreshold = _thresholdsHBphase1_2023) } ),
+    pfClusterBuilder = dict(
+        recHitEnergyNorms = {0 : dict(recHitEnergyNorm = _thresholdsHBphase1_2023) },
+        positionCalc = dict(logWeightDenominatorByDetector = {0 : dict(logWeightDenominator = _thresholdsHBphase1_2023) } ),
+        allCellsPositionCalc = dict(logWeightDenominatorByDetector = {0 : dict(logWeightDenominator = _thresholdsHBphase1_2023) } ),
+    ),
+)
+
+
 # HCALonly WF
 particleFlowClusterHBHEOnly = particleFlowClusterHBHE.clone(
     recHitsSource = "particleFlowRecHitHBHEOnly"
 )
+
+#--- Use DB conditions for cuts&seeds for Run3 and phase2
+from Configuration.Eras.Modifier_hcalPfCutsFromDB_cff import hcalPfCutsFromDB
+hcalPfCutsFromDB.toModify( particleFlowClusterHBHE,
+                           usePFThresholdsFromDB = True)

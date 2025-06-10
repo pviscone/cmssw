@@ -154,7 +154,8 @@ void DTBlockedROChannelsTest::dqmEndLuminosityBlock(DQMStore::IBooker& ibooker,
     }
 
     if (!offlineMode) {
-      hSystFractionVsLS = new DTTimeEvolutionHisto(ibooker, "EnabledROChannelsVsLS", "% RO channels", 500, 5, true, 3);
+      hSystFractionVsLS =
+          new DTTimeEvolutionHisto(ibooker, "EnabledROChannelsVsLS", "Fraction of RO channels", 500, 5, true, 3);
     }
   }  // end attempt to make these bookings only once!
 
@@ -384,8 +385,8 @@ DTBlockedROChannelsTest::DTLinkBinsMap::DTLinkBinsMap(DQMStore::IGetter& igetter
   int wheel = (ddu - 770) % 5 - 2;
 
   // get the pointer to the corresondig histo
-  urosHName = "DT/00-DataIntegrity/Wheel" + to_string(wheel) + "/ROS" + to_string(ros) + "/W" + to_string(wheel) +
-              "_ROS" + to_string(ros) + "_ROSError";
+  urosHName = "DT/00-DataIntegrity/Wheel" + to_string(wheel) + "/Sector" + to_string(ros) + "/W" + to_string(wheel) +
+              "_Sector" + to_string(ros) + "_ROSError";
   meuROS = igetter.get(urosHName);
 }
 

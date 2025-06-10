@@ -58,11 +58,11 @@ namespace trklet {
 
     bool stubtruthmatch(const L1TStub* stub);
 
-    const Stub* innerFPGAStub() { return innerFPGAStub_; }
+    const Stub* innerFPGAStub() const { return innerFPGAStub_; }
 
-    const Stub* middleFPGAStub() { return middleFPGAStub_; }
+    const Stub* middleFPGAStub() const { return middleFPGAStub_; }
 
-    const Stub* outerFPGAStub() { return outerFPGAStub_; }
+    const Stub* outerFPGAStub() const { return outerFPGAStub_; }
 
     std::string addressstr();
 
@@ -157,6 +157,7 @@ namespace trklet {
       return FPGAWord(ichisqrphifit_.value() + ichisqrzfit_.value(), ichisqrphifit_.nbits());
     }
 
+    // Note floating & digitized helix params after track fit.
     void setFitPars(double rinvfit,
                     double phi0fit,
                     double d0fit,
@@ -185,6 +186,7 @@ namespace trklet {
     const std::string diskstubstr(const unsigned disk) const;
     std::string trackfitstr() const;
 
+    // Create a Track object from stubs & digitized track helix params
     Track makeTrack(const std::vector<const L1TStub*>& l1stubs);
 
     Track* getTrack() {

@@ -15,8 +15,10 @@ namespace l1t {
     public:
       Blocks pack(const edm::Event&, const PackerTokens*) override;
       void setIsKbmtf() { isKbmtf_ = true; };
+      void setUseOmtfDisplacementInfo() { useOmtfDisplacementInfo_ = true; };
       void setUseEmtfDisplacementInfo() { useEmtfDisplacementInfo_ = true; };
-      void setUseEmtfShowers() { useEmtfShowers_ = true; };
+      void setUseEmtfNominalTightShowers() { useEmtfNominalTightShowers_ = true; };
+      void setUseEmtfLooseShowers() { useEmtfLooseShowers_ = true; };
 
     private:
       struct GMTObjects {
@@ -41,8 +43,10 @@ namespace l1t {
       static constexpr size_t wordsPerBx_ = 6;  // number of 32 bit words per BX
 
       bool isKbmtf_{false};
+      bool useOmtfDisplacementInfo_{false};
       bool useEmtfDisplacementInfo_{false};
-      bool useEmtfShowers_{false};
+      bool useEmtfNominalTightShowers_{false};
+      bool useEmtfLooseShowers_{false};
     };
   }  // namespace stage2
 }  // namespace l1t

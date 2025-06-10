@@ -1,9 +1,6 @@
 import FWCore.ParameterSet.Config as cms
 
-# modifiers
-from Configuration.ProcessModifiers.gpu_cff import gpu
-
-# helper fuctions
+# helper functions
 from HLTrigger.Configuration.common import *
 
 # add one customisation function per PR
@@ -115,13 +112,17 @@ def customisePixelGainForRun2Input(process):
     """
     # revert the Pixel parameters to be compatible with the Run 2 conditions
     for producer in producers_by_type(process, "SiPixelClusterProducer"):
-        producer.VCaltoElectronGain      =   47
-        producer.VCaltoElectronGain_L1   =   50
-        producer.VCaltoElectronOffset    =  -60
+        producer.VCaltoElectronGain = 47
+        producer.VCaltoElectronGain_L1 = 50
+        producer.VCaltoElectronOffset = -60
         producer.VCaltoElectronOffset_L1 = -670
 
-    for producer in producers_by_type(process, "SiPixelRawToClusterCUDA"):
-        producer.isRun2 = True
+    for pluginType in ["SiPixelRawToClusterCUDA", "SiPixelRawToClusterCUDAPhase1", "SiPixelRawToClusterCUDAHIonPhase1"]:
+        for producer in producers_by_type(process, pluginType):
+            producer.VCaltoElectronGain = 47
+            producer.VCaltoElectronGain_L1 = 50
+            producer.VCaltoElectronOffset = -60
+            producer.VCaltoElectronOffset_L1 = -670
 
     return process
 
@@ -130,7 +131,11 @@ def customisePixelL1ClusterThresholdForRun2Input(process):
     for producer in producers_by_type(process, "SiPixelClusterProducer"):
         if hasattr(producer,"ClusterThreshold_L1"):
             producer.ClusterThreshold_L1 = 2000
-    for producer in producers_by_type(process, "SiPixelRawToClusterCUDA"):
+    for pluginType in ["SiPixelRawToClusterCUDA", "SiPixelRawToClusterCUDAPhase1", "SiPixelRawToClusterCUDAHIonPhase1"]:
+        for producer in producers_by_type(process, pluginType):
+            if hasattr(producer,"clusterThreshold_layer1"):
+                producer.clusterThreshold_layer1 = 2000
+    for producer in producers_by_type(process, "SiPixelDigisClustersFromSoA"):
         if hasattr(producer,"clusterThreshold_layer1"):
             producer.clusterThreshold_layer1 = 2000
 
@@ -151,6 +156,58 @@ def customiseEGammaRecoFor2018Input(process):
 
     return process
 
+def customiseBeamSpotFor2018Input(process):
+    """Customisation for the HLT BeamSpot when running on Run-2 (2018) data:
+       - For Run-2 data, disable the use of the BS transient record, in order to read the BS record from SCAL.
+       - Additionally, remove all instances of OnlineBeamSpotESProducer (not needed if useTransientRecord=False).
+       - See CMSHLT-2271 and CMSHLT-2300 for further details.
+    """
+    for prod in producers_by_type(process, 'BeamSpotOnlineProducer'):
+        prod.useTransientRecord = False
+    onlineBeamSpotESPLabels = [prod.label_() for prod in esproducers_by_type(process, 'OnlineBeamSpotESProducer')]
+    for espLabel in onlineBeamSpotESPLabels:
+        delattr(process, espLabel)
+
+    # re-introduce SCAL digis, if missing
+    if not hasattr(process, 'hltScalersRawToDigi') and hasattr(process, 'HLTBeamSpot') and isinstance(process.HLTBeamSpot, cms.Sequence):
+
+        if hasattr(process, 'hltOnlineBeamSpot'):
+            process.hltOnlineBeamSpot.src = 'hltScalersRawToDigi'
+
+        if hasattr(process, 'hltPixelTrackerHVOn'):
+            process.hltPixelTrackerHVOn.DcsStatusLabel = 'hltScalersRawToDigi'
+
+        if hasattr(process, 'hltStripTrackerHVOn'):
+            process.hltStripTrackerHVOn.DcsStatusLabel = 'hltScalersRawToDigi'
+
+        process.hltScalersRawToDigi = cms.EDProducer( "ScalersRawToDigi",
+            scalersInputTag = cms.InputTag( "rawDataCollector" )
+        )
+
+        process.HLTBeamSpot.insert(0, process.hltScalersRawToDigi)
+
+    return process
+
+def customiseECALCalibrationsFor2018Input(process):
+    """Customisation to apply the ECAL Run-2 Ultra-Legacy calibrations (CMSHLT-2339)"""
+    if hasattr(process, 'GlobalTag'):
+      if not hasattr(process.GlobalTag, 'toGet'):
+        process.GlobalTag.toGet = cms.VPSet()
+      process.GlobalTag.toGet += [
+        cms.PSet(
+          record = cms.string('EcalLaserAlphasRcd'),
+          tag = cms.string('EcalLaserAlphas_UL_Run1_Run2_2018_lastIOV_movedTo1')
+        ),
+        cms.PSet(
+          record = cms.string('EcalIntercalibConstantsRcd'),
+          tag = cms.string('EcalIntercalibConstants_UL_Run1_Run2_2018_lastIOV_movedTo1')
+        )
+      ]
+    else:
+      print('# customiseECALCalibrationsFor2018Input -- the process.GlobalTag ESSource does not exist: no customisation applied.')
+
+    return process
+
 def customiseFor2018Input(process):
     """Customise the HLT to run on Run 2 data/MC"""
     process = customisePixelGainForRun2Input(process)
@@ -158,39 +215,60 @@ def customiseFor2018Input(process):
     process = customiseHCALFor2018Input(process)
     process = customiseCTPPSFor2018Input(process)
     process = customiseEGammaRecoFor2018Input(process)
-
-    return process
-
-
-def customiseFor37231(process):
-    """ Customisation to fix the typo of Reccord in PR 37231 (https://github.com/cms-sw/cmssw/pull/37231) """
-
-    for prod in producers_by_type(process, 'DeDxEstimatorProducer'):
-        if hasattr(prod, 'Reccord'):
-            prod.Record = prod.Reccord
-            delattr(prod, 'Reccord')
+    process = customiseBeamSpotFor2018Input(process)
+    process = customiseECALCalibrationsFor2018Input(process)
 
     return process
 
 
 def customiseForOffline(process):
-#   https://its.cern.ch/jira/browse/CMSHLT-2271
-    for prod in producers_by_type(process, 'BeamSpotOnlineProducer'):
-        prod.useTransientRecord = False
+    # For running HLT offline on Run-3 Data, use "(OnlineBeamSpotESProducer).timeThreshold = 1e6",
+    # in order to pick the beamspot that was actually used by the HLT (instead of a "fake" beamspot).
+    # These same settings can be used offline for Run-3 Data and Run-3 MC alike.
+    # Note: the products of the OnlineBeamSpotESProducer are used only
+    #       if the configuration uses "(BeamSpotOnlineProducer).useTransientRecord = True".
+    # See CMSHLT-2271 and CMSHLT-2300 for further details.
+    for prod in esproducers_by_type(process, 'OnlineBeamSpotESProducer'):
+        prod.timeThreshold = int(1e6)
+
+    # For running HLT offline and relieve the strain on Frontier so it will no longer inject a
+    # transaction id which tells Frontier to add a unique "&freshkey" to many query URLs.
+    # That was intended as a feature to only be used by the Online HLT, to guarantee that fresh conditions
+    # from the database were loaded at each Lumi section
+    # Seee CMSHLT-3123 for further details
+    if hasattr(process, 'GlobalTag'):
+        # Set ReconnectEachRun and RefreshEachRun to False
+        process.GlobalTag.ReconnectEachRun = cms.untracked.bool(False)
+        process.GlobalTag.RefreshEachRun = cms.untracked.bool(False)
+
+        if hasattr(process.GlobalTag, 'toGet'):
+            # Filter out PSet objects containing only 'record' and 'refreshTime'
+            process.GlobalTag.toGet = [
+                pset for pset in process.GlobalTag.toGet
+                if set(pset.parameterNames_()) != {'record', 'refreshTime'}
+            ]
+
+    return process
+
+def checkHLTfor43774(process):
+    filt_types = ["HLTEgammaGenericFilter","HLTEgammaGenericQuadraticEtaFilter","HLTEgammaGenericQuadraticFilter","HLTElectronGenericFilter"]
+    absAbleVar = ["DEta","deta","DetaSeed","Dphi","OneOESuperMinusOneOP","OneOESeedMinusOneOP"]
+    for filt_type in filt_types:
+        for filt in filters_by_type(process, filt_type):
+            if filt.varTag.productInstanceLabel in absAbleVar:
+                if (filt.useAbs != cms.bool(True)):
+                    print('# TSG WARNING: check value of parameter "useAbs" in',filt,'(expect True but is False)!')
 
     return process
 
 # CMSSW version specific customizations
 def customizeHLTforCMSSW(process, menuType="GRun"):
 
-    # if the gpu modifier is enabled, make the Pixel, ECAL and HCAL reconstruction offloadable to a GPU
-    from HLTrigger.Configuration.customizeHLTforPatatrack import customizeHLTforPatatrack
-    gpu.makeProcessModifier(customizeHLTforPatatrack).apply(process)
     process = customiseForOffline(process)
 
     # add call to action function in proper order: newest last!
     # process = customiseFor12718(process)
 
-    process = customiseFor37231(process)
+    process = checkHLTfor43774(process)
 
     return process

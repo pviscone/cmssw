@@ -82,7 +82,7 @@ TMultiDimFet::TMultiDimFet() {
 
 const TMultiDimFet &TMultiDimFet::operator=(const TMultiDimFet &in) {
   if (this == &in) {
-    return in;
+    return *this;
   }
 
   fMeanQuantity = in.fMeanQuantity;  // Mean of dependent quantity
@@ -152,7 +152,7 @@ const TMultiDimFet &TMultiDimFet::operator=(const TMultiDimFet &in) {
   fShowCorrelation = in.fShowCorrelation;  // print correlation matrix
   fIsUserFunction = in.fIsUserFunction;    // Flag for user defined function
   fIsVerbose = in.fIsVerbose;              //
-  return in;
+  return *this;
 }
 
 //____________________________________________________________________
@@ -679,11 +679,6 @@ void TMultiDimFet::MakeCandidates() {
   if (!fIsUserFunction) {
     // Number of funcs selected
     Int_t numberFunctions = 0;
-
-    // Absolute max number of functions
-    Int_t maxNumberFunctions = 1;
-    for (i = 0; i < fNVariables; i++)
-      maxNumberFunctions *= fMaxPowers[i];
 
     while (kTRUE) {
       // Get the control value for this function

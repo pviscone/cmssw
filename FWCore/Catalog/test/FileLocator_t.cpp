@@ -2,47 +2,72 @@
 #include "FWCore/Catalog/interface/SiteLocalConfig.h"
 #include "FWCore/Utilities/interface/Exception.h"
 #include "FWCore/ServiceRegistry/interface/ServiceRegistry.h"
-#include <filesystem>
 
+#include "TestSiteLocalConfig.h"
+
+#include <filesystem>
 #include <string>
 
 #define CATCH_CONFIG_MAIN
 #include "catch.hpp"
 
-namespace {
-  class TestSiteLocalConfig : public edm::SiteLocalConfig {
-  public:
-    TestSiteLocalConfig(std::vector<std::string> catalogs) : m_catalogs(std::move(catalogs)) {}
-    std::vector<std::string> const& dataCatalogs(void) const final { return m_catalogs; }
-    std::string const lookupCalibConnect(std::string const& input) const final { return std::string(); }
-    std::string const rfioType(void) const final { return std::string(); }
+TEST_CASE("FileLocator with Rucio data catalog", "[FWCore/Catalog]") {
+  edm::ServiceToken tempToken = edmtest::catalog::makeTestSiteLocalConfigToken();
 
-    std::string const* sourceCacheTempDir() const final { return nullptr; }
-    double const* sourceCacheMinFree() const final { return nullptr; }
-    std::string const* sourceCacheHint() const final { return nullptr; }
-    std::string const* sourceCloneCacheHint() const final { return nullptr; }
-    std::string const* sourceReadHint() const final { return nullptr; }
-    unsigned int const* sourceTTreeCacheSize() const final { return nullptr; }
-    unsigned int const* sourceTimeout() const final { return nullptr; }
-    bool enablePrefetching() const final { return false; }
-    unsigned int debugLevel() const final { return 0; }
-    std::vector<std::string> const* sourceNativeProtocols() const final { return nullptr; }
-    struct addrinfo const* statisticsDestination() const final {
-      return nullptr;
+  SECTION("prefix") {
+    edm::ServiceRegistry::Operate operate(tempToken);
+    //empty catalog
+    edm::CatalogAttributes tmp_cat;
+    //use the first catalog provided by site local config
+    edm::FileLocator fl(tmp_cat, 0);
+    CHECK("root://cmsxrootd.fnal.gov/store/group/bha/bho" ==
+          fl.pfn("/store/group/bha/bho", edm::CatalogType::RucioCatalog));
+  }
+  SECTION("rule") {
+    edm::ServiceRegistry::Operate operate(tempToken);
+    //empty catalog
+    edm::CatalogAttributes tmp_cat;
+    //use the second catalog provided by site local config
+    edm::FileLocator fl(tmp_cat, 1);
+    const std::array<const char*, 7> lfn = {{"/bha/bho",
+                                             "bha",
+                                             "file:bha",
+                                             "file:/bha/bho",
+                                             "/castor/cern.ch/cms/bha/bho",
+                                             "rfio:/castor/cern.ch/cms/bha/bho",
+                                             "rfio:/bha/bho"}};
+    CHECK("root://cmsdcadisk.fnal.gov//dcache/uscmsdisk/store/group/bha/bho" ==
+          fl.pfn("/store/group/bha/bho", edm::CatalogType::RucioCatalog));
+    for (auto file : lfn) {
+      CHECK("" == fl.pfn(file, edm::CatalogType::RucioCatalog));
     }
-    std::set<std::string> const* statisticsInfo() const final { return nullptr; }
-    std::string const& siteName(void) const final { return m_emptyString; }
-    bool useLocalConnectString() const final { return false; }
-    std::string const& localConnectPrefix() const final { return m_emptyString; }
-    std::string const& localConnectSuffix() const final { return m_emptyString; }
+  }
+  SECTION("chainedrule") {
+    edm::ServiceRegistry::Operate operate(tempToken);
+    //empty catalog
+    edm::CatalogAttributes tmp_cat;
+    //use the third catalog provided by site local config above
+    edm::FileLocator fl(tmp_cat, 2);
+    const std::array<const char*, 7> lfn = {{"/bha/bho",
+                                             "bha",
+                                             "file:bha",
+                                             "file:/bha/bho",
+                                             "/castor/cern.ch/cms/bha/bho",
+                                             "rfio:/castor/cern.ch/cms/bha/bho",
+                                             "rfio:/bha/bho"}};
+    //one level chain between "root" and "second" protocols (see storage.json)
+    CHECK("root://host.domain//pnfs/cms/store/group/bha/bho" ==
+          fl.pfn("/store/group/bha/bho", edm::CatalogType::RucioCatalog));
+    //two levels chain between "root", "second" and "first" (see storage.json)
+    CHECK("root://host.domain//pnfs/cms/store/user/AAA/bho" ==
+          fl.pfn("/store/user/aaa/bho", edm::CatalogType::RucioCatalog));
+    for (auto file : lfn) {
+      CHECK("" == fl.pfn(file, edm::CatalogType::RucioCatalog));
+    }
+  }
+}
 
-  private:
-    std::vector<std::string> m_catalogs;
-    std::string m_emptyString;
-  };
-}  // namespace
-
-TEST_CASE("FileLocator", "[filelocator]") {
+TEST_CASE("FileLocator with TrivialFileCatalog", "[FWCore/Catalog]") {
   std::string CMSSW_BASE(std::getenv("CMSSW_BASE"));
   std::string CMSSW_RELEASE_BASE(std::getenv("CMSSW_RELEASE_BASE"));
   std::string file_name("/src/FWCore/Catalog/test/simple_catalog.xml");
@@ -52,13 +77,13 @@ TEST_CASE("FileLocator", "[filelocator]") {
 
   //create the services
   std::vector<std::string> tmp{std::string("trivialcatalog_file:") + full_file_name + "?protocol=xrd"};
-  edm::ServiceToken tempToken(
-      edm::ServiceRegistry::createContaining(std::unique_ptr<edm::SiteLocalConfig>(new TestSiteLocalConfig(tmp))));
+  edm::ServiceToken tempToken(edm::ServiceRegistry::createContaining(
+      std::unique_ptr<edm::SiteLocalConfig>(std::make_unique<edmtest::catalog::TestSiteLocalConfig>(tmp))));
 
   //make the services available
   SECTION("standard") {
     edm::ServiceRegistry::Operate operate(tempToken);
-    edm::FileLocator fl("", 0);
+    edm::FileLocator fl("");
 
     const std::array<const char*, 7> lfn = {{"/bha/bho",
                                              "bha",
@@ -68,15 +93,9 @@ TEST_CASE("FileLocator", "[filelocator]") {
                                              "rfio:/castor/cern.ch/cms/bha/bho",
                                              "rfio:/bha/bho"}};
 
-    CHECK("/storage/path/store/group/bha/bho" == fl.pfn("/store/group/bha/bho"));
+    CHECK("/storage/path/store/group/bha/bho" == fl.pfn("/store/group/bha/bho", edm::CatalogType::TrivialCatalog));
     for (auto file : lfn) {
-      CHECK("" == fl.pfn(file));
-    }
-
-    CHECK(fl.lfn("/storage/path/store/group/bha/bho") == "/store/group/bha/bho");
-    CHECK(fl.lfn("/store/group/bha/bho") == "");
-    for (auto file : lfn) {
-      CHECK("" == fl.lfn(file));
+      CHECK("" == fl.pfn(file, edm::CatalogType::TrivialCatalog));
     }
   }
 
@@ -103,13 +122,11 @@ TEST_CASE("FileLocator", "[filelocator]") {
         "/store/unmerged/relval/CMSSW_3_8_0_pre3/RelValZTT/GEN-SIM-DIGI-RAW-HLTDEBUG/START38_V2-v1/0666/"
         "80EC0BCD-D279-DF11-B1DB-0030487C90EE.root";
 
-    CHECK("/FULL_PATH_TO_THE_FIRST_STEP_ROOT_FILE/80EC0BCD-D279-DF11-B1DB-0030487C90EE.root" == fl.pfn(overriden_file));
+    CHECK("/FULL_PATH_TO_THE_FIRST_STEP_ROOT_FILE/80EC0BCD-D279-DF11-B1DB-0030487C90EE.root" ==
+          fl.pfn(overriden_file, edm::CatalogType::TrivialCatalog));
 
     for (auto f : lfn) {
-      CHECK("" == fl.pfn(f));
-    }
-    for (auto f : lfn) {
-      CHECK("" == fl.lfn(f));
+      CHECK("" == fl.pfn(f, edm::CatalogType::TrivialCatalog));
     }
   }
 }

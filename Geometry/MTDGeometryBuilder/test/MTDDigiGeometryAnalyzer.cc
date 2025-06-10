@@ -26,6 +26,8 @@
 
 #include <fstream>
 
+#include "CLHEP/Random/RandFlat.h"
+
 // class declaration
 
 class MTDDigiGeometryAnalyzer : public edm::one::EDAnalyzer<> {
@@ -41,6 +43,7 @@ private:
   void analyseRectangle(const GeomDetUnit& det);
   void checkRotation(const GeomDetUnit& det);
   void checkRectangularMTDTopology(const RectangularMTDTopology&);
+  void checkPixelsAcceptance(const GeomDetUnit& det);
 
   std::stringstream sunitt;
 
@@ -74,8 +77,9 @@ void MTDDigiGeometryAnalyzer::analyze(const edm::Event& iEvent, const edm::Event
       const MTDDetId mtdId(it->geographicalId());
       std::stringstream moduleLabel;
       if (mtdId.mtdSubDetector() == 1) {
-        moduleLabel << " BTL side " << mtdId.mtdSide() << " Rod " << mtdId.mtdRR() << " mod "
-                    << (static_cast<const BTLDetId>(mtdId)).module();
+        const BTLDetId btlId(it->geographicalId());
+        moduleLabel << " BTL side " << btlId.mtdSide() << " Rod " << btlId.mtdRR() << " type/RU " << btlId.modType()
+                    << "/" << btlId.runit() << " mod " << btlId.module();
       } else if (mtdId.mtdSubDetector() == 2) {
         const ETLDetId etlId(it->geographicalId());
         moduleLabel << " ETL side " << mtdId.mtdSide() << " Disc/Side/Sector " << etlId.nDisc() << " "
@@ -114,6 +118,13 @@ void MTDDigiGeometryAnalyzer::analyze(const edm::Event& iEvent, const edm::Event
       checkRectangularMTDTopology(topo);
     }
   }
+
+  edm::LogInfo("MTDDigiGeometryAnalyzer") << "Acceptance of BTL module:";
+  auto const& btldet = *(dynamic_cast<const MTDGeomDetUnit*>(pDD->detsBTL().front()));
+  checkPixelsAcceptance(btldet);
+  edm::LogInfo("MTDDigiGeometryAnalyzer") << "Acceptance of ETL module:";
+  auto const& etldet = *(dynamic_cast<const MTDGeomDetUnit*>(pDD->detsETL().front()));
+  checkPixelsAcceptance(etldet);
 
   edm::LogInfo("MTDDigiGeometryAnalyzer") << "Additional MTD geometry content:"
                                           << "\n"
@@ -206,6 +217,34 @@ void MTDDigiGeometryAnalyzer::checkRotation(const GeomDetUnit& det) {
     edm::LogWarning("MTDDigiGeometryAnalyzer") << " Rotation not good by bector mag: " << (a).mag() << ", " << (b).mag()
                                                << ", " << (c).mag() << " for det at pos " << det.surface().position();
   }
+}
+
+void MTDDigiGeometryAnalyzer::checkPixelsAcceptance(const GeomDetUnit& det) {
+  const Bounds& bounds = det.surface().bounds();
+  const RectangularPlaneBounds* tb = dynamic_cast<const RectangularPlaneBounds*>(&bounds);
+  if (tb == nullptr)
+    return;  // not trapezoidal
+
+  double length = tb->length();
+  double width = tb->width();
+  edm::LogVerbatim("MTDDigiGeometryAnalyzer") << "X (width) = " << width << " Y (length) = " << length;
+
+  const ProxyMTDTopology& topoproxy = static_cast<const ProxyMTDTopology&>(det.topology());
+  const RectangularMTDTopology& topo = static_cast<const RectangularMTDTopology&>(topoproxy.specificTopology());
+
+  const size_t maxindex = 100000;
+  size_t inpixel(0);
+  for (size_t index = 0; index < maxindex; index++) {
+    double ax = CLHEP::RandFlat::shoot(-width * 0.5, width * 0.5);
+    double ay = CLHEP::RandFlat::shoot(-length * 0.5, length * 0.5);
+    LocalPoint hit(ax, ay, 0);
+    if (topo.isInPixel(hit)) {
+      inpixel++;
+    }
+  }
+  double acc = (double)inpixel / (double)maxindex;
+  double accerr = std::sqrt(acc * (1. - acc) / (double)maxindex);
+  edm::LogVerbatim("MTDDigiGeometryAnalyzer") << "Acceptance: " << acc << " +/- " << accerr;
 }
 
 //define this as a plug-in

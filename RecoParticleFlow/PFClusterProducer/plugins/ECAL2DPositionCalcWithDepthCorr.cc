@@ -36,7 +36,7 @@ public:
         _esGeom(nullptr),
         _esPlus(false),
         _esMinus(false),
-        _geomToken(cc.esConsumes<edm::Transition::BeginLuminosityBlock>()) {
+        _geomToken(cc.esConsumes<edm::Transition::BeginRun>()) {
     _timeResolutionCalc.reset(nullptr);
     if (conf.exists("timeResolutionCalc")) {
       const edm::ParameterSet& timeResConf = conf.getParameterSet("timeResolutionCalc");
@@ -48,8 +48,8 @@ public:
 
   void update(const edm::EventSetup& es) override;
 
-  void calculateAndSetPosition(reco::PFCluster&) override;
-  void calculateAndSetPositions(reco::PFClusterCollection&) override;
+  void calculateAndSetPosition(reco::PFCluster&, const HcalPFCuts*) override;
+  void calculateAndSetPositions(reco::PFClusterCollection&, const HcalPFCuts*) override;
 
 private:
   const double _param_T0_EB;
@@ -92,11 +92,11 @@ void ECAL2DPositionCalcWithDepthCorr::update(const edm::EventSetup& es) {
   }
 }
 
-void ECAL2DPositionCalcWithDepthCorr::calculateAndSetPosition(reco::PFCluster& cluster) {
+void ECAL2DPositionCalcWithDepthCorr::calculateAndSetPosition(reco::PFCluster& cluster, const HcalPFCuts*) {
   calculateAndSetPositionActual(cluster);
 }
 
-void ECAL2DPositionCalcWithDepthCorr::calculateAndSetPositions(reco::PFClusterCollection& clusters) {
+void ECAL2DPositionCalcWithDepthCorr::calculateAndSetPositions(reco::PFClusterCollection& clusters, const HcalPFCuts*) {
   for (reco::PFCluster& cluster : clusters) {
     calculateAndSetPositionActual(cluster);
   }

@@ -57,6 +57,7 @@ class HistogramProbabilityEstimator;
 #include "FWCore/Framework/interface/EventSetupRecord.h"
 #include "FWCore/Framework/interface/EventSetupRecordImplementation.h"
 #include "FWCore/Framework/interface/EventSetupRecordKey.h"
+#include "DataFormats/Common/interface/AssociationMap.h"
 
 class DeepFlavourTagInfoProducer : public edm::stream::EDProducer<> {
 public:
@@ -70,6 +71,7 @@ private:
   typedef reco::VertexCompositePtrCandidateCollection SVCollection;
   typedef reco::VertexCollection VertexCollection;
   typedef edm::View<reco::ShallowTagInfo> ShallowTagInfoCollection;
+  typedef edm::AssociationMap<edm::OneToOne<reco::JetView, reco::JetView>> JetMatchMap;
 
   void beginStream(edm::StreamID) override {}
   void produce(edm::Event&, const edm::EventSetup&) override;
@@ -80,6 +82,7 @@ private:
   const bool flip_;
 
   edm::EDGetTokenT<edm::View<reco::Jet>> jet_token_;
+  edm::EDGetTokenT<JetMatchMap> unsubjet_map_token_;
   edm::EDGetTokenT<VertexCollection> vtx_token_;
   edm::EDGetTokenT<SVCollection> sv_token_;
   edm::EDGetTokenT<ShallowTagInfoCollection> shallow_tag_info_token_;
@@ -93,11 +96,14 @@ private:
 
   bool use_puppi_value_map_;
   bool use_pvasq_value_map_;
+  bool use_unsubjet_map_;
 
   bool fallback_puppi_weight_;
   bool fallback_vertex_association_;
 
   bool run_deepVertex_;
+
+  bool is_weighted_jet_;
 
   //TrackProbability
   void checkEventSetup(const edm::EventSetup& iSetup);
@@ -124,9 +130,11 @@ DeepFlavourTagInfoProducer::DeepFlavourTagInfoProducer(const edm::ParameterSet& 
           esConsumes<TransientTrackBuilder, TransientTrackRecord>(edm::ESInputTag("", "TransientTrackBuilder"))),
       use_puppi_value_map_(false),
       use_pvasq_value_map_(false),
+      use_unsubjet_map_(false),
       fallback_puppi_weight_(iConfig.getParameter<bool>("fallback_puppi_weight")),
       fallback_vertex_association_(iConfig.getParameter<bool>("fallback_vertex_association")),
       run_deepVertex_(iConfig.getParameter<bool>("run_deepVertex")),
+      is_weighted_jet_(iConfig.getParameter<bool>("is_weighted_jet")),
       compute_probabilities_(iConfig.getParameter<bool>("compute_probabilities")),
       min_jet_pt_(iConfig.getParameter<double>("min_jet_pt")),
       max_jet_eta_(iConfig.getParameter<double>("max_jet_eta")) {
@@ -136,6 +144,9 @@ DeepFlavourTagInfoProducer::DeepFlavourTagInfoProducer(const edm::ParameterSet& 
   if (!puppi_value_map_tag.label().empty()) {
     puppi_value_map_token_ = consumes<edm::ValueMap<float>>(puppi_value_map_tag);
     use_puppi_value_map_ = true;
+  } else if (is_weighted_jet_) {
+    throw edm::Exception(edm::errors::Configuration,
+                         "puppi_value_map is not set but jet is weighted. Must set puppi_value_map.");
   }
 
   const auto& pvas_tag = iConfig.getParameter<edm::InputTag>("vertex_associator");
@@ -147,6 +158,12 @@ DeepFlavourTagInfoProducer::DeepFlavourTagInfoProducer(const edm::ParameterSet& 
   if (compute_probabilities_) {
     calib2d_token_ = esConsumes<TrackProbabilityCalibration, BTagTrackProbability2DRcd>();
     calib3d_token_ = esConsumes<TrackProbabilityCalibration, BTagTrackProbability3DRcd>();
+  }
+
+  const auto& unsubjet_map_tag = iConfig.getParameter<edm::InputTag>("unsubjet_map");
+  if (!unsubjet_map_tag.label().empty()) {
+    unsubjet_map_token_ = consumes<JetMatchMap>(unsubjet_map_tag);
+    use_unsubjet_map_ = true;
   }
 }
 
@@ -163,11 +180,13 @@ void DeepFlavourTagInfoProducer::fillDescriptions(edm::ConfigurationDescriptions
   desc.add<edm::InputTag>("puppi_value_map", edm::InputTag("puppi"));
   desc.add<edm::InputTag>("secondary_vertices", edm::InputTag("inclusiveCandidateSecondaryVertices"));
   desc.add<edm::InputTag>("jets", edm::InputTag("ak4PFJetsCHS"));
+  desc.add<edm::InputTag>("unsubjet_map", {});
   desc.add<edm::InputTag>("candidates", edm::InputTag("packedPFCandidates"));
   desc.add<edm::InputTag>("vertex_associator", edm::InputTag("primaryVertexAssociation", "original"));
   desc.add<bool>("fallback_puppi_weight", false);
   desc.add<bool>("fallback_vertex_association", false);
   desc.add<bool>("run_deepVertex", false);
+  desc.add<bool>("is_weighted_jet", false);
   desc.add<bool>("compute_probabilities", false);
   desc.add<double>("min_jet_pt", 15.0);
   desc.add<double>("max_jet_eta", 2.5);
@@ -181,6 +200,10 @@ void DeepFlavourTagInfoProducer::produce(edm::Event& iEvent, const edm::EventSet
 
   edm::Handle<edm::View<reco::Jet>> jets;
   iEvent.getByToken(jet_token_, jets);
+
+  edm::Handle<JetMatchMap> unsubjet_map;
+  if (use_unsubjet_map_)
+    iEvent.getByToken(unsubjet_map_token_, unsubjet_map);
 
   edm::Handle<VertexCollection> vtxs;
   iEvent.getByToken(vtx_token_, vtxs);
@@ -249,6 +272,8 @@ void DeepFlavourTagInfoProducer::produce(edm::Event& iEvent, const edm::EventSet
     const auto* pf_jet = dynamic_cast<const reco::PFJet*>(&jet);
     const auto* pat_jet = dynamic_cast<const pat::Jet*>(&jet);
     edm::RefToBase<reco::Jet> jet_ref(jets, jet_n);
+    const auto& unsubJet =
+        (use_unsubjet_map_ && (*unsubjet_map)[jet_ref].isNonnull()) ? *(*unsubjet_map)[jet_ref] : jet;
     // TagInfoCollection not in an associative container so search for matchs
     const edm::View<reco::ShallowTagInfo>& taginfos = *shallow_tag_infos;
     edm::Ptr<reco::ShallowTagInfo> match;
@@ -309,8 +334,8 @@ void DeepFlavourTagInfoProducer::produce(edm::Event& iEvent, const edm::EventSet
     // unsorted reference to sv
     const auto& svs_unsorted = *svs;
     // fill collection, from DeepTNtuples plus some styling
-    for (unsigned int i = 0; i < jet.numberOfDaughters(); i++) {
-      auto cand = jet.daughter(i);
+    for (unsigned int i = 0; i < unsubJet.numberOfDaughters(); i++) {
+      auto cand = unsubJet.daughter(i);
       if (cand) {
         // candidates under 950MeV (configurable) are not considered
         // might change if we use also white-listing
@@ -343,9 +368,9 @@ void DeepFlavourTagInfoProducer::produce(edm::Event& iEvent, const edm::EventSet
     features.n_pf_features.clear();
     features.n_pf_features.resize(n_sorted.size());
 
-    for (unsigned int i = 0; i < jet.numberOfDaughters(); i++) {
+    for (unsigned int i = 0; i < unsubJet.numberOfDaughters(); i++) {
       // get pointer and check that is correct
-      auto cand = dynamic_cast<const reco::Candidate*>(jet.daughter(i));
+      auto cand = dynamic_cast<const reco::Candidate*>(unsubJet.daughter(i));
       if (!cand)
         continue;
       // candidates under 950MeV are not considered
@@ -363,13 +388,34 @@ void DeepFlavourTagInfoProducer::produce(edm::Event& iEvent, const edm::EventSet
       } else if (pat_jet && reco_cand) {
         reco_ptr = pat_jet->getPFConstituent(i);
       }
-      // get PUPPI weight from value map
-      float puppiw = 1.0;  // fallback value
-      if (reco_cand && use_puppi_value_map_) {
-        puppiw = (*puppi_value_map)[reco_ptr];
-      } else if (reco_cand && !fallback_puppi_weight_) {
-        throw edm::Exception(edm::errors::InvalidReference, "PUPPI value map missing")
-            << "use fallback_puppi_weight option to use " << puppiw << "as default";
+
+      reco::CandidatePtr cand_ptr;
+      if (pat_jet) {
+        cand_ptr = pat_jet->sourceCandidatePtr(i);
+      }
+
+      //
+      // Access puppi weight from ValueMap.
+      //
+      float puppiw = 1.0;  // Set to fallback value
+
+      if (reco_cand) {
+        if (use_puppi_value_map_)
+          puppiw = (*puppi_value_map)[reco_ptr];
+        else if (!fallback_puppi_weight_) {
+          throw edm::Exception(edm::errors::InvalidReference, "PUPPI value map missing")
+              << "use fallback_puppi_weight option to use " << puppiw << " for reco_cand as default";
+        }
+      } else if (packed_cand) {
+        if (use_puppi_value_map_)
+          puppiw = (*puppi_value_map)[cand_ptr];
+        else if (!fallback_puppi_weight_) {
+          throw edm::Exception(edm::errors::InvalidReference, "PUPPI value map missing")
+              << "use fallback_puppi_weight option to use " << puppiw << " for packed_cand as default";
+        }
+      } else {
+        throw edm::Exception(edm::errors::InvalidReference)
+            << "Cannot convert to either reco::PFCandidate or pat::PackedCandidate";
       }
 
       float drminpfcandsv = btagbtvdeep::mindrsvpfcand(svs_unsorted, cand);
@@ -386,8 +432,15 @@ void DeepFlavourTagInfoProducer::produce(edm::Event& iEvent, const edm::EventSet
         auto& c_pf_features = features.c_pf_features.at(entry);
         // fill feature structure
         if (packed_cand) {
-          btagbtvdeep::packedCandidateToFeatures(
-              packed_cand, jet, trackinfo, drminpfcandsv, static_cast<float>(jet_radius_), c_pf_features, flip_);
+          btagbtvdeep::packedCandidateToFeatures(packed_cand,
+                                                 jet,
+                                                 trackinfo,
+                                                 is_weighted_jet_,
+                                                 drminpfcandsv,
+                                                 static_cast<float>(jet_radius_),
+                                                 puppiw,
+                                                 c_pf_features,
+                                                 flip_);
         } else if (reco_cand) {
           // get vertex association quality
           int pv_ass_quality = 0;  // fallback value
@@ -419,6 +472,7 @@ void DeepFlavourTagInfoProducer::produce(edm::Event& iEvent, const edm::EventSet
           btagbtvdeep::recoCandidateToFeatures(reco_cand,
                                                jet,
                                                trackinfo,
+                                               is_weighted_jet_,
                                                drminpfcandsv,
                                                static_cast<float>(jet_radius_),
                                                puppiw,
@@ -435,10 +489,10 @@ void DeepFlavourTagInfoProducer::produce(edm::Event& iEvent, const edm::EventSet
         // fill feature structure
         if (packed_cand) {
           btagbtvdeep::packedCandidateToFeatures(
-              packed_cand, jet, drminpfcandsv, static_cast<float>(jet_radius_), n_pf_features);
+              packed_cand, jet, is_weighted_jet_, drminpfcandsv, static_cast<float>(jet_radius_), puppiw, n_pf_features);
         } else if (reco_cand) {
           btagbtvdeep::recoCandidateToFeatures(
-              reco_cand, jet, drminpfcandsv, static_cast<float>(jet_radius_), puppiw, n_pf_features);
+              reco_cand, jet, is_weighted_jet_, drminpfcandsv, static_cast<float>(jet_radius_), puppiw, n_pf_features);
         }
       }
     }

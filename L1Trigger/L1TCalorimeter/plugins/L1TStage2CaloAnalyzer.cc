@@ -1,6 +1,6 @@
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/MakerMacros.h"
-#include "FWCore/Framework/interface/EDAnalyzer.h"
+#include "FWCore/Framework/interface/one/EDAnalyzer.h"
 
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 
@@ -26,22 +26,15 @@
 
 namespace l1t {
 
-  class L1TStage2CaloAnalyzer : public edm::EDAnalyzer {
+  class L1TStage2CaloAnalyzer : public edm::one::EDAnalyzer<edm::one::SharedResources> {
   public:
     explicit L1TStage2CaloAnalyzer(const edm::ParameterSet&);
-    ~L1TStage2CaloAnalyzer() override;
 
     static void fillDescriptions(edm::ConfigurationDescriptions& descriptions);
 
   private:
     void beginJob() override;
     void analyze(const edm::Event&, const edm::EventSetup&) override;
-    void endJob() override;
-
-    //virtual void beginRun(edm::Run const&, edm::EventSetup const&) override;
-    //virtual void endRun(edm::Run const&, edm::EventSetup const&) override;
-    //virtual void beginLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&) override;
-    //virtual void endLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&) override;
 
     // ----------member data ---------------------------
     edm::EDGetToken m_towerToken;
@@ -154,6 +147,7 @@ namespace l1t {
   L1TStage2CaloAnalyzer::L1TStage2CaloAnalyzer(const edm::ParameterSet& iConfig)
       : doText_(iConfig.getUntrackedParameter<bool>("doText", true)),
         doHistos_(iConfig.getUntrackedParameter<bool>("doHistos", true)) {
+    usesResource(TFileService::kSharedResource);
     //now do what ever initialization is needed
 
     m_mpBx = iConfig.getParameter<int>("mpBx");
@@ -293,11 +287,6 @@ namespace l1t {
     typeStr_.push_back("sumasymethf");
     typeStr_.push_back("sumasymht");
     typeStr_.push_back("sumasymhthf");
-  }
-
-  L1TStage2CaloAnalyzer::~L1TStage2CaloAnalyzer() {
-    // do anything here that needs to be done at desctruction time
-    // (e.g. close files, deallocate resources etc.)
   }
 
   //
@@ -447,7 +436,6 @@ namespace l1t {
     }
 
     // get jet
-    int njetmp = 0;
     std::vector<l1t::Jet> thejets_poseta;
     std::vector<l1t::Jet> thejets_negeta;
 
@@ -463,7 +451,6 @@ namespace l1t {
           continue;
 
         for (auto itr = mpjets->begin(ibx); itr != mpjets->end(ibx); ++itr) {
-          njetmp += 1;
           hbx_.at(MPJet)->Fill(ibx);
           het_.at(MPJet)->Fill(itr->hwPt());
           heta_.at(MPJet)->Fill(itr->hwEta());
@@ -497,8 +484,6 @@ namespace l1t {
         }
       }
     }
-
-    //std::cout<<"njetmp "<<njetmp<<std::endl;
 
     // get sums
     if (m_doMPSums) {
@@ -630,7 +615,6 @@ namespace l1t {
     }
 
     // get jet
-    int njetdem = 0;
     std::vector<l1t::Jet> thejets;
 
     if (m_doJets) {
@@ -642,7 +626,6 @@ namespace l1t {
           continue;
 
         for (auto itr = jets->begin(ibx); itr != jets->end(ibx); ++itr) {
-          njetdem += 1;
           hbx_.at(Jet)->Fill(ibx);
           het_.at(Jet)->Fill(itr->hwPt());
           heta_.at(Jet)->Fill(itr->hwEta());
@@ -819,41 +802,6 @@ namespace l1t {
     hsort_ = fs->make<TH1F>("sort", "", 201, -100.5, 100.5);
     hsortMP_ = fs->make<TH1F>("sortMP", "", 201, -100.5, 100.5);
   }
-
-  // ------------ method called once each job just after ending the event loop  ------------
-  void L1TStage2CaloAnalyzer::endJob() {}
-
-  // ------------ method called when starting to processes a run  ------------
-  /*
-    void 
-    L1TStage2CaloAnalyzer::beginRun(edm::Run const&, edm::EventSetup const&)
-    {
-    }
-  */
-
-  // ------------ method called when ending the processing of a run  ------------
-  /*
-    void 
-    L1TStage2CaloAnalyzer::endRun(edm::Run const&, edm::EventSetup const&)
-    {
-    }
-  */
-
-  // ------------ method called when starting to processes a luminosity block  ------------
-  /*
-    void 
-    L1TStage2CaloAnalyzer::beginLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&)
-    {
-    }
-  */
-
-  // ------------ method called when ending the processing of a luminosity block  ------------
-  /*
-    void 
-    L1TStage2CaloAnalyzer::endLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&)
-    {
-    }
-  */
 
   // ------------ method fills 'descriptions' with the allowed parameters for the module  ------------
   void L1TStage2CaloAnalyzer::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {

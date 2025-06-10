@@ -29,8 +29,6 @@
 #include "DataFormats/Math/interface/angle_units.h"
 #include "DataFormats/Math/interface/Rounding.h"
 
-//#define EDM_ML_DEBUG
-
 class TestMTDIdealGeometry : public edm::one::EDAnalyzer<> {
 public:
   explicit TestMTDIdealGeometry(const edm::ParameterSet&);
@@ -45,7 +43,6 @@ public:
 private:
   int nNodes_;
   std::string ddTopNodeName_;
-  uint32_t theLayout_;
 
   MTDBaseNumber thisN_;
   BTLNumberingScheme btlNS_;
@@ -56,7 +53,6 @@ private:
 
 TestMTDIdealGeometry::TestMTDIdealGeometry(const edm::ParameterSet& iConfig)
     : ddTopNodeName_(iConfig.getUntrackedParameter<std::string>("ddTopNodeName", "BarrelTimingLayer")),
-      theLayout_(iConfig.getUntrackedParameter<uint32_t>("theLayout", 1)),
       thisN_(),
       btlNS_(),
       etlNS_() {
@@ -100,7 +96,9 @@ void TestMTDIdealGeometry::analyze(const edm::Event& iEvent, const edm::EventSet
 
   bool write = false;
   bool isBarrel = true;
+  bool exitLoop = false;
   size_t limit = 0;
+  uint32_t count(0);
 
   do {
     nav_type pos = fv.navPos();
@@ -110,37 +108,44 @@ void TestMTDIdealGeometry::analyze(const edm::Event& iEvent, const edm::EventSet
 
     if (num <= limit) {
       write = false;
+      if (isBarrel && count == 1) {
+        exitLoop = true;
+      } else if (!isBarrel && count == 2) {
+        exitLoop = true;
+      }
     }
     if (fv.geoHistory()[num - 1].logicalPart().name() == "btl:BarrelTimingLayer") {
       isBarrel = true;
       limit = num;
-      write = true;
-#ifdef EDM_ML_DEBUG
-      edm::LogInfo("TestMTDIdealGeometry") << "isBarrel = " << isBarrel;
-#endif
     } else if (fv.geoHistory()[num - 1].logicalPart().name() == "etl:EndcapTimingLayer") {
       isBarrel = false;
       limit = num;
-      write = true;
-#ifdef EDM_ML_DEBUG
-      edm::LogInfo("TestMTDIdealGeometry") << "isBarrel = " << isBarrel;
-#endif
     }
+    if (fv.geoHistory()[num - 1].logicalPart().name().name() == ddTopNodeName_) {
+      write = true;
+      count += 1;
+    }
+
+#ifdef EDM_ML_DEBUG
+    edm::LogVerbatim("TestMTDIdealGeometry")
+        << "level= " << num << " isBarrel= " << isBarrel << " "
+        << " exitLoop= " << exitLoop << " count= " << count << " " << fv.geoHistory()[num - 1].logicalPart().name();
+#endif
 
     // Actions for MTD volumes: searchg for sensitive detectors
 
-    std::stringstream ss;
-    auto print_path = [&]() {
-      ss << " - OCMS[0]/";
-      for (uint i = 1; i < fv.geoHistory().size(); i++) {
-        ss << fv.geoHistory()[i].logicalPart().name().fullname();
-        ss << "[";
-        ss << std::to_string(fv.geoHistory()[i].copyno());
-        ss << "]/";
-      }
-    };
-
     if (write && fv.geoHistory()[limit - 1].logicalPart().name().name() == ddTopNodeName_) {
+      std::stringstream ss;
+      auto print_path = [&]() {
+        ss << " - OCMS[0]/";
+        for (uint i = 1; i < fv.geoHistory().size(); i++) {
+          ss << fv.geoHistory()[i].logicalPart().name().fullname();
+          ss << "[";
+          ss << std::to_string(fv.geoHistory()[i].copyno());
+          ss << "]/";
+        }
+      };
+
       print_path();
       edm::LogInfo("TestMTDPath") << ss.str();
 
@@ -168,32 +173,9 @@ void TestMTDIdealGeometry::analyze(const edm::Event& iEvent, const edm::EventSet
         std::stringstream snum;
 
         if (isBarrel) {
-          BTLDetId::CrysLayout lay = static_cast<BTLDetId::CrysLayout>(theLayout_);
           BTLDetId theId(btlNS_.getUnitID(thisN_));
-          int hIndex = theId.hashedIndex(lay);
-          BTLDetId theNewId(theId.getUnhashedIndex(hIndex, lay));
           sunitt << theId.rawId();
           snum << theId;
-          snum << "\n layout type = " << static_cast<int>(lay);
-          snum << "\n ieta        = " << theId.ieta(lay);
-          snum << "\n iphi        = " << theId.iphi(lay);
-          snum << "\n hashedIndex = " << theId.hashedIndex(lay);
-          snum << "\n BTLDetId hI = " << theNewId;
-          if (theId.mtdSide() != theNewId.mtdSide()) {
-            snum << "\n DIFFERENCE IN SIDE";
-          }
-          if (theId.mtdRR() != theNewId.mtdRR()) {
-            snum << "\n DIFFERENCE IN ROD";
-          }
-          if (theId.module() != theNewId.module()) {
-            snum << "\n DIFFERENCE IN MODULE";
-          }
-          if (theId.modType() != theNewId.modType()) {
-            snum << "\n DIFFERENCE IN MODTYPE";
-          }
-          if (theId.crystal() != theNewId.crystal()) {
-            snum << "\n DIFFERENCE IN CRYSTAL";
-          }
           snum << "\n";
         } else {
           ETLDetId theId(etlNS_.getUnitID(thisN_));
@@ -267,7 +249,7 @@ void TestMTDIdealGeometry::analyze(const edm::Event& iEvent, const edm::EventSet
       }
     }
     ++id;
-  } while (fv.next());
+  } while (fv.next() && !(exitLoop == 1));
 }
 
 void TestMTDIdealGeometry::theBaseNumber(const DDGeoHistory& gh) {
@@ -277,7 +259,7 @@ void TestMTDIdealGeometry::theBaseNumber(const DDGeoHistory& gh) {
   for (uint i = gh.size(); i-- > 0;) {
     thisN_.addLevel(gh[i].logicalPart().name().name(), gh[i].copyno());
 #ifdef EDM_ML_DEBUG
-    edm::LogInfo("TestMTDIdealGeometry") << gh[i].logicalPart().name().name() << " " << gh[i].copyno();
+    edm::LogVerbatim("TestMTDIdealGeometry") << i << " " << gh[i].logicalPart().name().name() << " " << gh[i].copyno();
 #endif
   }
 }

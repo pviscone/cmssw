@@ -53,7 +53,7 @@ namespace ecal {
       const uint64_t mask =
           0xC0001000D0000000 + (uint64_t(TOWER_L1_MASK) << TOWER_L1_B) + (uint64_t(TOWER_BX_MASK) << TOWER_BX_B);
 
-      while (next_tower_block != trailer) {
+      while (next_tower_block < trailer) {
         if ((*next_tower_block & mask) == sign) {
           current_tower_block = next_tower_block;
           return uint8_t(*next_tower_block & TOWER_ID_MASK);
@@ -232,7 +232,7 @@ namespace ecal {
       auto const* current_tower_block = tower_blocks_start;
       uint8_t iCh = 0;
       uint8_t next_tower_id = exp_ttids[iCh];
-      while (current_tower_block != trailer && iCh < numbChannels) {
+      while (current_tower_block < trailer && iCh < numbChannels) {
         auto const w = *current_tower_block;
         uint8_t ttid = w & TOWER_ID_MASK;
         uint16_t bxlocal = (w >> TOWER_BX_B) & TOWER_BX_MASK;
@@ -272,17 +272,59 @@ namespace ecal {
         // get the next channel coordinates
         uint32_t nchannels = (block_length - 1) / 3;
 
+        bool bad_block = false;
+        __shared__ uint32_t ch_with_bad_block;
         // 1 threads per channel in this block
         for (uint32_t ich = 0; ich < nchannels; ich += NTHREADS) {
           auto const i_to_access = ich + threadIdx.x;
-          // threads outside of the range -> leave the loop
-          if (i_to_access >= nchannels)
-            break;
+          if (i_to_access == 0) {
+            ch_with_bad_block = std::numeric_limits<uint32_t>::max();
+          }
 
-          // inc the channel's counter and get the pos where to store
-          auto const wdata = current_tower_block[1 + i_to_access * 3];
-          uint8_t const stripid = wdata & 0x7;
-          uint8_t const xtalid = (wdata >> 4) & 0x7;
+          // make sure the shared memory is initialised for all threads
+          __syncthreads();
+
+          uint64_t wdata;
+          uint8_t stripid;
+          uint8_t xtalid;
+
+          // threads must be inside the range (no break here because of __syncthreads() afterwards)
+          if (i_to_access < nchannels && i_to_access < ch_with_bad_block) {
+            // inc the channel's counter and get the pos where to store
+            wdata = current_tower_block[1 + i_to_access * 3];
+            stripid = wdata & 0x7;
+            xtalid = (wdata >> 4) & 0x7;
+
+            // check if the stripid and xtalid are in the allowed range and if not skip the rest of the block
+            if (stripid < ElectronicsIdGPU::MIN_STRIPID || stripid > ElectronicsIdGPU::MAX_STRIPID ||
+                xtalid < ElectronicsIdGPU::MIN_XTALID || xtalid > ElectronicsIdGPU::MAX_XTALID) {
+              bad_block = true;
+            }
+            if (i_to_access > 0) {
+              // check if the stripid has increased or that the xtalid has increased from the previous data word. If not something is wrong and the rest of the block is skipped.
+              auto const prev_i_to_access = i_to_access - 1;
+              auto const prevwdata = current_tower_block[1 + prev_i_to_access * 3];
+              uint8_t const laststripid = prevwdata & 0x7;
+              uint8_t const lastxtalid = (prevwdata >> 4) & 0x7;
+              if ((stripid == laststripid && xtalid <= lastxtalid) || (stripid < laststripid)) {
+                bad_block = true;
+              }
+            }
+          }
+
+          // check if this thread has the lowest bad block
+          if (bad_block && i_to_access < ch_with_bad_block) {
+            atomicMin(&ch_with_bad_block, i_to_access);
+          }
+
+          // make sure that all threads that have to have set the ch_with_bad_block shared memory
+          __syncthreads();
+
+          // threads outside of the range or bad block detected in this thread or one working on a lower block -> stop this loop iteration here
+          if (i_to_access >= nchannels || i_to_access >= ch_with_bad_block) {
+            continue;
+          }
+
           ElectronicsIdGPU eid{fed2dcc(fed), ttid, stripid, xtalid};
           auto const didraw = isBarrel ? compute_ebdetid(eid) : eid2did[eid.linearIndex()];
           // FIXME: what kind of channels are these guys

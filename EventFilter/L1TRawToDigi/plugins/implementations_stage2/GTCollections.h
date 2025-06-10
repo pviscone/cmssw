@@ -6,6 +6,7 @@
 #include "DataFormats/L1Trigger/interface/Jet.h"
 #include "DataFormats/L1Trigger/interface/Tau.h"
 #include "DataFormats/L1Trigger/interface/Muon.h"
+#include "DataFormats/L1CaloTrigger/interface/CICADA.h"
 
 #include "DataFormats/L1TGlobal/interface/GlobalAlgBlk.h"
 #include "DataFormats/L1TGlobal/interface/GlobalExtBlk.h"
@@ -18,12 +19,16 @@ namespace l1t {
     class GTCollections : public L1TObjectCollections {
     public:
       GTCollections(edm::Event& e)
-          : L1TObjectCollections(e), algBlk_(new GlobalAlgBlkBxCollection()), extBlk_(new GlobalExtBlkBxCollection()) {
+          : L1TObjectCollections(e),
+            cicadaScore_(std::make_unique<CICADABxCollection>()),
+            algBlk_(new GlobalAlgBlkBxCollection()),
+            extBlk_(new GlobalExtBlkBxCollection()) {
         std::generate(muons_.begin(), muons_.end(), [] { return std::make_unique<MuonBxCollection>(); });
         std::generate(
             muonShowers_.begin(), muonShowers_.end(), [] { return std::make_unique<MuonShowerBxCollection>(); });
         std::generate(egammas_.begin(), egammas_.end(), [] { return std::make_unique<EGammaBxCollection>(); });
         std::generate(etsums_.begin(), etsums_.end(), [] { return std::make_unique<EtSumBxCollection>(); });
+        std::generate(zdcsums_.begin(), zdcsums_.end(), [] { return std::make_unique<EtSumBxCollection>(); });
         std::generate(jets_.begin(), jets_.end(), [] { return std::make_unique<JetBxCollection>(); });
         std::generate(taus_.begin(), taus_.end(), [] { return std::make_unique<TauBxCollection>(); });
       };
@@ -36,8 +41,10 @@ namespace l1t {
       };
       inline EGammaBxCollection* getEGammas(const unsigned int copy) override { return egammas_[copy].get(); };
       inline EtSumBxCollection* getEtSums(const unsigned int copy) override { return etsums_[copy].get(); };
+      inline EtSumBxCollection* getZDCSums(const unsigned int copy) override { return zdcsums_[copy].get(); };
       inline JetBxCollection* getJets(const unsigned int copy) override { return jets_[copy].get(); };
       inline TauBxCollection* getTaus(const unsigned int copy) override { return taus_[copy].get(); };
+      inline CICADABxCollection* getCICADAScore() override { return cicadaScore_.get(); };
 
       inline GlobalAlgBlkBxCollection* getAlgs() { return algBlk_.get(); };
       inline GlobalExtBlkBxCollection* getExts() { return extBlk_.get(); };
@@ -47,8 +54,10 @@ namespace l1t {
       std::array<std::unique_ptr<MuonShowerBxCollection>, 6> muonShowers_;
       std::array<std::unique_ptr<EGammaBxCollection>, 6> egammas_;
       std::array<std::unique_ptr<EtSumBxCollection>, 6> etsums_;
+      std::array<std::unique_ptr<EtSumBxCollection>, 6> zdcsums_;
       std::array<std::unique_ptr<JetBxCollection>, 6> jets_;
       std::array<std::unique_ptr<TauBxCollection>, 6> taus_;
+      std::unique_ptr<CICADABxCollection> cicadaScore_;
 
       std::unique_ptr<GlobalAlgBlkBxCollection> algBlk_;
       std::unique_ptr<GlobalExtBlkBxCollection> extBlk_;

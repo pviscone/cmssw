@@ -6,19 +6,16 @@ import FWCore.ParameterSet.Config as cms
 BSOnlineRecordName = 'BeamSpotOnlineHLTObjectsRcd'
 BSOnlineTag = 'BeamSpotOnlineFakeHLT'
 BSOnlineJobName = 'BeamSpotOnlineFakeHLT'
-BSOnlineOmsServiceUrl = 'http://cmsoms-services.cms:9949/urn:xdaq-application:lid=100/getRunAndLumiSection'
+BSOnlineOmsServiceUrl = 'http://cmsoms-eventing.cms:9949/urn:xdaq-application:lid=100/getRunAndLumiSection'
 useLockRecords = True
 
 import sys
-from Configuration.Eras.Era_Run3_cff import Run3
-process = cms.Process("FakeBeamMonitor", Run3)
-
-# Configure tag and jobName if running Playback system
-if "dqm_cmssw/playback" in str(sys.argv[1]):
-  BSOnlineTag = BSOnlineTag + 'Playback'
-  BSOnlineJobName = BSOnlineJobName + 'Playback'
-  BSOnlineOmsServiceUrl = ''
-  useLockRecords = False
+if 'runkey=hi_run' in sys.argv:
+  from Configuration.Eras.Era_Run3_pp_on_PbPb_approxSiStripClusters_cff import Run3_pp_on_PbPb_approxSiStripClusters
+  process = cms.Process("FakeBeamMonitorHLT", Run3_pp_on_PbPb_approxSiStripClusters)
+else:
+  from Configuration.Eras.Era_Run3_cff import Run3
+  process = cms.Process("FakeBeamMonitorHLT", Run3)
 
 # switch
 live = True # FIXME
@@ -41,13 +38,6 @@ else:
   process.load("DQM.Integration.config.fileinputsource_cfi")
   from DQM.Integration.config.fileinputsource_cfi import options
 
-# new stream label
-#process.source.streamLabel = cms.untracked.string('streamDQMOnlineBeamspot')
-
-# for testing in lxplus
-#process.load("DQM.Integration.config.fileinputsource_cfi")
-#from DQM.Integration.config.fileinputsource_cfi import options
-
 #--------------------------
 # HLT Filter
 # 0=random, 1=physics, 2=calibration, 3=technical
@@ -66,6 +56,13 @@ process.dqmSaver.runNumber     = options.runNumber
 process.dqmSaverPB.tag         = 'FakeBeamMonitorHLT'
 process.dqmSaverPB.runNumber   = options.runNumber
 
+# Configure tag and jobName if running Playback system
+if process.isDqmPlayback.value :
+  BSOnlineTag = BSOnlineTag + 'Playback'
+  BSOnlineJobName = BSOnlineJobName + 'Playback'
+  BSOnlineOmsServiceUrl = ''
+  useLockRecords = False
+
 #---------------
 """
 # Conditions
@@ -74,7 +71,7 @@ if (live):
 else:
   process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_cff')
   from Configuration.AlCa.GlobalTag import GlobalTag as gtCustomise
-  process.GlobalTag = gtCustomise(process.GlobalTag, 'auto:run2_data', '')
+  process.GlobalTag = gtCustomise(process.GlobalTag, 'auto:run3_data', '')
   # you may need to set manually the GT in the line below
   #process.GlobalTag.globaltag = '100X_upgrade2018_realistic_v10'
 """
@@ -169,6 +166,4 @@ print("Configured frontierKey", options.runUniqueKey)
 # Final path
 print("Final Source settings:", process.source)
 
-process.p = cms.Path(process.dqmcommon
-                    * process.monitor )
-
+process.p = cms.Path( process.dqmcommon * process.monitor )

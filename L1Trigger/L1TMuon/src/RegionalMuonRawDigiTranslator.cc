@@ -7,6 +7,7 @@ void l1t::RegionalMuonRawDigiTranslator::fillRegionalMuonCand(RegionalMuonCand& 
                                                               const int proc,
                                                               const tftype tf,
                                                               const bool isKbmtf,
+                                                              const bool useOmtfDisplacementInfo,
                                                               const bool useEmtfDisplacementInfo) {
   // translations as defined in DN-15-017
   mu.setHwPt((raw_data_00_31 >> ptShift_) & ptMask_);
@@ -87,6 +88,9 @@ void l1t::RegionalMuonRawDigiTranslator::fillRegionalMuonCand(RegionalMuonCand& 
       mu.setTrackSubAddress(RegionalMuonCand::kBX, (rawTrackAddress >> emtfTrAddrBxShift_) & emtfTrAddrBxMask_);
     }
   } else if (tf == omtf_neg || tf == omtf_pos) {
+    if (useOmtfDisplacementInfo) {  // In Run-3 2024 we receive displaced muon information from OMTF
+      mu.setHwPtUnconstrained((raw_data_32_63 >> kOmtfPtUnconstrainedShift_) & ptUnconstrainedMask_);
+    }
     mu.setTrackSubAddress(RegionalMuonCand::kLayers,
                           (rawTrackAddress >> omtfTrAddrLayersShift_) & omtfTrAddrLayersMask_);
     mu.setTrackSubAddress(RegionalMuonCand::kZero, 0);
@@ -107,6 +111,7 @@ void l1t::RegionalMuonRawDigiTranslator::fillRegionalMuonCand(RegionalMuonCand& 
                                                               const int proc,
                                                               const tftype tf,
                                                               const bool isKbmtf,
+                                                              const bool useOmtfDisplacementInfo,
                                                               const bool useEmtfDisplacementInfo) {
   fillRegionalMuonCand(mu,
                        (uint32_t)(dataword & 0xFFFFFFFF),
@@ -114,51 +119,60 @@ void l1t::RegionalMuonRawDigiTranslator::fillRegionalMuonCand(RegionalMuonCand& 
                        proc,
                        tf,
                        isKbmtf,
+                       useOmtfDisplacementInfo,
                        useEmtfDisplacementInfo);
 }
 
-bool l1t::RegionalMuonRawDigiTranslator::fillRegionalMuonShower(
-    RegionalMuonShower& muShower, std::vector<uint32_t> bxPayload, int proc, tftype tf, bool useEmtfShowers) {
-  if (useEmtfShowers && (tf == emtf_pos || tf == emtf_neg)) {
-    muShower.setTFIdentifiers(proc, tf);
+bool l1t::RegionalMuonRawDigiTranslator::fillRegionalMuonShower(RegionalMuonShower& muShower,
+                                                                const std::vector<uint32_t> bxPayload,
+                                                                const int proc,
+                                                                const tftype tf,
+                                                                const bool useEmtfNominalTightShowers,
+                                                                const bool useEmtfLooseShowers) {
+  muShower.setTFIdentifiers(proc, tf);
+  bool showerValid{false};
+  if (useEmtfNominalTightShowers && (tf == emtf_pos || tf == emtf_neg)) {
+    muShower.setOneNominalInTime(((bxPayload[kEmtfShowerStandardFrame] >> kEmtfShowerOneNominalShift) & 1) == 1);
+    muShower.setOneTightInTime(((bxPayload[kEmtfShowerStandardFrame] >> kEmtfShowerOneTightShift) & 1) == 1);
 
-    muShower.setOneNominalInTime(((bxPayload[emtfShowerInTimeFrame_] >> emtfShowerOneNominalShift_) & 1) == 1);
-    muShower.setOneNominalOutOfTime(((bxPayload[emtfShowerOOTFrame_] >> emtfShowerOneNominalShift_) & 1) == 1);
-    muShower.setOneTightInTime(((bxPayload[emtfShowerInTimeFrame_] >> emtfShowerOneTightShift_) & 1) == 1);
-    muShower.setOneTightOutOfTime(((bxPayload[emtfShowerOOTFrame_] >> emtfShowerOneTightShift_) & 1) == 1);
-
-    return muShower.isValid();
-  } else {
-    return false;
+    showerValid = muShower.isValid();
   }
+  if (useEmtfLooseShowers && (tf == emtf_pos || tf == emtf_neg)) {
+    muShower.setOneLooseInTime(((bxPayload[kEmtfShowerExtendedFrame] >> kEmtfShowerOneLooseShift) & 1) == 1);
+
+    showerValid = muShower.isValid();
+  }
+  return showerValid;
 }
 
 void l1t::RegionalMuonRawDigiTranslator::generatePackedShowerPayload(const RegionalMuonShower& shower,
                                                                      std::array<uint32_t, 6>& payload,
-                                                                     const bool useEmtfShowers) {
-  if (!useEmtfShowers || !shower.isValid()) {
+                                                                     const bool useEmtfNominalTightShowers,
+                                                                     const bool useEmtfLooseShowers) {
+  if (!useEmtfNominalTightShowers || !useEmtfLooseShowers || !shower.isValid()) {
     return;
   }
   // First we check whether we're going to overwrite something in the payload.
-  if ((((payload.at(emtfShowerInTimeFrame_) >> emtfShowerOneNominalShift_) & emtfShowerMask_) != 0) ||
-      (((payload.at(emtfShowerInTimeFrame_) >> emtfShowerOneTightShift_) & emtfShowerMask_) != 0) ||
-      (((payload.at(emtfShowerOOTFrame_) >> emtfShowerOneNominalShift_) & emtfShowerMask_) != 0) ||
-      (((payload.at(emtfShowerOOTFrame_) >> emtfShowerOneTightShift_) & emtfShowerMask_) != 0)) {
+  if ((((payload.at(kEmtfShowerStandardFrame) >> kEmtfShowerOneNominalShift) & kEmtfShowerMask) != 0) ||
+      (((payload.at(kEmtfShowerStandardFrame) >> kEmtfShowerOneTightShift) & kEmtfShowerMask) != 0) ||
+      (((payload.at(kEmtfShowerExtendedFrame) >> kEmtfShowerOneLooseShift) & kEmtfShowerMask) != 0)) {
     edm::LogError("L1T") << "Check constants for RegionalMuonShower fields! It looks like we're in danger of "
-                            "overwriting muon data in the packer! InTimeFrame is "
-                         << payload.at(emtfShowerInTimeFrame_) << ", OOTFrame is " << payload.at(emtfShowerOOTFrame_);
+                            "overwriting muon data in the packer! StandardFrame is "
+                         << payload.at(kEmtfShowerStandardFrame) << ", ExtendedFrame is "
+                         << payload.at(kEmtfShowerExtendedFrame);
     return;
   }
-  payload.at(emtfShowerInTimeFrame_) |= (shower.isOneNominalInTime() & 1) << emtfShowerOneNominalShift_ |
-                                        (shower.isOneTightInTime() & 1) << emtfShowerOneTightShift_;
-  payload.at(emtfShowerOOTFrame_) |= (shower.isOneNominalOutOfTime() & 1) << emtfShowerOneNominalShift_ |
-                                     (shower.isOneTightOutOfTime() & 1) << emtfShowerOneTightShift_;
+  payload.at(kEmtfShowerStandardFrame) |= (shower.isOneNominalInTime() & 1) << kEmtfShowerOneNominalShift |
+                                          (shower.isOneTightInTime() & 1) << kEmtfShowerOneTightShift;
+  payload.at(kEmtfShowerExtendedFrame) |= (shower.isOneNominalOutOfTime() & 1) << kEmtfShowerOneNominalShift |
+                                          (shower.isOneTightOutOfTime() & 1) << kEmtfShowerOneTightShift;
 }
 
 void l1t::RegionalMuonRawDigiTranslator::generatePackedDataWords(const RegionalMuonCand& mu,
                                                                  uint32_t& raw_data_00_31,
                                                                  uint32_t& raw_data_32_63,
                                                                  const bool isKbmtf,
+                                                                 const bool useOmtfDisplacementInfo,
                                                                  const bool useEmtfDisplacementInfo) {
   int abs_eta = mu.hwEta();
   if (abs_eta < 0) {
@@ -181,6 +195,8 @@ void l1t::RegionalMuonRawDigiTranslator::generatePackedDataWords(const RegionalM
   if (isKbmtf && mu.trackFinderType() == bmtf) {
     raw_data_32_63 |= (mu.hwPtUnconstrained() & ptUnconstrainedMask_) << bmtfPtUnconstrainedShift_ |
                       (mu.hwDXY() & dxyMask_) << bmtfDxyShift_;
+  } else if (useOmtfDisplacementInfo && (mu.trackFinderType() == omtf_pos || mu.trackFinderType() == omtf_neg)) {
+    raw_data_32_63 |= (mu.hwPtUnconstrained() & ptUnconstrainedMask_) << kOmtfPtUnconstrainedShift_;
   } else if (useEmtfDisplacementInfo && (mu.trackFinderType() == emtf_pos || mu.trackFinderType() == emtf_neg)) {
     raw_data_32_63 |= (mu.hwPtUnconstrained() & ptUnconstrainedMask_) << emtfPtUnconstrainedShift_ |
                       (mu.hwDXY() & dxyMask_) << emtfDxyShift_;
@@ -189,11 +205,12 @@ void l1t::RegionalMuonRawDigiTranslator::generatePackedDataWords(const RegionalM
 
 uint64_t l1t::RegionalMuonRawDigiTranslator::generate64bitDataWord(const RegionalMuonCand& mu,
                                                                    const bool isKbmtf,
+                                                                   const bool useOmtfDisplacementInfo,
                                                                    const bool useEmtfDisplacementInfo) {
   uint32_t lsw;
   uint32_t msw;
 
-  generatePackedDataWords(mu, lsw, msw, isKbmtf, useEmtfDisplacementInfo);
+  generatePackedDataWords(mu, lsw, msw, isKbmtf, useOmtfDisplacementInfo, useEmtfDisplacementInfo);
   return (((uint64_t)msw) << 32) + lsw;
 }
 

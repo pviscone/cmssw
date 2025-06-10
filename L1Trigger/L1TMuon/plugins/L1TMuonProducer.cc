@@ -67,9 +67,6 @@ private:
   void produce(edm::Event&, const edm::EventSetup&) override;
 
   void beginRun(edm::Run const&, edm::EventSetup const&) override;
-  void endRun(edm::Run const&, edm::EventSetup const&) override;
-  void beginLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&) override;
-  void endLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&) override;
 
   static bool compareMuons(const std::shared_ptr<MicroGMTConfiguration::InterMuon>& mu1,
                            const std::shared_ptr<MicroGMTConfiguration::InterMuon>& mu2);
@@ -89,6 +86,8 @@ private:
                     MicroGMTConfiguration::InterMuonList& out,
                     GMTInternalWedges& wedges,
                     int bx) const;
+
+  int computeMuonIdx(const RegionalMuonCand& mu, int currentLink, int muIdxAuto) const;
 
   void addMuonsToCollections(MicroGMTConfiguration::InterMuonList& coll,
                              MicroGMTConfiguration::InterMuonList& interout,
@@ -330,7 +329,8 @@ void L1TMuonProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
         math::PtEtaPhiMLorentzVector vec{
             (mu->hwPt() - 1) * 0.5, mu->hwEta() * 0.010875, mu->hwGlobalPhi() * 0.010908, 0.0};
         int iso = mu->hwAbsIso() + (mu->hwRelIso() << 1);
-        int outMuQual = MicroGMTConfiguration::setOutputMuonQuality(mu->hwQual(), mu->trackFinderType(), mu->hwHF());
+        int outMuQual = MicroGMTConfiguration::setOutputMuonQuality(
+            mu->hwQual(), mu->trackFinderType(), mu->hwHF(), microGMTParamsHelper->fwVersion());
         Muon outMu{vec,
                    mu->hwPt(),
                    mu->hwEta(),
@@ -393,10 +393,8 @@ void L1TMuonProducer::sortMuons(MicroGMTConfiguration::InterMuonList& muons, uns
     (*mu1)->setHwWins(0);
   }
 
-  int nCancelled = 0;
   for (mu1 = muons.begin(); mu1 != muons.end(); ++mu1) {
     int mu1CancelBit = (*mu1)->hwCancelBit();
-    nCancelled += mu1CancelBit;
     auto mu2 = mu1;
     mu2++;
     for (; mu2 != muons.end(); ++mu2) {
@@ -437,7 +435,8 @@ void L1TMuonProducer::addMuonsToCollections(MicroGMTConfiguration::InterMuonList
   for (auto& mu : coll) {
     interout.push_back(mu);
     math::PtEtaPhiMLorentzVector vec{(mu->hwPt() - 1) * 0.5, mu->hwEta() * 0.010875, mu->hwGlobalPhi() * 0.010908, 0.0};
-    int outMuQual = MicroGMTConfiguration::setOutputMuonQuality(mu->hwQual(), mu->trackFinderType(), mu->hwHF());
+    int outMuQual = MicroGMTConfiguration::setOutputMuonQuality(
+        mu->hwQual(), mu->trackFinderType(), mu->hwHF(), microGMTParamsHelper->fwVersion());
     // set tfMuonIndex and iso to 0 like in the FW
     Muon outMu{vec,
                mu->hwPt(),
@@ -487,21 +486,21 @@ void L1TMuonProducer::splitAndConvertMuons(const edm::Handle<MicroGMTConfigurati
   }
   if (bx < in->getFirstBX() || bx > in->getLastBX())
     return;
-  int muIdx = 0;
+  int muIdxAuto = 0;
   int currentLink = 0;
-  for (size_t i = 0; i < in->size(bx); ++i, ++muIdx) {
+  for (size_t i = 0; i < in->size(bx); ++i, ++muIdxAuto) {
     if (in->at(bx, i).hwPt() > 0) {
       int link = in->at(bx, i).link();
       if (m_inputsToDisable.test(link) || m_maskedInputs.test(link)) {
         continue;  // only process if input link is enabled and not masked
       }
       if (currentLink != link) {
-        muIdx = 0;
+        muIdxAuto = 0;
         currentLink = link;
       }
       int gPhi = MicroGMTConfiguration::calcGlobalPhi(
           in->at(bx, i).hwPhi(), in->at(bx, i).trackFinderType(), in->at(bx, i).processor());
-      int tfMuonIdx = 3 * (currentLink - 36) + muIdx;
+      int tfMuonIdx{computeMuonIdx(in->at(bx, i), currentLink, muIdxAuto)};
       std::shared_ptr<GMTInternalMuon> out = std::make_shared<GMTInternalMuon>(in->at(bx, i), gPhi, tfMuonIdx);
       if (in->at(bx, i).hwEta() > 0) {
         out_pos.push_back(out);
@@ -531,32 +530,43 @@ void L1TMuonProducer::convertMuons(const edm::Handle<MicroGMTConfiguration::Inpu
     wedges[i] = std::vector<std::shared_ptr<GMTInternalMuon>>();
     wedges[i].reserve(3);
   }
-  if (bx < in->getFirstBX() || bx > in->getLastBX())
+  if (bx < in->getFirstBX() || bx > in->getLastBX()) {
     return;
-  int muIdx = 0;
+  }
+  int muIdxAuto = 0;
   int currentLink = 0;
-  for (size_t i = 0; i < in->size(bx); ++i, ++muIdx) {
+  for (size_t i = 0; i < in->size(bx); ++i, ++muIdxAuto) {
     if (in->at(bx, i).hwPt() > 0) {
       int link = in->at(bx, i).link();
       if (m_inputsToDisable.test(link) || m_maskedInputs.test(link)) {
         continue;  // only process if input link is enabled and not masked
       }
       if (currentLink != link) {
-        muIdx = 0;
+        muIdxAuto = 0;
         currentLink = link;
       }
       int gPhi = MicroGMTConfiguration::calcGlobalPhi(
           in->at(bx, i).hwPhi(), in->at(bx, i).trackFinderType(), in->at(bx, i).processor());
-      int tfMuonIdx = 3 * (currentLink - 36) + muIdx;
+      int tfMuonIdx{computeMuonIdx(in->at(bx, i), currentLink, muIdxAuto)};
       std::shared_ptr<GMTInternalMuon> outMu = std::make_shared<GMTInternalMuon>(in->at(bx, i), gPhi, tfMuonIdx);
       out.emplace_back(outMu);
       wedges[in->at(bx, i).processor()].push_back(outMu);
     }
   }
   for (int i = 0; i < 12; ++i) {
-    if (wedges[i].size() > 3)
+    if (wedges[i].size() > 3) {
       edm::LogWarning("Input Mismatch") << " too many inputs per processor for barrel. Wedge " << i << ": Size "
                                         << wedges[i].size() << std::endl;
+    }
+  }
+}
+
+int L1TMuonProducer::computeMuonIdx(const RegionalMuonCand& mu, int currentLink, int muIdxAuto) const {
+  // If the muon index was set in the data format we should use that. Otherwise we use the value computed from the position in the vector.
+  if (mu.muIdx() != -1) {
+    return 3 * (currentLink - 36) + mu.muIdx();
+  } else {
+    return 3 * (currentLink - 36) + muIdxAuto;
   }
 }
 
@@ -605,15 +615,6 @@ void L1TMuonProducer::beginRun(edm::Run const& run, edm::EventSetup const& iSetu
     // }
   }
 }
-
-// ------------ method called when ending the processing of a run  ------------
-void L1TMuonProducer::endRun(edm::Run const&, edm::EventSetup const&) {}
-
-// ------------ method called when starting to processes a luminosity block  ------------
-void L1TMuonProducer::beginLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&) {}
-
-// ------------ method called when ending the processing of a luminosity block  ------------
-void L1TMuonProducer::endLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&) {}
 
 // ------------ method fills 'descriptions' with the allowed parameters for the module  ------------
 void L1TMuonProducer::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {

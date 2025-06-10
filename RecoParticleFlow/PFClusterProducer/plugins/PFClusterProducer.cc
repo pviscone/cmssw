@@ -6,7 +6,8 @@
 #include "RecoParticleFlow/PFClusterProducer/interface/PFClusterEnergyCorrectorBase.h"
 #include "RecoParticleFlow/PFClusterProducer/interface/RecHitTopologicalCleanerBase.h"
 #include "RecoParticleFlow/PFClusterProducer/interface/SeedFinderBase.h"
-
+#include "CondFormats/DataRecord/interface/HcalPFCutsRcd.h"
+#include "CondTools/Hcal/interface/HcalPFCutsHandler.h"
 #include <memory>
 
 class PFClusterProducer : public edm::stream::EDProducer<> {
@@ -19,12 +20,16 @@ public:
   PFClusterProducer(const edm::ParameterSet&);
   ~PFClusterProducer() override = default;
 
-  void beginLuminosityBlock(const edm::LuminosityBlock&, const edm::EventSetup&) override;
+  void beginRun(const edm::Run&, const edm::EventSetup&) override;
   void produce(edm::Event&, const edm::EventSetup&) override;
 
 private:
   // inputs
   edm::EDGetTokenT<reco::PFRecHitCollection> _rechitsLabel;
+  edm::ESGetToken<HcalPFCuts, HcalPFCutsRcd> hcalCutsToken_;
+  bool cutsFromDB;
+  HcalPFCuts const* paramPF = nullptr;
+
   // options
   const bool _prodInitClusters;
   // the actual algorithm
@@ -55,7 +60,12 @@ DEFINE_FWK_MODULE(PFClusterProducer);
 PFClusterProducer::PFClusterProducer(const edm::ParameterSet& conf)
     : _prodInitClusters(conf.getUntrackedParameter<bool>("prodInitialClusters", false)) {
   _rechitsLabel = consumes<reco::PFRecHitCollection>(conf.getParameter<edm::InputTag>("recHitsSource"));
+  cutsFromDB = conf.getParameter<bool>("usePFThresholdsFromDB");
   edm::ConsumesCollector cc = consumesCollector();
+
+  if (cutsFromDB) {
+    hcalCutsToken_ = esConsumes<HcalPFCuts, HcalPFCutsRcd, edm::Transition::BeginRun>(edm::ESInputTag("", "withTopo"));
+  }
 
   //setup rechit cleaners
   const edm::VParameterSet& cleanerConfs = conf.getParameterSetVector("recHitCleaners");
@@ -106,7 +116,10 @@ PFClusterProducer::PFClusterProducer(const edm::ParameterSet& conf)
   produces<reco::PFClusterCollection>();
 }
 
-void PFClusterProducer::beginLuminosityBlock(const edm::LuminosityBlock& lumi, const edm::EventSetup& es) {
+void PFClusterProducer::beginRun(const edm::Run& run, const edm::EventSetup& es) {
+  if (cutsFromDB) {
+    paramPF = &es.getData(hcalCutsToken_);
+  }
   _initialClustering->update(es);
   if (_pfClusterBuilder)
     _pfClusterBuilder->update(es);
@@ -140,23 +153,23 @@ void PFClusterProducer::produce(edm::Event& e, const edm::EventSetup& es) {
   }
 
   std::vector<bool> seedable(rechits->size(), false);
-  _seedFinder->findSeeds(rechits, seedmask, seedable);
+  _seedFinder->findSeeds(rechits, seedmask, seedable, paramPF);
 
   auto initialClusters = std::make_unique<reco::PFClusterCollection>();
-  _initialClustering->buildClusters(rechits, mask, seedable, *initialClusters);
+  _initialClustering->buildClusters(rechits, mask, seedable, *initialClusters, paramPF);
   LOGVERB("PFClusterProducer::produce()") << *_initialClustering;
 
   auto pfClusters = std::make_unique<reco::PFClusterCollection>();
   pfClusters = std::make_unique<reco::PFClusterCollection>();
   if (_pfClusterBuilder) {  // if we've defined a re-clustering step execute it
-    _pfClusterBuilder->buildClusters(*initialClusters, seedable, *pfClusters);
+    _pfClusterBuilder->buildClusters(*initialClusters, seedable, *pfClusters, paramPF);
     LOGVERB("PFClusterProducer::produce()") << *_pfClusterBuilder;
   } else {
     pfClusters->insert(pfClusters->end(), initialClusters->begin(), initialClusters->end());
   }
 
   if (_positionReCalc) {
-    _positionReCalc->calculateAndSetPositions(*pfClusters);
+    _positionReCalc->calculateAndSetPositions(*pfClusters, paramPF);
   }
 
   if (_energyCorrector) {

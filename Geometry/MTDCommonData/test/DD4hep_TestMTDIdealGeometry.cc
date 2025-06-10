@@ -33,8 +33,6 @@
 #include "DataFormats/Math/interface/Rounding.h"
 #include <DD4hep/DD4hepUnits.h>
 
-//#define EDM_ML_DEBUG
-
 using namespace cms;
 
 class DD4hep_TestMTDIdealGeometry : public edm::one::EDAnalyzer<> {
@@ -51,7 +49,6 @@ public:
 private:
   const edm::ESInputTag tag_;
   std::string ddTopNodeName_;
-  uint32_t theLayout_;
 
   MTDBaseNumber thisN_;
   BTLNumberingScheme btlNS_;
@@ -68,7 +65,6 @@ using cms_rounding::roundIfNear0;
 DD4hep_TestMTDIdealGeometry::DD4hep_TestMTDIdealGeometry(const edm::ParameterSet& iConfig)
     : tag_(iConfig.getParameter<edm::ESInputTag>("DDDetector")),
       ddTopNodeName_(iConfig.getUntrackedParameter<std::string>("ddTopNodeName", "BarrelTimingLayer")),
-      theLayout_(iConfig.getUntrackedParameter<uint32_t>("theLayout", 1)),
       thisN_(),
       btlNS_(),
       etlNS_() {
@@ -139,6 +135,7 @@ void DD4hep_TestMTDIdealGeometry::analyze(const edm::Event& iEvent, const edm::E
   bool isBarrel = true;
   bool exitLoop = false;
   uint32_t level(0);
+  uint32_t count(0);
 
   do {
     if (dd4hep::dd::noNamespace(fv.name()) == "BarrelTimingLayer") {
@@ -149,29 +146,26 @@ void DD4hep_TestMTDIdealGeometry::analyze(const edm::Event& iEvent, const edm::E
       edm::LogInfo("DD4hep_TestMTDIdealGeometry") << "isBarrel = " << isBarrel;
     }
 
-    std::stringstream ss;
-
-    theBaseNumber(fv);
-
-    auto print_path = [&]() {
-      ss << " - OCMS[0]/";
-      for (int ii = thisN_.getLevels() - 1; ii-- > 0;) {
-        ss << thisN_.getLevelName(ii);
-        ss << "[";
-        ss << thisN_.getCopyNumber(ii);
-        ss << "]/";
-      }
-    };
-
     if (level > 0 && fv.navPos().size() < level) {
       level = 0;
       write = false;
-      exitLoop = true;
+      if (isBarrel) {
+        exitLoop = true;
+      } else if (!isBarrel && count == 2) {
+        exitLoop = true;
+      }
     }
     if (dd4hep::dd::noNamespace(fv.name()) == ddTopNodeName_) {
       write = true;
       level = fv.navPos().size();
+      count += 1;
     }
+
+#ifdef EDM_ML_DEBUG
+    edm::LogVerbatim("DD4hep_TestMTDIdealGeometry")
+        << "level= " << level << " isBarrel= " << isBarrel << " exitLoop= " << exitLoop << " count= " << count << " "
+        << fv.path();
+#endif
 
     // Test only the desired subdetector
 
@@ -182,11 +176,21 @@ void DD4hep_TestMTDIdealGeometry::analyze(const edm::Event& iEvent, const edm::E
     // Actions for MTD volumes: searchg for sensitive detectors
 
     if (write) {
-      print_path();
+      std::stringstream ss;
 
-#ifdef EDM_ML_DEBUG
-      edm::LogInfo("DD4hep_TestMTDIdealGeometry") << fv.path();
-#endif
+      theBaseNumber(fv);
+
+      auto print_path = [&]() {
+        ss << " - OCMS[0]/";
+        for (int ii = thisN_.getLevels() - 1; ii-- > 0;) {
+          ss << thisN_.getLevelName(ii);
+          ss << "[";
+          ss << thisN_.getCopyNumber(ii);
+          ss << "]/";
+        }
+      };
+
+      print_path();
 
       edm::LogInfo("DD4hep_TestMTDPath") << ss.str();
 
@@ -210,29 +214,9 @@ void DD4hep_TestMTDIdealGeometry::analyze(const edm::Event& iEvent, const edm::E
         std::stringstream snum;
 
         if (isBarrel) {
-          BTLDetId::CrysLayout lay = static_cast<BTLDetId::CrysLayout>(theLayout_);
           BTLDetId theId(btlNS_.getUnitID(thisN_));
-          int hIndex = theId.hashedIndex(lay);
-          BTLDetId theNewId(theId.getUnhashedIndex(hIndex, lay));
           sunitt << theId.rawId();
-          snum << theId << "\n layout type = " << static_cast<int>(lay) << "\n ieta        = " << theId.ieta(lay)
-               << "\n iphi        = " << theId.iphi(lay) << "\n hashedIndex = " << theId.hashedIndex(lay)
-               << "\n BTLDetId hI = " << theNewId;
-          if (theId.mtdSide() != theNewId.mtdSide()) {
-            snum << "\n DIFFERENCE IN SIDE";
-          }
-          if (theId.mtdRR() != theNewId.mtdRR()) {
-            snum << "\n DIFFERENCE IN ROD";
-          }
-          if (theId.module() != theNewId.module()) {
-            snum << "\n DIFFERENCE IN MODULE";
-          }
-          if (theId.modType() != theNewId.modType()) {
-            snum << "\n DIFFERENCE IN MODTYPE";
-          }
-          if (theId.crystal() != theNewId.crystal()) {
-            snum << "\n DIFFERENCE IN CRYSTAL";
-          }
+          snum << theId;
           snum << "\n";
         } else {
           ETLDetId theId(etlNS_.getUnitID(thisN_));
@@ -302,7 +286,7 @@ void DD4hep_TestMTDIdealGeometry::analyze(const edm::Event& iEvent, const edm::E
         edm::LogVerbatim("MTDUnitTest") << sunitt.str();
       }
     }
-  } while (fv.next(0));
+  } while (fv.next(0) && !(exitLoop == 1 && count == 2));
 }
 
 void DD4hep_TestMTDIdealGeometry::theBaseNumber(cms::DDFilteredView& fv) {
@@ -314,7 +298,7 @@ void DD4hep_TestMTDIdealGeometry::theBaseNumber(cms::DDFilteredView& fv) {
     size_t ipos = name.rfind('_');
     thisN_.addLevel(name.substr(0, ipos), fv.copyNos()[ii]);
 #ifdef EDM_ML_DEBUG
-    edm::LogVerbatim("DD4hep_TestMTDIdealGeometry") << name.substr(0, ipos) << " " << fv.copyNos()[ii];
+    edm::LogVerbatim("DD4hep_TestMTDIdealGeometry") << ii << " " << name.substr(0, ipos) << " " << fv.copyNos()[ii];
 #endif
   }
 }

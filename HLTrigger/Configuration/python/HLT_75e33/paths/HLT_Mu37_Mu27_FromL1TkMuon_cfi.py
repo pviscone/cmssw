@@ -1,6 +1,5 @@
 import FWCore.ParameterSet.Config as cms
 
-from ..modules.hltL1TkMuons_cfi import *
 from ..modules.hltDoubleMuon7DZ1p0_cfi import *
 from ..modules.hltL1TkDoubleMuFiltered7_cfi import *
 from ..modules.hltL1TkSingleMuFiltered15_cfi import *
@@ -27,6 +26,7 @@ from ..modules.hltIter2Phase2L3FromL1TkMuonPixelHitDoublets_cfi import *
 from ..modules.hltIter2Phase2L3FromL1TkMuonPixelHitTriplets_cfi import *
 from ..modules.hltIter2Phase2L3FromL1TkMuonPixelLayerTriplets_cfi import *
 from ..modules.hltIter2Phase2L3FromL1TkMuonPixelSeeds_cfi import *
+from ..modules.hltIter2Phase2L3FromL1TkMuonPixelSeedsFiltered_cfi import *
 from ..modules.hltIter2Phase2L3FromL1TkMuonTrackCutClassifier_cfi import *
 from ..modules.hltIter2Phase2L3FromL1TkMuonTrackSelectionHighPurity_cfi import *
 from ..modules.hltL2MuonFromL1TkMuonCandidates_cfi import *
@@ -47,8 +47,8 @@ from ..modules.hltPhase2L3FromL1TkMuonTrimmedPixelVertices_cfi import *
 from ..modules.hltPhase2L3GlbMuon_cfi import *
 from ..modules.hltPhase2L3MuonCandidates_cfi import *
 from ..modules.hltPhase2L3MuonMerged_cfi import *
-from ..modules.hltPhase2L3MuonPixelTracksFilter_cfi import *
-from ..modules.hltPhase2L3MuonPixelTracksFitter_cfi import *
+from ..modules.hltPhase2PixelTrackFilterByKinematics_cfi import *
+from ..modules.hltPhase2PixelFitterByHelixProjections_cfi import *
 from ..modules.hltPhase2L3Muons_cfi import *
 from ..modules.hltPhase2L3MuonsNoID_cfi import *
 from ..modules.hltPhase2L3MuonTracks_cfi import *
@@ -71,14 +71,11 @@ from ..sequences.HLTEndSequence_cfi import *
 
 HLT_Mu37_Mu27_FromL1TkMuon = cms.Path(
     HLTBeginSequence +
-    hltL1TkDoubleMuFiltered7 +
-    hltL1TkSingleMuFiltered15 +
     hltDoubleMuon7DZ1p0 +
     hltL3fL1DoubleMu155fPreFiltered27 +
     hltL3fL1DoubleMu155fFiltered37 +
     HLTEndSequence,
     cms.Task(
-        hltL1TkMuons,
         MeasurementTrackerEvent,
         hltCsc2DRecHits,
         hltCscSegments,
@@ -101,6 +98,7 @@ HLT_Mu37_Mu27_FromL1TkMuon = cms.Path(
         hltIter2Phase2L3FromL1TkMuonPixelHitTriplets,
         hltIter2Phase2L3FromL1TkMuonPixelLayerTriplets,
         hltIter2Phase2L3FromL1TkMuonPixelSeeds,
+        hltIter2Phase2L3FromL1TkMuonPixelSeedsFiltered,
         hltIter2Phase2L3FromL1TkMuonTrackCutClassifier,
         hltIter2Phase2L3FromL1TkMuonTrackSelectionHighPurity,
         hltL2MuonFromL1TkMuonCandidates,
@@ -121,8 +119,8 @@ HLT_Mu37_Mu27_FromL1TkMuon = cms.Path(
         hltPhase2L3GlbMuon,
         hltPhase2L3MuonCandidates,
         hltPhase2L3MuonMerged,
-        hltPhase2L3MuonPixelTracksFilter,
-        hltPhase2L3MuonPixelTracksFitter,
+        hltPhase2PixelTrackFilterByKinematics,
+        hltPhase2PixelFitterByHelixProjections,
         hltPhase2L3MuonTracks,
         hltPhase2L3Muons,
         hltPhase2L3MuonsNoID,

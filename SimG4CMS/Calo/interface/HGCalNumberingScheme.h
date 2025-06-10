@@ -13,9 +13,15 @@
 
 #include "G4ThreeVector.hh"
 
+#include <string>
+#include <vector>
+
 class HGCalNumberingScheme {
 public:
-  HGCalNumberingScheme(const HGCalDDDConstants& hgc, const DetId::Detector& det, const std::string& name);
+  HGCalNumberingScheme(const HGCalDDDConstants& hgc,
+                       const DetId::Detector& det,
+                       const std::string& name,
+                       const std::string& fileName);
   HGCalNumberingScheme() = delete;
   ~HGCalNumberingScheme();
 
@@ -25,12 +31,16 @@ public:
   uint32_t getUnitID(int layer, int module, int cell, int iz, const G4ThreeVector& pos, double& wt);
 
 private:
-  void checkPosition(uint32_t index, const G4ThreeVector& pos, bool matchOnly, bool debug) const;
+  bool checkPosition(uint32_t index, const G4ThreeVector& pos, bool matchOnly, bool debug) const;
 
   const HGCalDDDConstants& hgcons_;
   const HGCalGeometryMode::GeometryMode mode_;
-  DetId::Detector det_;
-  std::string name_;
+  const DetId::Detector det_;
+  const std::string name_;
+  int firstLayer_;
+  std::vector<int> indices_;
+  std::vector<int> dumpDets_;
+  std::vector<int> dumpCassette_;
 };
 
 #endif

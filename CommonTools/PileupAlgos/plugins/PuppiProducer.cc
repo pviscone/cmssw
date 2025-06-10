@@ -69,6 +69,7 @@ private:
   bool fPuppiDiagnostics;
   bool fPuppiNoLep;
   bool fUseFromPVLooseTight;
+  bool fUseFromPV2Recovery;
   bool fUseDZ;
   bool fUseDZforPileup;
   double fDZCut;
@@ -77,9 +78,11 @@ private:
   double fEtaMaxCharged;
   double fPtMaxPhotons;
   double fEtaMaxPhotons;
+  double fPtMinForFromPV2Recovery;
   uint fNumOfPUVtxsForCharged;
   double fDZCutForChargedFromPUVtxs;
   bool fUseExistingWeights;
+  bool fApplyPhotonProtectionForExistingWeights;
   bool fClonePackedCands;
   int fVtxNdofCut;
   double fVtxZCut;
@@ -93,6 +96,7 @@ PuppiProducer::PuppiProducer(const edm::ParameterSet& iConfig) {
   fPuppiDiagnostics = iConfig.getParameter<bool>("puppiDiagnostics");
   fPuppiNoLep = iConfig.getParameter<bool>("puppiNoLep");
   fUseFromPVLooseTight = iConfig.getParameter<bool>("UseFromPVLooseTight");
+  fUseFromPV2Recovery = iConfig.getParameter<bool>("UseFromPV2Recovery");
   fUseDZ = iConfig.getParameter<bool>("UseDeltaZCut");
   fUseDZforPileup = iConfig.getParameter<bool>("UseDeltaZCutForPileup");
   fDZCut = iConfig.getParameter<double>("DeltaZCut");
@@ -101,9 +105,11 @@ PuppiProducer::PuppiProducer(const edm::ParameterSet& iConfig) {
   fEtaMaxCharged = iConfig.getParameter<double>("EtaMaxCharged");
   fPtMaxPhotons = iConfig.getParameter<double>("PtMaxPhotons");
   fEtaMaxPhotons = iConfig.getParameter<double>("EtaMaxPhotons");
+  fPtMinForFromPV2Recovery = iConfig.getParameter<double>("PtMinForFromPV2Recovery");
   fNumOfPUVtxsForCharged = iConfig.getParameter<uint>("NumOfPUVtxsForCharged");
   fDZCutForChargedFromPUVtxs = iConfig.getParameter<double>("DeltaZCutForChargedFromPUVtxs");
   fUseExistingWeights = iConfig.getParameter<bool>("useExistingWeights");
+  fApplyPhotonProtectionForExistingWeights = iConfig.getParameter<bool>("applyPhotonProtectionForExistingWeights");
   fClonePackedCands = iConfig.getParameter<bool>("clonePackedCands");
   fVtxNdofCut = iConfig.getParameter<int>("vtxNdofCut");
   fVtxZCut = iConfig.getParameter<double>("vtxZCut");
@@ -283,6 +289,8 @@ void PuppiProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
               pReco.id = 1;
             else if ((fUseDZ) && (std::abs(pReco.eta) >= fEtaMinUseDZ) && (std::abs(pDZ) < fDZCut))
               pReco.id = 1;
+            else if (fUseFromPV2Recovery && tmpFromPV == 2 && (pReco.pt > fPtMinForFromPV2Recovery))
+              pReco.id = 1;
             else if ((fUseDZforPileup) && (std::abs(pReco.eta) >= fEtaMinUseDZ) && (std::abs(pDZ) >= fDZCut))
               pReco.id = 2;
             else if (fUseFromPVLooseTight && tmpFromPV == 1)
@@ -326,6 +334,9 @@ void PuppiProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
               pReco.id = 1;
             else if ((fUseDZ) && (std::abs(pReco.eta) >= fEtaMinUseDZ) && (std::abs(pDZ) < fDZCut))
               pReco.id = 1;
+            else if (fUseFromPV2Recovery && lPack->fromPV() == (pat::PackedCandidate::PVTight) &&
+                     (pReco.pt > fPtMinForFromPV2Recovery))
+              pReco.id = 1;
             else if ((fUseDZforPileup) && (std::abs(pReco.eta) >= fEtaMinUseDZ) && (std::abs(pDZ) >= fDZCut))
               pReco.id = 2;
             else if (fUseFromPVLooseTight && lPack->fromPV() == (pat::PackedCandidate::PVLoose))
@@ -347,7 +358,7 @@ void PuppiProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
     lWeights = fPuppiContainer->puppiWeights();
   } else {
     //Use the existing weights
-    int lPackCtr = 0;
+    lWeights.reserve(pfCol->size());
     for (auto const& aPF : *pfCol) {
       const pat::PackedCandidate* lPack = dynamic_cast<const pat::PackedCandidate*>(&aPF);
       float curpupweight = -1.;
@@ -362,12 +373,11 @@ void PuppiProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
           curpupweight = lPack->puppiWeight();
         }
       }
-      // Protect high pT photons (important for gamma to hadronic recoil balance)
-      if ((fPtMaxPhotons > 0) && (lPack->pdgId() == 22) && (std::abs(lPack->eta()) < fEtaMaxPhotons) &&
-          (lPack->pt() > fPtMaxPhotons))
+      // Optional: Protect high pT photons (important for gamma to hadronic recoil balance) for existing weights.
+      if (fApplyPhotonProtectionForExistingWeights && (fPtMaxPhotons > 0) && (lPack->pdgId() == 22) &&
+          (std::abs(lPack->eta()) < fEtaMaxPhotons) && (lPack->pt() > fPtMaxPhotons))
         curpupweight = 1;
       lWeights.push_back(curpupweight);
-      lPackCtr++;
     }
   }
 
@@ -394,6 +404,11 @@ void PuppiProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   std::vector<reco::CandidatePtr> values(hPFProduct->size());
 
   int iCand = -1;
+  puppiP4s.reserve(hPFProduct->size());
+  if (fUseExistingWeights || fClonePackedCands)
+    fPackedPuppiCandidates.reserve(hPFProduct->size());
+  else
+    fPuppiCandidates.reserve(hPFProduct->size());
   for (auto const& aCand : *hPFProduct) {
     ++iCand;
     std::unique_ptr<pat::PackedCandidate> pCand;
@@ -492,6 +507,7 @@ void PuppiProducer::fillDescriptions(edm::ConfigurationDescriptions& description
   desc.add<bool>("puppiDiagnostics", false);
   desc.add<bool>("puppiNoLep", false);
   desc.add<bool>("UseFromPVLooseTight", false);
+  desc.add<bool>("UseFromPV2Recovery", false);
   desc.add<bool>("UseDeltaZCut", true);
   desc.add<bool>("UseDeltaZCutForPileup", true);
   desc.add<double>("DeltaZCut", 0.3);
@@ -502,9 +518,11 @@ void PuppiProducer::fillDescriptions(edm::ConfigurationDescriptions& description
   desc.add<double>("EtaMaxPhotons", 2.5);
   desc.add<double>("PtMaxNeutrals", 200.);
   desc.add<double>("PtMaxNeutralsStartSlope", 0.);
+  desc.add<double>("PtMinForFromPV2Recovery", 0.);
   desc.add<uint>("NumOfPUVtxsForCharged", 0);
   desc.add<double>("DeltaZCutForChargedFromPUVtxs", 0.2);
   desc.add<bool>("useExistingWeights", false);
+  desc.add<bool>("applyPhotonProtectionForExistingWeights", false);
   desc.add<bool>("clonePackedCands", false);
   desc.add<int>("vtxNdofCut", 4);
   desc.add<double>("vtxZCut", 24);

@@ -136,8 +136,8 @@ MuonIdProducer::MuonIdProducer(const edm::ParameterSet& iConfig)
     throw cms::Exception("ConfigurationError")
         << "Number of input collection labels is different from number of types. "
         << "For each collection label there should be exactly one collection type specified.";
-  if (inputCollectionLabels_.size() > 7 || inputCollectionLabels_.empty())
-    throw cms::Exception("ConfigurationError") << "Number of input collections should be from 1 to 7.";
+  if (inputCollectionLabels_.size() > 8 || inputCollectionLabels_.empty())
+    throw cms::Exception("ConfigurationError") << "Number of input collections should be from 1 to 8.";
 
   debugWithTruthMatching_ = iConfig.getParameter<bool>("debugWithTruthMatching");
   if (debugWithTruthMatching_) {
@@ -169,6 +169,9 @@ MuonIdProducer::MuonIdProducer(const edm::ParameterSet& iConfig)
   edm::InputTag rpcHitTag("rpcRecHits");
   rpcHitToken_ = consumes<RPCRecHitCollection>(rpcHitTag);
 
+  edm::InputTag gemHitTag("gemRecHits");
+  gemHitToken_ = consumes<GEMRecHitCollection>(gemHitTag);
+
   //Consumes... UGH
   inputCollectionTypes_.resize(inputCollectionLabels_.size());
   for (unsigned int i = 0; i < inputCollectionLabels_.size(); ++i) {
@@ -177,8 +180,10 @@ MuonIdProducer::MuonIdProducer(const edm::ParameterSet& iConfig)
 
     if (inputType == ICTypes::INNER_TRACKS) {
       innerTrackCollectionToken_ = consumes<reco::TrackCollection>(inputLabel);
-    } else if (inputType == ICTypes::OUTER_TRACKS) {
+    } else if (inputType == ICTypes::OUTER_TRACKS && outerTrackCollectionToken_.isUninitialized()) {
       outerTrackCollectionToken_ = consumes<reco::TrackCollection>(inputLabel);
+    } else if (inputType == ICTypes::OUTER_TRACKS) {
+      outerTrackSecondaryCollectionToken_ = consumes<reco::TrackCollection>(inputLabel);
     } else if (inputType == ICTypes::LINKS) {
       linkCollectionToken_ = consumes<reco::MuonTrackLinksCollection>(inputLabel);
     } else if (inputType == ICTypes::MUONS) {
@@ -202,6 +207,7 @@ MuonIdProducer::~MuonIdProducer() {
 void MuonIdProducer::init(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   innerTrackCollectionHandle_.clear();
   outerTrackCollectionHandle_.clear();
+  outerTrackSecondaryCollectionHandle_.clear();
   linkCollectionHandle_.clear();
   muonCollectionHandle_.clear();
 
@@ -222,11 +228,17 @@ void MuonIdProducer::init(edm::Event& iEvent, const edm::EventSetup& iSetup) {
       if (!innerTrackCollectionHandle_.isValid())
         throw cms::Exception("FatalError") << "Failed to get input track collection with label: " << inputLabel;
       LogTrace("MuonIdentification") << "Number of input inner tracks: " << innerTrackCollectionHandle_->size();
-    } else if (inputType == ICTypes::OUTER_TRACKS) {
+    } else if (inputType == ICTypes::OUTER_TRACKS && !outerTrackCollectionHandle_.isValid()) {
       iEvent.getByToken(outerTrackCollectionToken_, outerTrackCollectionHandle_);
       if (!outerTrackCollectionHandle_.isValid())
         throw cms::Exception("FatalError") << "Failed to get input track collection with label: " << inputLabel;
       LogTrace("MuonIdentification") << "Number of input outer tracks: " << outerTrackCollectionHandle_->size();
+    } else if (inputType == ICTypes::OUTER_TRACKS) {
+      iEvent.getByToken(outerTrackSecondaryCollectionToken_, outerTrackSecondaryCollectionHandle_);
+      if (!outerTrackSecondaryCollectionHandle_.isValid())
+        throw cms::Exception("FatalError") << "Failed to get input track collection with label: " << inputLabel;
+      LogTrace("MuonIdentification") << "Number of input outer secondary tracks: "
+                                     << outerTrackSecondaryCollectionHandle_->size();
     } else if (inputType == ICTypes::LINKS) {
       iEvent.getByToken(linkCollectionToken_, linkCollectionHandle_);
       if (!linkCollectionHandle_.isValid())
@@ -257,6 +269,7 @@ void MuonIdProducer::init(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   }
 
   iEvent.getByToken(rpcHitToken_, rpcHitHandle_);
+  iEvent.getByToken(gemHitToken_, gemHitHandle_);
   if (fillGlobalTrackQuality_)
     iEvent.getByToken(glbQualToken_, glbQualHandle_);
   if (selectHighPurity_)
@@ -625,15 +638,23 @@ void MuonIdProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) 
   // and at last the stand alone muons
   if (outerTrackCollectionHandle_.isValid()) {
     LogTrace("MuonIdentification") << "Looking for new muons among stand alone muon tracks";
-    for (unsigned int i = 0; i < outerTrackCollectionHandle_->size(); ++i) {
-      const auto& outerTrack = outerTrackCollectionHandle_->at(i);
+    const unsigned int nouter = outerTrackCollectionHandle_->size();
+    const unsigned int nsecond =
+        (outerTrackSecondaryCollectionHandle_.isValid()) ? outerTrackSecondaryCollectionHandle_->size() : 0;
+    for (unsigned int i = 0; i < nouter + nsecond; ++i) {
+      const auto& outerTrack =
+          (i < nouter) ? outerTrackCollectionHandle_->at(i) : outerTrackSecondaryCollectionHandle_->at(i - nouter);
+      reco::TrackRef refToTrack = (i < nouter) ? reco::TrackRef(outerTrackCollectionHandle_, i)
+                                               : reco::TrackRef(outerTrackSecondaryCollectionHandle_, i - nouter);
 
       // check if this muon is already in the list of global muons
       bool newMuon = true;
       for (auto& muon : *outputMuons) {
         if (!muon.standAloneMuon().isNull()) {
           // global muon
-          if (muon.standAloneMuon().get() == &outerTrack) {
+          if (muon.standAloneMuon().get() == &outerTrack ||
+              (muon.standAloneMuon()->extra().isNonnull() &&
+               muon.standAloneMuon()->extra().get() == outerTrack.extra().get())) {
             newMuon = false;
             break;
           }
@@ -648,7 +669,7 @@ void MuonIdProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) 
           if (overlap(muon, outerTrack) > 0) {
             LogTrace("MuonIdentification") << "Found associated tracker muon. Set a reference and move on";
             newMuon = false;
-            muon.setOuterTrack(reco::TrackRef(outerTrackCollectionHandle_, i));
+            muon.setOuterTrack(refToTrack);
             muon.setType(muon.type() | reco::Muon::StandAloneMuon);
             break;
           }
@@ -656,15 +677,16 @@ void MuonIdProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) 
       }
       if (newMuon) {
         LogTrace("MuonIdentification") << "No associated stand alone track is found. Making a muon";
-        outputMuons->push_back(
-            makeMuon(iEvent, iSetup, reco::TrackRef(outerTrackCollectionHandle_, i), reco::Muon::OuterTrack));
+        outputMuons->push_back(makeMuon(iEvent, iSetup, refToTrack, reco::Muon::OuterTrack));
         outputMuons->back().setType(reco::Muon::StandAloneMuon);
       }
     }
   }
 
   if (arbitrateTrackerMuons_) {
-    fillArbitrationInfo(outputMuons.get());
+    fillArbitrationInfo(outputMuons.get(), reco::Muon::TrackerMuon);
+    fillArbitrationInfo(outputMuons.get(), reco::Muon::GEMMuon);
+    fillArbitrationInfo(outputMuons.get(), reco::Muon::ME0Muon);
     arbitrateMuons(outputMuons.get(), caloMuons.get());
   }
 
@@ -778,10 +800,11 @@ void MuonIdProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) 
 bool MuonIdProducer::isGoodTrackerMuon(const reco::Muon& muon) {
   if (muon.track()->pt() < minPt_ || muon.track()->p() < minP_)
     return false;
-  if (addExtraSoftMuons_ && muon.pt() < 5 && std::abs(muon.eta()) < 1.5 &&
-      muon.numberOfMatches(reco::Muon::NoArbitration) >= 1)
+  // NoArbitration checks for CSC/DT segments only, also use ME0 segments
+  int numMatches = muon.numberOfMatches(reco::Muon::NoArbitration);
+  if (addExtraSoftMuons_ && muon.pt() < 5 && std::abs(muon.eta()) < 1.5 && numMatches >= 1)
     return true;
-  return (muon.numberOfMatches(reco::Muon::NoArbitration) >= minNumberOfMatches_);
+  return (numMatches >= minNumberOfMatches_);
 }
 
 bool MuonIdProducer::isGoodCaloMuon(const reco::CaloMuon& caloMuon) {
@@ -800,9 +823,19 @@ bool MuonIdProducer::isGoodRPCMuon(const reco::Muon& muon) {
 }
 
 bool MuonIdProducer::isGoodGEMMuon(const reco::Muon& muon) {
+  // require GEMMuon to be a TrackerMuon
+  if (!isGoodTrackerMuon(muon))
+    return false;
   if (muon.track()->pt() < minPt_ || muon.track()->p() < minP_)
     return false;
-  return (muon.numberOfMatches(reco::Muon::GEMSegmentAndTrackArbitration) >= 1);
+  //
+  int numMatches = 0;
+  for (auto& chamberMatch : muon.matches()) {
+    if (chamberMatch.gemMatches.empty())
+      continue;
+    numMatches += chamberMatch.gemMatches.size();
+  }
+  return (numMatches + muon.numberOfMatches(reco::Muon::GEMHitAndTrackArbitration)) >= 1;
 }
 
 bool MuonIdProducer::isGoodME0Muon(const reco::Muon& muon) {
@@ -877,7 +910,7 @@ void MuonIdProducer::fillMuonId(edm::Event& iEvent,
     }
     aMuon.setCalEnergy(muonEnergy);
   }
-  if (!fillMatching_ && !aMuon.isTrackerMuon() && !aMuon.isRPCMuon())
+  if (!fillMatching_ && !aMuon.isTrackerMuon() && !aMuon.isRPCMuon() && !aMuon.isGEMMuon())
     return;
 
   // fill muon match info
@@ -887,6 +920,9 @@ void MuonIdProducer::fillMuonId(edm::Event& iEvent,
   for (const auto& chamber : info.chambers) {
     if (chamber.id.subdetId() == MuonSubdetId::RPC && rpcHitHandle_.isValid())
       continue;  // Skip RPC chambers, they are taken care of below)
+    if (chamber.id.subdetId() == MuonSubdetId::GEM && gemHitHandle_.isValid() &&
+        GEMDetId(chamber.id.rawId()).station() != 0)
+      continue;  // Skip GE1/1 and 2/1 chambers, they are taken care of below)
     reco::MuonChamberMatch matchedChamber;
 
     const auto& lErr = chamber.tState.localError();
@@ -1036,6 +1072,65 @@ void MuonIdProducer::fillMuonId(edm::Event& iEvent,
     }
   }
 
+  // Fill GEM info
+  LogTrace("MuonIdentification") << "RecoMuon/MuonIdProducer :: fillMuonId :: fill GEM info";
+  if (gemHitHandle_.isValid()) {
+    for (const auto& chamber : info.chambers) {
+      // only GE1/1 and 2/1 are for rechits, reject station 0 and segments (layer==0 for GEMSegment)
+      if (chamber.id.subdetId() != MuonSubdetId::GEM || GEMDetId(chamber.id.rawId()).station() == 0 ||
+          GEMDetId(chamber.id.rawId()).layer() == 0)
+        continue;  // Consider GEM chambers only
+      const auto& lErr = chamber.tState.localError();
+      const auto& lPos = chamber.tState.localPosition();
+      const auto& lDir = chamber.tState.localDirection();
+
+      reco::MuonChamberMatch matchedChamber;
+
+      LocalError localError = lErr.positionError();
+      matchedChamber.x = lPos.x();
+      matchedChamber.y = lPos.y();
+      matchedChamber.xErr = sqrt(localError.xx());
+      matchedChamber.yErr = sqrt(localError.yy());
+
+      matchedChamber.dXdZ = lDir.z() != 0 ? lDir.x() / lDir.z() : 9999;
+      matchedChamber.dYdZ = lDir.z() != 0 ? lDir.y() / lDir.z() : 9999;
+      // DANGEROUS - compiler cannot guaranty parameters ordering
+      AlgebraicSymMatrix55 trajectoryCovMatrix = lErr.matrix();
+      matchedChamber.dXdZErr = trajectoryCovMatrix(1, 1) > 0 ? sqrt(trajectoryCovMatrix(1, 1)) : 0;
+      matchedChamber.dYdZErr = trajectoryCovMatrix(2, 2) > 0 ? sqrt(trajectoryCovMatrix(2, 2)) : 0;
+
+      matchedChamber.edgeX = chamber.localDistanceX;
+      matchedChamber.edgeY = chamber.localDistanceY;
+
+      theShowerDigiFiller_->fillDefault(matchedChamber);
+
+      matchedChamber.id = chamber.id;
+
+      for (const auto& gemRecHit : *gemHitHandle_) {
+        reco::MuonGEMHitMatch gemHitMatch;
+
+        if (GEMDetId(gemRecHit.gemId().region(),
+                     gemRecHit.gemId().ring(),
+                     gemRecHit.gemId().station(),
+                     gemRecHit.gemId().layer(),
+                     gemRecHit.gemId().chamber(),
+                     0)
+                .rawId() != chamber.id.rawId())
+          continue;
+
+        gemHitMatch.x = gemRecHit.localPosition().x();
+        gemHitMatch.mask = 0;
+        gemHitMatch.bx = gemRecHit.BunchX();
+
+        const double absDx = std::abs(gemRecHit.localPosition().x() - chamber.tState.localPosition().x());
+        if (absDx <= 5 or absDx * absDx <= 16 * localError.xx())
+          matchedChamber.gemHitMatches.push_back(gemHitMatch);
+      }
+
+      muonChamberMatches.push_back(matchedChamber);
+    }
+  }
+
   aMuon.setMatches(muonChamberMatches);
 
   LogTrace("MuonIdentification") << "number of muon chambers: " << aMuon.matches().size() << "\n"
@@ -1053,11 +1148,14 @@ void MuonIdProducer::arbitrateMuons(reco::MuonCollection* muons, reco::CaloMuonC
   // if a muon was exclusively TrackerMuon check if it can be a calo muon
   for (reco::MuonCollection::iterator muon = muons->begin(); muon != muons->end();) {
     if (muon->isTrackerMuon()) {
-      if (muon->numberOfMatches(arbitration) < minNumberOfMatches_) {
+      int numMatches =
+          muon->numberOfMatches(reco::Muon::GEMSegmentAndTrackArbitration) + muon->numberOfMatches(arbitration);
+      if (numMatches < minNumberOfMatches_) {
         // TrackerMuon failed arbitration
         // If not any other base type - erase the element
         // (PFMuon is not a base type)
-        unsigned int mask = reco::Muon::TrackerMuon | reco::Muon::PFMuon;
+        // GEMMuon should be a subset of TrackerMuon, so don't count it either
+        unsigned int mask = reco::Muon::TrackerMuon | reco::Muon::PFMuon | reco::Muon::GEMMuon;
         if ((muon->type() & (~mask)) == 0) {
           const reco::CaloMuon& caloMuon = makeCaloMuon(*muon);
           if (isGoodCaloMuon(caloMuon))
@@ -1065,7 +1163,7 @@ void MuonIdProducer::arbitrateMuons(reco::MuonCollection* muons, reco::CaloMuonC
           muon = muons->erase(muon);
           continue;
         } else {
-          muon->setType(muon->type() & (~reco::Muon::TrackerMuon));
+          muon->setType(muon->type() & (~(reco::Muon::TrackerMuon | reco::Muon::GEMMuon)));
         }
       }
     }
@@ -1419,6 +1517,10 @@ void MuonIdProducer::fillDescriptions(edm::ConfigurationDescriptions& descriptio
   descTrkAsoPar.add<edm::InputTag>("ME0SegmentCollectionLabel", edm::InputTag("me0Segments"));
   descTrkAsoPar.add<bool>("useGEM", false);
   descTrkAsoPar.add<bool>("useME0", false);
+  descTrkAsoPar.add<bool>("preselectMuonTracks", false);
+  descTrkAsoPar.add<edm::InputTag>("RPCHitCollectionLabel", edm::InputTag("rpcRecHits"));
+  descTrkAsoPar.add<edm::InputTag>("GEMHitCollectionLabel", edm::InputTag("gemRecHits"));
+  descTrkAsoPar.add<edm::InputTag>("ME0HitCollectionLabel", edm::InputTag("me0RecHits"));
   descTrkAsoPar.setAllowAnything();
   desc.add<edm::ParameterSetDescription>("TrackAssociatorParameters", descTrkAsoPar);
 

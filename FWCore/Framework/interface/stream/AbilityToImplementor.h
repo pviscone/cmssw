@@ -22,6 +22,7 @@
 
 // user include files
 #include "FWCore/Framework/interface/moduleAbilities.h"
+#include "FWCore/Framework/interface/stream/moduleAbilities.h"
 #include "FWCore/Framework/interface/stream/implementors.h"
 
 // forward declarations
@@ -103,9 +104,27 @@ namespace edm {
     // As currently implemented this ability only works
     // with EDProducer, not with EDAnalyzers or EDFilters!
     template <>
+    struct AbilityToImplementor<edm::Transformer> {
+      using Type = edm::stream::impl::Transformer;
+    };
+
+    // As currently implemented this ability only works
+    // with EDProducer, not with EDAnalyzers or EDFilters!
+    template <>
     struct AbilityToImplementor<edm::Accumulator> {
       using Type = edm::stream::impl::Accumulator;
     };
+
+    template <>
+    struct AbilityToImplementor<edm::stream::WatchRuns> {
+      using Type = edm::stream::impl::WatchRuns;
+    };
+
+    template <>
+    struct AbilityToImplementor<edm::stream::WatchLuminosityBlocks> {
+      using Type = edm::stream::impl::WatchLuminosityBlocks;
+    };
+
   }  // namespace stream
 }  // namespace edm
 

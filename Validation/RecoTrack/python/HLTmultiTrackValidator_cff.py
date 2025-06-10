@@ -26,7 +26,13 @@ hltMultiTrackValidation = cms.Sequence(
 )
 
 def _modifyForRun3(trackvalidator):
-    trackvalidator.label = ["hltPixelTracks", "hltMergedTracks"]
+    trackvalidator.label = ["hltPixelTracks", "hltMergedTracks", "hltDoubletRecoveryPFlowTrackSelectionHighPurity"] #, "hltIter0PFlowTrackSelectionHighPurity"]
 
 from Configuration.Eras.Modifier_run3_common_cff import run3_common
 run3_common.toModify(hltTrackValidator, _modifyForRun3)
+
+def _modifyForPhase2(trackvalidator):
+    trackvalidator.label = ["generalTracks::HLT","hltPhase2PixelTracks"]
+
+from Configuration.Eras.Modifier_phase2_tracker_cff import phase2_tracker
+phase2_tracker.toModify(hltTrackValidator, _modifyForPhase2)

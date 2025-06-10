@@ -28,11 +28,11 @@ INPUTFILE="/store/express/Commissioning2020/ExpressCosmics/FEVT/Express-v1/000/3
 
 # test Pixel
 printf "TESTING Pixels ...\n\n"
-cmsRun ${LOCAL_TEST_DIR}/test_DetectorStateFilter_cfg.py maxEvents=10 isStrip=False inputFiles=$INPUTFILE outputFile=outPixels.root || die "Failure filtering on pixels" $?
+cmsRun ${SCRAM_TEST_PATH}/test_DetectorStateFilter_cfg.py maxEvents=10 isStrip=False inputFiles=$INPUTFILE outputFile=outPixels.root || die "Failure filtering on pixels" $?
 
 # test Strips
 printf "TESTING Strips ...\n\n"
-cmsRun ${LOCAL_TEST_DIR}/test_DetectorStateFilter_cfg.py maxEvents=10 isStrip=True inputFiles=$INPUTFILE outputFile=outStrips.root || die "Failure filtering on strips" $?
+cmsRun ${SCRAM_TEST_PATH}/test_DetectorStateFilter_cfg.py maxEvents=10 isStrip=True inputFiles=$INPUTFILE outputFile=outStrips.root || die "Failure filtering on strips" $?
 
 # count events
 pixelCounts=`countEvents outPixels_numEvent10.root`
@@ -51,5 +51,50 @@ then
   echo "The number of events in the strip filter file matches expectations ($stripCounts)."
 else 
   echo "WARNING!!! The number of events in the strip filter file ($stripCounts) does NOT match expectations (10)."
+  exit 1
+fi
+
+# Now take as input file an express FEVT file from 2024 pp running, run 380032
+# https://cmsoms.cern.ch/cms/runs/lumisection?cms_run=380032
+# it has all partitions ON excepted TIBTID (which was affected by a bad setting of the DCS bit)
+
+INPUTFILE="/store/express/Run2024C/ExpressPhysics/FEVT/Express-v1/000/380/032/00000/26a18459-49a8-4e3c-849c-9b3e4c09712e.root"
+
+# test Strips
+printf "TESTING Strips with all partitions...\n\n"
+cmsRun ${SCRAM_TEST_PATH}/test_DetectorStateFilter_cfg.py maxEvents=10 isStrip=True inputFiles=$INPUTFILE outputFile=outStrips_run380032_all.root || die "Failure filtering on strips" $?
+
+printf "TESTING Strips with only TIBTID partitions...\n\n"
+cmsRun ${SCRAM_TEST_PATH}/test_DetectorStateFilter_cfg.py maxEvents=10 isStrip=True inputFiles=$INPUTFILE testCombinations='TIBTID' outputFile=outStrips_run380032_TIBTID.root || die "Failure filtering on strips" $?
+
+printf "TESTING Strips with several OK partition combinations...\n\n"
+cmsRun ${SCRAM_TEST_PATH}/test_DetectorStateFilter_cfg.py maxEvents=10 isStrip=True inputFiles=$INPUTFILE testCombinations='TOB+TECp+TECm','TIBTID+TECp+TECm','TECp+TECm' outputFile=outStrips_run380032_OKCombos.root || die "Failure filtering on strips" $?
+
+# count events
+allPartsCounts=`countEvents outStrips_run380032_all_numEvent10.root`
+onlyTIBTIDCounts=`countEvents outStrips_run380032_TIBTID_numEvent10.root`
+combinationCounts=`countEvents outStrips_run380032_OKCombos_numEvent10.root`
+
+if [[ $allPartsCounts -eq 0 ]]
+then
+  echo "The number of events in the all partitions filter file matches expectations ($allPartsCounts)."
+else
+  echo "WARNING!!! The number of events in the pixel filter file ($allPartsCounts) does NOT match expectations (0)."
+  exit 1
+fi
+
+if [[ $onlyTIBTIDCounts -eq 0 ]]
+then
+  echo "The number of events in the all partitions filter file matches expectations ($onlyTIBTIDCounts)."
+else
+  echo "WARNING!!! The number of events in the pixel filter file ($onlyTIBTIDCounts) does NOT match expectations (0)."
+  exit 1
+fi
+
+if [[ $combinationCounts -eq 10 ]]
+then
+  echo "The number of events in the all partitions filter file matches expectations ($combinationCounts)."
+else
+  echo "WARNING!!! The number of events in the pixel filter file ($combinationCounts) does NOT match expectations (10)."
   exit 1
 fi

@@ -1716,14 +1716,18 @@ namespace edm {
     processBlockPrincipal.fillProcessBlockPrincipal(rootTree->processName(), rootTree->resetAndGetRootDelayedReader());
   }
 
-  void RootFile::readRun_(RunPrincipal& runPrincipal) {
+  bool RootFile::readRun_(RunPrincipal& runPrincipal) {
+    bool shouldProcessRun = indexIntoFileIter_.shouldProcessRun();
+
     MergeableRunProductMetadata* mergeableRunProductMetadata = nullptr;
-    if (inputType_ == InputType::Primary) {
-      mergeableRunProductMetadata = runPrincipal.mergeableRunProductMetadata();
-      RootTree::EntryNumber const& entryNumber = runTree_.entryNumber();
-      assert(entryNumber >= 0);
-      mergeableRunProductMetadata->readRun(
-          entryNumber, *storedMergeableRunProductMetadata_, IndexIntoFileItrHolder(indexIntoFileIter_));
+    if (shouldProcessRun) {
+      if (inputType_ == InputType::Primary) {
+        mergeableRunProductMetadata = runPrincipal.mergeableRunProductMetadata();
+        RootTree::EntryNumber const& entryNumber = runTree_.entryNumber();
+        assert(entryNumber >= 0);
+        mergeableRunProductMetadata->readRun(
+            entryNumber, *storedMergeableRunProductMetadata_, IndexIntoFileItrHolder(indexIntoFileIter_));
+      }
     }
 
     if (!runHelper_->fakeNewRun()) {
@@ -1733,14 +1737,23 @@ namespace edm {
     }
     // Begin code for backward compatibility before the existence of run trees.
     if (!runTree_.isValid()) {
-      return;
+      return shouldProcessRun;
     }
     // End code for backward compatibility before the existence of run trees.
-    // NOTE: we use 0 for the index since do not do delayed reads for RunPrincipals
-    runTree_.insertEntryForIndex(0);
-    runPrincipal.fillRunPrincipal(*processHistoryRegistry_, runTree_.resetAndGetRootDelayedReader());
-    // Read in all the products now.
-    runPrincipal.readAllFromSourceAndMergeImmediately(mergeableRunProductMetadata);
+    if (shouldProcessRun) {
+      // NOTE: we use 0 for the index since do not do delayed reads for RunPrincipals
+      runTree_.insertEntryForIndex(0);
+      runPrincipal.fillRunPrincipal(*processHistoryRegistry_, runTree_.resetAndGetRootDelayedReader());
+      // Read in all the products now.
+      runPrincipal.readAllFromSourceAndMergeImmediately(mergeableRunProductMetadata);
+      runPrincipal.setShouldWriteRun(RunPrincipal::kYes);
+    } else {
+      runPrincipal.fillRunPrincipal(*processHistoryRegistry_, nullptr);
+      if (runPrincipal.shouldWriteRun() != RunPrincipal::kYes) {
+        runPrincipal.setShouldWriteRun(RunPrincipal::kNo);
+      }
+    }
+    return shouldProcessRun;
   }
 
   std::shared_ptr<LuminosityBlockAuxiliary> RootFile::readLuminosityBlockAuxiliary_() {
@@ -1781,16 +1794,17 @@ namespace edm {
     return lumiAuxiliary;
   }
 
-  void RootFile::readLuminosityBlock_(LuminosityBlockPrincipal& lumiPrincipal) {
+  bool RootFile::readLuminosityBlock_(LuminosityBlockPrincipal& lumiPrincipal) {
+    bool shouldProcessLumi = indexIntoFileIter_.shouldProcessLumi();
     assert(indexIntoFileIter_ != indexIntoFileEnd_);
     assert(indexIntoFileIter_.getEntryType() == IndexIntoFile::kLumi);
     // Begin code for backward compatibility before the existence of lumi trees.
     if (!lumiTree_.isValid()) {
       ++indexIntoFileIter_;
-      return;
+      return shouldProcessLumi;
     }
     // End code for backward compatibility before the existence of lumi trees.
-    if (not indexIntoFileIter_.entryContinues()) {
+    if (shouldProcessLumi) {
       lumiTree_.setEntryNumber(indexIntoFileIter_.entry());
       // NOTE: we use 0 for the index since do not do delayed reads for LuminosityBlockPrincipals
       lumiTree_.insertEntryForIndex(0);
@@ -1798,12 +1812,16 @@ namespace edm {
       lumiPrincipal.fillLuminosityBlockPrincipal(history, lumiTree_.resetAndGetRootDelayedReader());
       // Read in all the products now.
       lumiPrincipal.readAllFromSourceAndMergeImmediately();
+      lumiPrincipal.setShouldWriteLumi(LuminosityBlockPrincipal::kYes);
     } else {
       auto history = processHistoryRegistry_->getMapped(lumiPrincipal.aux().processHistoryID());
       lumiPrincipal.fillLuminosityBlockPrincipal(history, nullptr);
-      lumiPrincipal.setWillBeContinued(true);
+      if (lumiPrincipal.shouldWriteLumi() != LuminosityBlockPrincipal::kYes) {
+        lumiPrincipal.setShouldWriteLumi(LuminosityBlockPrincipal::kNo);
+      }
     }
     ++indexIntoFileIter_;
+    return shouldProcessLumi;
   }
 
   bool RootFile::setEntryAtEvent(RunNumber_t run, LuminosityBlockNumber_t lumi, EventNumber_t event) {
@@ -1880,7 +1898,11 @@ namespace edm {
     ProductRegistry::ProductList& pList = inputProdDescReg.productListUpdator();
     for (auto& product : pList) {
       BranchDescription& prod = product.second;
-      prod.init();
+      // Initialize BranchDescription from dictionary only if the
+      // branch is present. This allows a subsequent job to process
+      // data where a dictionary of a transient parent branch has been
+      // removed from the release after the file has been written.
+      prod.initBranchName();
       if (prod.branchType() == InProcess) {
         std::vector<std::string> const& processes = storedProcessBlockHelper.processesWithProcessBlockProducts();
         auto it = std::find(processes.begin(), processes.end(), prod.processName());
@@ -1894,6 +1916,9 @@ namespace edm {
         }
       } else {
         treePointers_[prod.branchType()]->setPresence(prod, newBranchToOldBranch(prod.branchName()));
+      }
+      if (prod.present()) {
+        prod.initFromDictionary();
       }
     }
   }
@@ -2035,7 +2060,7 @@ namespace edm {
       TString tString;
       for (ProductRegistry::ProductList::iterator it = prodList.begin(), itEnd = prodList.end(); it != itEnd;) {
         BranchDescription const& prod = it->second;
-        if (prod.branchType() != InEvent && prod.branchType() != InProcess) {
+        if (prod.present() and prod.branchType() != InEvent and prod.branchType() != InProcess) {
           TClass* cp = prod.wrappedType().getClass();
           void* p = cp->New();
           int offset = cp->GetBaseClassOffset(edProductClass_);
@@ -2302,7 +2327,7 @@ namespace edm {
               << "The parentage ID index value " << prov.parentageIDIndex_
               << " is out of bounds.  The maximum value is " << parentageIDLookup_.size() - 1 << ".\n"
               << "This should never happen.\n"
-              << "Please report this to the framework hypernews forum 'hn-cms-edmFramework@cern.ch'.\n";
+              << "Please report this to the framework developers.";
         }
         retValue.emplace(BranchID(prov.branchID_), parentageIDLookup_[prov.parentageIDIndex_]);
       }

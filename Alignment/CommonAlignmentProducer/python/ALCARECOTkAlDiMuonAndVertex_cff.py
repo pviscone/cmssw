@@ -18,6 +18,15 @@ import Alignment.CommonAlignmentProducer.AlignmentTracksFromVertexSelector_cfi a
 ALCARECOTkAlDiMuonVertexTracks = TracksFromVertex.AlignmentTracksFromVertexSelector.clone()
 
 ##################################################################
+# for the GEN level information
+##################################################################
+TkAlDiMuonAndVertexGenMuonSelector = cms.EDFilter("GenParticleSelector",
+                                                  src = cms.InputTag("genParticles"),
+                                                  cut = cms.string("abs(pdgId) == 13"), # Select only muons
+                                                  filter = cms.bool(False),
+                                                  throwOnMissing = cms.untracked.bool(False))
+
+##################################################################
 # The sequence
 #################################################################
 seqALCARECOTkAlDiMuonAndVertex = cms.Sequence(ALCARECOTkAlDiMuonHLT+
@@ -25,10 +34,13 @@ seqALCARECOTkAlDiMuonAndVertex = cms.Sequence(ALCARECOTkAlDiMuonHLT+
                                               ALCARECOTkAlDiMuonGoodMuons+
                                               ALCARECOTkAlDiMuonRelCombIsoMuons+
                                               ALCARECOTkAlDiMuon+
-                                              ALCARECOTkAlDiMuonVertexTracks)
+                                              ALCARECOTkAlDiMuonVertexTracks+
+                                              TkAlDiMuonAndVertexGenMuonSelector)
 
 ## customizations for the pp_on_AA eras
 from Configuration.Eras.Modifier_pp_on_XeXe_2017_cff import pp_on_XeXe_2017
 from Configuration.ProcessModifiers.pp_on_AA_cff import pp_on_AA
 (pp_on_XeXe_2017 | pp_on_AA).toModify(ALCARECOTkAlDiMuonHLT,
                                       eventSetupPathsKey='TkAlZMuMuHI')
+from Configuration.Eras.Modifier_phase2_tracker_cff import phase2_tracker
+phase2_tracker.toModify(ALCARECOTkAlDiMuon, etaMin = -4, etaMax = 4)

@@ -52,7 +52,7 @@ process.load("DQM.DTMonitorModule.dt_dqm_sourceclient_common_cff")
 process.load("DQM.Integration.config.FrontierCondition_GT_cfi")
 #---- for offline DB: change and possibly customise the GT
 #from Configuration.AlCa.GlobalTag import GlobalTag as gtCustomise
-#process.GlobalTag = gtCustomise(process.GlobalTag, 'auto:run2_data', '')
+#process.GlobalTag = gtCustomise(process.GlobalTag, 'auto:run3_data', '')
 
 # message logger
 process.MessageLogger = cms.Service("MessageLogger",
@@ -86,7 +86,7 @@ if (process.runType.getRunType() == process.runType.pp_run):
 #----------------------------
 
 if (process.runType.getRunType() == process.runType.cosmic_run):
-    pass
+    process.dtNoiseAnalysisMonitor.isCosmics = True
 
 
 #----------------------------

@@ -480,7 +480,16 @@ namespace edm {
             << eventR2_ << "\n"
             << eventT3_ << "\n"
             << eventT2_ << "\n"
-            << eventT1_;
+            << eventT1_ << "\nMemoryReport> Peak rss size " << eventRssT1_.rss
+            << " Mbytes"
+               "\n Key events increasing rss:\n"
+            << eventRssT3_ << "\n"
+            << eventRssT2_ << "\n"
+            << eventRssT1_ << "\n"
+            << eventDeltaRssT3_ << "\n"
+            << eventDeltaRssT2_ << "\n"
+            << eventDeltaRssT1_;
+        ;
       }
       if (moduleSummaryRequested_ and not jobReportOutputOnly_) {  // changelog 1
         LogAbsolute mmr("ModuleMemoryReport");                     // at end of if block, mmr
@@ -548,14 +557,18 @@ namespace edm {
         eventStatOutput("LargestIncreaseRssEvent", eventDeltaRssT1_, reportData);
 
 #ifdef __linux__
+#if (__GLIBC__ > 2) || (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 33)
+      struct mallinfo2 minfo = mallinfo2();
+#else
       struct mallinfo minfo = mallinfo();
-      reportData.insert(std::make_pair("HEAP_ARENA_SIZE_BYTES", i2str(minfo.arena)));
-      reportData.insert(std::make_pair("HEAP_ARENA_N_UNUSED_CHUNKS", i2str(minfo.ordblks)));
-      reportData.insert(std::make_pair("HEAP_TOP_FREE_BYTES", i2str(minfo.keepcost)));
-      reportData.insert(std::make_pair("HEAP_MAPPED_SIZE_BYTES", i2str(minfo.hblkhd)));
-      reportData.insert(std::make_pair("HEAP_MAPPED_N_CHUNKS", i2str(minfo.hblks)));
-      reportData.insert(std::make_pair("HEAP_USED_BYTES", i2str(minfo.uordblks)));
-      reportData.insert(std::make_pair("HEAP_UNUSED_BYTES", i2str(minfo.fordblks)));
+#endif
+      reportData.insert(std::make_pair("HEAP_ARENA_SIZE_BYTES", std::to_string(minfo.arena)));
+      reportData.insert(std::make_pair("HEAP_ARENA_N_UNUSED_CHUNKS", std::to_string(minfo.ordblks)));
+      reportData.insert(std::make_pair("HEAP_TOP_FREE_BYTES", std::to_string(minfo.keepcost)));
+      reportData.insert(std::make_pair("HEAP_MAPPED_SIZE_BYTES", std::to_string(minfo.hblkhd)));
+      reportData.insert(std::make_pair("HEAP_MAPPED_N_CHUNKS", std::to_string(minfo.hblks)));
+      reportData.insert(std::make_pair("HEAP_USED_BYTES", std::to_string(minfo.uordblks)));
+      reportData.insert(std::make_pair("HEAP_UNUSED_BYTES", std::to_string(minfo.fordblks)));
 #endif
 
       // Report Growth rates for VSize and Rss
@@ -642,7 +655,11 @@ namespace edm {
       if (eventDeltaRssT1_.deltaRss > 0)
         eventStatOutput("LargestIncreaseRssEvent", eventDeltaRssT1_, reportData);
 
+#if (__GLIBC__ > 2) || (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 33)
+      struct mallinfo2 minfo = mallinfo2();
+#else
       struct mallinfo minfo = mallinfo();
+#endif
       reportData.push_back(mallOutput("HEAP_ARENA_SIZE_BYTES", minfo.arena));
       reportData.push_back(mallOutput("HEAP_ARENA_N_UNUSED_CHUNKS", minfo.ordblks));
       reportData.push_back(mallOutput("HEAP_TOP_FREE_BYTES", minfo.keepcost));
@@ -741,10 +758,14 @@ namespace edm {
     }
 
     void SimpleMemoryCheck::updateMax() {
-      if ((*current_ > max_) || oncePerEventMode_) {
-        if (count_ >= num_to_skip_) {
+      auto v = *current_;
+      if ((v > max_) || oncePerEventMode_) {
+        if (max_.vsize < v.vsize) {
+          max_.vsize = v.vsize;
         }
-        max_ = *current_;
+        if (max_.rss < v.rss) {
+          max_.rss = v.rss;
+        }
       }
     }
 
@@ -835,7 +856,11 @@ namespace edm {
                                       << deltaRSS;
           } else {
 #ifdef __linux__
+#if (__GLIBC__ > 2) || (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 33)
+            struct mallinfo2 minfo = mallinfo2();
+#else
             struct mallinfo minfo = mallinfo();
+#endif
 #endif
             LogWarning("MemoryCheck") << "MemoryCheck: " << type << " " << mdname << ":" << mdlabel << " VSIZE "
                                       << current_->vsize << " " << deltaVSIZE << " RSS " << current_->rss << " "

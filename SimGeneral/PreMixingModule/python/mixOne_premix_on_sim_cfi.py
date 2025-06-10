@@ -51,12 +51,12 @@ mixData = cms.EDProducer("PreMixingModule",
                 # To preserve the behaviour of copy-pasted version of premix worker
                 # All these are done in stage1 (for both signal and pileup)
                 AddNoise = False,
-                killModules = False,
                 MissCalibrate = False,
             ),
             workerType = cms.string("PreMixingSiPixelWorker"),
             pixeldigiCollectionSig = cms.InputTag("simSiPixelDigis"),
             pixeldigiCollectionPile = cms.InputTag("simSiPixelDigis"),
+            pixeldigiExtraCollectionPile = cms.InputTag("simSiPixelDigis"),
             PixelDigiCollectionDM = cms.string('siPixelDigisDM'),                   
         ),
         strip = cms.PSet(
@@ -152,6 +152,14 @@ mixData = cms.EDProducer("PreMixingModule",
     ),
 )
 
+# pixel run-dependent
+from Configuration.ProcessModifiers.runDependentForPixel_cff import runDependentForPixel
+from Configuration.ProcessModifiers.premix_stage2_cff import premix_stage2
+(runDependentForPixel & premix_stage2).toModify(mixData.workers.pixel,
+         UseReweighting=False,
+         applyLateReweighting=True,
+         store_SimHitEntryExitPoints=False
+)
 
 from Configuration.Eras.Modifier_fastSim_cff import fastSim
 from FastSimulation.Tracking.recoTrackAccumulator_cfi import recoTrackAccumulator as _recoTrackAccumulator

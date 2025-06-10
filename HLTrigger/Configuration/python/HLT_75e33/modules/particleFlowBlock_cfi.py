@@ -10,7 +10,10 @@ particleFlowBlock = cms.EDProducer("PFBlockProducer",
             minSuperClusterPt = cms.double(10.0),
             source_eb = cms.InputTag("particleFlowSuperClusterECAL","particleFlowSuperClusterECALBarrel"),
             source_ee = cms.InputTag("particleFlowSuperClusterECAL","particleFlowSuperClusterECALEndcapWithPreshower"),
-            source_towers = cms.InputTag("towerMaker"),
+            hbheRecHitsTag = cms.InputTag("hltHbhereco"),
+            maxSeverityHB = cms.int32(9),
+            maxSeverityHE = cms.int32(9),
+            usePFThresholdsFromDB = cms.bool(True),
             superClustersArePF = cms.bool(True)
         ),
         cms.PSet(
@@ -43,7 +46,7 @@ particleFlowBlock = cms.EDProducer("PFBlockProducer",
         ),
         cms.PSet(
             importerName = cms.string('GenericClusterImporter'),
-            source = cms.InputTag("particleFlowClusterHCAL")
+            source = cms.InputTag("hltParticleFlowClusterHCAL")
         ),
         cms.PSet(
             importerName = cms.string('GenericClusterImporter'),
@@ -56,23 +59,9 @@ particleFlowBlock = cms.EDProducer("PFBlockProducer",
         cms.PSet(
             importerName = cms.string('GenericClusterImporter'),
             source = cms.InputTag("particleFlowClusterHF")
-        ),
-        cms.PSet(
-            importerName = cms.string('GenericClusterImporter'),
-            source = cms.InputTag("particleFlowClusterPS")
         )
     ),
     linkDefinitions = cms.VPSet(
-        cms.PSet(
-            linkType = cms.string('PS1:ECAL'),
-            linkerName = cms.string('PreshowerAndECALLinker'),
-            useKDTree = cms.bool(True)
-        ),
-        cms.PSet(
-            linkType = cms.string('PS2:ECAL'),
-            linkerName = cms.string('PreshowerAndECALLinker'),
-            useKDTree = cms.bool(True)
-        ),
         cms.PSet(
             linkType = cms.string('TRACK:ECAL'),
             linkerName = cms.string('TrackAndECALLinker'),

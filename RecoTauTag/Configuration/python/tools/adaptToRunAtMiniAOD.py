@@ -176,6 +176,9 @@ class adaptToRunAtMiniAOD(object):
 			elif mod.name.value() == 'TTIworkaround':
 				_modifiersToRemove.append(mod)
 				continue
+			elif mod.name.value() == 'tau_lost_tracks':
+				_modifiersToRemove.append(mod)
+				continue
 			for name,value in mod.parameters_().items():
 				if name == 'qualityCuts':
 					mod.qualityCuts.primaryVertexSrc = 'offlineSlimmedPrimaryVertices'
@@ -278,7 +281,7 @@ class adaptToRunAtMiniAOD(object):
 		toKeep = ['deepTau2017v2p1']
 		#For boosted do not run deepTauIDs, but add still used Run-2 anti-e MVA
 		if self.runBoosted:
-			toKeep = ['againstEle2018']
+			toKeep = ['againstEle']
 		import RecoTauTag.RecoTau.tools.runTauIdMVA as tauIdConfig
 		tauIdEmbedder = tauIdConfig.TauIDEmbedder(
 			self.process, debug = False,

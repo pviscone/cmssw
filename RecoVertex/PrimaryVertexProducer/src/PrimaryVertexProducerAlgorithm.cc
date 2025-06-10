@@ -39,9 +39,6 @@ PrimaryVertexProducerAlgorithm::PrimaryVertexProducerAlgorithm(const edm::Parame
   if (clusteringAlgorithm == "gap") {
     theTrackClusterizer = new GapClusterizerInZ(
         conf.getParameter<edm::ParameterSet>("TkClusParameters").getParameter<edm::ParameterSet>("TkGapClusParameters"));
-  } else if (clusteringAlgorithm == "DA") {
-    theTrackClusterizer = new DAClusterizerInZ(
-        conf.getParameter<edm::ParameterSet>("TkClusParameters").getParameter<edm::ParameterSet>("TkDAClusParameters"));
   }
   // provide the vectorized version of the clusterizer, if supported by the build
   else if (clusteringAlgorithm == "DA_vect") {
@@ -54,35 +51,14 @@ PrimaryVertexProducerAlgorithm::PrimaryVertexProducerAlgorithm(const edm::Parame
   }
 
   // select and configure the vertex fitters
-  if (conf.exists("vertexCollections")) {
-    std::vector<edm::ParameterSet> vertexCollections =
-        conf.getParameter<std::vector<edm::ParameterSet> >("vertexCollections");
+  std::vector<edm::ParameterSet> vertexCollections =
+      conf.getParameter<std::vector<edm::ParameterSet> >("vertexCollections");
 
-    for (std::vector<edm::ParameterSet>::const_iterator algoconf = vertexCollections.begin();
-         algoconf != vertexCollections.end();
-         algoconf++) {
-      algo algorithm;
-      std::string fitterAlgorithm = algoconf->getParameter<std::string>("algorithm");
-      if (fitterAlgorithm == "KalmanVertexFitter") {
-        algorithm.fitter = new KalmanVertexFitter();
-      } else if (fitterAlgorithm == "AdaptiveVertexFitter") {
-        algorithm.fitter = new AdaptiveVertexFitter();
-      } else {
-        throw VertexException("PrimaryVertexProducerAlgorithm: unknown algorithm: " + fitterAlgorithm);
-      }
-      algorithm.label = algoconf->getParameter<std::string>("label");
-      algorithm.minNdof = algoconf->getParameter<double>("minNdof");
-      algorithm.useBeamConstraint = algoconf->getParameter<bool>("useBeamConstraint");
-      algorithm.vertexSelector =
-          new VertexCompatibleWithBeam(VertexDistanceXY(), algoconf->getParameter<double>("maxDistanceToBeam"));
-      algorithms.push_back(algorithm);
-    }
-  } else {
-    edm::LogWarning("MisConfiguration")
-        << "this module's configuration has changed, please update to have a vertexCollections=cms.VPSet parameter.";
-
+  for (std::vector<edm::ParameterSet>::const_iterator algoconf = vertexCollections.begin();
+       algoconf != vertexCollections.end();
+       algoconf++) {
     algo algorithm;
-    std::string fitterAlgorithm = conf.getParameter<std::string>("algorithm");
+    std::string fitterAlgorithm = algoconf->getParameter<std::string>("algorithm");
     if (fitterAlgorithm == "KalmanVertexFitter") {
       algorithm.fitter = new KalmanVertexFitter();
     } else if (fitterAlgorithm == "AdaptiveVertexFitter") {
@@ -90,14 +66,11 @@ PrimaryVertexProducerAlgorithm::PrimaryVertexProducerAlgorithm(const edm::Parame
     } else {
       throw VertexException("PrimaryVertexProducerAlgorithm: unknown algorithm: " + fitterAlgorithm);
     }
-    algorithm.label = "";
-    algorithm.minNdof = conf.getParameter<double>("minNdof");
-    algorithm.useBeamConstraint = conf.getParameter<bool>("useBeamConstraint");
-
-    algorithm.vertexSelector = new VertexCompatibleWithBeam(
-        VertexDistanceXY(),
-        conf.getParameter<edm::ParameterSet>("PVSelParameters").getParameter<double>("maxDistanceToBeam"));
-
+    algorithm.label = algoconf->getParameter<std::string>("label");
+    algorithm.minNdof = algoconf->getParameter<double>("minNdof");
+    algorithm.useBeamConstraint = algoconf->getParameter<bool>("useBeamConstraint");
+    algorithm.vertexSelector =
+        new VertexCompatibleWithBeam(VertexDistanceXY(), algoconf->getParameter<double>("maxDistanceToBeam"));
     algorithms.push_back(algorithm);
   }
 }

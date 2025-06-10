@@ -1,6 +1,5 @@
 #include "CandCloner.h"
 
-#include "RecoTracker/MkFitCore/interface/HitStructures.h"
 #include "RecoTracker/MkFitCore/interface/IterationConfig.h"
 
 //#define DEBUG
@@ -24,12 +23,14 @@ namespace mkfit {
   void CandCloner::release() { mp_iteration_params = nullptr; }
 
   void CandCloner::begin_eta_bin(EventOfCombCandidates *e_o_ccs,
-                                 std::vector<std::pair<int, int>> *update_list,
+                                 std::vector<UpdateIndices> *update_list,
+                                 std::vector<UpdateIndices> *overlap_list,
                                  std::vector<std::vector<TrackCand>> *extra_cands,
                                  int start_seed,
                                  int n_seeds) {
     mp_event_of_comb_candidates = e_o_ccs;
     mp_kalman_update_list = update_list;
+    mp_kalman_overlap_list = overlap_list;
     mp_extra_cands = extra_cands;
     m_start_seed = start_seed;
     m_n_seeds = n_seeds;
@@ -51,6 +52,7 @@ namespace mkfit {
     m_idx_max_prev = 0;
 
     mp_kalman_update_list->clear();
+    mp_kalman_overlap_list->clear();
 
 #ifdef CC_TIME_LAYER
     t_lay = dtime();
@@ -157,13 +159,15 @@ namespace mkfit {
         //sort the new hits
         std::sort(hitsForSeed.begin(), hitsForSeed.end(), sortCandListByScore);
 
-        int num_hits = std::min((int)hitsForSeed.size(), mp_iteration_params->maxCandsPerSeed);
+        int num_hits = (int)hitsForSeed.size();
 
         // This is from buffer, we know it was cleared after last usage.
         std::vector<TrackCand> &cv = t_cands_for_next_lay[is - is_beg];
 
         int n_pushed = 0;
 
+        // Loop over available hits. There are extra loop exit checks every time
+        // a new candidate is inserted into the new candidate_vector.
         for (int ih = 0; ih < num_hits; ih++) {
           const IdxChi2List &h2a = hitsForSeed[ih];
 
@@ -191,20 +195,30 @@ namespace mkfit {
           if (n_pushed >= mp_iteration_params->maxCandsPerSeed)
             break;
 
-          // set the overlap if we have a true hit and pT > pTCutOverlap
-          HitMatch *hm;
-          if (tc.pT() > mp_iteration_params->pTCutOverlap && h2a.hitIdx >= 0 &&
-              (hm = ccand[h2a.trkIdx].findOverlap(h2a.hitIdx, h2a.module))) {
-            tc.addHitIdx(hm->m_hit_idx, m_layer, hm->m_chi2);
-            tc.incOverlapCount();
+          if (h2a.hitIdx >= 0) {
+            // set the overlap if we have it and pT > pTCutOverlap
+            HitMatch *hm;
+            if (tc.pT() > mp_iteration_params->pTCutOverlap &&
+                (hm = ccand[h2a.trkIdx].findOverlap(h2a.hitIdx, h2a.module))) {
+              if (mp_iteration_params->recheckOverlap) {
+                // Special overlap_list if the overlap hit needs to be re-checked after primary update.
+                mp_kalman_overlap_list->emplace_back(
+                    UpdateIndices(m_start_seed + is, n_pushed, h2a.hitIdx, hm->m_hit_idx));
+              } else {
+                tc.addHitIdx(hm->m_hit_idx, m_layer, 0);
+                tc.incOverlapCount();
+                mp_kalman_update_list->emplace_back(UpdateIndices(m_start_seed + is, n_pushed, h2a.hitIdx, -1));
+              }
+            } else {
+              mp_kalman_update_list->emplace_back(UpdateIndices(m_start_seed + is, n_pushed, h2a.hitIdx, -1));
+            }
           }
 
           cv.emplace_back(tc);
           ++n_pushed;
 
-          if (h2a.hitIdx >= 0) {
-            mp_kalman_update_list->push_back(std::pair<int, int>(m_start_seed + is, n_pushed - 1));
-          }
+          if (n_pushed >= mp_iteration_params->maxCandsPerSeed)
+            break;
         }
 
         // Add remaining extras as long as there is still room for them.

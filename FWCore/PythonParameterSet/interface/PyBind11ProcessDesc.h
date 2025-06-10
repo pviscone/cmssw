@@ -4,7 +4,6 @@
 #include "FWCore/PythonParameterSet/interface/Python11ParameterSet.h"
 
 #include <memory>
-
 #include <string>
 #include <vector>
 
@@ -12,6 +11,17 @@ namespace edm {
   class ParameterSet;
   class ProcessDesc;
 }  // namespace edm
+
+class PyBind11InterpreterSentry {
+public:
+  PyBind11InterpreterSentry(bool ownsInterpreter);
+  ~PyBind11InterpreterSentry();
+
+  pybind11::object mainModule;
+
+private:
+  bool const ownsInterpreter_;
+};
 
 class PyBind11ProcessDesc {
 public:
@@ -23,9 +33,9 @@ public:
     It decides whether it's a file or string by seeing if
     it ends in '.py'
   */
-  PyBind11ProcessDesc(std::string const& config);
+  PyBind11ProcessDesc(std::string const& config, bool isFile);
 
-  PyBind11ProcessDesc(std::string const& config, int argc, char* argv[]);
+  PyBind11ProcessDesc(std::string const& config, bool isFile, const std::vector<std::string>& args);
 
   ~PyBind11ProcessDesc();
 
@@ -44,13 +54,12 @@ public:
 
 private:
   void prepareToRead();
-  void read(std::string const& config);
+  void read(std::string const& config, bool isFile);
   void readFile(std::string const& fileName);
   void readString(std::string const& pyConfig);
 
   Python11ParameterSet theProcessPSet;
-  pybind11::object theMainModule;
-  bool theOwnsInterpreter;
+  PyBind11InterpreterSentry theInterpreter;
 };
 
 #endif

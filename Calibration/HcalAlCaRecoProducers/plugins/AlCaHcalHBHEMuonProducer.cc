@@ -43,6 +43,8 @@
 #include "CondFormats/HcalObjects/interface/HcalRespCorrs.h"
 #include "CondFormats/DataRecord/interface/HcalRespCorrsRcd.h"
 
+#include "CondFormats/DataRecord/interface/EcalPFRecHitThresholdsRcd.h"
+#include "CondFormats/EcalObjects/interface/EcalPFRecHitThresholds.h"
 #include "CondFormats/DataRecord/interface/EcalChannelStatusRcd.h"
 #include "RecoLocalCalo/EcalRecAlgos/interface/EcalSeverityLevelAlgo.h"
 #include "RecoLocalCalo/EcalRecAlgos/interface/EcalSeverityLevelAlgoRcd.h"
@@ -69,27 +71,27 @@
 
 //#define EDM_ML_DEBUG
 
-namespace alcaHcalHBHEMuon {
+namespace alcaHcalHBHEMuonProducer {
   struct Counters {
     Counters() : nAll_(0), nGood_(0) {}
     mutable std::atomic<unsigned int> nAll_, nGood_;
   };
-}  // namespace alcaHcalHBHEMuon
+}  // namespace alcaHcalHBHEMuonProducer
 
-class AlCaHcalHBHEMuonProducer : public edm::stream::EDProducer<edm::GlobalCache<alcaHcalHBHEMuon::Counters>> {
+class AlCaHcalHBHEMuonProducer : public edm::stream::EDProducer<edm::GlobalCache<alcaHcalHBHEMuonProducer::Counters>> {
 public:
-  explicit AlCaHcalHBHEMuonProducer(const edm::ParameterSet&, const alcaHcalHBHEMuon::Counters*);
+  explicit AlCaHcalHBHEMuonProducer(const edm::ParameterSet&, const alcaHcalHBHEMuonProducer::Counters*);
   ~AlCaHcalHBHEMuonProducer() override = default;
 
-  static std::unique_ptr<alcaHcalHBHEMuon::Counters> initializeGlobalCache(edm::ParameterSet const&) {
-    return std::make_unique<alcaHcalHBHEMuon::Counters>();
+  static std::unique_ptr<alcaHcalHBHEMuonProducer::Counters> initializeGlobalCache(edm::ParameterSet const&) {
+    return std::make_unique<alcaHcalHBHEMuonProducer::Counters>();
   }
 
   void produce(edm::Event&, const edm::EventSetup&) override;
 
   void endStream() override;
 
-  static void globalEndJob(const alcaHcalHBHEMuon::Counters* counters);
+  static void globalEndJob(const alcaHcalHBHEMuonProducer::Counters* counters);
 
   static void fillDescriptions(edm::ConfigurationDescriptions& descriptions);
 
@@ -120,7 +122,7 @@ private:
   const bool isItPreRecHit_, writeRespCorr_;
   const std::string fileInCorr_;
   const int maxDepth_;
-  const bool mergedDepth_;
+  const bool mergedDepth_, usePFThresh_;
 
   bool useMyCorr_;
   int nRun_, nAll_, nGood_;
@@ -145,6 +147,7 @@ private:
   const edm::ESGetToken<EcalSeverityLevelAlgo, EcalSeverityLevelAlgoRcd> tok_sevlv_;
   const edm::ESGetToken<CaloTopology, CaloTopologyRecord> tok_topo_;
   const edm::ESGetToken<HcalDbService, HcalDbRecord> tok_dbservice_;
+  const edm::ESGetToken<EcalPFRecHitThresholds, EcalPFRecHitThresholdsRcd> tok_ecalPFRecHitThresholds_;
 
   //////////////////////////////////////////////////////
   static const int depthMax_ = 7;
@@ -156,7 +159,8 @@ private:
   ////////////////////////////////////////////////////////////
 };
 
-AlCaHcalHBHEMuonProducer::AlCaHcalHBHEMuonProducer(const edm::ParameterSet& iConfig, const alcaHcalHBHEMuon::Counters*)
+AlCaHcalHBHEMuonProducer::AlCaHcalHBHEMuonProducer(const edm::ParameterSet& iConfig,
+                                                   const alcaHcalHBHEMuonProducer::Counters*)
     : trigNames_(iConfig.getParameter<std::vector<std::string>>("triggers")),
       processName_(iConfig.getParameter<std::string>("processName")),
       triggerResults_(iConfig.getParameter<edm::InputTag>("triggerResults")),
@@ -172,8 +176,9 @@ AlCaHcalHBHEMuonProducer::AlCaHcalHBHEMuonProducer(const edm::ParameterSet& iCon
       isItPreRecHit_(iConfig.getUntrackedParameter<bool>("isItPreRecHit", false)),
       writeRespCorr_(iConfig.getUntrackedParameter<bool>("writeRespCorr", false)),
       fileInCorr_(iConfig.getUntrackedParameter<std::string>("fileInCorr", "")),
-      maxDepth_(iConfig.getUntrackedParameter<int>("maxDepth", 4)),
+      maxDepth_(iConfig.getUntrackedParameter<int>("maxDepth", 7)),
       mergedDepth_((!isItPreRecHit_) || (collapseDepth_)),
+      usePFThresh_(iConfig.getParameter<bool>("usePFThreshold")),
       nRun_(0),
       nAll_(0),
       nGood_(0),
@@ -195,7 +200,8 @@ AlCaHcalHBHEMuonProducer::AlCaHcalHBHEMuonProducer(const edm::ParameterSet& iCon
       tok_chan_(esConsumes<EcalChannelStatus, EcalChannelStatusRcd>()),
       tok_sevlv_(esConsumes<EcalSeverityLevelAlgo, EcalSeverityLevelAlgoRcd>()),
       tok_topo_(esConsumes<CaloTopology, CaloTopologyRecord>()),
-      tok_dbservice_(esConsumes<HcalDbService, HcalDbRecord>()) {
+      tok_dbservice_(esConsumes<HcalDbService, HcalDbRecord>()),
+      tok_ecalPFRecHitThresholds_(esConsumes<EcalPFRecHitThresholds, EcalPFRecHitThresholdsRcd>()) {
   //now do what ever initialization is needed
   edm::LogVerbatim("HBHEMuon") << "Labels used: Trig " << triggerResults_ << " Vtx " << labelVtx_ << " EB "
                                << labelEBRecHit_ << " EE " << labelEERecHit_ << " HBHE " << labelHBHERecHit_ << " MU "
@@ -281,8 +287,11 @@ void AlCaHcalHBHEMuonProducer::produce(edm::Event& iEvent, const edm::EventSetup
   const EcalSeverityLevelAlgo* sevlv = &iSetup.getData(tok_sevlv_);
   const CaloTopology* caloTopology = &iSetup.getData(tok_topo_);
   const HcalDbService* conditions = &iSetup.getData(tok_dbservice_);
-  HcalRespCorrs* respCorrs = new HcalRespCorrs(*resp);
+  HcalRespCorrs respCorrsObj(*resp);
+  HcalRespCorrs* respCorrs = &respCorrsObj;
   respCorrs->setTopo(theHBHETopology);
+  const EcalPFRecHitThresholds* eThresholds = &iSetup.getData(tok_ecalPFRecHitThresholds_);
+  ;
 
   // Relevant blocks from iEvent
   auto const& vtx = iEvent.getHandle(tok_Vtx_);
@@ -445,20 +454,31 @@ void AlCaHcalHBHEMuonProducer::produce(edm::Event& iEvent, const edm::EventSetup
         bool okE = trackID.okECAL;
         if (okE) {
           const DetId isoCell(trackID.detIdECAL);
-          std::pair<double, bool> e3x3 = spr::eECALmatrix(isoCell,
-                                                          barrelRecHitsHandle,
-                                                          endcapRecHitsHandle,
-                                                          *theEcalChStatus,
-                                                          geo,
-                                                          caloTopology,
-                                                          sevlv,
-                                                          1,
-                                                          1,
-                                                          -100.0,
-                                                          -100.0,
-                                                          -500.0,
-                                                          500.0,
-                                                          false);
+          std::pair<double, bool> e3x3 = (usePFThresh_ ? spr::eECALmatrix(isoCell,
+                                                                          barrelRecHitsHandle,
+                                                                          endcapRecHitsHandle,
+                                                                          *theEcalChStatus,
+                                                                          geo,
+                                                                          caloTopology,
+                                                                          sevlv,
+                                                                          eThresholds,
+                                                                          1,
+                                                                          1,
+                                                                          false)
+                                                       : spr::eECALmatrix(isoCell,
+                                                                          barrelRecHitsHandle,
+                                                                          endcapRecHitsHandle,
+                                                                          *theEcalChStatus,
+                                                                          geo,
+                                                                          caloTopology,
+                                                                          sevlv,
+                                                                          1,
+                                                                          1,
+                                                                          -100.0,
+                                                                          -100.0,
+                                                                          -500.0,
+                                                                          500.0,
+                                                                          false));
           hbheMuon.ecal3x3Energy_ = e3x3.first;
           okE = e3x3.second;
         }
@@ -962,7 +982,8 @@ void AlCaHcalHBHEMuonProducer::fillDescriptions(edm::ConfigurationDescriptions& 
   desc.addUntracked<bool>("isItPreRecHit", false);
   desc.addUntracked<bool>("writeRespCorr", false);
   desc.addUntracked<std::string>("fileInCorr", "");
-  desc.addUntracked<int>("maxDepth", 4);
+  desc.addUntracked<int>("maxDepth", 7);
+  desc.add<bool>("usePFThreshold", true);
   descriptions.add("alcaHcalHBHEMuonProducer", desc);
 }
 
@@ -972,7 +993,7 @@ void AlCaHcalHBHEMuonProducer::endStream() {
   globalCache()->nGood_ += nGood_;
 }
 
-void AlCaHcalHBHEMuonProducer::globalEndJob(const alcaHcalHBHEMuon::Counters* count) {
+void AlCaHcalHBHEMuonProducer::globalEndJob(const alcaHcalHBHEMuonProducer::Counters* count) {
   edm::LogVerbatim("HBHEMuon") << "Selects " << count->nGood_ << " out of " << count->nAll_ << " total # of events\n";
 }
 
@@ -1014,7 +1035,8 @@ void AlCaHcalHBHEMuonProducer::beginRun(edm::Run const& iRun, edm::EventSetup co
   const HcalRespCorrs* resp = &iSetup.getData(tok_respcorr0_);
   const HcalTopology* theHBHETopology = &iSetup.getData(tok_htopo0_);
   const CaloGeometry* geo = &iSetup.getData(tok_geom0_);
-  HcalRespCorrs* respCorrs = new HcalRespCorrs(*resp);
+  HcalRespCorrs respCorrsObj(*resp);
+  HcalRespCorrs* respCorrs = &respCorrsObj;
   respCorrs->setTopo(theHBHETopology);
 
   // Write correction factors for all HB/HE events
