@@ -51,11 +51,15 @@
 
 #include "DataFormats/L1CaloTrigger/interface/L1CaloCollections.h"
 #include "DataFormats/L1CaloTrigger/interface/L1CaloRegion.h"
+#include "DataFormats/L1CaloTrigger/interface/CICADA.h"
 
 #include "DataFormats/Math/interface/LorentzVector.h"
 
 #include "L1Trigger/L1TCaloLayer1/src/UCTLogging.hh"
 #include <bitset>
+
+#include <string>
+#include <sstream>
 
 //Anomaly detection includes
 #include "ap_fixed.h"
@@ -82,8 +86,6 @@ private:
   void produce(edm::Event&, const edm::EventSetup&) override;
   //void endJob() override;
 
-  void beginRun(edm::Run const&, edm::EventSetup const&) override{};
-
   void print();
 
   // ----------member data ---------------------------
@@ -105,11 +107,15 @@ private:
   int fwVersion;
 
   edm::EDGetTokenT<L1CaloRegionCollection> regionToken;
+  edm::EDGetTokenT<L1CaloRegionCollection> backupRegionToken;
 
   UCTLayer1* layer1;
 
   hls4mlEmulator::ModelLoader loader;
   std::shared_ptr<hls4mlEmulator::Model> model;
+
+  bool overwriteWithTestPatterns;
+  std::vector<edm::ParameterSet> testPatterns;
 };
 
 //
@@ -136,8 +142,12 @@ L1TCaloSummary<INPUT, OUTPUT>::L1TCaloSummary(const edm::ParameterSet& iConfig)
       boostedJetPtFactor(iConfig.getParameter<double>("boostedJetPtFactor")),
       verbose(iConfig.getParameter<bool>("verbose")),
       fwVersion(iConfig.getParameter<int>("firmwareVersion")),
-      regionToken(consumes<L1CaloRegionCollection>(edm::InputTag("simCaloStage2Layer1Digis"))),
-      loader(hls4mlEmulator::ModelLoader(iConfig.getParameter<string>("CICADAModelVersion"))) {
+      regionToken(consumes<L1CaloRegionCollection>(iConfig.getParameter<edm::InputTag>("caloLayer1Regions"))),
+      //backupRegionToken(consumes<L1CaloRegionCollection>(edm::InputTag("simCaloStage2Layer1Digis"))),
+      backupRegionToken(consumes<L1CaloRegionCollection>(iConfig.getParameter<edm::InputTag>("backupRegionToken"))),
+      loader(hls4mlEmulator::ModelLoader(iConfig.getParameter<string>("CICADAModelVersion"))),
+      overwriteWithTestPatterns(iConfig.getParameter<bool>("useTestPatterns")),
+      testPatterns(iConfig.getParameter<std::vector<edm::ParameterSet>>("testPatterns")) {
   std::vector<double> pumLUTData;
   char pumLUTString[10];
   for (uint32_t pumBin = 0; pumBin < nPumBins; pumBin++) {
@@ -160,7 +170,7 @@ L1TCaloSummary<INPUT, OUTPUT>::L1TCaloSummary(const edm::ParameterSet& iConfig)
 
   //anomaly trigger loading
   model = loader.load_model();
-  produces<float>("CICADAScore");
+  produces<l1t::CICADABxCollection>("CICADAScore");
 }
 
 //
@@ -174,7 +184,8 @@ void L1TCaloSummary<INPUT, OUTPUT>::produce(edm::Event& iEvent, const edm::Event
 
   std::unique_ptr<L1JetParticleCollection> bJetCands(new L1JetParticleCollection);
 
-  std::unique_ptr<float> CICADAScore = std::make_unique<float>();
+  std::unique_ptr<l1t::CICADABxCollection> CICADAScore = std::make_unique<l1t::CICADABxCollection>();
+  CICADAScore->setBXRange(-2, 2);
 
   UCTGeometry g;
 
@@ -184,12 +195,18 @@ void L1TCaloSummary<INPUT, OUTPUT>::produce(edm::Event& iEvent, const edm::Event
   // of size 7*2. Indices are mapped in UCTSummaryCard accordingly.
   UCTSummaryCard summaryCard =
       UCTSummaryCard(&pumLUT, jetSeed, tauSeed, tauIsolationFactor, eGammaSeed, eGammaIsolationFactor);
-  std::vector<UCTRegion*> inputRegions;
-  inputRegions.clear();
+  std::vector<UCTRegion> inputRegions;
+  inputRegions.reserve(252);  // 252 calorimeter regions. 18 phi * 14 eta
   edm::Handle<std::vector<L1CaloRegion>> regionCollection;
   if (!iEvent.getByToken(regionToken, regionCollection))
     edm::LogError("L1TCaloSummary") << "UCT: Failed to get regions from region collection!";
   iEvent.getByToken(regionToken, regionCollection);
+
+  if (regionCollection->size() == 0) {
+    iEvent.getByToken(backupRegionToken, regionCollection);
+    edm::LogWarning("L1TCaloSummary") << "Switched to emulated regions since data regions was empty.\n";
+  }
+
   //Model input
   //This is done as a flat vector input, but future versions may involve 2D input
   //This will have to be handled later
@@ -205,8 +222,8 @@ void L1TCaloSummary<INPUT, OUTPUT>::produce(edm::Event& iEvent, const edm::Event
     uint32_t crate = g.getCrate(t.first, t.second);
     uint32_t card = g.getCard(t.first, t.second);
     uint32_t region = g.getRegion(absCaloEta, absCaloPhi);
-    UCTRegion* test = new UCTRegion(crate, card, negativeEta, region, fwVersion);
-    test->setRegionSummary(i.raw());
+    UCTRegion test = UCTRegion(crate, card, negativeEta, region, fwVersion);
+    test.setRegionSummary(i.raw());
     inputRegions.push_back(test);
     //This *should* fill the tensor in the proper order to be fed to the anomaly model
     //We take 4 off of the GCT eta/iEta.
@@ -215,6 +232,32 @@ void L1TCaloSummary<INPUT, OUTPUT>::produce(edm::Event& iEvent, const edm::Event
     //CICADA reads this as a flat vector
     modelInput[14 * i.gctPhi() + (i.gctEta() - 4)] = i.et();
   }
+  // Check if we're using test patterns. If so, we overwrite the inputs with a test pattern
+  if (overwriteWithTestPatterns) {
+    unsigned int evt = iEvent.id().event();
+    unsigned int totalTestPatterns = testPatterns.size();
+    unsigned int patternElement = evt % totalTestPatterns;
+    const edm::ParameterSet& element = testPatterns.at(patternElement);
+    std::stringstream inputStream;
+    std::string PhiRowString;
+
+    edm::LogWarning("L1TCaloSummary") << "Overwriting existing CICADA input with test pattern!\n";
+
+    for (unsigned short int iPhi = 1; iPhi <= 18; ++iPhi) {
+      PhiRowString = "";
+      std::stringstream PhiRowStringStream;
+      PhiRowStringStream << "iPhi_" << iPhi;
+      PhiRowString = PhiRowStringStream.str();
+      std::vector<unsigned int> phiRow = element.getParameter<std::vector<unsigned int>>(PhiRowString);
+      for (unsigned short int iEta = 1; iEta <= 14; ++iEta) {
+        modelInput[14 * (iPhi - 1) + (iEta - 1)] = phiRow.at(iEta - 1);
+        inputStream << phiRow.at(iEta - 1) << " ";
+      }
+      inputStream << "\n";
+    }
+    edm::LogInfo("L1TCaloSummary") << "Input Stream:\n" << inputStream.str();
+  }
+
   //Extract model output
   OUTPUT modelResult[1] = {
       OUTPUT("0.0", 10)};  //the 10 here refers to the fact that we read in "0.0" as a decimal number
@@ -222,7 +265,10 @@ void L1TCaloSummary<INPUT, OUTPUT>::produce(edm::Event& iEvent, const edm::Event
   model->predict();
   model->read_result(modelResult);
 
-  *CICADAScore = modelResult[0].to_float();
+  CICADAScore->push_back(0, modelResult[0].to_float());
+
+  if (overwriteWithTestPatterns)
+    edm::LogInfo("L1TCaloSummary") << "Test Pattern Output: " << CICADAScore->at(0, 0);
 
   summaryCard.setRegionData(inputRegions);
 
@@ -236,9 +282,10 @@ void L1TCaloSummary<INPUT, OUTPUT>::produce(edm::Event& iEvent, const edm::Event
   double phi = -999.;
   double mass = 0;
 
-  std::list<UCTObject*> boostedJetObjs = summaryCard.getBoostedJetObjs();
-  for (std::list<UCTObject*>::const_iterator i = boostedJetObjs.begin(); i != boostedJetObjs.end(); i++) {
-    const UCTObject* object = *i;
+  std::list<std::shared_ptr<UCTObject>> boostedJetObjs = summaryCard.getBoostedJetObjs();
+  for (std::list<std::shared_ptr<UCTObject>>::const_iterator i = boostedJetObjs.begin(); i != boostedJetObjs.end();
+       i++) {
+    const std::shared_ptr<UCTObject> object = *i;
     pt = ((double)object->et()) * caloScaleFactor * boostedJetPtFactor;
     eta = g.getUCTTowerEta(object->iEta());
     phi = g.getUCTTowerPhi(object->iPhi());
@@ -301,8 +348,19 @@ void L1TCaloSummary<INPUT, OUTPUT>::fillDescriptions(edm::ConfigurationDescripti
   descriptions.addDefault(desc);
 }
 
-typedef L1TCaloSummary<ap_ufixed<10, 10>, ap_fixed<11, 5>> L1TCaloSummaryCICADAv1;
-typedef L1TCaloSummary<ap_uint<10>, ap_ufixed<16, 8>> L1TCaloSummaryCICADAv2;
-//define type version plugins
-DEFINE_FWK_MODULE(L1TCaloSummaryCICADAv1);
-DEFINE_FWK_MODULE(L1TCaloSummaryCICADAv2);
+// Initial version, X.0.0, input/output typing
+typedef L1TCaloSummary<ap_ufixed<10, 10>, ap_fixed<11, 5>> L1TCaloSummary_CICADA_v1p0p0;
+typedef L1TCaloSummary<ap_uint<10>, ap_ufixed<16, 8>> L1TCaloSummary_CICADA_v2p0p0;
+DEFINE_FWK_MODULE(L1TCaloSummary_CICADA_v1p0p0);
+DEFINE_FWK_MODULE(L1TCaloSummary_CICADA_v2p0p0);
+// X.1.0 version input.output typing
+typedef L1TCaloSummary<ap_ufixed<10, 10>, ap_fixed<11, 5>> L1TCaloSummary_CICADA_v1p1p0;
+typedef L1TCaloSummary<ap_uint<10>, ap_ufixed<16, 8>> L1TCaloSummary_CICADA_v2p1p0;
+DEFINE_FWK_MODULE(L1TCaloSummary_CICADA_v1p1p0);
+DEFINE_FWK_MODULE(L1TCaloSummary_CICADA_v2p1p0);
+// X.1.1 version input/output typing
+typedef L1TCaloSummary<ap_uint<10>, ap_ufixed<16, 8, AP_RND, AP_SAT, AP_SAT>> L1TCaloSummary_CICADA_vXp1p1;
+DEFINE_FWK_MODULE(L1TCaloSummary_CICADA_vXp1p1);
+// X.1.2 version input/output typing
+typedef L1TCaloSummary<ap_uint<10>, ap_ufixed<16, 8, AP_RND_CONV, AP_SAT>> L1TCaloSummary_CICADA_vXp1p2;
+DEFINE_FWK_MODULE(L1TCaloSummary_CICADA_vXp1p2);

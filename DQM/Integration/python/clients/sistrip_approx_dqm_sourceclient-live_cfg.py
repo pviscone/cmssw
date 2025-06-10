@@ -9,15 +9,13 @@ else:
   from Configuration.Eras.Era_Run3_cff import Run3
   process = cms.Process("SiStripApproxMonitor", Run3)
 
-process.MessageLogger = cms.Service("MessageLogger",
-                                    debugModules = cms.untracked.vstring('siStripDigis',
-                                                                         'siStripClusters',
-                                                                         'siStripZeroSuppression',
-                                                                         'SiStripClusterizer',
-                                                                         'siStripApproximateClusterComparator'),
-                                    cout = cms.untracked.PSet(threshold = cms.untracked.string('ERROR')),
-                                    destinations = cms.untracked.vstring('cout')
-                                    )
+process.load('FWCore.MessageService.MessageLogger_cfi')
+process.MessageLogger.debugModules = cms.untracked.vstring('siStripDigis',
+                                                           'siStripClusters',
+                                                           'siStripZeroSuppression',
+                                                           'SiStripClusterizer',
+                                                           'siStripApproximateClusterComparator')
+process.MessageLogger.cout = cms.untracked.PSet(threshold = cms.untracked.string('ERROR'))
 
 live=True
 unitTest=False
@@ -89,8 +87,7 @@ elif(offlineTesting):
     #you may need to set manually the GT in the line below
     process.GlobalTag = gtCustomise(process.GlobalTag, 'auto:run3_hlt', '')
 
-
-print("Will process with GlobalTag %s",process.GlobalTag.globaltag.value())
+print("Will process with GlobalTag: %s" % process.GlobalTag.globaltag.value())
 
 #--------------------------------------------
 # Patch to avoid using Run Info information in reconstruction
@@ -189,7 +186,7 @@ if process.runType.getRunType() == process.runType.hi_run:
     process.castorDigis.InputLabel = rawDataRepackerLabel
     process.csctfDigis.producer = rawDataRepackerLabel
     process.dttfDigis.DTTF_FED_Source = rawDataRepackerLabel
-    process.ecalDigis.cpu.InputLabel = rawDataRepackerLabel
+    process.ecalDigisCPU.InputLabel = rawDataRepackerLabel
     process.ecalPreshowerDigis.sourceTag = rawDataRepackerLabel
     process.gctDigis.inputLabel = rawDataRepackerLabel
     process.hcalDigis.InputLabel = rawDataRepackerLabel
@@ -199,6 +196,7 @@ if process.runType.getRunType() == process.runType.hi_run:
     process.scalersRawToDigi.scalersInputTag = rawDataRepackerLabel
     process.siPixelDigis.cpu.InputLabel = rawDataRepackerLabel
     process.siStripDigis.ProductLabel = rawDataRepackerLabel
+    process.tcdsDigis.InputLabel = rawDataRepackerLabel
 
     if ((process.runType.getRunType() == process.runType.hi_run) and live):
         process.source.SelectEvents = [

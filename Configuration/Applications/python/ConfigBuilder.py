@@ -63,7 +63,7 @@ defaultOptions.datatier = None
 defaultOptions.inlineEventContent = True
 defaultOptions.inlineObjects =''
 defaultOptions.hideGen=False
-from Configuration.StandardSequences.VtxSmeared import VtxSmearedDefaultKey,VtxSmearedHIDefaultKey
+from Configuration.StandardSequences.VtxSmeared import VtxSmearedDefaultKey
 defaultOptions.beamspot=None
 defaultOptions.outputDefinition =''
 defaultOptions.inputCommands = None
@@ -702,12 +702,15 @@ class ConfigBuilder(object):
             if streamType=='': continue
             if streamType == 'ALCARECO' and not 'ALCAPRODUCER' in self._options.step: continue
             if streamType=='DQMIO': streamType='DQM'
+            streamQualifier=''
+            if streamType[-1].isdigit():
+                ## a special case where --eventcontent MINIAODSIM1 is set to have more than one output in a chain of configuration
+                streamQualifier = str(streamType[-1])
+                streamType = streamType[:-1]
             eventContent=streamType
             ## override streamType to eventContent in case NANOEDM
-            if streamType == "NANOEDMAOD" :
-                eventContent = "NANOAOD"
-            elif streamType == "NANOEDMAODSIM" :
-                eventContent = "NANOAODSIM"
+            if streamType.startswith("NANOEDMAOD"):
+                eventContent = eventContent.replace("NANOEDM","NANO")
             theEventContent = getattr(self.process, eventContent+"EventContent")
             if i==0:
                 theFileName=self._options.outfile_name
@@ -736,10 +739,11 @@ class ConfigBuilder(object):
                 output.dataset.filterName = cms.untracked.string('StreamALCACombined')
 
             if "MINIAOD" in streamType:
+                ## we should definitely get rid of this customization by now
                 from PhysicsTools.PatAlgos.slimming.miniAOD_tools import miniAOD_customizeOutput
                 miniAOD_customizeOutput(output)
 
-            outputModuleName=streamType+'output'
+            outputModuleName=streamType+streamQualifier+'output'
             setattr(self.process,outputModuleName,output)
             outputModule=getattr(self.process,outputModuleName)
             setattr(self.process,outputModuleName+'_step',cms.EndPath(outputModule))
@@ -770,6 +774,12 @@ class ConfigBuilder(object):
         # load the pile up file
         if self._options.pileup:
             pileupSpec=self._options.pileup.split(',')[0]
+
+            #make sure there is a set of pileup files specified when needed
+            pileups_without_input=[defaultOptions.pileup,"Cosmics","default","HiMixNoPU",None]
+            if self._options.pileup not in pileups_without_input and self._options.pileup_input==None:
+                message = "Pileup scenerio requires input files. Please add an appropriate --pileup_input option"
+                raise Exception(message)
 
             # Does the requested pile-up scenario exist?
             from Configuration.StandardSequences.Mixing import Mixing,defineMixing
@@ -1012,6 +1022,7 @@ class ConfigBuilder(object):
         self.DIGIDefaultCFF="Configuration/StandardSequences/Digi_cff"
         self.DIGI2RAWDefaultCFF="Configuration/StandardSequences/DigiToRaw_cff"
         self.L1EMDefaultCFF='Configuration/StandardSequences/SimL1Emulator_cff'
+        self.L1P2GTDefaultCFF = 'Configuration/StandardSequences/SimPhase2L1GlobalTriggerEmulator_cff'
         self.L1MENUDefaultCFF="Configuration/StandardSequences/L1TriggerDefaultMenu_cff"
         self.HLTDefaultCFF="Configuration/StandardSequences/HLTtable_cff"
         self.RAW2DIGIDefaultCFF="Configuration/StandardSequences/RawToDigi_Data_cff"
@@ -1050,6 +1061,7 @@ class ConfigBuilder(object):
         self.DIGI2RAWDefaultSeq='DigiToRaw'
         self.HLTDefaultSeq='GRun'
         self.L1DefaultSeq=None
+        self.L1P2GTDefaultSeq=None
         self.L1REPACKDefaultSeq='GT'
         self.HARVESTINGDefaultSeq=None
         self.ALCAHARVESTDefaultSeq=None
@@ -1078,7 +1090,12 @@ class ConfigBuilder(object):
         self.EVTCONTDefaultCFF="Configuration/EventContent/EventContent_cff"
 
         if not self._options.beamspot:
-            self._options.beamspot=VtxSmearedDefaultKey
+            # GEN step always requires to have a VtxSmearing scenario (--beamspot) defined
+            # ...unless it's a special gen-only request (GEN:pgen_genonly)
+            if 'GEN' in self.stepMap and not 'pgen_genonly' in self.stepMap['GEN']:
+                raise Exception("Missing \'--beamspot\' option in the GEN step of the cmsDriver command!")
+            else:
+                self._options.beamspot=VtxSmearedDefaultKey
 
         # if its MC then change the raw2digi
         if self._options.isMC==True:
@@ -1111,8 +1128,6 @@ class ConfigBuilder(object):
             self.DQMDefaultSeq='DQMOfflineCosmics'
 
         if self._options.scenario=='HeavyIons':
-            if not self._options.beamspot:
-                self._options.beamspot=VtxSmearedHIDefaultKey
             self.HLTDefaultSeq = 'HIon'
             self.VALIDATIONDefaultCFF="Configuration/StandardSequences/ValidationHeavyIons_cff"
             self.VALIDATIONDefaultSeq=''
@@ -1461,7 +1476,7 @@ class ConfigBuilder(object):
                     elif isinstance(theObject, cms.Sequence) or isinstance(theObject, cmstypes.ESProducer):
                         self._options.inlineObjects+=','+name
 
-            if stepSpec == self.GENDefaultSeq or stepSpec == 'pgen_genonly' or stepSpec == 'pgen_smear':
+            if stepSpec == self.GENDefaultSeq or stepSpec == 'pgen_genonly':
                 if 'ProductionFilterSequence' in genModules and ('generator' in genModules):
                     self.productionFilterSequence = 'ProductionFilterSequence'
                 elif 'generator' in genModules:
@@ -1492,7 +1507,7 @@ class ConfigBuilder(object):
         #register to the genstepfilter the name of the path (static right now, but might evolve)
         self.executeAndRemember('process.genstepfilter.triggerConditions=cms.vstring("generation_step")')
 
-        if 'reGEN' in self.stepMap:
+        if 'reGEN' in self.stepMap or stepSpec == 'pgen_smear':
             #stop here
             return
 
@@ -1571,6 +1586,40 @@ class ConfigBuilder(object):
         _,_repackSeq,_ = self.loadDefaultOrSpecifiedCFF(stepSpec,self.REPACKDefaultCFF)
         self.scheduleSequence(_repackSeq,'digi2repack_step')
         return
+
+    def loadPhase2GTMenu(self, menuFile: str):
+        import importlib
+        menuPath = f'L1Trigger.Configuration.Phase2GTMenus.{menuFile}'
+        menuModule = importlib.import_module(menuPath)
+        
+        theMenu = menuModule.menu
+        triggerPaths = [] #we get a list of paths in each of these files to schedule
+
+        for triggerPathFile in theMenu:
+            self.loadAndRemember(triggerPathFile) #this load and remember will set the algo variable of the algoblock later
+
+            triggerPathModule = importlib.import_module(triggerPathFile)
+            for objName in dir(triggerPathModule):
+                obj = getattr(triggerPathModule, objName)
+                objType = type(obj)
+                if objType == cms.Path:
+                    triggerPaths.append(objName)
+        
+        triggerScheduleList = [getattr(self.process, name) for name in triggerPaths] #get the actual paths to put in the schedule
+        self.schedule.extend(triggerScheduleList) #put them in the schedule for later
+    
+    # create the L1 GT step
+    # We abuse the stepSpec a bit as a way to specify a menu
+    def prepare_L1P2GT(self, stepSpec=None):
+        """ Run the GT emulation sequence on top of the L1 emulation step """
+        self.loadAndRemember(self.L1P2GTDefaultCFF)
+        self.scheduleSequence('l1tGTProducerSequence', 'Phase2L1GTProducer')
+        self.scheduleSequence('l1tGTAlgoBlockProducerSequence', 'Phase2L1GTAlgoBlockProducer')
+        if stepSpec == None:
+            defaultMenuFile = "prototype_2023_v1_0_0"
+            self.loadPhase2GTMenu(menuFile = defaultMenuFile)
+        else:
+            self.loadPhase2GTMenu(menuFile = stepSpec)
 
     def prepare_L1(self, stepSpec = None):
         """ Enrich the schedule with the L1 simulation step"""
@@ -1794,7 +1843,18 @@ class ConfigBuilder(object):
         # build and inject the sequence
         if len(_nanoSeq) < 1 and '@' in stepSpec:
             raise Exception(f'The specified mapping: {stepSpec} generates an empty NANO sequence. Please provide a valid mappign')
-        self.scheduleSequence('+'.join(_nanoSeq), 'nanoAOD_step')
+        _seqToSchedule = []
+        for _subSeq in _nanoSeq:
+            if '.' in _subSeq:
+                _cff,_seq = _subSeq.split('.')
+                self.loadAndRemember(_cff)
+                _seqToSchedule.append(_seq)
+            elif '/' in _subSeq:
+                self.loadAndRemember(_subSeq)
+                _seqToSchedule.append(self.NANODefaultSeq)
+            else:
+                _seqToSchedule.append(_subSeq)
+        self.scheduleSequence('+'.join(_seqToSchedule), 'nanoAOD_step')
         
         # add the customisations
         for custom in _nanoCustoms:

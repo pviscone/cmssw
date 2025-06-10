@@ -37,11 +37,11 @@ statuses = [
     "LINKERROR",
     "BLOCKSIZE",
     "SUPPRESSED",
-    "FIFOFULL",
+    "FORCEDFULLSUPP",
     "L1ADESYNC",
     "BXDESYNC",
     "L1ABXDESYNC",
-    "FIFOFULLL1ADESYNC",
+    "FIFOFULL",
     "HPARITY",
     "VPARITY",
     "FORCEDZS"
@@ -49,6 +49,34 @@ statuses = [
 
 ecalRawDataTask = cms.untracked.PSet(
     MEs = cms.untracked.PSet(
+        TrendBXTCC = cms.untracked.PSet(
+            path = cms.untracked.string('Ecal/Trends/RawDataTask number of %(prefix)sRDT bunch crossing TCC errors'),
+            kind = cms.untracked.string('TH1F'),
+            otype = cms.untracked.string('Ecal2P'),
+            btype = cms.untracked.string('Trend'),
+            description = cms.untracked.string('Trend of the number of bunch crossing value mismatches between DCC and TCC.')
+        ),
+        TrendL1ATCC = cms.untracked.PSet(
+            path = cms.untracked.string('Ecal/Trends/RawDataTask number of %(prefix)sRDT L1A TCC errors'),
+            kind = cms.untracked.string('TH1F'),
+            otype = cms.untracked.string('Ecal2P'),
+            btype = cms.untracked.string('Trend'),
+            description = cms.untracked.string('Trend of the number of L1A value mismatches between DCC and TCC.')
+        ),
+        TrendBXSRP = cms.untracked.PSet(
+            path = cms.untracked.string('Ecal/Trends/RawDataTask number of %(prefix)sRDT bunch crossing SRP errors'),
+            kind = cms.untracked.string('TH1F'),
+            otype = cms.untracked.string('Ecal2P'),
+            btype = cms.untracked.string('Trend'),
+            description = cms.untracked.string('Trend of the number of bunch crossing value mismatches between DCC and SRP.')
+        ),
+        TrendL1ASRP = cms.untracked.PSet(
+            path = cms.untracked.string('Ecal/Trends/RawDataTask number of %(prefix)sRDT L1A SRP errors'),
+            kind = cms.untracked.string('TH1F'),
+            otype = cms.untracked.string('Ecal2P'),
+            btype = cms.untracked.string('Trend'),
+            description = cms.untracked.string('Trend of the number of L1A value mismatches between DCC and SRP.')
+        ),
         BXSRP = cms.untracked.PSet(
             path = cms.untracked.string('%(subdet)s/%(prefix)sRawDataTask/%(prefix)sRDT bunch crossing SRP errors'),
             kind = cms.untracked.string('TH1F'),
@@ -284,7 +312,7 @@ ecalRawDataTask = cms.untracked.PSet(
             otype = cms.untracked.string('Ecal3P'),
             btype = cms.untracked.string('SuperCrystal'),
             perLumi = cms.untracked.bool(True),
-            description = cms.untracked.string('FE status error occupancy map for this lumisection. Nominal FE status flags such as ENABLED, SUPPRESSED, FIFOFILL, FIFOFULLL1ADESYNC, and FORCEDZS are NOT included.')
+            description = cms.untracked.string('FE status error occupancy map for this lumisection. Nominal FE status flags such as ENABLED, SUPPRESSED, FORCEDFULLSUPP, FIFOFULL, and FORCEDZS are NOT included.')
         ),
         FEStatusMEM = cms.untracked.PSet(
             path = cms.untracked.string('Ecal/MEM/StatusFlagsTask MEM front-end status bits'),

@@ -5,7 +5,7 @@ from  Configuration.PyReleaseValidation.relval_steps import *
 # here only define the workflows as a combination of the steps defined above:
 workflows = Matrix()
 
-# each workflow defines a name and a list of steps to be done. 
+# each workflow defines a name and a list of steps to be done.
 # if no explicit name/label given for the workflow (first arg),
 # the name of step1 will be used
 
@@ -13,28 +13,68 @@ from Configuration.PyReleaseValidation.relval_upgrade import workflows as _upgra
 
 # mc WFs to run in IB:
 
-# mc 2023   Patatrack pixel-only quadruplets:                   ZMM - on GPU (optional), GPU-vs-CPU validation, profiling
-#           Patatrack pixel-only triplets:                      ZMM - on GPU (optional), GPU-vs-CPU validation, profiling
-#           Patatrack pixel-only quadruplets:                   TTbar - on GPU (optional), GPU-vs-CPU validation, profiling
-#           Patatrack pixel-only triplets:                      TTbar - on GPU (optional), GPU-vs-CPU validation, profiling
-#           Patatrack ECAL-only:                                TTbar - on GPU (optional), GPU-vs-CPU validation, profiling
-#           Patatrack HCAL-only:                                TTbar - on GPU (optional), GPU-vs-CPU validation, profiling
-#           Patatrack pixel-only quadruplets, ECAL, HCAL:       TTbar - on GPU (optional), GPU-vs-CPU validation, profiling (to be implemented)
-#           Patatrack pixel-only triplets, ECAL, HCAL:          TTbar - on GPU (optional), GPU-vs-CPU validation, profiling (to be implemented)
-#           full reco with Patatrack pixel-only quadruplets:    TTbar - on GPU (optional), GPU-vs-CPU validation
-#           full reco with Patatrack pixel-only triplets:       TTbar - on GPU (optional), GPU-vs-CPU validation
+# mc 2023   #FIXME to be removed as soon as cms-bot is updated 
+# no PU     Alpaka pixel-only                                   TTbar: quadruplets any backend and profiling; ECAL-only any backend; HCAL-only any backend and profiling
+# mc 2024
+# no PU  
+#           Alpaka pixel-only quadruplets:                      TTbar: any backend, any backend vs cpu validation, profiling
+#           Alpaka pixel-only triplets:                         TTbar: any backend, any backend vs cpu validation, profiling
+#           Alpaka ECAL-only:                                   TTbar: any backend
+#           Alpaka HCAL-only:                                   TTbar: any backend, any backend vs cpu validation, profiling
+#           Alpaka with full reco and pixel-only:               TTbar: any backend quadruplets, any backend triplets
+#           Alpaka pixel-only quadruplets:                      ZMM: any backend, any backend vs cpu validation, profiling
+#           Alpaka pixel-only triplets:                         ZMM: any backend, any backend vs cpu validation, profiling
+#           Alpaka pixel-only quadruplets:                      Single Nu E10: any backend
+# with PU
+#           Alpaka pixel-only quadruplets:                      TTbar with PU: any backend, any backend vs cpu validation, profiling
+#           Alpaka pixel-only triplets:                         TTbar with PU: any backend, any backend vs cpu validation, profiling
+#           Alpaka ECAL-only:                                   TTbar with PU: any backend
+#           Alpaka HCAL-only:                                   TTbar with PU: any backend, any backend vs cpu validation, profiling
+#           Alpaka with full reco and pixel-only:               TTbar with PU: any backend quadruplets, any backend triplets
+#           Alpaka pixel-only quadruplets:                      ZMM with PU: any backend, any backend vs cpu validation, profiling
+#           Alpaka pixel-only triplets:                         ZMM with PU: any backend, any backend vs cpu validation, profiling
+#           Alpaka pixel-only quadruplets:                      Single Nu E10 with PU: any backend
+# mc 2026   
+# no PU
+#           Alpaka pixel-only:                                  TTbar: quadruplets any backend, any backend vs cpu validation, profiling, triplets      
+#           Alpaka pixel-only:                                  Single Nu E10: any backend
+# with PU
+#           Alpaka pixel-only:                                  TTbar with PU: quadruplets any backend, any backend vs cpu validation, profiling 
+
 numWFIB = [
-           # 2023
-           12450.502, 12450.503, 12450.504,
-           12450.506, 12450.507, 12450.508,
-           12434.502, 12434.503, 12434.504,
-           12434.506, 12434.507, 12434.508,
-           12434.512, 12434.513, 12434.514,
-           12434.522, 12434.523, 12434.524,
-           12434.582, 12434.583, # 12434.584,
-           12434.586, 12434.587, # 12434.588,
-           12434.592, 12434.593,
-           12434.596, 12434.597,
+           # 2023, Alpaka-based noPU
+           12434.402,12434.403,12434.412,12434.422,12434.423,
+
+           # 2024, Alpaka-based noPU
+           12834.402, 12834.403, 12834.404,
+           12834.406, 12834.407, 12834.408,
+           12834.412,#12834.413, 12834.414,
+           12834.422, 12834.423, 12834.424,
+           #12834.482, 12834.483, 12834.484
+           #12834.486, 12834.487, 12834.488
+           12834.492, 12834.493,
+           12850.402, 12850.403, 12850.404,
+           12450.406, 12450.407, 12450.408,
+           12861.402,
+
+           # 2024 with PU, Alpaka-based
+           13034.402, 13034.403, 13034.404,
+           13034.406, 13034.407, 13034.408,
+           13034.412, #13034.413, 13034.414
+           13034.422, 13034.423, 13034.424,
+           #13034.482, 13034.483, 13034.484
+           #13034.486, 13034.487, 13034.488
+           13034.492, 13034.493,
+           13050.402, 13050.403, 13050.404,
+           13050.406, 13050.407, 13050.408,
+           13061.402,
+
+           # 2026, Alpaka-based noPU
+           24834.402, 24834.403, 24834.404, 24834.406,
+           24861.402,
+
+           # 2026, Alpaka-based PU
+           25034.402, 25034.403, 25034.404
         ]
 
 for numWF in numWFIB:
