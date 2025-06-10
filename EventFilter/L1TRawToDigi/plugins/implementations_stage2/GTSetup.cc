@@ -6,13 +6,18 @@
 #include "EventFilter/L1TRawToDigi/plugins/implementations_stage2/MuonUnpacker.h"
 #include "EventFilter/L1TRawToDigi/plugins/implementations_stage2/EGammaUnpacker.h"
 #include "EventFilter/L1TRawToDigi/plugins/implementations_stage2/EtSumUnpacker.h"
+#include "EventFilter/L1TRawToDigi/plugins/implementations_stage2/ZDCUnpacker.h"
 #include "EventFilter/L1TRawToDigi/plugins/implementations_stage2/JetUnpacker.h"
 #include "EventFilter/L1TRawToDigi/plugins/implementations_stage2/TauUnpacker.h"
+#include "EventFilter/L1TRawToDigi/plugins/implementations_stage2/CaloSummaryUnpacker.h"
 
 #include "GTSetup.h"
 
+const unsigned int l1t::stage2::zdc::nOutputFramePerBX = 6;
+
 namespace l1t {
   namespace stage2 {
+
     std::unique_ptr<PackerTokens> GTSetup::registerConsumes(const edm::ParameterSet& cfg, edm::ConsumesCollector& cc) {
       return std::unique_ptr<PackerTokens>(new GTTokens(cfg, cc));
     }
@@ -31,8 +36,9 @@ namespace l1t {
     PackerMap GTSetup::getPackers(int fed, unsigned int fw) {
       PackerMap res;
 
-      if (fed == 1404) {
+      if ((fed == 1404) || (fed == 1405)) {
         // Use board id 1 for packing
+        //fed id 1404 corresponds to the production crate, 1405 to the test crate
         auto gt_muon_packer =
             static_pointer_cast<l1t::stage2::GTMuonPacker>(PackerFactory::get()->make("stage2::GTMuonPacker"));
         gt_muon_packer->setFed(fed);
@@ -54,8 +60,10 @@ namespace l1t {
       prod.produces<MuonShowerBxCollection>("MuonShower");
       prod.produces<EGammaBxCollection>("EGamma");
       prod.produces<EtSumBxCollection>("EtSum");
+      prod.produces<EtSumBxCollection>("EtSumZDC");
       prod.produces<JetBxCollection>("Jet");
       prod.produces<TauBxCollection>("Tau");
+      prod.produces<CICADABxCollection>("CICADAScore");
       prod.produces<GlobalAlgBlkBxCollection>();
       prod.produces<GlobalExtBlkBxCollection>();
       for (int i = 2; i < 7; ++i) {  // Collections from boards 2-6
@@ -63,6 +71,7 @@ namespace l1t {
         prod.produces<MuonShowerBxCollection>("MuonShower" + std::to_string(i));
         prod.produces<EGammaBxCollection>("EGamma" + std::to_string(i));
         prod.produces<EtSumBxCollection>("EtSum" + std::to_string(i));
+        prod.produces<EtSumBxCollection>("EtSumZDC" + std::to_string(i));
         prod.produces<JetBxCollection>("Jet" + std::to_string(i));
         prod.produces<TauBxCollection>("Tau" + std::to_string(i));
       }
@@ -79,8 +88,11 @@ namespace l1t {
           static_pointer_cast<l1t::stage2::EGammaUnpacker>(UnpackerFactory::get()->make("stage2::EGammaUnpacker"));
       auto etsum_unp =
           static_pointer_cast<l1t::stage2::EtSumUnpacker>(UnpackerFactory::get()->make("stage2::EtSumUnpacker"));
+      auto zdc_unp = static_pointer_cast<l1t::stage2::ZDCUnpacker>(UnpackerFactory::get()->make("stage2::ZDCUnpacker"));
       auto jet_unp = static_pointer_cast<l1t::stage2::JetUnpacker>(UnpackerFactory::get()->make("stage2::JetUnpacker"));
       auto tau_unp = static_pointer_cast<l1t::stage2::TauUnpacker>(UnpackerFactory::get()->make("stage2::TauUnpacker"));
+      auto caloSummary_unp = static_pointer_cast<l1t::stage2::CaloSummaryUnpacker>(
+          UnpackerFactory::get()->make("stage2::CaloSummaryUnpacker"));
 
       if (fw >= 0x10f2) {
         etsum_unp = static_pointer_cast<l1t::stage2::EtSumUnpacker>(
@@ -96,13 +108,15 @@ namespace l1t {
       muon_unp->setMuonCopy(amc - 1);
       egamma_unp->setEGammaCopy(amc - 1);
       etsum_unp->setEtSumCopy(amc - 1);
+      zdc_unp->setEtSumZDCCopy(amc - 1);
       jet_unp->setJetCopy(amc - 1);
       tau_unp->setTauCopy(amc - 1);
 
       UnpackerMap res;
 
-      if (fed == 1404) {
+      if ((fed == 1404) || (fed == 1405)) {
         // From the rx buffers
+        // fed id 1404 corresponds to the production crate, 1405 to the test crate
         res[0] = muon_unp;
         res[2] = muon_unp;
         res[4] = muon_unp;
@@ -114,6 +128,7 @@ namespace l1t {
         res[16] = tau_unp;
         res[18] = tau_unp;
         res[20] = etsum_unp;
+        res[22] = caloSummary_unp;
 
         if (amc == 1) {  // only unpack first uGT board for the external signal inputs (single copy)
           res[24] = ext_unp;
@@ -133,6 +148,8 @@ namespace l1t {
         res[45] = alg_unp;
         res[47] = alg_unp;
         res[49] = alg_unp;
+
+        res[142] = zdc_unp;
       }
 
       return res;

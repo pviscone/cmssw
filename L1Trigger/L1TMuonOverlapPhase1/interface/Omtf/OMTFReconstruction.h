@@ -16,7 +16,6 @@
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/EventSetup.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
-#include "FWCore/Framework/interface/EDProducer.h"
 #include "FWCore/Utilities/interface/ESGetToken.h"
 #include "FWCore/Framework/interface/ESWatcher.h"
 
@@ -68,6 +67,8 @@ protected:
   int bxMin, bxMax;
 
   ///OMTF objects
+  //omtfParams are created only if they are read from the xml file in beginRun(). If the params goes from eventSetup, omtfParams are null
+  unique_ptr<L1TMuonOverlapParams> omtfParams;
   unique_ptr<OMTFConfiguration> omtfConfig;
 
   unique_ptr<OMTFinputMaker> inputMaker;

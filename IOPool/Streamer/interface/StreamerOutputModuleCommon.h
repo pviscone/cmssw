@@ -3,14 +3,12 @@
 
 #include "IOPool/Streamer/interface/MsgTools.h"
 #include "FWCore/Common/interface/TriggerNames.h"
-#include "IOPool/Streamer/interface/StreamSerializer.h"
+#include "IOPool/Streamer/interface/StreamerOutputMsgBuilders.h"
 #include "DataFormats/Common/interface/Handle.h"
 #include "DataFormats/Streamer/interface/StreamedProducts.h"
 #include <memory>
 #include <vector>
 
-class InitMsgBuilder;
-class EventMsgBuilder;
 namespace edm {
   class ParameterSet;
   class ParameterSetDescription;
@@ -18,58 +16,50 @@ namespace edm {
   class ThinnedAssociationsHelper;
   class TriggerResults;
 
-  class StreamerOutputModuleCommon {
-  public:
-    explicit StreamerOutputModuleCommon(ParameterSet const& ps,
-                                        SelectedProducts const* selections,
-                                        std::string const& moduleLabel);
-    ~StreamerOutputModuleCommon();
-    static void fillDescription(ParameterSetDescription& desc);
+  namespace streamer {
+    class InitMsgBuilder;
+    class EventMsgBuilder;
 
-    std::unique_ptr<InitMsgBuilder> serializeRegistry(SerializeDataBuffer& sbuf,
-                                                      BranchIDLists const& branchLists,
-                                                      ThinnedAssociationsHelper const& helper,
-                                                      std::string const& processName,
-                                                      std::string const& moduleLabel,
-                                                      ParameterSetID const& toplevel,
-                                                      SendJobHeader::ParameterSetMap const* psetMap);
+    class StreamerOutputModuleCommon {
+    public:
+      using Parameters = StreamerOutputMsgBuilders::Parameters;
 
-    std::unique_ptr<EventMsgBuilder> serializeEvent(SerializeDataBuffer& sbuf,
-                                                    EventForOutput const& e,
-                                                    Handle<TriggerResults> const& triggerResults,
-                                                    ParameterSetID const& selectorCfg);
+      static Parameters parameters(ParameterSet const& ps);
 
-    SerializeDataBuffer* getSerializerBuffer();
+      explicit StreamerOutputModuleCommon(Parameters const& p,
+                                          SelectedProducts const* selections,
+                                          std::string const& moduleLabel);
 
-  protected:
-    std::unique_ptr<SerializeDataBuffer> serializerBuffer_;
+      explicit StreamerOutputModuleCommon(ParameterSet const& ps,
+                                          SelectedProducts const* selections,
+                                          std::string const& moduleLabel)
+          : StreamerOutputModuleCommon(parameters(ps), selections, moduleLabel) {}
 
-  private:
-    void setHltMask(EventForOutput const& e,
-                    Handle<TriggerResults> const& triggerResults,
-                    std::vector<unsigned char>& hltbits) const;
+      ~StreamerOutputModuleCommon();
+      static void fillDescription(ParameterSetDescription& desc);
 
-    StreamSerializer serializer_;
+      std::unique_ptr<InitMsgBuilder> serializeRegistry(std::string const& processName,
+                                                        std::string const& moduleLabel,
+                                                        ParameterSetID const& toplevel,
+                                                        SendJobHeader::ParameterSetMap const* psetMap);
 
-    int maxEventSize_;
-    bool useCompression_;
-    std::string compressionAlgoStr_;
-    int compressionLevel_;
+      std::unique_ptr<EventMsgBuilder> serializeEventMetaData(BranchIDLists const& branchLists,
+                                                              ThinnedAssociationsHelper const& helper);
 
-    StreamerCompressionAlgo compressionAlgo_;
+      std::unique_ptr<EventMsgBuilder> serializeEvent(EventForOutput const& e,
+                                                      Handle<TriggerResults> const& triggerResults,
+                                                      ParameterSetID const& selectorCfg);
 
-    // test luminosity sections
-    int lumiSectionInterval_;
-    double timeInSecSinceUTC;
+    protected:
+      void clearHeaderBuffer() { buffer_.clearHeaderBuffer(); }
 
-    unsigned int hltsize_;
-    char host_name_[255];
+    private:
+      SerializeDataBuffer buffer_;
+      StreamerOutputMsgBuilders builders_;
 
-    Strings hltTriggerSelections_;
-    uint32 outputModuleId_;
-
-  };  //end-of-class-def
-
+      uint32_t eventMetaDataChecksum_ = 0;
+    };  //end-of-class-def
+  }     // namespace streamer
 }  // namespace edm
 
 #endif

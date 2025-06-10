@@ -7,12 +7,15 @@ from L1Trigger.L1TNtuples.l1UpgradeTfMuonTree_cfi import *
 from L1Trigger.L1TNtuples.l1UpgradeTfMuonShowerTree_cfi import *
 from L1Trigger.L1TNtuples.l1UpgradeTree_cfi import *
 from L1Trigger.L1TNtuples.l1uGTTree_cfi import *
+from L1Trigger.L1TNtuples.l1uGTTestcrateTree_cfi import *
 from L1Trigger.L1TNtuples.l1HOTree_cfi import *
 
 # we don't have omtfDigis yet, use unpacked input payloads of GMT
 l1UpgradeTfMuonTree.omtfMuonToken = cms.untracked.InputTag("gmtStage2Digis","OMTF")
 # we don't have emtfDigis yet, use unpacked input payloads of GMT
 l1UpgradeTfMuonTree.emtfMuonToken = cms.untracked.InputTag("gmtStage2Digis","EMTF")
+# We have only output of the ZDC emulator available, no info from unpacker
+l1UpgradeTree.sumZDCToken = cms.untracked.InputTag("etSumZdcProducer")
 
 L1NtupleRAW = cms.Sequence(
   l1EventTree
@@ -22,6 +25,7 @@ L1NtupleRAW = cms.Sequence(
   +l1UpgradeTfMuonShowerTree
   +l1UpgradeTree
   +l1uGTTree
+  +l1uGTTestcrateTree
   +l1HOTree
 )
 

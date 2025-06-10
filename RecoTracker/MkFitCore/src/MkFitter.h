@@ -2,7 +2,7 @@
 #define RecoTracker_MkFitCore_src_MkFitter_h
 
 #include "MkBase.h"
-
+#include "RecoTracker/MkFitCore/interface/Track.h"
 #include "RecoTracker/MkFitCore/interface/HitStructures.h"
 
 namespace mkfit {
@@ -53,7 +53,7 @@ namespace mkfit {
                                  int end);
 
     void inputTracksForFit(const std::vector<Track>& tracks, int beg, int end);
-    void fitTracksWithInterSlurp(const std::vector<HitVec>& layersohits, int N_proc);
+    void fitTracksWithInterSlurp(const std::vector<HitVec>& layersohits, const PropagationFlags& pflags, int N_proc);
 
     void outputTracks(std::vector<Track>& tracks, int beg, int end, int iCP) const;
 
@@ -72,8 +72,8 @@ namespace mkfit {
   private:
     MPlexQF m_Chi2;
 
-    MPlexHS m_msErr[Config::nMaxTrkHits];
-    MPlexHV m_msPar[Config::nMaxTrkHits];
+    MPlexHS m_msErr[Config::nMaxTrkHits]{0.0f};
+    MPlexHV m_msPar[Config::nMaxTrkHits]{0.0f};
 
     MPlexQI m_Label;    //this is the seed index in global seed vector (for MC truth match)
     MPlexQI m_SeedIdx;  //this is the seed index in local thread (for bookkeeping at thread level)

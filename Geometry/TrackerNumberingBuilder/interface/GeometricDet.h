@@ -68,6 +68,7 @@ public:
     PixelPhase1Barrel = 101,
     PixelPhase1EndCap = 102,
     PixelPhase1Disk = 117,
+    ITPhase2Combined = 180,
     OTPhase2EndCap = 204,
     OTPhase2Barrel = 205,
     OTPhase2Layer = 208,
@@ -130,7 +131,6 @@ public:
 
   // SENSOR INFO
   // Only return meaningful results for pixels.
-  bool isBricked() const { return isBricked_; }
   double pixROCRows() const { return pixROCRows_; }
   double pixROCCols() const { return pixROCCols_; }
   double pixROCx() const { return pixROCx_; }
@@ -139,6 +139,8 @@ public:
   bool stereo() const { return stereo_; }
   bool isLowerSensor() const { return isLowerSensor_; }
   bool isUpperSensor() const { return isUpperSensor_; }
+  bool isFirstSensor() const { return isFirstSensor_; }
+  bool isSecondSensor() const { return isSecondSensor_; }
   double siliconAPVNum() const { return siliconAPVNum_; }
 
   // DETECTOR DESCRIPTION ORIGIN INFO
@@ -166,6 +168,9 @@ public:
   // CUSTOM DESTRUCTOR
   ~GeometricDet();
 
+  // Utility function
+  static std::string printNavType(int const* n, size_t sz);
+
 private:
   std::vector<double> computeLegacyShapeParameters(const cms::DDSolidShape& mySolidShape,
                                                    const dd4hep::Solid& mySolid) const;
@@ -186,7 +191,6 @@ private:
 
   double radLength_ = 0.;
   double xi_ = 0.;
-  bool isBricked_ = false;
   double pixROCRows_ = 0.;
   double pixROCCols_ = 0.;
   double pixROCx_ = 0.;
@@ -194,12 +198,21 @@ private:
   bool stereo_ = false;
   bool isLowerSensor_ = false;
   bool isUpperSensor_ = false;
+  bool isFirstSensor_ = false;
+  bool isSecondSensor_ = false;
   double siliconAPVNum_ = 0.;
 
   bool isFromDD4hep_ = false;
 
   ConstGeometricDetContainer container_;
 };
+
+namespace geometric_det_ns {
+  inline std::ostream& operator<<(std::ostream& os, const GeometricDet::NavRange& n) {
+    os << GeometricDet::printNavType(n.first, n.second);
+    return os;
+  }
+}  // namespace geometric_det_ns
 
 #undef PoolAlloc
 #endif

@@ -22,7 +22,6 @@ namespace btagbtvdeep {
     float btagPf_trackSip3dSig;
     float btagPf_trackSip2dVal;
     float btagPf_trackSip2dSig;
-
     float btagPf_trackJetDistVal;
 
     float drsubjet1;
@@ -37,6 +36,24 @@ namespace btagbtvdeep {
     float quality;
 
     float drminsv;
+    float distminsv;
+
+    float charge;
+    float btagPf_trackDecayLen;
+    float HadFrac;
+    float CaloFrac;
+    float pdgID;
+    float lostInnerHits;
+    float numberOfPixelHits;
+    float numberOfStripHits;
+
+    float pt;
+    float px;
+    float py;
+    float pz;
+    float eta;
+    float phi;
+    float e;
   };
 
 }  // namespace btagbtvdeep

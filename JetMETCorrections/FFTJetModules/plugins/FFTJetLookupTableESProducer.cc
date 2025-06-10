@@ -57,7 +57,7 @@ static void buildLookupTables(const FFTJetCorrectorParameters& tablePars,
                               const bool verbose,
                               FFTJetLookupTableSequence* ptr) {
   // Load the archive stored in the FFTJetCorrectorParameters object
-  CPP11_auto_ptr<gs::StringArchive> ar;
+  std::unique_ptr<gs::StringArchive> ar;
   {
     std::istringstream is(tablePars.str());
     if (isArchiveCompressed)
@@ -82,7 +82,7 @@ static void buildLookupTables(const FFTJetCorrectorParameters& tablePars,
     for (unsigned long item = 0; item < nItems; ++item) {
       const unsigned long long id = ref.id(item);
       if (loadedSet.insert(id).second) {
-        CPP11_auto_ptr<npstat::StorableMultivariateFunctor> p(ref.get(item));
+        std::unique_ptr<npstat::StorableMultivariateFunctor> p(ref.get(item));
         StorableFunctorPtr fptr(p.release());
         std::shared_ptr<const gs::CatalogEntry> e = ar->catalogEntry(id);
         insertLUTItem(*ptr, fptr, e->name(), e->category());
@@ -117,6 +117,8 @@ private:
 
   using HostType = edm::ESProductHost<FFTJetLookupTableSequence, ParentRecord>;
   edm::ReusableObjectHolder<HostType> holder_;
+
+  edm::ESGetToken<FFTJetCorrectorParameters, ParentRecord> token_;
 };
 
 //
@@ -129,7 +131,8 @@ FFTJetLookupTableESProducer<CT>::FFTJetLookupTableESProducer(const edm::Paramete
       verbose(psIn.getUntrackedParameter<bool>("verbose")) {
   // The following line is needed to tell the framework what
   // data is being produced
-  setWhatProduced(this);
+  auto cc = setWhatProduced(this);
+  token_ = cc.consumes();
 }
 
 // ------------ method called to produce the data  ------------
@@ -138,8 +141,7 @@ typename FFTJetLookupTableESProducer<CT>::ReturnType FFTJetLookupTableESProducer
   auto host = holder_.makeOrGet([]() { return new HostType; });
 
   host->template ifRecordChanges<ParentRecord>(iRecord, [this, product = host.get()](auto const& rec) {
-    edm::ESTransientHandle<FFTJetCorrectorParameters> parHandle;
-    rec.get(parHandle);
+    edm::ESTransientHandle<FFTJetCorrectorParameters> parHandle = rec.getTransientHandle(token_);
     buildLookupTables(*parHandle, tables, isArchiveCompressed, verbose, product);
   });
 

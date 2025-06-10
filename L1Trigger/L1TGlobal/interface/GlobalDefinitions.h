@@ -26,7 +26,7 @@
 
 namespace l1t {
   /// board types in GT
-  enum L1GtBoardType { MP7, BoardNull };
+  enum L1GtBoardType { MP7, BoardNull, L1GtBoardTypeInvalid = -1 };
 
   struct L1GtBoardTypeStringToEnum {
     const char* label;
@@ -44,7 +44,7 @@ namespace l1t {
   /// Type2cor : two particles, different type, with spatial correlations among them
   /// Type3s : three particles, same type
   /// Type4s : four particles, same type
-  /// TypeETM, TypeETT, TypeHTT, TypeHTM  : ETM, ETT, HTT, HTM
+  /// TypeETM, TypeETT, TypeHTT, TypeHTM, TypeETMHF, TypeHTMHF: ETM, ETT, HTT, HTM, ETMHF, HTMHF
   /// TypeExternal: external conditions (logical result only; definition in L1 GT external systems)
   enum GtConditionType {
     TypeNull,
@@ -59,6 +59,7 @@ namespace l1t {
     TypeHTT,
     TypeHTM,
     TypeETMHF,
+    TypeHTMHF,
     TypeTowerCount,
     TypeMinBiasHFP0,
     TypeMinBiasHFM0,
@@ -78,7 +79,12 @@ namespace l1t {
     TypeAsymEt,
     TypeAsymHt,
     TypeAsymEtHF,
-    TypeAsymHtHF
+    TypeAsymHtHF,
+    TypeZDCP,
+    TypeZDCM,
+    TypeAXOL1TL,
+    TypeCICADA,
+    GtConditionTypeInvalid = -1
   };
 
   struct GtConditionTypeStringToEnum {
@@ -100,6 +106,10 @@ namespace l1t {
     CondCorrelationWithOverlapRemoval,
     CondCorrelationThreeBody,
     CondMuonShower,
+    CondEnergySumZdc,
+    CondAXOL1TL,
+    CondCICADA,
+    GtConditionCategoryInvalid = -1
   };
 
   struct GtConditionCategoryStringToEnum {

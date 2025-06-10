@@ -5,6 +5,7 @@ PAYLOAD_2XML_MODULE(pluginUtilities_payload2xml) {
   m.def("boost_version_label", &cond::boost_version_label, "Get boost version for this release");
   PAYLOAD_2XML_CLASS(AlCaRecoTriggerBits);
   PAYLOAD_2XML_CLASS(AlignPCLThresholds);
+  PAYLOAD_2XML_CLASS(AlignPCLThresholdsHG);
   PAYLOAD_2XML_CLASS(AlignmentErrors);
   PAYLOAD_2XML_CLASS(AlignmentErrorsExtended);
   PAYLOAD_2XML_CLASS(AlignmentSurfaceDeformations);
@@ -95,6 +96,7 @@ PAYLOAD_2XML_MODULE(pluginUtilities_payload2xml) {
   PAYLOAD_2XML_CLASS(EcalSRSettings);
   PAYLOAD_2XML_CLASS(EcalSampleMask);
   PAYLOAD_2XML_CLASS(EcalSamplesCorrelation);
+  PAYLOAD_2XML_CLASS(EcalSimComponentShape);
   PAYLOAD_2XML_CLASS(EcalSimPulseShape);
   PAYLOAD_2XML_CLASS(EcalTBWeights);
   PAYLOAD_2XML_CLASS(EcalTPGFineGrainEBGroup);
@@ -113,6 +115,12 @@ PAYLOAD_2XML_MODULE(pluginUtilities_payload2xml) {
   PAYLOAD_2XML_CLASS(EcalTPGOddWeightGroup);
   PAYLOAD_2XML_CLASS(EcalTPGOddWeightIdMap);
   PAYLOAD_2XML_CLASS(EcalTPGTPMode);
+  PAYLOAD_2XML_CLASS(EcalEBPhase2TPGAmplWeightIdMap);
+  PAYLOAD_2XML_CLASS(EcalEBPhase2TPGAmplWeights);
+  PAYLOAD_2XML_CLASS(EcalEBPhase2TPGLinearizationConstant);
+  PAYLOAD_2XML_CLASS(EcalEBPhase2TPGPedestal);
+  PAYLOAD_2XML_CLASS(EcalEBPhase2TPGTimeWeightIdMap);
+  PAYLOAD_2XML_CLASS(EcalEBPhase2TPGTimeWeights);
   PAYLOAD_2XML_CLASS(EcalTimeBiasCorrections);
   PAYLOAD_2XML_CLASS(EcalTimeDependentCorrections);
   PAYLOAD_2XML_CLASS(EcalTimeOffsetConstant);
@@ -210,6 +218,8 @@ PAYLOAD_2XML_MODULE(pluginUtilities_payload2xml) {
   PAYLOAD_2XML_CLASS(L1TriggerKeyExt);
   PAYLOAD_2XML_CLASS(L1TriggerKeyListExt);
   PAYLOAD_2XML_CLASS(LHCInfo);
+  PAYLOAD_2XML_CLASS(LHCInfoPerFill);
+  PAYLOAD_2XML_CLASS(LHCInfoPerLS);
   PAYLOAD_2XML_CLASS(METCorrectorParametersCollection);
   PAYLOAD_2XML_CLASS(MEtXYcorrectParametersCollection);
   PAYLOAD_2XML_CLASS(MagFieldConfig);
@@ -251,6 +261,7 @@ PAYLOAD_2XML_MODULE(pluginUtilities_payload2xml) {
   PAYLOAD_2XML_CLASS(RPFlatParams);
   PAYLOAD_2XML_CLASS(RecoIdealGeometry);
   PAYLOAD_2XML_CLASS(RunInfo);
+  PAYLOAD_2XML_CLASS(SimBeamSpotObjects);
   PAYLOAD_2XML_CLASS(SiPhase2OuterTrackerLorentzAngle);
   PAYLOAD_2XML_CLASS(SiPixel2DTemplateDBObject);
   PAYLOAD_2XML_CLASS(SiPixelCPEGenericErrorParm);
@@ -279,6 +290,8 @@ PAYLOAD_2XML_MODULE(pluginUtilities_payload2xml) {
   PAYLOAD_2XML_CLASS(SiStripPedestals);
   PAYLOAD_2XML_CLASS(SiStripThreshold);
   PAYLOAD_2XML_CLASS(DTCELinkId);
+  PAYLOAD_2XML_CLASS(TotemAnalysisMask);
+  PAYLOAD_2XML_CLASS(TotemDAQMapping);
   PAYLOAD_2XML_CLASS(TrackerDetToDTCELinkCablingMap);
   //PAYLOAD_2XML_CLASS( StorableDoubleMap<AbsOOTPileupCorrection> );
   PAYLOAD_2XML_CLASS(TrackProbabilityCalibration);

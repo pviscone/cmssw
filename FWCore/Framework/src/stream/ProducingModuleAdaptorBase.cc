@@ -11,6 +11,7 @@
 //
 
 // system include files
+#include <array>
 #include <cassert>
 
 // user include files
@@ -22,6 +23,7 @@
 #include "FWCore/Framework/interface/RunPrincipal.h"
 #include "FWCore/Framework/interface/PreallocationConfiguration.h"
 #include "FWCore/Framework/interface/TransitionInfoTypes.h"
+#include "FWCore/Framework/interface/EventForTransformer.h"
 #include "FWCore/ServiceRegistry/interface/ESParentContext.h"
 
 //
@@ -63,6 +65,7 @@ namespace edm {
     void ProducingModuleAdaptorBase<T>::doPreallocate(PreallocationConfiguration const& iPrealloc) {
       m_streamModules.resize(iPrealloc.numberOfStreams(), static_cast<T*>(nullptr));
       setupStreamModules();
+      preallocRuns(iPrealloc.numberOfRuns());
       preallocLumis(iPrealloc.numberOfLuminosityBlocks());
     }
 
@@ -112,7 +115,7 @@ namespace edm {
     }
 
     template <typename T>
-    std::vector<ESProxyIndex> const& ProducingModuleAdaptorBase<T>::esGetTokenIndicesVector(
+    std::vector<ESResolverIndex> const& ProducingModuleAdaptorBase<T>::esGetTokenIndicesVector(
         edm::Transition iTrans) const {
       assert(not m_streamModules.empty());
       return m_streamModules[0]->esGetTokenIndicesVector(iTrans);
@@ -159,7 +162,7 @@ namespace edm {
       }
     }
     template <typename T>
-    void ProducingModuleAdaptorBase<T>::updateLookup(eventsetup::ESRecordsToProxyIndices const& iPI) {
+    void ProducingModuleAdaptorBase<T>::updateLookup(eventsetup::ESRecordsToProductResolverIndices const& iPI) {
       for (auto mod : m_streamModules) {
         mod->updateLookup(iPI);
       }
@@ -179,6 +182,22 @@ namespace edm {
         BranchType iBranchType) const {
       return m_streamModules[0]->indiciesForPutProducts(iBranchType);
     }
+
+    template <typename T>
+    ProductResolverIndex ProducingModuleAdaptorBase<T>::transformPrefetch_(size_t iTransformIndex) const {
+      return 0;
+    }
+    template <typename T>
+    size_t ProducingModuleAdaptorBase<T>::transformIndex_(edm::BranchDescription const& iBranch) const {
+      return 0;
+    }
+    template <typename T>
+    void ProducingModuleAdaptorBase<T>::doTransformAsync(WaitingTaskHolder iTask,
+                                                         size_t iTransformIndex,
+                                                         EventPrincipal const& iEvent,
+                                                         ActivityRegistry*,
+                                                         ModuleCallingContext iMCC,
+                                                         ServiceWeakToken const&) {}
 
     template <typename T>
     void ProducingModuleAdaptorBase<T>::doBeginStream(StreamID id) {

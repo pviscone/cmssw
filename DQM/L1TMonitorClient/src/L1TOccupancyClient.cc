@@ -248,14 +248,6 @@ void L1TOccupancyClient::dqmEndJob(DQMStore::IBooker& ibooker, DQMStore::IGetter
 }
 
 //____________________________________________________________________________
-// Function: beginLuminosityBlock
-// Description: This is will be run at the begining of each luminosity block
-// Inputs:
-// * const LuminosityBlock& lumiSeg = Luminosity Block information
-// * const EventSetup&      context = Event Setup information
-//____________________________________________________________________________
-
-//____________________________________________________________________________
 // Function: endLuminosityBlock
 // Description: This is will be run at the end of each luminosity block
 // Inputs:
@@ -680,7 +672,6 @@ void L1TOccupancyClient::printDeadChannels(const vector<pair<int, double> >& iDe
   }
 
   int x, y, z;
-  float chi2 = 0.0;
 
   // put all bad (value=1) and masked (value=-1) cells in histo
   for (std::vector<pair<int, double> >::const_iterator it = iDeadChannels.begin(); it != iDeadChannels.end(); it++) {
@@ -699,13 +690,6 @@ void L1TOccupancyClient::printDeadChannels(const vector<pair<int, double> >& iDe
       }
     }
   }
-
-  // FIXME: Is this needed?
-  for (std::vector<pair<int, double> >::const_iterator it = statDev.begin(); it != statDev.end(); it++) {
-    double dev = (*it).second;
-    chi2 += dev;
-  }
-  //put total chi2 in float
 
   if (verbose_) {
     cout << "total number of suspect channels: " << (iDeadChannels.size() - (hservice_->getNBinsMasked(iTestName)))

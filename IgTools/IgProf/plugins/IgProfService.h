@@ -10,6 +10,7 @@
 
 #include "DataFormats/Provenance/interface/RunLumiEventNumber.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
+#include "FWCore/ParameterSet/interface/ConfigurationDescriptions.h"
 #include "FWCore/ServiceRegistry/interface/ActivityRegistry.h"
 
 namespace edm {
@@ -35,15 +36,20 @@ namespace edm {
 
       void postEndLumi(GlobalContext const &gc);
 
+      void preEndRun(GlobalContext const &gc);
       void postEndRun(GlobalContext const &gc);
 
+      void preEndProcessBlock(GlobalContext const &gc);
+      void postEndProcessBlock(GlobalContext const &gc);
+
+      void preEndJob();
       void postEndJob();
 
       void postOpenFile(std::string const &);
 
       void postCloseFile(std::string const &);
 
-      inline bool isProcessWideService(IgProfService const *) { return true; }
+      static void fillDescriptions(edm::ConfigurationDescriptions &descriptions);
 
     private:
       void makeDump(const std::string &format, std::string_view moduleLabel = "");
@@ -66,7 +72,11 @@ namespace edm {
       std::string atPostModuleEvent_;
 
       std::string atPostEndLumi_;
+      std::string atPreEndRun_;
       std::string atPostEndRun_;
+      std::string atPreEndProcessBlock_;
+      std::string atPostEndProcessBlock_;
+      std::string atPreEndJob_;
       std::string atPostEndJob_;
 
       std::string atPostOpenFile_;
@@ -81,6 +91,7 @@ namespace edm {
       int nfileopened_;  // counter of files opened thus far
       int nfileclosed_;  // counter of files closed thus far
     };
+    inline bool isProcessWideService(IgProfService const *) { return true; }
   }  // namespace service
 }  // namespace edm
 

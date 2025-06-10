@@ -27,6 +27,13 @@ from RecoEgamma.ElectronIdentification.Identification.mvaElectronID_Fall17_iso_V
     import mvaEleID_Fall17_iso_V2_producer_config
 mvaConfigsForEleProducer.append( mvaEleID_Fall17_iso_V2_producer_config )
 
+from RecoEgamma.ElectronIdentification.Identification.mvaElectronID_RunIIIWinter22_noIso_V1_cff \
+    import mvaEleID_RunIIIWinter22_noIso_V1_producer_config
+mvaConfigsForEleProducer.append( mvaEleID_RunIIIWinter22_noIso_V1_producer_config )
+
+from RecoEgamma.ElectronIdentification.Identification.mvaElectronID_RunIIIWinter22_iso_V1_cff \
+    import mvaEleID_RunIIIWinter22_iso_V1_producer_config
+mvaConfigsForEleProducer.append( mvaEleID_RunIIIWinter22_iso_V1_producer_config )
 
 # HZZ4l Run2 (Ultra)Legacy 
 from RecoEgamma.ElectronIdentification.Identification.mvaElectronID_Summer16UL_ID_ISO_cff \
@@ -40,6 +47,10 @@ mvaConfigsForEleProducer.append(mvaEleID_Summer17UL_ID_ISO_producer_config)
 from RecoEgamma.ElectronIdentification.Identification.mvaElectronID_Summer18UL_ID_ISO_cff \
     import mvaEleID_Summer18UL_ID_ISO_producer_config
 mvaConfigsForEleProducer.append( mvaEleID_Summer18UL_ID_ISO_producer_config )
+
+from RecoEgamma.ElectronIdentification.Identification.mvaElectronID_Winter22_HZZ_V1_cff \
+    import mvaEleID_Winter22_HZZ_V1_producer_config
+mvaConfigsForEleProducer.append( mvaEleID_Winter22_HZZ_V1_producer_config )
 
 electronMVAValueMapProducer = cms.EDProducer('ElectronMVAValueMapProducer',
                                              src = cms.InputTag('slimmedElectrons'),

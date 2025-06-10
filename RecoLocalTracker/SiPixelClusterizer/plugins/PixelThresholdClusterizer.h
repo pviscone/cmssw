@@ -77,6 +77,8 @@ public:
 
   static void fillPSetDescription(edm::ParameterSetDescription& desc);
 
+  inline bool isCalibrated() { return doMissCalibrate; }
+
 protected:
   template <typename T>
   void clusterizeDetUnitT(const T& input,
@@ -91,6 +93,8 @@ protected:
   std::vector<SiPixelCluster> theClusters;         // resulting clusters
 
   std::vector<bool> theFakePixels;  // fake pixels introduced to guide clustering
+
+  std::vector<uint8_t> thePixelOccurrence;  // the number of times each pixel occurs (for tracking duplicate pixels)
 
   //! Clustering-related quantities:
   float thePixelThresholdInNoiseUnits;    // Pixel threshold in units of noise
@@ -108,7 +112,10 @@ protected:
 
   const double theElectronPerADCGain;  //  ADC to electrons conversion
 
-  const bool doPhase2Calibration;      // The ADC --> electrons calibration is for phase-2 tracker
+  const bool doPhase2Calibration;  // The ADC --> electrons calibration is for phase-2 tracker
+
+  const bool dropDuplicates;  // Enabling dropping duplicate pixels
+
   const int thePhase2ReadoutMode;      // Readout mode of the phase-2 IT digitizer
   const double thePhase2DigiBaseline;  // Threshold above which digis are measured in the phase-2 IT
   const int thePhase2KinkADC;          // ADC count at which the kink in the dual slop kicks in

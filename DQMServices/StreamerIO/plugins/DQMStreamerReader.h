@@ -1,35 +1,27 @@
 #ifndef DQMServices_StreamerIO_DQMStreamerReader_h
 #define DQMServices_StreamerIO_DQMStreamerReader_h
 
-#include "FWCore/ServiceRegistry/interface/Service.h"
 #include "IOPool/Streamer/interface/StreamerInputSource.h"
 #include "IOPool/Streamer/interface/StreamerInputFile.h"
 #include "IOPool/Streamer/interface/MsgTools.h"
 
 #include "DQMFileIterator.h"
-#include "DQMMonitoringService.h"
 #include "TriggerSelector.h"
-
-#include <filesystem>
 
 #include <memory>
 #include <string>
 #include <vector>
-#include <iterator>
-#include <boost/property_tree/json_parser.hpp>
-#include <boost/property_tree/ptree.hpp>
 
 namespace dqmservices {
 
-  class DQMStreamerReader : public edm::StreamerInputSource {
+  class DQMStreamerReader : public edm::streamer::StreamerInputSource {
   public:
     DQMStreamerReader(edm::ParameterSet const& pset, edm::InputSourceDescription const& desc);
     ~DQMStreamerReader() override;
 
-    bool newHeader();
     static void fillDescriptions(edm::ConfigurationDescriptions& descriptions);
 
-    typedef std::vector<std::string> Strings;
+    bool newHeader();
 
   protected:
     Next checkNext() override;      /* from raw input source */
@@ -47,35 +39,37 @@ namespace dqmservices {
 
     bool openNextFileImp_();
 
-    InitMsgView const* getHeaderMsg();
-    EventMsgView const* getEventMsg();
+    edm::streamer::InitMsgView const* getHeaderMsg();
+    edm::streamer::EventMsgView const* getEventMsg();
 
-    EventMsgView const* prepareNextEvent();
-    bool prepareNextFile();
-    bool acceptEvent(const EventMsgView*);
+    void setupMetaData(edm::streamer::InitMsgView const& msg, bool subsequent);
+    edm::streamer::EventMsgView const* prepareNextEvent();
 
-    bool triggerSel();
-    bool matchTriggerSel(Strings const& tnames);
-    bool acceptAllEvt_;
-    bool matchTriggerSel_;
     bool isFirstFile_ = true;
-
-    unsigned int runNumber_;
-    std::string runInputDir_;
-    std::string streamLabel_;
-    Strings hltSel_;
-
-    unsigned int processedEventPerLs_;
-    unsigned int minEventsPerLs_;
-
-    bool flagSkipFirstLumis_;
-    bool flagEndOfRunKills_;
-    bool flagDeleteDatFiles_;
+    bool prepareNextFile();
+    bool acceptEvent(const edm::streamer::EventMsgView*);
 
     DQMFileIterator fiterator_;
+    unsigned int processedEventPerLs_ = 0;
 
+    unsigned int const minEventsPerLs_;
+    bool const flagSkipFirstLumis_;
+    bool const flagEndOfRunKills_;
+    bool const flagDeleteDatFiles_;
+    std::vector<std::string> const hltSel_;
+    bool const unitTest_;
+
+    bool acceptAllEvt_ = false;
+    bool setAcceptAllEvt();
+
+    bool matchTriggerSel_ = false;
+    bool setMatchTriggerSel(std::vector<std::string> const& tnames);
+
+    //If the event meta data changes while reading a file, we need to
+    // cause a file transition to happen to allow synchronous update
+    bool artificialFileBoundary_ = false;
     struct OpenFile {
-      std::unique_ptr<edm::StreamerInputFile> streamFile_;
+      std::unique_ptr<edm::streamer::StreamerInputFile> streamFile_;
       DQMFileIterator::LumiEntry lumi_;
 
       bool open() { return (streamFile_.get() != nullptr); }
@@ -83,12 +77,9 @@ namespace dqmservices {
     } file_;
 
     std::shared_ptr<edm::EventSkipperByID> eventSkipperByID_;
-    std::shared_ptr<TriggerSelector> eventSelector_;
-
-    /* this is for monitoring */
-    edm::Service<DQMMonitoringService> mon_;
+    std::shared_ptr<TriggerSelector> triggerSelector_;
   };
 
 }  // namespace dqmservices
 
-#endif
+#endif  // DQMServices_StreamerIO_DQMStreamerReader_h

@@ -1,14 +1,16 @@
 import FWCore.ParameterSet.Config as cms
+from ..psets.hgcal_reco_constants_cfi import HGCAL_reco_constants as HGCAL_reco_constants
 
 HGCalUncalibRecHitL1Seeded = cms.EDProducer("HGCalUncalibRecHitProducer",
     HGCEEConfig = cms.PSet(
         adcNbits = cms.uint32(10),
         adcSaturation = cms.double(100),
-        fCPerMIP = cms.vdouble(2.06, 3.43, 5.15),
+        fCPerMIP = cms.vdouble(HGCAL_reco_constants.fcPerMip[0:3]),
         isSiFE = cms.bool(True),
         tdcNbits = cms.uint32(12),
         tdcOnset = cms.double(60),
         tdcSaturation = cms.double(10000),
+        tofDelay = cms.double(-9),
         toaLSB_ns = cms.double(0.0244)
     ),
     HGCEEdigiCollection = cms.InputTag("hgcalDigisL1Seeded","EE"),
@@ -21,6 +23,7 @@ HGCalUncalibRecHitL1Seeded = cms.EDProducer("HGCalUncalibRecHitProducer",
         tdcNbits = cms.uint32(12),
         tdcOnset = cms.double(55),
         tdcSaturation = cms.double(1000),
+        tofDelay = cms.double(-14),
         toaLSB_ns = cms.double(0.0244)
     ),
     HGCHEBdigiCollection = cms.InputTag("hgcalDigisL1Seeded","HEback"),
@@ -28,11 +31,12 @@ HGCalUncalibRecHitL1Seeded = cms.EDProducer("HGCalUncalibRecHitProducer",
     HGCHEFConfig = cms.PSet(
         adcNbits = cms.uint32(10),
         adcSaturation = cms.double(100),
-        fCPerMIP = cms.vdouble(2.06, 3.43, 5.15),
+        fCPerMIP = cms.vdouble(HGCAL_reco_constants.fcPerMip[3:6]),
         isSiFE = cms.bool(True),
         tdcNbits = cms.uint32(12),
         tdcOnset = cms.double(60),
         tdcSaturation = cms.double(10000),
+        tofDelay = cms.double(-11),
         toaLSB_ns = cms.double(0.0244)
     ),
     HGCHEFdigiCollection = cms.InputTag("hgcalDigisL1Seeded","HEfront"),
@@ -45,6 +49,7 @@ HGCalUncalibRecHitL1Seeded = cms.EDProducer("HGCalUncalibRecHitProducer",
         tdcNbits = cms.uint32(12),
         tdcOnset = cms.double(60),
         tdcSaturation = cms.double(10000),
+        tofDelay = cms.double(-33),
         toaLSB_ns = cms.double(0.0244)
     ),
     HGCHFNosedigiCollection = cms.InputTag("hfnoseDigis","HFNose"),

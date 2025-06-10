@@ -30,8 +30,8 @@ TrackMon_ckf.FolderName                            = 'Tracking/TrackParameters/T
 #TrackEffMon_bhmuon.FolderName                      = 'Tracking/TrackParameters/TrackEfficiency'
 
 # Split Tracking
-from  DQM.TrackingMonitor.TrackSplittingMonitor_cfi import *
-TrackSplitMonitor.FolderName = 'Tracking/TrackParameters/SplitTracks'
+# from  DQM.TrackingMonitor.TrackSplittingMonitor_cfi import *
+# TrackSplitMonitor.FolderName = 'Tracking/TrackParameters/SplitTracks'
 
 
 # DQM Services
@@ -57,6 +57,8 @@ for tracks in selectedTracks :
     locals()[label].TrackPBin        = trackPtN[tracks]
     locals()[label].TrackPMin        = trackPtMin[tracks]
     locals()[label].TrackPMax        = trackPtMax[tracks]
+    locals()[label].VZ_PVMax         = pcaZtoPVMax[tracks]
+    locals()[label].VZ_PVMin         = pcaZtoPVMin[tracks]
     locals()[label].doDCAPlots       = doPlotsPCA[tracks]
     locals()[label].doDCAwrtPVPlots  = doPlotsPCA[tracks]
     locals()[label].doDCAwrt000Plots = doPlotsPCA[tracks]
@@ -98,6 +100,8 @@ for tracks in selectedTracks :
     locals()[label].TrackPBin        = trackPtN[tracks]
     locals()[label].TrackPMin        = trackPtMin[tracks]
     locals()[label].TrackPMax        = trackPtMax[tracks]
+    locals()[label].VZ_PVMax         = pcaZtoPVMax[tracks]
+    locals()[label].VZ_PVMin         = pcaZtoPVMin[tracks]
     locals()[label].doDCAPlots       = doPlotsPCA[tracks]
     locals()[label].doDCAwrtPVPlots  = doPlotsPCA[tracks]
     locals()[label].doDCAwrt000Plots = doPlotsPCA[tracks]
@@ -138,6 +142,8 @@ for tracks in selectedTracks :
     locals()[label].TrackPBin        = trackPtN[tracks]
     locals()[label].TrackPMin        = trackPtMin[tracks]
     locals()[label].TrackPMax        = trackPtMax[tracks]
+    locals()[label].VZ_PVMax         = pcaZtoPVMax[tracks]
+    locals()[label].VZ_PVMin         = pcaZtoPVMin[tracks]
     locals()[label].doDCAPlots       = doPlotsPCA[tracks]
     locals()[label].doDCAwrtPVPlots  = doPlotsPCA[tracks]
     locals()[label].doDCAwrt000Plots = doPlotsPCA[tracks]
@@ -178,6 +184,8 @@ for tracks in selectedTracks :
     locals()[label].TrackPBin        = trackPtN[tracks]
     locals()[label].TrackPMin        = trackPtMin[tracks]
     locals()[label].TrackPMax        = trackPtMax[tracks]
+    locals()[label].VZ_PVMax         = pcaZtoPVMax[tracks]
+    locals()[label].VZ_PVMin         = pcaZtoPVMin[tracks]
     locals()[label].doDCAPlots       = doPlotsPCA[tracks]
     locals()[label].doDCAwrtPVPlots  = doPlotsPCA[tracks]
     locals()[label].doDCAwrt000Plots = doPlotsPCA[tracks]
@@ -219,6 +227,8 @@ for tracks in selectedTracks :
     locals()[label].TrackPBin        = trackPtN[tracks]
     locals()[label].TrackPMin        = trackPtMin[tracks]
     locals()[label].TrackPMax        = trackPtMax[tracks]
+    locals()[label].VZ_PVMax         = pcaZtoPVMax[tracks]
+    locals()[label].VZ_PVMin         = pcaZtoPVMin[tracks]
     locals()[label].doDCAPlots       = doPlotsPCA[tracks]
     locals()[label].doDCAwrtPVPlots  = doPlotsPCA[tracks]
     locals()[label].doDCAwrt000Plots = doPlotsPCA[tracks]
@@ -352,7 +362,7 @@ run3_common.toModify(primaryVertexResolution, forceSCAL = False)
 # Sequence
 TrackingDQMSourceTier0 = cms.Sequence(cms.ignore(trackingDQMgoodOfflinePrimaryVertices))
 # dEdx monitoring
-TrackingDQMSourceTier0 += dedxHarmonicSequence * dEdxMonCommon * dEdxHitMonCommon   * TrackMon_ckf * TrackSplitMonitor * dqmInfoTracking
+TrackingDQMSourceTier0 += dedxHarmonicSequence * dEdxMonCommon * dEdxHitMonCommon * TrackMon_ckf * dqmInfoTracking
 #TrackMon_cosmicTk*TrackMon_ckf*TrackEffMon_ckf*TrackSplitMonitor*dqmInfoTracking
 #    # temporary patch in order to have BXlumi
 #    * lumiProducer
@@ -387,6 +397,8 @@ seedingDeepCore.toReplaceWith(TrackSeedMonSequence,_seedingDeepCore_TrackSeedMon
 
 TrackingDQMSourceTier0 += TrackSeedMonSequence
 
+from DQM.TrackingMonitorSource.shortTrackResolution_cff import *
+
 # MessageLog
 for module in selectedModules :
     label = str(module)+'LogMessageMonCommon'
@@ -394,12 +406,13 @@ for module in selectedModules :
 TrackingDQMSourceTier0 += voMonitoringSequence
 TrackingDQMSourceTier0 += voWcutMonitoringSequence
 TrackingDQMSourceTier0 += primaryVertexResolution
+TrackingDQMSourceTier0 += shortTrackResolution3to8
 TrackingDQMSourceTier0 += dqmInfoTracking
 
 
 TrackingDQMSourceTier0Common = cms.Sequence(cms.ignore(trackingDQMgoodOfflinePrimaryVertices))
 # dEdx monitoring
-TrackingDQMSourceTier0Common += (dedxHarmonicSequence * dEdxMonCommon * dEdxHitMonCommon * TrackMon_ckf * TrackSplitMonitor * dqmInfoTracking)
+TrackingDQMSourceTier0Common += (dedxHarmonicSequence * dEdxMonCommon * dEdxHitMonCommon * TrackMon_ckf * dqmInfoTracking)
 #TrackEffMon_ckf*TrackSplitMonitor*dqmInfoTracking)    
 ## monitor track collections
 for tracks in selectedTracks :
@@ -416,11 +429,12 @@ for module in selectedModules :
 TrackingDQMSourceTier0Common += voMonitoringCommonSequence
 TrackingDQMSourceTier0Common += voWcutMonitoringCommonSequence
 TrackingDQMSourceTier0Common += primaryVertexResolution
+TrackingDQMSourceTier0Common += shortTrackResolution3to8
 TrackingDQMSourceTier0Common += dqmInfoTracking
 
 TrackingDQMSourceTier0MinBias = cms.Sequence(cms.ignore(trackingDQMgoodOfflinePrimaryVertices))
 # dEdx monitoring
-TrackingDQMSourceTier0MinBias += dedxHarmonicSequence * dEdxMonCommon * dEdxHitMonCommon * TrackMon_ckf * TrackSplitMonitor * dqmInfoTracking
+TrackingDQMSourceTier0MinBias += dedxHarmonicSequence * dEdxMonCommon * dEdxHitMonCommon * TrackMon_ckf * dqmInfoTracking
 #TrackMon_cosmicTk*TrackMon_ckf*TrackEffMon_ckf*TrackSplitMonitor*dqmInfoTracking#TrackMon_ckf*TrackEffMon_ckf 
 #    * lumiProducer
 # monitor track collections
@@ -450,4 +464,3 @@ TrackingDQMSourceTier0MinBias += voWcutMonitoringZBHIPOOTSequence
 TrackingDQMSourceTier0MinBias += primaryVertexResolution
 
 TrackingDQMSourceTier0MinBias += dqmInfoTracking
-

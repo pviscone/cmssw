@@ -37,8 +37,8 @@ hltMETmonitoring = metMonitoring.clone(
         andOrDcs      = False, 
         errorReplyDcs = True, 
         verbosityLevel = 1,
-        #hltPaths      = ["HLT_IsoMu27_v*"],
-        hltPaths      = [])
+        hltPaths      = ["HLT_IsoMu27_v*"])
+       # hltPaths      = [])
 )
 
 from Configuration.Eras.Modifier_stage2L1Trigger_cff import stage2L1Trigger
@@ -46,10 +46,10 @@ stage2L1Trigger.toModify(hltMETmonitoring,
                          numGenericTriggerEventPSet = dict(stage2 = cms.bool(True),
                                                            l1tAlgBlkInputTag = cms.InputTag("gtStage2Digis"),
                                                            l1tExtBlkInputTag = cms.InputTag("gtStage2Digis"),
-                                                           ReadPrescalesFromFile = cms.bool(True)),
+                                                           ReadPrescalesFromFile = cms.bool(False)),
                          denGenericTriggerEventPSet = dict(stage2 = cms.bool(True),
                                                            l1tAlgBlkInputTag = cms.InputTag("gtStage2Digis"),
                                                            l1tExtBlkInputTag = cms.InputTag("gtStage2Digis"),
-                                                           ReadPrescalesFromFile = cms.bool(True)))
+                                                           ReadPrescalesFromFile = cms.bool(False)))
 
 

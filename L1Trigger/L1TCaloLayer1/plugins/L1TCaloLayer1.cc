@@ -66,10 +66,6 @@ private:
 
   void beginRun(edm::Run const&, edm::EventSetup const&) override;
 
-  //virtual void endRun(edm::Run const&, edm::EventSetup const&) override;
-  //virtual void beginLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&) override;
-  //virtual void endLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&) override;
-
   // ----------member data ---------------------------
 
   edm::EDGetTokenT<EcalTrigPrimDigiCollection> ecalTPSource;
@@ -78,21 +74,23 @@ private:
   edm::EDPutTokenT<L1CaloRegionCollection> regionPutToken;
   const L1TCaloLayer1FetchLUTsTokens lutsTokens;
 
-  std::vector<std::array<std::array<std::array<uint32_t, nEtBins>, nCalSideBins>, nCalEtaBins> > ecalLUT;
-  std::vector<std::array<std::array<std::array<uint32_t, nEtBins>, nCalSideBins>, nCalEtaBins> > hcalLUT;
-  std::vector<std::array<std::array<uint32_t, nEtBins>, nHfEtaBins> > hfLUT;
+  std::vector<std::array<std::array<std::array<uint32_t, nEtBins>, nCalSideBins>, nCalEtaBins>> ecalLUT;
+  std::vector<std::array<std::array<std::array<uint32_t, nEtBins>, nCalSideBins>, nCalEtaBins>> hcalLUT;
+  std::vector<std::array<std::array<uint32_t, nEtBins>, nHfEtaBins>> hfLUT;
+  std::vector<unsigned long long int> hcalFBLUT;
 
   std::vector<unsigned int> ePhiMap;
   std::vector<unsigned int> hPhiMap;
   std::vector<unsigned int> hfPhiMap;
 
-  std::vector<UCTTower*> twrList;
+  std::vector<std::shared_ptr<UCTTower>> twrList;
 
   bool useLSB;
   bool useCalib;
   bool useECALLUT;
   bool useHCALLUT;
   bool useHFLUT;
+  bool useHCALFBLUT;
   bool verbose;
   bool unpackHcalMask;
   bool unpackEcalMask;
@@ -128,7 +126,8 @@ L1TCaloLayer1::L1TCaloLayer1(const edm::ParameterSet& iConfig)
       useECALLUT(iConfig.getParameter<bool>("useECALLUT")),
       useHCALLUT(iConfig.getParameter<bool>("useHCALLUT")),
       useHFLUT(iConfig.getParameter<bool>("useHFLUT")),
-      verbose(iConfig.getParameter<bool>("verbose")),
+      useHCALFBLUT(iConfig.getParameter<bool>("useHCALFBLUT")),
+      verbose(iConfig.getUntrackedParameter<bool>("verbose")),
       unpackHcalMask(iConfig.getParameter<bool>("unpackHcalMask")),
       unpackEcalMask(iConfig.getParameter<bool>("unpackEcalMask")),
       fwVersion(iConfig.getParameter<int>("firmwareVersion")) {
@@ -141,7 +140,7 @@ L1TCaloLayer1::L1TCaloLayer1(const edm::ParameterSet& iConfig)
     for (uint32_t crd = 0; crd < cards.size(); crd++) {
       vector<UCTRegion*> regions = cards[crd]->getRegions();
       for (uint32_t rgn = 0; rgn < regions.size(); rgn++) {
-        vector<UCTTower*> towers = regions[rgn]->getTowers();
+        vector<std::shared_ptr<UCTTower>> towers = regions[rgn]->getTowers();
         for (uint32_t twr = 0; twr < towers.size(); twr++) {
           twrList.push_back(towers[twr]);
         }
@@ -151,7 +150,7 @@ L1TCaloLayer1::L1TCaloLayer1(const edm::ParameterSet& iConfig)
 
   // This sort corresponds to the sort condition on
   // the output CaloTowerBxCollection
-  std::sort(twrList.begin(), twrList.end(), [](UCTTower* a, UCTTower* b) {
+  std::sort(twrList.begin(), twrList.end(), [](std::shared_ptr<UCTTower> a, std::shared_ptr<UCTTower> b) {
     return CaloTools::caloTowerHash(a->caloEta(), a->caloPhi()) < CaloTools::caloTowerHash(b->caloEta(), b->caloPhi());
   });
 }
@@ -172,7 +171,6 @@ void L1TCaloLayer1::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   CaloTowerBxCollection towersColl;
   L1CaloRegionCollection rgnCollection;
 
-  uint32_t expectedTotalET = 0;
   if (!layer1->clearEvent()) {
     LOG_ERROR << "UCT: Failed to clear event" << std::endl;
     return;
@@ -190,7 +188,6 @@ void L1TCaloLayer1::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
       LOG_ERROR << "UCT: Failed loading an ECAL tower" << std::endl;
       return;
     }
-    expectedTotalET += et;
   }
 
   if (hcalTPs.isValid()) {
@@ -223,14 +220,13 @@ void L1TCaloLayer1::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
             // fg2 should only be set for HF
             if (fg2)
               featureBits |= 0b10;
-          } else
+          } else if (absCaloEta < 16)
             featureBits |= (fg | ((!fg2) & (fg3 | fg4)));  // depth | (!prompt & (delay1 | delay2))
           if (!layer1->setHCALData(t, featureBits, et)) {
             LOG_ERROR << "caloEta = " << caloEta << "; caloPhi =" << caloPhi << std::endl;
             LOG_ERROR << "UCT: Failed loading an HCAL tower" << std::endl;
             return;
           }
-          expectedTotalET += et;
         } else {
           LOG_ERROR << "Illegal Tower: caloEta = " << caloEta << "; caloPhi =" << caloPhi << "; et = " << et
                     << std::endl;
@@ -297,6 +293,7 @@ void L1TCaloLayer1::beginRun(const edm::Run& iRun, const edm::EventSetup& iSetup
                               ecalLUT,
                               hcalLUT,
                               hfLUT,
+                              hcalFBLUT,
                               ePhiMap,
                               hPhiMap,
                               hfPhiMap,
@@ -305,11 +302,29 @@ void L1TCaloLayer1::beginRun(const edm::Run& iRun, const edm::EventSetup& iSetup
                               useECALLUT,
                               useHCALLUT,
                               useHFLUT,
+                              useHCALFBLUT,
                               fwVersion)) {
     LOG_ERROR << "L1TCaloLayer1::beginRun: failed to fetch LUTS - using unity" << std::endl;
-    std::array<std::array<std::array<uint32_t, nEtBins>, nCalSideBins>, nCalEtaBins> eCalLayer1EtaSideEtArray;
-    std::array<std::array<std::array<uint32_t, nEtBins>, nCalSideBins>, nCalEtaBins> hCalLayer1EtaSideEtArray;
-    std::array<std::array<uint32_t, nEtBins>, nHfEtaBins> hfLayer1EtaEtArray;
+    // Andrew's note: Sets these to empty arrays initially, then fills all elements with 32 bits of 1's
+    // to represent a bit-wise unity, and get around initialization complaints on the (now) created null array.
+    // I'm not crazy about how this is structured, but c++ appears to not offer a lot of utilities
+    // for filling std::array's (especially nested ones) without listing out every value by hand, or creating them nulled.
+    std::array<std::array<std::array<uint32_t, nEtBins>, nCalSideBins>, nCalEtaBins> eCalLayer1EtaSideEtArray = {};
+    std::array<std::array<std::array<uint32_t, nEtBins>, nCalSideBins>, nCalEtaBins> hCalLayer1EtaSideEtArray = {};
+    std::array<std::array<uint32_t, nEtBins>, nHfEtaBins> hfLayer1EtaEtArray = {};
+    for (uint32_t i = 0; i < nCalEtaBins; i++) {
+      for (uint32_t j = 0; j < nCalSideBins; j++) {
+        for (uint32_t k = 0; k < nEtBins; k++) {
+          eCalLayer1EtaSideEtArray[i][j][k] = 0xFFFFFFFF;
+          hCalLayer1EtaSideEtArray[i][j][k] = 0xFFFFFFFF;
+        }
+      }
+    }
+    for (uint32_t i = 0; i < nHfEtaBins; i++) {
+      for (uint32_t j = 0; j < nEtBins; j++) {
+        hfLayer1EtaEtArray[i][j] = 0xFFFFFFFF;
+      }
+    }
     ecalLUT.push_back(eCalLayer1EtaSideEtArray);
     hcalLUT.push_back(hCalLayer1EtaSideEtArray);
     hfLUT.push_back(hfLayer1EtaEtArray);
@@ -329,36 +344,24 @@ void L1TCaloLayer1::beginRun(const edm::Run& iRun, const edm::EventSetup& iSetup
   }
 }
 
-// ------------ method called when ending the processing of a run  ------------
-/*
-  void
-  L1TCaloLayer1::endRun(edm::Run const&, edm::EventSetup const&)
-  {
-  }
-*/
-
-// ------------ method called when starting to processes a luminosity block  ------------
-/*
-  void
-  L1TCaloLayer1::beginLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&)
-  {
-  }
-*/
-
-// ------------ method called when ending the processing of a luminosity block  ------------
-/*
-  void
-  L1TCaloLayer1::endLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&)
-  {
-  }
-*/
-
 // ------------ method fills 'descriptions' with the allowed parameters for the module  ------------
 void L1TCaloLayer1::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
-  //The following says we do not know what parameters are allowed so do no validation
-  // Please change this to state exactly what you do use, even if it is no parameters
+  //Description set to reflect default present in simCaloStage2Layer1Digis_cfi.py
+  //Currently redundant, but could be adjusted to provide defaults in case additional LUT
+  //checks are added and before other configurations adjust to match.
   edm::ParameterSetDescription desc;
-  desc.setUnknown();
+  desc.add<edm::InputTag>("ecalToken", edm::InputTag("simEcalTriggerPrimitiveDigis"));
+  desc.add<edm::InputTag>("hcalToken", edm::InputTag("simHcalTriggerPrimitiveDigis"));
+  desc.add<bool>("useLSB", true);
+  desc.add<bool>("useCalib", true);
+  desc.add<bool>("useECALLUT", true);
+  desc.add<bool>("useHCALLUT", true);
+  desc.add<bool>("useHFLUT", true);
+  desc.add<bool>("useHCALFBLUT", false);
+  desc.addUntracked<bool>("verbose", false);
+  desc.add<bool>("unpackEcalMask", false);
+  desc.add<bool>("unpackHcalMask", false);
+  desc.add<int>("firmwareVersion", 1);
   descriptions.addDefault(desc);
 }
 

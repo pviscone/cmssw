@@ -73,9 +73,14 @@ RawToDigi_ecalOnly = cms.Sequence(RawToDigiTask_ecalOnly)
 RawToDigiTask_hcalOnly = cms.Task(hcalDigis)
 RawToDigi_hcalOnly = cms.Sequence(RawToDigiTask_hcalOnly)
 
+from Configuration.ProcessModifiers.gpu_cff import gpu
+from Configuration.ProcessModifiers.alpaka_cff import alpaka
+
 scalersRawToDigi.scalersInputTag = 'rawDataCollector'
 siPixelDigis.cpu.InputLabel = 'rawDataCollector'
-ecalDigis.cpu.InputLabel = 'rawDataCollector'
+ecalDigisCPU.InputLabel = 'rawDataCollector'
+gpu.toModify(ecalDigisGPU, InputLabel = 'rawDataCollector')
+alpaka.toModify(ecalDigisPortable, InputLabel = 'rawDataCollector')
 ecalPreshowerDigis.sourceTag = 'rawDataCollector'
 hcalDigis.InputLabel = 'rawDataCollector'
 muonCSCDigis.InputObjects = 'rawDataCollector'
@@ -86,10 +91,13 @@ castorDigis.InputLabel = 'rawDataCollector'
 from Configuration.Eras.Modifier_run3_common_cff import run3_common
 run3_common.toReplaceWith(RawToDigiTask, RawToDigiTask.copyAndExclude([castorDigis]))
 
-from Configuration.Eras.Modifier_phase2_tracker_cff import phase2_tracker
-# Remove siPixelDigis until we have phase2 pixel digis
 # No Strips in the Phase-2 tracker
-phase2_tracker.toReplaceWith(RawToDigiTask, RawToDigiTask.copyAndExclude([siPixelDigis,siStripDigis])) # FIXME
+from Configuration.Eras.Modifier_phase2_tracker_cff import phase2_tracker
+phase2_tracker.toReplaceWith(RawToDigiTask, RawToDigiTask.copyAndExclude([siStripDigis]))
+
+from Configuration.ProcessModifiers.approxSiStripClusters_cff import approxSiStripClusters
+approxSiStripClusters.toReplaceWith(RawToDigiTask,
+                                    RawToDigiTask.copyAndExclude([siStripDigis])) # in case of the approximate cluster wf don't run the strip unpacker
 
 # add CTPPS 2016 raw-to-digi modules
 from Configuration.Eras.Modifier_ctpps_cff import ctpps
@@ -111,7 +119,8 @@ run2_GEM_2017.toReplaceWith(RawToDigiTask, _gem_RawToDigiTask)
 
 from Configuration.Eras.Modifier_run3_GEM_cff import run3_GEM
 from Configuration.Eras.Modifier_phase2_GEM_cff import phase2_GEM
-(run3_GEM & ~phase2_GEM).toReplaceWith(RawToDigiTask, _gem_RawToDigiTask)
+run3_GEM.toReplaceWith(RawToDigiTask, _gem_RawToDigiTask)
+phase2_GEM.toReplaceWith(RawToDigiTask, _gem_RawToDigiTask)
 
 from EventFilter.HGCalRawToDigi.HGCalRawToDigi_cfi import *
 _hgcal_RawToDigiTask = RawToDigiTask.copy()

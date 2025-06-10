@@ -209,40 +209,183 @@ Example:
 ```
 matrix> showWorkflow
 Available workflows:
-relval_gpu
-relval_production
-relval_identity
-relval_ged
-relval_highstats
-relval_generator
-relval_standard
-relval_extendedgen
-relval_premix
-relval_2026
-relval_machine
-relval_pileup
-relval_2017
-relval_upgrade
-matrix> showWorkflow relval_gpu
-136.885502 RunHLTPhy2018D RunHLTPhy2018D+HLTDR2_2018+RECODR2_2018reHLT_Patatrack_PixelOnlyGPU+HARVEST2018_pixelTrackingOnly
-136.885512 RunHLTPhy2018D RunHLTPhy2018D+HLTDR2_2018+RECODR2_2018reHLT_ECALOnlyGPU+HARVEST2018_ECALOnly
-136.885522 RunHLTPhy2018D RunHLTPhy2018D+HLTDR2_2018+RECODR2_2018reHLT_HCALOnlyGPU+HARVEST2018_HCALOnly
-136.888502 RunJetHT2018D RunJetHT2018D+HLTDR2_2018+RECODR2_2018reHLT_Patatrack_PixelOnlyGPU+HARVEST2018_pixelTrackingOnly
-136.888512 RunJetHT2018D RunJetHT2018D+HLTDR2_2018+RECODR2_2018reHLT_ECALOnlyGPU+HARVEST2018_ECALOnly
-136.888522 RunJetHT2018D RunJetHT2018D+HLTDR2_2018+RECODR2_2018reHLT_HCALOnlyGPU+HARVEST2018_HCALOnly
-10824.502 TTbar_13 2018_Patatrack_PixelOnlyGPU+TTbar_13TeV_TuneCUETP8M1_GenSim+Digi+RecoFakeHLT+HARVESTFakeHLT
-10824.512 TTbar_13 2018_Patatrack_ECALOnlyGPU+TTbar_13TeV_TuneCUETP8M1_GenSim+Digi+RecoFakeHLT+HARVESTFakeHLT
-10824.522 TTbar_13 2018_Patatrack_HCALOnlyGPU+TTbar_13TeV_TuneCUETP8M1_GenSim+Digi+RecoFakeHLT+HARVESTFakeHLT
-10842.502 ZMM_13 2018_Patatrack_PixelOnlyGPU+ZMM_13TeV_TuneCUETP8M1_GenSim+Digi+RecoFakeHLT+HARVESTFakeHLT
-11634.502 TTbar_14TeV 2021_Patatrack_PixelOnlyGPU+TTbar_14TeV_TuneCP5_GenSim+Digi+Reco+HARVEST
-11634.512 TTbar_14TeV 2021_Patatrack_ECALOnlyGPU+TTbar_14TeV_TuneCP5_GenSim+Digi+Reco+HARVEST
-11634.522 TTbar_14TeV 2021_Patatrack_HCALOnlyGPU+TTbar_14TeV_TuneCP5_GenSim+Digi+Reco+HARVEST
-11650.502 ZMM_14 2021_Patatrack_PixelOnlyGPU+ZMM_14TeV_TuneCP5_GenSim+Digi+Reco+HARVEST
-relval_gpu contains 14 workflows
+standard
+highstats
+pileup
+generator
+extendedgen
+production
+ged
+upgrade
+cleanedupgrade
+gpu
+2017
+2026
+identity
+machine
+premix
+nano
+
+matrix> showWorkflow gpu
+140.065506 Run3-2023_JetMET2022D_RecoPixelOnlyTripletsGPU
+140.065512 Run3-2023_JetMET2022D_RecoECALOnlyGPU
+140.065522 Run3-2023_JetMET2022D_RecoHCALOnlyGPU
+11634.502 TTbar_14TeV+2021_Patatrack_PixelOnlyGPU
+11634.503 TTbar_14TeV+2021_Patatrack_PixelOnlyGPU_Validation
+11634.504 TTbar_14TeV+2021_Patatrack_PixelOnlyGPU_Profiling
+11634.506 TTbar_14TeV+2021_Patatrack_PixelOnlyTripletsGPU
+11634.507 TTbar_14TeV+2021_Patatrack_PixelOnlyTripletsGPU_Validation
+11634.508 TTbar_14TeV+2021_Patatrack_PixelOnlyTripletsGPU_Profiling
+11634.512 TTbar_14TeV+2021_Patatrack_ECALOnlyGPU
+11634.513 TTbar_14TeV+2021_Patatrack_ECALOnlyGPU_Validation
+11634.514 TTbar_14TeV+2021_Patatrack_ECALOnlyGPU_Profiling
+11634.522 TTbar_14TeV+2021_Patatrack_HCALOnlyGPU
+11634.523 TTbar_14TeV+2021_Patatrack_HCALOnlyGPU_Validation
+11634.524 TTbar_14TeV+2021_Patatrack_HCALOnlyGPU_Profiling
+11634.582 TTbar_14TeV+2021_Patatrack_AllGPU
+11634.583 TTbar_14TeV+2021_Patatrack_AllGPU_Validation
+11634.586 TTbar_14TeV+2021_Patatrack_AllTripletsGPU
+11634.587 TTbar_14TeV+2021_Patatrack_AllTripletsGPU_Validation
+11634.592 TTbar_14TeV+2021_Patatrack_FullRecoGPU
+11634.593 TTbar_14TeV+2021_Patatrack_FullRecoGPU_Validation
+11634.596 TTbar_14TeV+2021_Patatrack_FullRecoTripletsGPU
+11634.597 TTbar_14TeV+2021_Patatrack_FullRecoTripletsGPU_Validation
+11650.502 ZMM_14+2021_Patatrack_PixelOnlyGPU
+11650.503 ZMM_14+2021_Patatrack_PixelOnlyGPU_Validation
+11650.504 ZMM_14+2021_Patatrack_PixelOnlyGPU_Profiling
+11650.506 ZMM_14+2021_Patatrack_PixelOnlyTripletsGPU
+11650.507 ZMM_14+2021_Patatrack_PixelOnlyTripletsGPU_Validation
+11650.508 ZMM_14+2021_Patatrack_PixelOnlyTripletsGPU_Profiling
+12434.502 TTbar_14TeV+2023_Patatrack_PixelOnlyGPU
+12434.503 TTbar_14TeV+2023_Patatrack_PixelOnlyGPU_Validation
+12434.504 TTbar_14TeV+2023_Patatrack_PixelOnlyGPU_Profiling
+12434.506 TTbar_14TeV+2023_Patatrack_PixelOnlyTripletsGPU
+12434.507 TTbar_14TeV+2023_Patatrack_PixelOnlyTripletsGPU_Validation
+12434.508 TTbar_14TeV+2023_Patatrack_PixelOnlyTripletsGPU_Profiling
+12434.512 TTbar_14TeV+2023_Patatrack_ECALOnlyGPU
+12434.513 TTbar_14TeV+2023_Patatrack_ECALOnlyGPU_Validation
+12434.514 TTbar_14TeV+2023_Patatrack_ECALOnlyGPU_Profiling
+12434.522 TTbar_14TeV+2023_Patatrack_HCALOnlyGPU
+12434.523 TTbar_14TeV+2023_Patatrack_HCALOnlyGPU_Validation
+12434.524 TTbar_14TeV+2023_Patatrack_HCALOnlyGPU_Profiling
+12434.582 TTbar_14TeV+2023_Patatrack_AllGPU
+12434.583 TTbar_14TeV+2023_Patatrack_AllGPU_Validation
+12434.586 TTbar_14TeV+2023_Patatrack_AllTripletsGPU
+12434.587 TTbar_14TeV+2023_Patatrack_AllTripletsGPU_Validation
+12434.592 TTbar_14TeV+2023_Patatrack_FullRecoGPU
+12434.593 TTbar_14TeV+2023_Patatrack_FullRecoGPU_Validation
+12434.596 TTbar_14TeV+2023_Patatrack_FullRecoTripletsGPU
+12434.597 TTbar_14TeV+2023_Patatrack_FullRecoTripletsGPU_Validation
+12450.502 ZMM_14+2023_Patatrack_PixelOnlyGPU
+12450.503 ZMM_14+2023_Patatrack_PixelOnlyGPU_Validation
+12450.504 ZMM_14+2023_Patatrack_PixelOnlyGPU_Profiling
+12450.506 ZMM_14+2023_Patatrack_PixelOnlyTripletsGPU
+12450.507 ZMM_14+2023_Patatrack_PixelOnlyTripletsGPU_Validation
+12450.508 ZMM_14+2023_Patatrack_PixelOnlyTripletsGPU_Profiling
+gpu contains 55 workflows
 matrix>
 ```
 
 All commands come with dynamic TAB-completion. There's also a transient history
-of the commands issues within a single session. Transient means that, after a
+of the commands issued within a single session. Transient means that, after a
 session is closed, the history is lost.
 
+### Limited Matrix for (also) PR Testing
+
+The "limited" predefined set of workflows is used in PR integration testing. Here the workflows run.
+
+MC workflows for pp collisions:
+
+| **WF** 	| **Fragment/Input** 	| **Conditions** 	| **Era** 	| **Notes** 	|  	
+|---	|---	|---	|---	|---	|	
+| |  	|  	|  	|  	|  	
+| **Run1** 	|  	|  	|  	|  	|  	
+| |  	|  	|  	|  	|  	
+| 5.1 	|  	TTbar_8TeV_TuneCUETP8M1 | run1_mc 	|  	| *FastSim* 	|  	
+| 8 	| RelValBeamHalo 	| run1_mc 	|  	| Cosmics 	|  	
+| 9.0 	| RelValHiggs200ChargedTaus 	| run1_mc 	|  	|  	|  	
+| 25 	| RelValTTbar 	| run1_mc 	|  	|  	|  	
+| 101.0 	| SingleElectronE120EHCAL 	| run1_mc 	|  	| + ECALHCAL.customise + fullMixCustomize_cff.setCrossingFrameOn 	|  	
+| |  	|  	|  	|  	|  	
+| **Run2** 	|  	|  	|  	|  	|  	
+| |  	|  	|  	|  	|  	
+| 7.3 	| UndergroundCosmicSPLooseMu 	| run2_2018 	|  	|  	|  	
+| 1306.0 	| RelValSingleMuPt1_UP15 	| run2_mc 	| Run2_2016 	| with miniAOD 	|  	
+| 1330 	| RelValZMM_13 	| run2_mc 	| Run2_2016 	|  	|  	
+| 135.4 	| ZEE_13TeV_TuneCUETP8M1 	| run2_mc 	| Run2_2016 	| *FastSim* 	|  	
+| 25202.0 	| RelValTTbar_13 	| run2_mc 	| Run2_2016 	|  AVE_35_BX_25ns 	|  	
+| 250202.181 | RelValTTbar_13 (PREMIX) 	| phase1_2018_realistic 	| Run2_2018 	|  	|  	|  
+| |  	|  	|  	|  	|  	
+| **Run3** 	|  	|  	|  	|  	|  	
+| |  	|  	|  	|  	|  	
+| 11634.0 	| TTbar_14TeV 	| phase1_2022_realistic 	| Run3 	|  	|  	
+| 13234.0 	| RelValTTbar_14TeV 	| phase1_2022_realistic 	| Run3_FastSim 	| *FastSim*  |  	
+| 12434.0 	| RelValTTbar_14TeV 	| phase1_2023_realistic 	| Run3_2023 	|  	|  	
+| 12834.0 	| RelValTTbar_14TeV 	| phase1_2023_realistic 	| Run3_2024 	|  	| 
+| 12846.0 	| RelValZEE_14 	| phase1_2023_realistic 	| Run3_2024 	|  	|  	
+| 13034.0 	| RelValTTbar_14TeV 	| phase1_2023_realistic 	| Run3_2024 	|  Run3_Flat55To75_PoissonOOTPU 	|  	
+| 12834.7 	| RelValTTbar_14TeV 	| phase1_2023_realistic 	| Run3_2024 	| mkFit 	|  	
+| 14034.0 	| RelValTTbar_14TeV 	| phase1_2023_realistic 	| Run3_2023_FastSim 	|  	*FastSim* |  	
+| 14234.0 	| RelValTTbar_14TeV 	| phase1_2023_realistic 	| Run3_2023_FastSim 	| *FastSim*  Run3_Flat55To75_PoissonOOTPU 	|  	
+| 2500.4 	| RelValTTbar_14TeV 	| phase1_2022_realistic 	| Run3 	| NanoAOD from existing MINI 	|  	
+| | | | | | 
+| **Phase2** 	|  	|  	|  	|  	**Geometry** |  	
+| |  	|  	|  	|  	|  	
+| 24834.0 	| RelValTTbar_14TeV 	| phase2_realistic_T25 	| Phase2C17I13M9 	| Extended2026D98 	| (Phase-2 baseline) 	
+| 24834.911 	| TTbar_14TeV_TuneCP5 	| phase2_realistic_T25 	| Phase2C17I13M9 	| DD4hepExtended2026D98 	| DD4Hep (HLLHC14TeV BeamSpot) 	
+| 25034.999 	| RelValTTbar_14TeV (PREMIX) 	| phase2_realistic_T25 	| Phase2C17I13M9 	| Extended2026D98 	| AVE_50_BX_25ns_m3p3 	
+| 24896.0 	| RelValCloseByPGun_CE_E_Front_120um 	| phase2_realistic_T25 	| Phase2C17I13M9 	| Extended2026D98 	|  	
+| 24900.0 	| RelValCloseByPGun_CE_H_Coarse_Scint 	| phase2_realistic_T25 	| Phase2C17I13M9 	| Extended2026D98 	|  	
+| 23234.0 	| TTbar_14TeV_TuneCP5 	| phase2_realistic_T21 	| Phase2C20I13M9 	| Extended2026D94 	| (exercise with HFNose) 	
+
+pp Data reRECO workflows:
+
+| Data 	|  	|  	|  	|  	|  	
+|---	|---	|---	|---	|---	|	
+| **WF** 	| **Input** 	| **Conditions** 	| **Era** 	| **Notes** 	|  	
+| |  	|  	|  	|  	|  	
+| **Run1** 	|  	|  	|  	|  	|  	
+| |  	|  	|  	|  	|  	
+| 4.22 	| Run2011A Cosmics 	|  	run1_data |  	|  	*Cosmics* |
+| 4.53 	| Run2012B Photon 	| run1_hlt_Fake 	| | + miniAODs 	|  	
+| 1000 	| Run2011A MinimumBias Prompt 	| run1_data 	| | + RecoTLR.customisePrompt 	|  	
+| 1001 	| Run2011A 	MinimumBias  |  	run1_data |  	| Data+Express | 	
+| |  	|  	|  	|  	|  	
+| **Run2** 	|  	|  	|  	|  	|  	
+| |  	|  	|  	|  	|  	
+| 136.731 	| Run2016B SinglePhoton 	|  	|  	|  	|  	
+| 136.7611 	| Run2016E JetHT (reMINIAOD) 	| run2_data 	| Run2_2016_HIPM 	| + run2_miniAOD_80XLegacy 	custom |  	
+| 136.8311 	| Run2017F JetHT (reMINIAOD) 	| run2_data 	| Run2_2017 	| + run2_miniAOD_94XFall17 	custom |  	
+| 136.88811 	| Run2018D JetHT (reMINIAOD) 	| run2_data 	| Run2_2018 	| + run2_miniAOD_UL_preSummer20 (UL MINI) custom |  	
+| 136.793 	| Run2017C DoubleEG 	| run2_hlt_relval 	| Run2_2017 	| HLT:@relval2017|  	
+| 136.874 	| Run2018C EGamma 	| run2_hlt_relval 	| Run2_2018 	| HLT@relval2018 	|  	
+| |  	|  	|  	|  	|  	
+| **Run3** 	|  	|  	|  	|  	|  	
+| |  	|  	|  	|  	|  	
+| 2021 	|  	|  	|  	|  	|  	
+| 139.001 	| Run2021 	MinimumBias 	| run3_hlt_relval 	| Run3 	| HLT@relval2022 (Commissioning2021) |	
+| 2022 	|  	|  	|  	|  	|  	
+| 140.023 	| Run2022B ZeroBias 	|  	run3_hlt_relval |  	Run3 |  	HLT:@relval2022 |  	
+| 140.043 	| Run2022C ZeroBias 	|  	run3_hlt_relval |  	Run3 |  	HLT:@relval2022 |  	
+| 140.063 	| Run2022D ZeroBias 	|  	run3_hlt_relval |  	Run3 |  	HLT:@relval2022 |  	
+| 2023 	|  	|  	|  	|  	|  	
+| 141.044 	| Run2023D JetMET0 	| run3_hlt_relval 	| Run3_2023 	| HLT@relval2024 	|  
+| 141.042 	| Run2023D ZeroBias 	| run3_hlt_relval 	| Run3_2023 	| HLT@relval2024 	|  	
+| 141.046 	| Run2023D EGamma0 	| run3_hlt_relval 	| Run3_2023 	| HLT@relval2024 	|  	
+
+
+And Heavy Ion workflows:
+
+| **HIon** 	|  	|  	|  	|  	|  	
+|---	|---	|---	|---	|---	|	
+| **WF** 	| **Fragment/Input** 	| **Conditions** 	| **Era** 	| **Notes** 	| 
+|  	|  	|  	|  	|  	| 	
+| **Data** 	|  	|  	|  	|  	|  
+|  	|  	|  	|  	|  	|	
+| 140.53 	| HIRun2011 HIMinBiasUPC 	| run1_data 	|  	|  	  	
+| 140.56 	| HIRun2018A HIHardProbes 	| run2_data_promptlike_hi 	| Run2_2018_pp_on_AA 	|  	  	
+|  	|  	|  	|  	|  	|
+| **MC** 	|  	|  	|  	|  	|  
+|  	|  	|  	|  	|  	|  	
+| 158.01 	| RelValHydjetQ_B12_5020GeV_2018_ppReco (reMINIAOD) | phase1_2018_realistic_hi 	| Run2_2018_pp_on_AA 	| (HI MC with pp-like reco) 	|  	  	
+| 312.0 	| Pyquen_ZeemumuJets_pt10_2760GeV 	|  phase1_2022_realistic_hi	| Run3_pp_on_PbPb 	| PU = HiMixGEN 	|  

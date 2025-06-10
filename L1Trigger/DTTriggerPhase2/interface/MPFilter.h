@@ -1,7 +1,6 @@
 #ifndef Phase2L1Trigger_DTTrigger_MPFilter_h
 #define Phase2L1Trigger_DTTrigger_MPFilter_h
 
-#include "FWCore/Framework/interface/ESHandle.h"
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/Frameworkfwd.h"
 #include "FWCore/Framework/interface/EventSetup.h"
@@ -13,7 +12,7 @@
 #include "Geometry/Records/interface/MuonGeometryRecord.h"
 
 #include "Geometry/DTGeometry/interface/DTGeometry.h"
-#include "Geometry/DTGeometry/interface/DTLayer.h"
+#include "DataFormats/MuonDetId/interface/DTLayerId.h"
 
 #include <iostream>
 #include <fstream>
@@ -40,6 +39,11 @@ public:
                    std::vector<cmsdt::metaPrimitive>& outMPath) = 0;
   virtual void run(edm::Event& iEvent,
                    const edm::EventSetup& iEventSetup,
+                   std::vector<cmsdt::metaPrimitive>& inSLMPath,
+                   std::vector<cmsdt::metaPrimitive>& inCorMPath,
+                   std::vector<cmsdt::metaPrimitive>& outMPath) = 0;
+  virtual void run(edm::Event& iEvent,
+                   const edm::EventSetup& iEventSetup,
                    MuonPathPtrs& inMPath,
                    MuonPathPtrs& outMPath) = 0;
 
@@ -47,9 +51,15 @@ public:
 
   // Other public methods
 
+  // Public attributes
+  // max drift velocity
+  edm::FileInPath maxdrift_filename_;
+  int maxdriftinfo_[5][4][14];
+  int max_drift_tdc = -1;
+
 private:
   // Private attributes
-  bool debug_;
+  const bool debug_;
 };
 
 #endif

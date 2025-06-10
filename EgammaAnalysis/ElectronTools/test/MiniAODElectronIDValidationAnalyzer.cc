@@ -21,7 +21,7 @@
 
 // user include files
 #include "FWCore/Framework/interface/Frameworkfwd.h"
-#include "FWCore/Framework/interface/EDAnalyzer.h"
+#include "FWCore/Framework/interface/one/EDAnalyzer.h"
 
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/MakerMacros.h"
@@ -57,10 +57,9 @@
 // class declaration
 //
 
-class MiniAODElectronIDValidationAnalyzer : public edm::EDAnalyzer {
+class MiniAODElectronIDValidationAnalyzer : public edm::one::EDAnalyzer<edm::one::SharedResources> {
 public:
   explicit MiniAODElectronIDValidationAnalyzer(const edm::ParameterSet &);
-  ~MiniAODElectronIDValidationAnalyzer();
 
   static void fillDescriptions(edm::ConfigurationDescriptions &descriptions);
 
@@ -72,14 +71,7 @@ public:
   };  // The last does not include tau parents
 
 private:
-  virtual void beginJob() override;
-  virtual void analyze(const edm::Event &, const edm::EventSetup &) override;
-  virtual void endJob() override;
-
-  //virtual void beginRun(edm::Run const&, edm::EventSetup const&) override;
-  //virtual void endRun(edm::Run const&, edm::EventSetup const&) override;
-  //virtual void beginLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&) override;
-  //virtual void endLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&) override;
+  void analyze(const edm::Event &, const edm::EventSetup &) override;
 
   int matchToTruth(const reco::GsfElectron &el, const edm::Handle<edm::View<reco::GenParticle>> &genParticles);
   void findFirstNonElectronMother(const reco::Candidate *particle, int &ancestorPID, int &ancestorStatus);
@@ -136,6 +128,7 @@ MiniAODElectronIDValidationAnalyzer::MiniAODElectronIDValidationAnalyzer(const e
       electronIdTag_(iConfig.getParameter<edm::InputTag>("electronIDs")),
       electronIdToken_(consumes<edm::ValueMap<bool>>(iConfig.getParameter<edm::InputTag>("electronIDs"))) {
   //now do what ever initialization is needed
+  usesResource(TFileService::kSharedResource);
   edm::Service<TFileService> fs;
   electronTree_ = fs->make<TTree>("ElectronTree", "Electron data");
 
@@ -156,11 +149,6 @@ MiniAODElectronIDValidationAnalyzer::MiniAODElectronIDValidationAnalyzer(const e
 
   electronTree_->Branch("isTrue", &isTrue_, "isTrue/I");
   electronTree_->Branch("isPass", &isPass_, "isPass/I");
-}
-
-MiniAODElectronIDValidationAnalyzer::~MiniAODElectronIDValidationAnalyzer() {
-  // do anything here that needs to be done at desctruction time
-  // (e.g. close files, deallocate resources etc.)
 }
 
 //
@@ -244,44 +232,6 @@ void MiniAODElectronIDValidationAnalyzer::analyze(const edm::Event &iEvent, cons
     electronTree_->Fill();
   }
 }
-
-// ------------ method called once each job just before starting event loop  ------------
-void MiniAODElectronIDValidationAnalyzer::beginJob() {}
-
-// ------------ method called once each job just after ending the event loop  ------------
-void MiniAODElectronIDValidationAnalyzer::endJob() {}
-
-// ------------ method called when starting to processes a run  ------------
-/*
-void 
-MiniAODElectronIDValidationAnalyzer::beginRun(edm::Run const&, edm::EventSetup const&)
-{
-}
-*/
-
-// ------------ method called when ending the processing of a run  ------------
-/*
-void 
-MiniAODElectronIDValidationAnalyzer::endRun(edm::Run const&, edm::EventSetup const&)
-{
-}
-*/
-
-// ------------ method called when starting to processes a luminosity block  ------------
-/*
-void 
-MiniAODElectronIDValidationAnalyzer::beginLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&)
-{
-}
-*/
-
-// ------------ method called when ending the processing of a luminosity block  ------------
-/*
-void 
-MiniAODElectronIDValidationAnalyzer::endLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&)
-{
-}
-*/
 
 // ------------ method fills 'descriptions' with the allowed parameters for the module  ------------
 void MiniAODElectronIDValidationAnalyzer::fillDescriptions(edm::ConfigurationDescriptions &descriptions) {

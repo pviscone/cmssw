@@ -162,7 +162,11 @@ namespace edm {
 
   void FileInPath::write(std::ostream& os) const {
     if (location_ == Unknown) {
-      os << version << ' ' << relativePath_ << ' ' << location_;
+      if (relativePath_.empty()) {
+        os << version << " @ " << location_;
+      } else {
+        os << version << ' ' << relativePath_ << ' ' << location_;
+      }
     } else if (location_ == Local) {
       // Guarantee a site independent value by stripping $LOCALTOP.
       if (localTop_.empty()) {
@@ -221,8 +225,11 @@ namespace edm {
       int loc;
       is >> relname >> loc;
       location_ = static_cast<FileInPath::LocationCode>(loc);
-      if (location_ != Unknown)
+      if (location_ != Unknown) {
         is >> canFilename;
+      } else if (relname == "@") {
+        relname = "";
+      }
     }
 #else
     is >> vsn >> relname >> loc >> canFilename;
@@ -289,8 +296,11 @@ namespace edm {
       int loc;
       is >> relname >> loc;
       location_ = static_cast<FileInPath::LocationCode>(loc);
-      if (location_ != Unknown)
+      if (location_ != Unknown) {
         is >> canFilename;
+      } else if (relname == "@") {
+        relname = "";
+      }
     }
     if (!is)
       return;
@@ -327,13 +337,17 @@ namespace edm {
   }
 
   //------------------------------------------------------------
+  std::string const& FileInPath::searchPath() {
+    static std::string const s_searchPath = removeSymLinksTokens(PathVariableName);
+    return s_searchPath;
+  }
+  //------------------------------------------------------------
 
   void FileInPath::getEnvironment() {
-    static std::string const searchPath = removeSymLinksTokens(PathVariableName);
-    if (searchPath.empty()) {
+    searchPath_ = searchPath();
+    if (searchPath_.empty()) {
       throw edm::Exception(edm::errors::FileInPathError) << PathVariableName << " must be defined\n";
     }
-    searchPath_ = searchPath;
 
     static std::string const releaseTop = removeSymLinksSrc(RELEASETOP);
     releaseTop_ = releaseTop;
@@ -364,12 +378,11 @@ namespace edm {
       throw edm::Exception(edm::errors::FileInPathError) << "Relative path must not be empty\n";
     }
 
-    // Find the file, based on the value of path variable.
+    // Find the file, based on the value of searchPath.
     typedef std::vector<std::string> stringvec_t;
     stringvec_t pathElements = tokenize(searchPath_, ":");
     for (auto const& element : pathElements) {
-      // Set the boost::fs path to the current element of
-      // CMSSW_SEARCH_PATH:
+      // Set the path to the current element of CMSSW_SEARCH_PATH:
       std::filesystem::path pathPrefix(element);
 
       // Does the a file exist? locateFile throws is it finds
@@ -435,5 +448,23 @@ namespace edm {
   }
 
   void FileInPath::disableFileLookup() { s_fileLookupDisabled = true; }
+
+  std::string FileInPath::findFile(const std::string& iFileName) {
+    // Find the file, based on the value of path variable.
+    auto pathElements = tokenize(searchPath(), ":");
+    for (auto const& element : pathElements) {
+      // Set the boost::fs path to the current element of
+      // CMSSW_SEARCH_PATH:
+      std::filesystem::path pathPrefix(element);
+
+      // Does the a file exist? locateFile throws is it finds
+      // something goofy.
+      if (locateFile(pathPrefix, iFileName)) {
+        // Convert relative path to canonical form, and save it.
+        return std::filesystem::absolute(pathPrefix / iFileName).string();
+      }
+    }
+    return {};
+  }
 
 }  // namespace edm

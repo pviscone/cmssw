@@ -19,6 +19,7 @@
 #include "CondFormats/DataRecord/interface/SiPixelQualityRcd.h"
 #include "CalibFormats/SiStripObjects/interface/SiStripQuality.h"
 #include "CalibTracker/Records/interface/SiStripQualityRcd.h"
+#include "CondCore/SiPixelPlugins/interface/SiPixelPayloadInspectorHelper.h"
 
 #include "Alignment/CommonAlignment/interface/AlignableObjectId.h"
 #include "Geometry/CommonTopologies/interface/SurfaceDeformationFactory.h"
@@ -58,7 +59,6 @@ TrackerGeometryCompare::TrackerGeometryCompare(const edm::ParameterSet& cfg)
       topoToken_(esConsumes()),
       geomDetToken_(esConsumes()),
       ptpToken_(esConsumes()),
-      ptitpToken_(esConsumes()),
       pixQualityToken_(esConsumes()),
       stripQualityToken_(esConsumes()),
       referenceTracker(nullptr),
@@ -71,7 +71,7 @@ TrackerGeometryCompare::TrackerGeometryCompare(const edm::ParameterSet& cfg)
       fromDD4hep_(cfg.getUntrackedParameter<bool>("fromDD4hep")),
       writeToDB_(cfg.getUntrackedParameter<bool>("writeToDB")),
       commonTrackerLevel_(align::invalid),
-      moduleListFile_(nullptr),
+      moduleListFile_(),
       moduleList_(0),
       inputRootFile1_(nullptr),
       inputRootFile2_(nullptr),
@@ -94,6 +94,8 @@ TrackerGeometryCompare::TrackerGeometryCompare(const edm::ParameterSet& cfg)
 
   //output file
   filename_ = cfg.getUntrackedParameter<std::string>("outputFile");
+  //output dir for surface deformations
+  surfdir_ = cfg.getUntrackedParameter<std::string>("surfDir");
 
   weightBy_ = cfg.getUntrackedParameter<std::string>("weightBy");
   setCommonTrackerSystem_ = cfg.getUntrackedParameter<std::string>("setCommonTrackerSystem");
@@ -119,9 +121,7 @@ TrackerGeometryCompare::TrackerGeometryCompare(const edm::ParameterSet& cfg)
   if (weightById_) {
     std::ifstream inFile;
     inFile.open(weightByIdFile_.c_str());
-    int ctr = 0;
     while (!inFile.eof()) {
-      ctr++;
       unsigned int listId;
       inFile >> listId;
       inFile.ignore(256, '\n');
@@ -201,17 +201,39 @@ TrackerGeometryCompare::TrackerGeometryCompare(const edm::ParameterSet& cfg)
   }
 }
 
+void TrackerGeometryCompare::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
+  edm::ParameterSetDescription desc;
+  desc.setComment("Validates alignment payloads by comparing positions of tracker modules positiona and orientations");
+  desc.addUntracked<std::vector<std::string> >("levels", {});
+  desc.addUntracked<bool>("fromDD4hep", false);
+  desc.addUntracked<bool>("writeToDB", false);
+  desc.addUntracked<std::string>("moduleList", "moduleList.txt");
+  desc.addUntracked<std::string>("inputROOTFile1", "IDEAL");
+  desc.addUntracked<std::string>("inputROOTFile2", "idealtracker2.root");
+  desc.addUntracked<std::string>("treeNameAlign", "alignTree");
+  desc.addUntracked<std::string>("treeNameDeform", "alignTreeDeformations");
+  desc.addUntracked<std::string>("outputFile", "output.root");
+  desc.addUntracked<std::string>("surfDir", ".");
+  desc.addUntracked<std::string>("weightBy", "DetUnit");
+  desc.addUntracked<std::string>("setCommonTrackerSystem", "NONE");
+  desc.addUntracked<bool>("detIdFlag", false);
+  desc.addUntracked<std::string>("detIdFlagFile", "blah.txt");
+  desc.addUntracked<bool>("weightById", false);
+  desc.addUntracked<std::string>("weightByIdFile", "blah2.txt");
+  descriptions.addWithDefaultLabel(desc);
+}
+
 void TrackerGeometryCompare::beginJob() { firstEvent_ = true; }
 
 void TrackerGeometryCompare::endJob() {
   int iname(0);
   for (std::vector<TrackerMap>::iterator it = m_vtkmap_.begin(); it != m_vtkmap_.end(); ++it) {
     std::stringstream mapname;
-    mapname << "TkMap_SurfDeform" << iname << ".png";
+    mapname << surfdir_ << "/TkMap_SurfDeform_0" << iname << ".png";
     it->save(true, 0, 0, mapname.str());
     mapname.str(std::string());
     mapname.clear();
-    mapname << "TkMap_SurfDeform" << iname << ".pdf";
+    mapname << surfdir_ << "/TkMap_SurfDeform_1" << iname << ".pdf";
     it->save(true, 0, 0, mapname.str());
     ++iname;
   }
@@ -314,8 +336,9 @@ void TrackerGeometryCompare::createROOTGeometry(const edm::EventSetup& iSetup) {
       AlignTransform transform1(translation1, eulerangles1, detid1);
       alignments1->m_align.push_back(transform1);
 
-      //dummy errors
-      CLHEP::HepSymMatrix clhepSymMatrix(3, 0);
+      // dummy errors
+      // APE matrix was 3x3, now it's 6x6 (because of muons), see PR #6483
+      CLHEP::HepSymMatrix clhepSymMatrix(6, 0);
       AlignTransformErrorExtended transformError(clhepSymMatrix, detid1);
       alignmentErrors1->m_alignError.push_back(transformError);
     }
@@ -348,8 +371,9 @@ void TrackerGeometryCompare::createROOTGeometry(const edm::EventSetup& iSetup) {
       AlignTransform transform2(translation2, eulerangles2, detid2);
       alignments2->m_align.push_back(transform2);
 
-      //dummy errors
-      CLHEP::HepSymMatrix clhepSymMatrix(3, 0);
+      // dummy errors
+      // APE matrix was 3x3, now it's 6x6 (because of muons), see PR #6483
+      CLHEP::HepSymMatrix clhepSymMatrix(6, 0);
       AlignTransformErrorExtended transformError(clhepSymMatrix, detid2);
       alignmentErrors2->m_alignError.push_back(transformError);
     }
@@ -368,11 +392,10 @@ void TrackerGeometryCompare::createROOTGeometry(const edm::EventSetup& iSetup) {
 
   const GeometricDet* theGeometricDet = &iSetup.getData(geomDetToken_);
   const PTrackerParameters* ptp = &iSetup.getData(ptpToken_);
-  const PTrackerAdditionalParametersPerDet* ptitp = &iSetup.getData(ptitpToken_);
   TrackerGeomBuilderFromGeometricDet trackerBuilder;
 
   //reference tracker
-  TrackerGeometry* theRefTracker = trackerBuilder.build(theGeometricDet, ptitp, *ptp, tTopo);
+  TrackerGeometry* theRefTracker = trackerBuilder.build(theGeometricDet, *ptp, tTopo);
   if (inputFilename1_ != "IDEAL") {
     GeometryAligner aligner1;
     aligner1.applyAlignments<TrackerGeometry>(
@@ -380,6 +403,15 @@ void TrackerGeometryCompare::createROOTGeometry(const edm::EventSetup& iSetup) {
   }
   referenceTracker = new AlignableTracker(&(*theRefTracker), tTopo);
   //referenceTracker->setSurfaceDeformation(surfDef1, true) ;
+
+  //set tracker pixel Phase, assume current tracker is the same Phase
+  if (theRefTracker->isThere(GeomDetEnumerators::P2PXB) || theRefTracker->isThere(GeomDetEnumerators::P2PXEC)) {
+    phase_ = SiPixelPI::phase::two;
+  } else if (theRefTracker->isThere(GeomDetEnumerators::P1PXB) || theRefTracker->isThere(GeomDetEnumerators::P1PXEC)) {
+    phase_ = SiPixelPI::phase::one;
+  } else {
+    phase_ = SiPixelPI::phase::zero;
+  }
 
   int inputRawid1;
   int inputRawid2;
@@ -412,7 +444,7 @@ void TrackerGeometryCompare::createROOTGeometry(const edm::EventSetup& iSetup) {
   }
 
   //currernt tracker
-  TrackerGeometry* theCurTracker = trackerBuilder.build(&*theGeometricDet, ptitp, *ptp, tTopo);
+  TrackerGeometry* theCurTracker = trackerBuilder.build(&*theGeometricDet, *ptp, tTopo);
   if (inputFilename2_ != "IDEAL") {
     GeometryAligner aligner2;
     aligner2.applyAlignments<TrackerGeometry>(
@@ -504,7 +536,16 @@ void TrackerGeometryCompare::compareSurfaceDeformations(TTree* refTree, TTree* c
             if (TMath::Abs(surfDeform_[npar]) > (m_rangeHigh_ - m_rangeLow_) / (10. * m_nBins_))
               m_h1_[histname2.str()]->Fill(surfDeform_[npar]);
           }
-          (m_vtkmap_.at(npar)).fill_current_val(inputRawid1, surfDeform_[npar]);
+          if (phase_ < SiPixelPI::phase::two) {
+            if (phase_ == SiPixelPI::phase::zero) {
+              (m_vtkmap_.at(npar)).fill_current_val(inputRawid1, surfDeform_[npar]);
+            } else {
+              // old-style tracker map does not support Phase1 Pixel
+              if (!(inputSubdetid1 == 1 && inputSubdetid2 == 1) && !(inputSubdetid1 == 2 && inputSubdetid2 == 2)) {
+                (m_vtkmap_.at(npar)).fill_current_val(inputRawid1, surfDeform_[npar]);
+              }
+            }
+          }
         }
       }
     }
@@ -523,7 +564,6 @@ void TrackerGeometryCompare::compareSurfaceDeformations(TTree* refTree, TTree* c
     curTree->SetBranchAddress("dpar", &p_inputDpar2);
 
     unsigned int nEntries12 = curTree->GetEntries();
-
     for (unsigned int iEntry = 0; iEntry < nEntries12; ++iEntry) {
       curTree->GetEntry(iEntry);
       for (int ii = 0; ii < 12; ++ii) {
@@ -547,7 +587,16 @@ void TrackerGeometryCompare::compareSurfaceDeformations(TTree* refTree, TTree* c
           if (TMath::Abs(surfDeform_[npar]) > (m_rangeHigh_ - m_rangeLow_) / (10. * m_nBins_))
             m_h1_[histname2.str()]->Fill(surfDeform_[npar]);
         }
-        (m_vtkmap_.at(npar)).fill_current_val(inputRawid2, surfDeform_[npar]);
+        if (phase_ < SiPixelPI::phase::two) {
+          if (phase_ == SiPixelPI::phase::zero) {
+            (m_vtkmap_.at(npar)).fill_current_val(inputRawid2, surfDeform_[npar]);
+          } else {
+            // old-style tracker map does not support Phase1 Pixel
+            if (inputSubdetid2 != 1 && inputSubdetid2 != 2) {
+              (m_vtkmap_.at(npar)).fill_current_val(inputRawid2, surfDeform_[npar]);
+            }
+          }
+        }
       }
     }
 
@@ -563,7 +612,6 @@ void TrackerGeometryCompare::compareSurfaceDeformations(TTree* refTree, TTree* c
     refTree->SetBranchAddress("subdetid", &inputSubdetid1);
     refTree->SetBranchAddress("dtype", &inputDtype1);
     refTree->SetBranchAddress("dpar", &p_inputDpar1);
-
     unsigned int nEntries11 = refTree->GetEntries();
 
     for (unsigned int iEntry = 0; iEntry < nEntries11; ++iEntry) {
@@ -589,14 +637,22 @@ void TrackerGeometryCompare::compareSurfaceDeformations(TTree* refTree, TTree* c
           if (TMath::Abs(surfDeform_[npar]) > (m_rangeHigh_ - m_rangeLow_) / (10. * m_nBins_))
             m_h1_[histname2.str()]->Fill(surfDeform_[npar]);
         }
-        (m_vtkmap_.at(npar)).fill_current_val(inputRawid1, surfDeform_[npar]);
+        if (phase_ < SiPixelPI::phase::two) {
+          if (phase_ == SiPixelPI::phase::zero) {
+            (m_vtkmap_.at(npar)).fill_current_val(inputRawid1, surfDeform_[npar]);
+          } else {
+            // old-style tracker map does not support Phase1 Pixel
+            if (inputSubdetid1 != 1 && inputSubdetid1 != 2) {
+              (m_vtkmap_.at(npar)).fill_current_val(inputRawid1, surfDeform_[npar]);
+            }
+          }
+        }
       }
     }
 
   } else if (inputFilename1_ == "IDEAL" && inputFilename2_ == "IDEAL") {
     edm::LogInfo("TrackerGeometryCompare") << ">>>> Comparing IDEAL with IDEAL: nothing to do! <<<<\n";
   }
-
   return;
 }
 
@@ -687,7 +743,6 @@ void TrackerGeometryCompare::compareGeometries(Alignable* refAli,
           << ", rawId: " << refAli->geomDetId().rawId() << ", subdetId: " << detid.subdetId() << "): " << diff << check;
       throw cms::Exception("Tolerance in TrackerGeometryCompare exceeded");
     }
-
     AlgebraicVector TRtot(12);
     // global
     TRtot(1) = Rtotal.x();
@@ -752,14 +807,12 @@ void TrackerGeometryCompare::setCommonTrackerSystem() {
   TrackerCommonTR(6) = TrackerCommonR_.z();
 
   edm::LogInfo("TrackerGeometryCompare") << "and after the transformation: " << TrackerCommonTR;
-
   align::moveAlignable(currentTracker, TrackerCommonTR);
 }
 
 void TrackerGeometryCompare::diffCommonTrackerSystem(Alignable* refAli, Alignable* curAli) {
   const auto& refComp = refAli->components();
   const auto& curComp = curAli->components();
-
   unsigned int nComp = refComp.size();
   //only perform for designate levels
   bool useLevel = false;
@@ -866,7 +919,6 @@ void TrackerGeometryCompare::fillTree(Alignable* refAli,
   daVal_ = diff[9];
   dbVal_ = diff[10];
   dgVal_ = diff[11];
-
   //detIdFlag
   if (refAli->alignableObjectId() == align::AlignableDetUnit) {
     if (detIdFlag_) {

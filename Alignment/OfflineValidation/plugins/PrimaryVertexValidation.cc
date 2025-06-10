@@ -56,7 +56,6 @@
 #include "Geometry/Records/interface/TrackerTopologyRcd.h"
 #include "RecoVertex/PrimaryVertexProducer/interface/TrackFilterForPVFinding.h"
 #include "RecoVertex/PrimaryVertexProducer/interface/DAClusterizerInZ_vect.h"
-#include "RecoVertex/PrimaryVertexProducer/interface/DAClusterizerInZ.h"
 #include "RecoVertex/PrimaryVertexProducer/interface/GapClusterizerInZ.h"
 #include "RecoVertex/VertexPrimitives/interface/TransientVertex.h"
 #include "TrackingTools/TransientTrack/interface/TransientTrack.h"
@@ -120,11 +119,6 @@ PrimaryVertexValidation::PrimaryVertexValidation(const edm::ParameterSet& iConfi
     theTrackClusterizer_ =
         std::make_unique<GapClusterizerInZ>(iConfig.getParameter<edm::ParameterSet>("TkClusParameters")
                                                 .getParameter<edm::ParameterSet>("TkGapClusParameters"));
-  } else if (clusteringAlgorithm == "DA") {
-    theTrackClusterizer_ =
-        std::make_unique<DAClusterizerInZ>(iConfig.getParameter<edm::ParameterSet>("TkClusParameters")
-                                               .getParameter<edm::ParameterSet>("TkDAClusParameters"));
-    // provide the vectorized version of the clusterizer, if supported by the build
   } else if (clusteringAlgorithm == "DA_vect") {
     theTrackClusterizer_ =
         std::make_unique<DAClusterizerInZ_vect>(iConfig.getParameter<edm::ParameterSet>("TkClusParameters")
@@ -282,11 +276,10 @@ void PrimaryVertexValidation::analyze(const edm::Event& iEvent, const edm::Event
 
   //edm::Handle<VertexCollection> vertices;
   edm::Handle<std::vector<Vertex>> vertices;
-
-  try {
-    vertices = iEvent.getHandle(theVertexCollectionToken_);
-  } catch (cms::Exception& er) {
-    LogTrace("PrimaryVertexValidation") << "caught std::exception " << er.what() << std::endl;
+  vertices = iEvent.getHandle(theVertexCollectionToken_);
+  if (!vertices.isValid()) {
+    edm::LogError("PrimaryVertexValidation") << "Vertex collection handle is not valid. Aborting!" << std::endl;
+    return;
   }
 
   std::vector<Vertex> vsorted = *(vertices);
@@ -295,7 +288,6 @@ void PrimaryVertexValidation::analyze(const edm::Event& iEvent, const edm::Event
   std::sort(vsorted.begin(), vsorted.end(), PrimaryVertexValidation::vtxSort);
 
   // skip events with no PV, this should not happen
-
   if (vsorted.empty())
     return;
 
@@ -2613,6 +2605,7 @@ void PrimaryVertexValidation::beginRun(edm::Run const& iRun, edm::EventSetup con
 
   } else if ((pDD->isThere(GeomDetEnumerators::P1PXB)) || (pDD->isThere(GeomDetEnumerators::P1PXEC))) {
     // switch on the phase-1
+    phase_ = PVValHelper::phase1;
     if (debug_) {
       edm::LogInfo("PrimaryVertexValidation")
           << " pixel phase1 setup, nLadders: " << nLadders_ << " nModules:" << nModZ_;
@@ -2637,7 +2630,7 @@ void PrimaryVertexValidation::beginRun(edm::Run const& iRun, edm::EventSetup con
       etaOfProbe_ = std::min(etaOfProbe_, PVValHelper::max_eta_phase2);
       break;
     default:
-      edm::LogWarning("LogicError") << "Unknown detector phase: " << phase_;
+      throw cms::Exception("LogicError") << "Unknown detector phase: " << phase_;
   }
 
   if (h_etaMax->GetEntries() == 0.) {

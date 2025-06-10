@@ -73,6 +73,7 @@ private:
   const edm::EDGetTokenT<RecoEcalCandMap> DphiMap_;
   const edm::EDGetTokenT<RecoEcalCandMap> MissingHitsMap_;
   const edm::EDGetTokenT<RecoEcalCandMap> OneOEMinusOneOPMap_;
+  const edm::EDGetTokenT<RecoEcalCandMap> fBremMap_;
   const edm::EDGetTokenT<RecoEcalCandMap> EcalPFClusterIsoMap_;
   const edm::EDGetTokenT<RecoEcalCandMap> EleGsfTrackIsoMap_;
   const edm::EDGetTokenT<RecoEcalCandMap> HcalPFClusterIsoMap_;
@@ -82,9 +83,12 @@ private:
   const double egammaPtCut;
   const double egammaEtaCut;
   const double egammaHoverECut;
+  const std::vector<double> egammaSigmaIEtaIEtaCut;
+  const std::vector<double> absEtaBinUpperEdges;
   const int mantissaPrecision;
   const bool saveRecHitTiming;
   const int rechitMatrixSize;
+  const bool rechitZeroSuppression;
 
   const edm::EDGetTokenT<EcalRecHitCollection> ecalRechitEB_;
   const edm::EDGetTokenT<EcalRecHitCollection> ecalRechitEE_;

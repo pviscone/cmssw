@@ -80,8 +80,13 @@ process.maxEvents = cms.untracked.PSet(
 process.PoolDBOutputService.toPut.append(process.ALCAHARVESTSiStripQuality_dbOutput)
 process.PoolDBOutputService.toPut.append(process.ALCAHARVESTSiStripGains_dbOutput)
 process.PoolDBOutputService.toPut.append(process.ALCAHARVESTSiStripGainsAAG_dbOutput )
+process.PoolDBOutputService.toPut.append(process.ALCAHARVESTSiStripHitEff_dbOutput)
 process.PoolDBOutputService.toPut.append(process.ALCAHARVESTSiPixelAli_dbOutput)
+process.PoolDBOutputService.toPut.append(process.ALCAHARVESTSiPixelAliHG_dbOutput)
+process.PoolDBOutputService.toPut.append(process.ALCAHARVESTSiPixelAliHGCombined_dbOutput)
 process.PoolDBOutputService.toPut.append(process.ALCAHARVESTSiPixelLA_dbOutput)
+process.PoolDBOutputService.toPut.append(process.ALCAHARVESTSiPixelLAMCS_dbOutput)
+process.PoolDBOutputService.toPut.append(process.ALCAHARVESTSiStripLA_dbOutput)
 process.PoolDBOutputService.toPut.extend(process.ALCAHARVESTSiPixelQuality_dbOutput)
 process.PoolDBOutputService.toPut.append(process.ALCAHARVESTBeamSpotByRun_dbOutput)
 process.PoolDBOutputService.toPut.append(process.ALCAHARVESTBeamSpotByLumi_dbOutput)
@@ -99,8 +104,13 @@ process.PoolDBOutputService.connect = cms.string('sqlite_file:testPCLAlCaHarvest
 process.pclMetadataWriter.recordsToMap.append(process.ALCAHARVESTSiStripQuality_metadata)
 process.pclMetadataWriter.recordsToMap.append(process.ALCAHARVESTSiStripGains_metadata )
 process.pclMetadataWriter.recordsToMap.append(process.ALCAHARVESTSiStripGainsAAG_metadata)
+process.pclMetadataWriter.recordsToMap.append(process.ALCAHARVESTSiStripHitEff_metadata)
 process.pclMetadataWriter.recordsToMap.append(process.ALCAHARVESTSiPixelAli_metadata)
+process.pclMetadataWriter.recordsToMap.append(process.ALCAHARVESTSiPixelAliHG_metadata)
+process.pclMetadataWriter.recordsToMap.append(process.ALCAHARVESTSiPixelAliHGCombined_metadata)
 process.pclMetadataWriter.recordsToMap.append(process.ALCAHARVESTSiPixelLA_metadata)
+process.pclMetadataWriter.recordsToMap.append(process.ALCAHARVESTSiPixelLAMCS_metadata)
+process.pclMetadataWriter.recordsToMap.append(process.ALCAHARVESTSiStripLA_metadata)
 process.pclMetadataWriter.recordsToMap.extend(process.ALCAHARVESTSiPixelQuality_metadata)
 process.pclMetadataWriter.recordsToMap.append(process.ALCAHARVESTBeamSpotByRun_metadata)
 process.pclMetadataWriter.recordsToMap.append(process.ALCAHARVESTBeamSpotByLumi_metadata)
@@ -127,13 +137,21 @@ process.alcaSiStripGainsAAGHarvester.minNrEntries=0
 process.alcaSiStripGainsAAGHarvester.GoodFracForTagProd=0
 process.alcaSiStripGainsAAGHarvester.NClustersForTagProd=0
 
+process.SiStripHitEff = cms.Path(process.ALCAHARVESTSiStripHitEfficiency)
+
 process.SiPixelAli      = cms.Path(process.ALCAHARVESTSiPixelAli)
 process.SiPixelAliMilleFileExtractor.outputBinaryFile = cms.string('')
 process.SiPixelAliPedeAlignmentProducer.algoConfig.mergeBinaryFiles=[]
 
-process.SiPixelLA      = cms.Path(process.ALCAHARVESTSiPixelLorentzAngle)
+process.SiPixelAliHG      = cms.Path(process.ALCAHARVESTSiPixelAliHG)
+process.SiPixelAliMilleFileExtractorHG.outputBinaryFile = cms.string('')
+process.SiPixelAliPedeAlignmentProducerHG.algoConfig.mergeBinaryFiles=[]
 
-process.SiPixelQuality  = cms.Path(process.ALCAHARVESTSiPixelQuality)
+process.SiPixelLA      = cms.Path(process.ALCAHARVESTSiPixelLorentzAngle)
+process.SiPixelLAMCS   = cms.Path(process.ALCAHARVESTSiPixelLorentzAngleMCS)
+process.SiPixelQuality = cms.Path(process.ALCAHARVESTSiPixelQuality)
+
+process.SiStripLA      = cms.Path(process.ALCAHARVESTSiStripLorentzAngle)
 
 process.ALCAHARVESTDQMSaveAndMetadataWriter = cms.Path(process.dqmSaver+process.pclMetadataWriter)
 
@@ -145,8 +163,13 @@ process.BeamSpotHPByLumi = cms.Path(process.ALCAHARVESTBeamSpotHPByLumi)
 process.schedule = cms.Schedule(process.SiStripQuality,
                                 process.SiStripGains,    
                                 process.SiStripGainsAAG, 
+                                process.SiStripHitEff,
                                 process.SiPixelAli,
+                                process.SiPixelAliHG,
+                                process.SiPixelAliHGCombined,
                                 process.SiPixelLA,
+                                process.SiPixelLAMCS,
+                                process.SiStripLA,
                                 process.SiPixelQuality,
                                 process.BeamSpotByRun,
                                 process.BeamSpotByLumi,

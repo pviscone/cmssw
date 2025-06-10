@@ -30,6 +30,18 @@ The offsets currently in use are:
 * 0.2: Tracking Run-2 era, `Run2_2017_trackingRun2`
 * 0.3: 0.1 + 0.2
 * 0.4: LowPU tracking era, `Run2_2017_trackingLowPU`
+* 0.402: Alpaka, pixel only quadruplets, portable
+* 0.403: Alpaka, pixel only quadruplets, portable vs. CPU validation
+* 0.404: Alpaka, pixel only quadruplets, portable profiling
+* 0.406: Alpaka, pixel only triplets, portable
+* 0.407: Alpaka, pixel only triplets, portable vs. CPU validation
+* 0.407: Alpaka, pixel only triplets, portable profiling
+* 0.412: Alpaka, ECAL only, portable
+* 0.422: Alpaka, HCAL only, portable
+* 0.423: Alpaka, HCAL only, portable vs CPU validation
+* 0.424: Alpaka, HCAL only, portable profiling
+* 0.492: Alpaka, full reco with pixel quadruplets
+* 0.496: Alpaka, full reco with pixel triplets
 * 0.5: Pixel tracking only + 0.1
 * 0.501: Patatrack, pixel only quadruplets, on CPU
 * 0.502: Patatrack, pixel only quadruplets, with automatic offload to GPU if available
@@ -49,16 +61,29 @@ The offsets currently in use are:
 * 0.595: Patatrack, full reco with pixel triplets, on CPU
 * 0.596: Patatrack, full reco with pixel triplets, with automatic offload to GPU if available
 * 0.6: HE Collapse (old depth segmentation for 2018)
+* 0.601: HLT as separate step
 * 0.7: trackingMkFit modifier
+* 0.701: DisplacedRegionalStep tracking iteration for Run-3
+* 0.78: Complete L1 workflow
 * 0.8: BPH Parking (Run-2)
+* 0.81: Running also HeavyFlavor DQM
 * 0.9: Vector hits
 * 0.12: Neutron background
 * 0.13: MLPF algorithm
 * 0.15: JME NanoAOD
 * 0.17: Run-3 deep core seeding for JetCore iteration
+* 0.19: ECAL SuperClustering with DeepSC algorithm
 * 0.21: Production-like sequence
+* 0.21X1 : Production-like sequence with classical mixing PU=X (X=10,20,30,40,50,60,70,80,90,100,120,140,160,180)
 * 0.24: 0 Tesla (Run-2, Run-3)
-* 0.61: `phase2_ecal_devel` era
+* 0.31: Photon energy corrections with DRN architecture
+* 0.61: ECAL `phase2_ecal_devel` era, on CPU
+* 0.612: ECAL `phase2_ecal_devel` era, with automatic offload to GPU if available
+* 0.631: ECAL component-method based digis
+* 0.632: ECAL component-method based finely-sampled waveforms
+* 0.633: ECAL phase2 Trigger Primitive
+* 0.634: ECAL phase2 Trigger Primitive + component-method based digis
+* 0.635: ECAL phase2 Trigger Primitive + component-method based finely-sampled waveforms
 * 0.75: Phase-2 HLT
 * 0.91: Track DNN modifier
 * 0.97: Premixing stage1
@@ -74,7 +99,13 @@ The offsets currently in use are:
 * 0.103: Phase-2 aging, 3000fb-1
 * 0.201: HGCAL special TICL Pattern recognition Workflows: clue3D
 * 0.202: HGCAL special TICL Pattern recognition Workflows: FastJet
-* 0.301: FastSim Run-3
 * 0.302: FastSim Run-3 trackingOnly validation
 * 0.303: FastSim Run-3 MB for mixing
 * 0.9001: Sonic Triton
+* 0.278: Weighted Vertexing in Blocks
+* 0.279: Weighted Vertexing in Blocks and tracking only wf
+* 0.111: Activate OuterTracker inefficiency (PS-p: bias rails inefficiency only)
+* 0.112: Activate OuterTracker inefficiency (PS-p: bias rails inefficiency; PS-s and SS: 1% bad strips)
+* 0.113: Activate OuterTracker inefficiency (PS-p: bias rails inefficiency; PS-s and SS: 5% bad strips)
+* 0.114: Activate OuterTracker inefficiency (PS-p: bias rails inefficiency; PS-s and SS: 10% bad strips)
+* 0.141: Activate emulation of the signal shape of the InnerTracker FE chip (CROC)

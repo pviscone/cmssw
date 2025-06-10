@@ -8,9 +8,10 @@
 #include "DataFormats/EcalDetId/interface/EEDetId.h"
 
 #include "DQM/EcalCommon/interface/EcalDQMCommonUtils.h"
+#include "DQM/EcalCommon/interface/MESetNonObject.h"
 
 namespace ecaldqm {
-  IntegrityClient::IntegrityClient() : DQWorkerClient(), errFractionThreshold_(0.) {
+  IntegrityClient::IntegrityClient() : DQWorkerClient(), errFractionThreshold_(0.), processedEvents(0) {
     qualitySummaries_.insert("Quality");
     qualitySummaries_.insert("QualitySummary");
   }
@@ -44,7 +45,21 @@ namespace ecaldqm {
     MESet const& sGainSwitch(sources_.at("GainSwitch"));
     MESet const& sTowerId(sources_.at("TowerId"));
     MESet const& sBlockSize(sources_.at("BlockSize"));
+    MESetNonObject const& sNumEvents(static_cast<MESetNonObject&>(sources_.at("NumEvents")));
 
+    //Get the no.of events per LS calculated in OccupancyTask
+    int nEv = sNumEvents.getFloatValue();
+    processedEvents += nEv;  //Sum it up to get the total processed events for the whole run.
+
+    //TTID errors nomalized by total no.of events in a run.
+    MESet& meTTIDNorm(MEs_.at("TowerIdNormalized"));
+    MESet::iterator tEnd(meTTIDNorm.end(GetElectronicsMap()));
+    for (MESet::iterator tItr(meTTIDNorm.beginChannel(GetElectronicsMap())); tItr != tEnd;
+         tItr.toNextChannel(GetElectronicsMap())) {
+      DetId id(tItr->getId());
+      float towerid(sTowerId.getBinContent(getEcalDQMSetupObjects(), id));
+      tItr->setBinContent(towerid / processedEvents);
+    }
     // Fill Channel Status Map MEs
     // Record is checked for updates at every endLumi and filled here
     MESet::iterator chSEnd(meChStatus.end(GetElectronicsMap()));
@@ -108,15 +123,20 @@ namespace ecaldqm {
       }
     }
 
-    // Quality check: set an entire FED to BAD if "any" DCC-SRP or DCC-TCC mismatch errors are detected
+    // Quality check: set an entire FED to BAD if "any" DCC-SRP or DCC-TCC mismatch errors are detected AND the number of events affected by the DCC-SRP or DCC-TCC mismatch errors is more than 1% of the events analyzed in the run
     // Fill mismatch statistics
     MESet const& sBXSRP(sources_.at("BXSRP"));
     MESet const& sBXTCC(sources_.at("BXTCC"));
     std::vector<bool> hasMismatchDCC(nDCC, false);
     for (unsigned iDCC(0); iDCC < nDCC; ++iDCC) {
-      if (sBXSRP.getBinContent(getEcalDQMSetupObjects(), iDCC + 1) > 50. ||
-          sBXTCC.getBinContent(getEcalDQMSetupObjects(), iDCC + 1) > 50.)  // "any" => 50
-        hasMismatchDCC[iDCC] = true;
+      int nBXSRPdesync = sBXSRP.getBinContent(getEcalDQMSetupObjects(), iDCC + 1);
+      int nBXTCCdesync = sBXTCC.getBinContent(getEcalDQMSetupObjects(), iDCC + 1);
+
+      if (nBXSRPdesync > 50. || nBXTCCdesync > 50.)  { // "any" => 50
+        if (nBXSRPdesync > int(0.01 * processedEvents) || nBXTCCdesync > int(0.01 * processedEvents)) { // check if the events with DCC-SRP or DCC-TCC desyncs for the given DCC is more than 1% of the events analyzed
+          hasMismatchDCC[iDCC] = true;
+        }
+      }
     }
     // Analyze mismatch statistics
     for (MESet::iterator qsItr(meQualitySummary.beginChannel(GetElectronicsMap()));

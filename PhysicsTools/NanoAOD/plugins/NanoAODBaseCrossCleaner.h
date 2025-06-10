@@ -48,14 +48,11 @@
 class NanoAODBaseCrossCleaner : public edm::stream::EDProducer<> {
 public:
   explicit NanoAODBaseCrossCleaner(const edm::ParameterSet&);
-  ~NanoAODBaseCrossCleaner() override;
 
   static void fillDescriptions(edm::ConfigurationDescriptions& descriptions);
 
 private:
-  void beginStream(edm::StreamID) override;
   void produce(edm::Event&, const edm::EventSetup&) override;
-  void endStream() override;
   virtual void objectSelection(const edm::View<pat::Jet>& jets,
                                const edm::View<pat::Muon>& muons,
                                const edm::View<pat::Electron>& eles,
@@ -67,11 +64,6 @@ private:
                                std::vector<uint8_t>& tauBits,
                                std::vector<uint8_t>& photonBits){};
 
-  //virtual void beginRun(edm::Run const&, edm::EventSetup const&) override;
-  //virtual void endRun(edm::Run const&, edm::EventSetup const&) override;
-  //virtual void beginLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&) override;
-  //virtual void endLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&) override;
-
   // ----------member data ---------------------------
   const std::string name_;
   const std::string doc_;
@@ -79,16 +71,20 @@ private:
   const edm::EDGetTokenT<edm::View<pat::Jet>> jets_;
   const edm::EDGetTokenT<edm::View<pat::Muon>> muons_;
   const edm::EDGetTokenT<edm::View<pat::Electron>> electrons_;
+  edm::InputTag lowPtElectronsTag_;
+  edm::EDGetTokenT<edm::View<pat::Electron>> lowPtElectrons_;
   const edm::EDGetTokenT<edm::View<pat::Tau>> taus_;
   const edm::EDGetTokenT<edm::View<pat::Photon>> photons_;
   const StringCutObjectSelector<pat::Jet> jetSel_;
   const StringCutObjectSelector<pat::Muon> muonSel_;
   const StringCutObjectSelector<pat::Electron> electronSel_;
+  const StringCutObjectSelector<pat::Electron> lowPtElectronSel_;
   const StringCutObjectSelector<pat::Tau> tauSel_;
   const StringCutObjectSelector<pat::Photon> photonSel_;
   const std::string jetName_;
   const std::string muonName_;
   const std::string electronName_;
+  const std::string lowPtElectronName_;
   const std::string tauName_;
   const std::string photonName_;
 };

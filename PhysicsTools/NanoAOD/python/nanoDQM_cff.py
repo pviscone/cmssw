@@ -5,118 +5,267 @@ from PhysicsTools.NanoAOD.nanoDQM_cfi import nanoDQM
 from PhysicsTools.NanoAOD.nanoDQM_tools_cff import *
 from PhysicsTools.NanoAOD.nano_eras_cff import *
 
-## Modify plots accordingly to era
-_vplots80X = nanoDQM.vplots.clone()
-# Tau plots
-_tauPlots80X = cms.VPSet()
-for plot in _vplots80X.Tau.plots:
-    if (plot.name.value().find("MVA")>-1 and plot.name.value().find("2017")>-1) or (plot.name.value().find("AntiEle")>-1 and plot.name.value().find("2018")>-1) or (plot.name.value().find("AntiEleDeadECal")>-1) or (plot.name.value().find("DeepTau")>-1):
-        continue
-    _tauPlots80X.append(plot)
-_tauPlots80X.extend([Plot1D('idMVAnewDM', 'idMVAnewDM', 64, -0.5, 63.5, 'IsolationMVArun2v1DBnewDMwLT ID working point: bitmask 1 = VLoose, 2 = Loose, 4 = Medium, 8 = Tight, 16 = VTight, 32 = VVTight'),
-                     Plot1D('idMVAoldDM', 'idMVAoldDM', 64, -0.5, 63.5, 'IsolationMVArun2v1DBnewDMwLT ID working point: bitmask 1 = VLoose, 2 = Loose, 4 = Medium, 8 = Tight, 16 = VTight, 32 = VVTight'),
-                     Plot1D('idMVAoldDMdR03', 'idMVAoldDMdR03', 64, -0.5, 63.5, 'IsolationMVArun2v1DBdR03oldDMwLT ID working point: bitmask 1 = VLoose, 2 = Loose, 4 = Medium, 8 = Tight, 16 = VTight, 32 = VVTight'),
-                     Plot1D('rawMVAnewDM', 'rawMVAnewDM', 20, -1, 1, 'byIsolationMVArun2v1DBnewDMwLT raw output discriminator'),
-                     Plot1D('rawMVAoldDM', 'rawMVAoldDM', 20, -1, 1, 'byIsolationMVArun2v1DBnewDMwLT raw output discriminator'),
-                     Plot1D('rawMVAoldDMdR03', 'rawMVAoldDMdR03', 20, -1, 1, 'byIsolationMVArun2v1DBdR03oldDMwLT raw output discriminator'),
-                     Plot1D('idAntiEle', 'idAntiEle', 32, -0.5, 31.5, 'Anti-electron MVA discriminator V6: bitmask 1 = VLoose, 2 = Loose, 4 = Medium, 8 = Tight, 16 = VTight'),
-                     Plot1D('rawAnti', 'rawAntiEle', 20, -100, 100, 'Anti-electron MVA discriminator V6 raw output discriminator'),
-                     Plot1D('rawAntiEleCat', 'rawAntiEleCat', 17, -1.5, 15.5, 'Anti-electron MVA discriminator V6 category')
-])
-_vplots80X.Tau.plots = _tauPlots80X
-run2_miniAOD_80XLegacy.toModify(nanoDQM,
-                                vplots = _vplots80X
-)
-_tauPlotsPreV9 = cms.VPSet()
-for plot in nanoDQM.vplots.Tau.plots:
-    if plot.name.value()!="idDecayModeOldDMs":
-        _tauPlotsPreV9.append(plot)
-_tauPlotsPreV9.extend([
-                Plot1D('idDecayMode', 'idDecayMode', 2, -0.5, 1.5, "tauID('decayModeFinding')"),
-                Plot1D('idDecayModeNewDMs', 'idDecayModeNewDMs', 2, -0.5, 1.5, "tauID('decayModeFindingNewDMs')"),
-                Plot1D('idAntiEle', 'idAntiEle', 32, -0.5, 31.5, 'Anti-electron MVA discriminator V6: bitmask 1 = VLoose, 2 = Loose, 4 = Medium, 8 = Tight, 16 = VTight'),
-                Plot1D('idAntiEle2018', 'idAntiEle2018', 32, -0.5, 31.5, 'Anti-electron MVA discriminator V6 (2018): bitmask 1 = VLoose, 2 = Loose, 4 = Medium, 8 = Tight, 16 = VTight'),
-                Plot1D('idMVAnewDM2017v2', 'idMVAnewDM2017v2', 128, -0.5, 127.5, 'IsolationMVArun2v1DBnewDMwLT ID working point (2017v2): bitmask 1 = VVLoose, 2 = VLoose, 4 = Loose, 8 = Medium, 16 = Tight, 32 = VTight, 64 = VVTight'),
-                Plot1D('idMVAoldDM', 'idMVAoldDM', 64, -0.5, 63.5, 'IsolationMVArun2v1DBoldDMwLT ID working point: bitmask 1 = VLoose, 2 = Loose, 4 = Medium, 8 = Tight, 16 = VTight, 32 = VVTight'),
-                Plot1D('idMVAoldDM2017v1', 'idMVAoldDM2017v1', 128, -0.5, 127.5, 'IsolationMVArun2v1DBoldDMwLT ID working point (2017v1): bitmask 1 = VVLoose, 2 = VLoose, 4 = Loose, 8 = Medium, 16 = Tight, 32 = VTight, 64 = VVTight'),
-                Plot1D('idMVAoldDM2017v2', 'idMVAoldDM2017v2', 128, -0.5, 127.5, 'IsolationMVArun2v1DBoldDMwLT ID working point (2017v2): bitmask 1 = VVLoose, 2 = VLoose, 4 = Loose, 8 = Medium, 16 = Tight, 32 = VTight, 64 = VVTight'),
-                Plot1D('idMVAoldDMdR032017v2', 'idMVAoldDMdR032017v2', 128, -0.5, 127.5, 'IsolationMVArun2v1DBdR03oldDMwLT ID working point (217v2): bitmask 1 = VVLoose, 2 = VLoose, 4 = Loose, 8 = Medium, 16 = Tight, 32 = VTight, 64 = VVTight'),
-                Plot1D('rawAntiEle', 'rawAntiEle', 20, -100, 100, 'Anti-electron MVA discriminator V6 raw output discriminator'),
-                Plot1D('rawAntiEle2018', 'rawAntiEle2018', 20, -100, 100, 'Anti-electron MVA discriminator V6 raw output discriminator (2018)'),
-                Plot1D('rawAntiEleCat', 'rawAntiEleCat', 17, -1.5, 15.5, 'Anti-electron MVA discriminator V6 category'),
-                Plot1D('rawAntiEleCat2018', 'rawAntiEleCat2018', 17, -1.5, 15.5, 'Anti-electron MVA discriminator V6 category (2018)'),
-                Plot1D('rawMVAnewDM2017v2', 'rawMVAnewDM2017v2', 20, -1, 1, 'byIsolationMVArun2v1DBnewDMwLT raw output discriminator (2017v2)'),
-                Plot1D('rawMVAoldDM', 'rawMVAoldDM', 20, -1, 1, 'byIsolationMVArun2v1DBoldDMwLT raw output discriminator'),
-                Plot1D('rawMVAoldDM2017v1', 'rawMVAoldDM2017v1', 20, -1, 1, 'byIsolationMVArun2v1DBoldDMwLT raw output discriminator (2017v1)'),
-                Plot1D('rawMVAoldDM2017v2', 'rawMVAoldDM2017v2', 20, -1, 1, 'byIsolationMVArun2v1DBoldDMwLT raw output discriminator (2017v2)'),
-                Plot1D('rawMVAoldDMdR032017v2', 'rawMVAoldDMdR032017v2', 20, -1, 1, 'byIsolationMVArun2v1DBdR03oldDMwLT raw output discriminator (2017v2)')
-])
-
-(run2_nanoAOD_92X | run2_nanoAOD_94XMiniAODv1 | run2_nanoAOD_94XMiniAODv2 | run2_nanoAOD_94X2016 | run2_nanoAOD_102Xv1 | run2_nanoAOD_106Xv1).toModify(nanoDQM.vplots.Tau, plots = _tauPlotsPreV9)
-
 _boostedTauPlotsV10 = cms.VPSet()
 for plot in nanoDQM.vplots.boostedTau.plots:
     _boostedTauPlotsV10.append(plot)
 _boostedTauPlotsV10.extend([
-    Plot1D('idMVAoldDMdR032017v2', 'idMVAoldDMdR032017v2', 128, -0.5, 127.5, 'IsolationMVArun2017v2DBoldDMdR0p3wLT ID working point (2017v2): bitmask 1 = VVLoose, 2 = VLoose, 4 = Loose, 8 = Medium, 16 = Tight, 32 = VTight, 64 = VVTight'),
+    Plot1D('idMVAoldDMdR032017v2', 'idMVAoldDMdR032017v2', 11, -0.5, 10.5, 'IsolationMVArun2017v2DBoldDMdR0p3wLT ID working point (2017v2): int 1 = VVLoose, 2 = VLoose, 3 = Loose, 4 = Medium, 5 = Tight, 6 = VTight, 7 = VVTight'),
     Plot1D('rawMVAoldDMdR032017v2', 'rawMVAoldDMdR032017v2', 20, -1, 1, 'byIsolationMVArun2017v2DBoldDMdR0p3wLT raw output discriminator (2017v2)')
 ])
 
-(run2_nanoAOD_106Xv2).toModify(nanoDQM.vplots.boostedTau, plots = _boostedTauPlotsV10)
+(run2_nanoAOD_106Xv2).toModify(
+    nanoDQM.vplots.boostedTau,
+    plots = _boostedTauPlotsV10
+)
 
-_METFixEE2017_DQMentry = nanoDQM.vplots.MET.clone()
-_METFixEE2017_plots = cms.VPSet()
-for plot in _METFixEE2017_DQMentry.plots:
-    if plot.name.value().find("fiducial")>-1: continue
-    _METFixEE2017_plots.append(plot)
-_METFixEE2017_DQMentry.plots = _METFixEE2017_plots
-for modifier in run2_nanoAOD_94XMiniAODv1, run2_nanoAOD_94XMiniAODv2:
-    modifier.toModify(nanoDQM.vplots, METFixEE2017 = _METFixEE2017_DQMentry)
+## EGamma custom nano
+_Electron_extra_plots = nanoDQM.vplots.Electron.plots.copy()
+_Electron_extra_plots.extend([
+    Plot1D('r9Frac', 'r9Frac', 22, 0, 1.1, 'Fractional R9'),
+    Plot1D('DeltaEtaInSC', 'DeltaEtaInSC', 20, -0.01, 0.01, 'DEta trk and SuperClus'),
+    Plot1D('DeltaEtaInSeed', 'DeltaEtaInSeed', 20, -0.005, 0.005, 'DEta trk and SeedClus'),
+    Plot1D('DeltaPhiInSC', 'DeltaPhiInSC', 20, -0.01, 0.01, 'DPhi trk and SuperClus'),
+    Plot1D('DeltaPhiInSeed', 'DeltaPhiInSeed', 20, -0.01, 0.01, 'DPhi trk and SeedClus'),
+    Plot1D('full5x5HoverE', 'full5x5HoverE', 20, 0, 0.2, 'full5x5 H/E'),
+    Plot1D('eSCOverP', 'eSCOverP', 20, 0, 2.0, 'supercluster E/p'),
+    Plot1D('eEleOverPout', 'eEleOverPout', 20, 0, 2.0, 'supercluster E/pout'),
+    Plot1D('e1x5', 'e1x5', 20, 0, 20, 'E1x5'),
+    Plot1D('e2x5max', 'e2x5max', 20, 0, 20, 'E2x5Max'),
+    Plot1D('e5x5', 'e5x5', 20, 0, 20, 'E5x5'),
+    Plot1D('closestKFchi2', 'closestKFchi2', 20, 0, 20, 'closest KF trk chi2'),
+    Plot1D('closestKFNLayers', 'closestKFNLayers', 20, 0, 19, 'closest KF NLayers'),
+    Plot1D('dr03HcalTowerSumEt', 'dr03HcalTowerSumEt', 20, 0, 40, 'Hcal isolation'),
+    Plot1D('GSFchi2', 'GSFchi2', 20, 0, 20, 'GSF chi2'),
+    Plot1D('superclusterEta', 'superclusterEta', 30, 3.0, 3.0, 'supercluster Eta'),
+    Plot1D('ecalPFClusIso', 'ecalPFClusIso', 20, 0, 40, 'ecal PF Cluster Isolation'),
+    Plot1D('hcalPFClusIso', 'hcalPFClusIso', 20, 0, 40, 'hcal PF Cluster Isolation'),
+    Plot1D('nBrem', 'nBrem', 20, 0, 19, 'num of Brem'),
+    Plot1D('pfPhotonIso', 'pfPhotonIso', 20, 0, 20, 'pf Photon Isolation'),
+    Plot1D('pfChargedHadIso', 'pfChargedHadIso', 20, 0, 40, 'pf Charged Hadron Isolation'),
+    Plot1D('pfNeutralHadIso', 'pfNeutralHadIso', 20, 0, 40, 'pfNeutralHadIso'),
+    Plot1D('sigmaIphiIphiFull5x5', 'sigmaIphiIphiFull5x5', 20, 0, 0.1, 'sigmaIphiIphi Full5x5'),
+    Plot1D('etaWidth', 'etaWidth', 20, 0, 0.05, 'eta Width'),
+    Plot1D('phiWidth', 'phiWidth', 20, 0, 0.1, 'phi Width'),
+    Plot1D('seedClusEnergy', 'seedClusEnergy', 20, 0, 40, 'seedClusEnergy'),
+    Plot1D('hoeSingleTower', 'hoeSingleTower', 20, 0, 0.2, 'Single Tower H/E'),
+    Plot1D('hoeFull5x5', 'hoeFull5x5', 20, 0, 0.2, 'Full5x5 H/E'),
+    Plot1D('sigmaIetaIphiFull5x5', 'sigmaIetaIphiFull5x5', 20, 0, 0.2, 'full5x5 sigmaIetaIphi'),
+    Plot1D('eMax', 'eMax', 20, 0, 40, 'eMax'),
+    Plot1D('e2nd', 'e2nd', 20, 0, 40, 'e2nd'),
+    Plot1D('eTop', 'eTop', 20, 0, 40, 'eTop'),
+    Plot1D('eBottom', 'eBottom', 20, 0, 40, 'eBottom'),
+    Plot1D('eLeft', 'eLeft', 20, 0, 40, 'eLeft'),
+    Plot1D('eRight', 'eRight', 20, 0, 40, 'eRight'),
+    Plot1D('e2x5Top', 'e2x5Top', 20, 0, 40, 'e2x5Top'),
+    Plot1D('e2x5Bottom', 'e2x5Bottom', 20, 0, 40, 'e2x5Bottom'),
+    Plot1D('e2x5Left', 'e2x5Left', 20, 0, 40, 'e2x5Left'),
+    Plot1D('e2x5Right', 'e2x5Right', 20, 0, 40, 'e2x5Right'),
+    Plot1D('nSaturatedXtals', 'nSaturatedXtals', 10, 0, 9, 'number of Saturated crystals'),
+    Plot1D('numberOfClusters', 'numberOfClusters', 10, 0, 9, 'number of Clusters'),
+    Plot1D('istrackerDriven', 'istrackerDriven', 2, 0, 1, 'istrackerDriven'),
+    Plot1D('superclusterPhi', 'superclusterPhi', 32, -3.2, 3.2, 'supercluster Phi'),
+    Plot1D('seedClusterEta', 'seedClusterEta', 30, -3.0, 3.0, 'seedCluster Eta'),
+    Plot1D('seedClusterPhi', 'seedClusterPhi', 32, -3.2, 3.2, 'seedCluster Phi'),
+    Plot1D('superclusterEnergy', 'superclusterEnergy', 80, 0, 80, 'supercluster Energy'),
+    Plot1D('energy', 'energy', 20, 0, 80, 'energy'),
+    Plot1D('trackMomentumError', 'trackMomentumError', 20, 0, 1.0, 'trackMomentumError'),
+    Plot1D('trackMomentum', 'trackMomentum', 20, 0, 80, 'trackMomentum'),
+    Plot1D('trkLayersWithMeas', 'trkLayersWithMeas', 20, 0, 19, 'trkLayersWithMeas'),
+    Plot1D('nValidPixBarrelHits', 'nValidPixBarrelHits', 5, 0, 4, 'nValidPixBarrelHits'),
+    Plot1D('nValidPixEndcapHits', 'nValidPixEndcapHits', 20, 0, 19, 'nValidPixEndcapHits'),
+    Plot1D('superClusterFbrem', 'superClusterFbrem', 12, 0, 1.2, 'superClusterFbrem'),
+    Plot1D('convVtxFitProb', 'convVtxFitProb', 12, 0, 1.2, 'convVtxFitProb'),
+    Plot1D('clustersSize', 'clustersSize', 20, 0, 19, 'clustersSize'),
+    Plot1D('iEtaMod5', 'iEtaMod5', 20, 0, 40, 'iEtaMod5'),
+    Plot1D('iEtaMod20', 'iEtaMod20', 20, 0, 40, 'iEtaMod20'),
+    Plot1D('iPhiMod2', 'iPhiMod2', 20, 0, 199, 'iPhiMod2'),
+    Plot1D('iPhiMod20', 'iPhiMod20', 100, 0, 99, 'iPhiMod20')
+])
 
-_Electron_plots_2016 = copy.deepcopy(nanoDQM.vplots.Electron.plots)
-_Electron_plots_2016.append(Plot1D('cutBased_HLTPreSel', 'cutBased_HLTPreSel', 2, -0.5, 1.5, 'cut-based HLT pre-selection ID'))
-_Electron_plots_2016.append(Plot1D('cutBased_Spring15', 'cutBased_Spring15', 5, -0.5, 4.5, 'cut-based Spring15 ID (0:fail, 1:veto, 2:loose, 3:medium, 4:tight)'))
-_Electron_plots_2016.append(Plot1D('mvaSpring16GP', 'mvaSpring16GP', 20, -1, 1, 'MVA Spring16 general-purpose ID score'))
-_Electron_plots_2016.append(Plot1D('mvaSpring16GP_WP80', 'mvaSpring16GP_WP80', 2, -0.5, 1.5, 'MVA Spring16 general-purpose ID WP80'))
-_Electron_plots_2016.append(Plot1D('mvaSpring16GP_WP90', 'mvaSpring16GP_WP90', 2, -0.5, 1.5, 'MVA Spring16 general-purpose ID WP90'))
-_Electron_plots_2016.append(Plot1D('mvaSpring16HZZ', 'mvaSpring16HZZ', 20, -1, 1, 'MVA Spring16 HZZ ID score'))
-_Electron_plots_2016.append(Plot1D('mvaSpring16HZZ_WPL', 'mvaSpring16HZZ_WPL', 2, -0.5, 1.5, 'MVA Spring16 HZZ ID loose WP'))
-_Electron_plots_2016.append(NoPlot('vidNestedWPBitmapSpring15'))
+_Photon_extra_plots = nanoDQM.vplots.Photon.plots.copy()
+_Photon_extra_plots.extend([
+    Plot1D('r9Frac', 'r9Frac', 22, 0, 1.1, 'Fractional R9'),
+    Plot1D('energy', 'energy', 20, 0, 80, 'energy'),
+    Plot1D('rawPreshowerEnergy', 'rawPreshowerEnergy', 20, 0, 80, 'rawPreshowerEnergy'),
+    Plot1D('seedClusEnergy', 'seedClusEnergy', 20, 0, 40, 'seedClusEnergy'),
+    Plot1D('e5x5', 'e5x5', 20, 0, 20, 'E5x5'),
+    Plot1D('dEtaSeedClusSuperClus', 'dEtaSeedClusSuperClus', 20, 0, 1.0, 'dEtaSeedClusSuperClus'),
+    Plot1D('dPhiSeedClusSuperClus', 'dPhiSeedClusSuperClus', 20, 0, 1.0, 'dPhiSeedClusSuperClus'),
+    Plot1D('sigmaIphiIphiFull5x5', 'sigmaIphiIphiFull5x5', 20, 0, 0.1, 'sigmaIphiIphi Full5x5'),
+    Plot1D('eMax', 'eMax', 20, 0, 40, 'eMax'),
+    Plot1D('e2nd', 'e2nd', 20, 0, 40, 'e2nd'),
+    Plot1D('eTop', 'eTop', 20, 0, 40, 'eTop'),
+    Plot1D('eBottom', 'eBottom', 20, 0, 40, 'eBottom'),
+    Plot1D('eLeft', 'eLeft', 20, 0, 40, 'eLeft'),
+    Plot1D('eRight', 'eRight', 20, 0, 40, 'eRight'),
+    Plot1D('e2x5Top', 'e2x5Top', 20, 0, 40, 'e2x5Top'),
+    Plot1D('e2x5Bottom', 'e2x5Bottom', 20, 0, 40, 'e2x5Bottom'),
+    Plot1D('e2x5Left', 'e2x5Left', 20, 0, 40, 'e2x5Left'),
+    Plot1D('e2x5Right', 'e2x5Right', 20, 0, 40, 'e2x5Right'),
+    Plot1D('nSaturatedXtals', 'nSaturatedXtals', 10, 0, 9, 'number of Saturated crystals'),
+    Plot1D('numberOfClusters', 'numberOfClusters', 10, 0, 9, 'number of Clusters'),
+    Plot1D('hadTowOverEm', 'hadTowOverEm', 20, 0, 0.2, 'Single Tower H/E'),
+    Plot1D('ecalRecHitIsolation', 'ecalRecHitIsolation', 20, 0, 40, 'ecal RecHit Isolation'),
+    Plot1D('sigmaIetaIetaFrac', 'sigmaIetaIetaFrac', 20, 0, 0.08, 'sigmaIetaIetaFrac'),
+    Plot1D('chargedHadronIso', 'chargedHadronIso', 20, 0, 40, 'chargedHadronIso'),
+    Plot1D('iEtaMod5', 'iEtaMod5', 20, 0, 40, 'iEtaMod5'),
+    Plot1D('iEtaMod20', 'iEtaMod20', 20, 0, 40, 'iEtaMod20'),
+    Plot1D('iPhiMod2', 'iPhiMod2', 20, 0, 199, 'iPhiMod2'),
+    Plot1D('iPhiMod20', 'iPhiMod20', 100, 0, 99, 'iPhiMod20')
+])
 
-#putting back the fall17V1 plots for non v9 case
-_Electron_plots_withFall17V1 = copy.deepcopy(nanoDQM.vplots.Electron.plots)
-_Electron_plots_withFall17V1.append(Plot1D('cutBased_Fall17_V1', 'cutBased_Fall17_V1', 5, -0.5, 4.5, 'cut-based ID Fall17 V1 (0:fail, 1:veto, 2:loose, 3:medium, 4:tight)'))
-_Electron_plots_withFall17V1.append(Plot1D('mvaFall17V1Iso', 'mvaFall17V1Iso', 20, -1, 1, 'MVA Iso ID V1 score'))
-_Electron_plots_withFall17V1.append(Plot1D('mvaFall17V1Iso_WP80', 'mvaFall17V1Iso_WP80', 2, -0.5, 1.5, 'MVA Iso ID V1 WP80'))
-_Electron_plots_withFall17V1.append(Plot1D('mvaFall17V1Iso_WP90', 'mvaFall17V1Iso_WP90', 2, -0.5, 1.5, 'MVA Iso ID V1 WP90'))
-_Electron_plots_withFall17V1.append(Plot1D('mvaFall17V1Iso_WPL', 'mvaFall17V1Iso_WPL', 2, -0.5, 1.5, 'MVA Iso ID V1 loose WP'))
-_Electron_plots_withFall17V1.append(Plot1D('mvaFall17V1noIso', 'mvaFall17V1noIso', 20, -1, 1, 'MVA noIso ID V1 score'))
-_Electron_plots_withFall17V1.append(Plot1D('mvaFall17V1noIso_WP80', 'mvaFall17V1noIso_WP80', 2, -0.5, 1.5, 'MVA noIso ID V1 WP80'))
-_Electron_plots_withFall17V1.append(Plot1D('mvaFall17V1noIso_WP90', 'mvaFall17V1noIso_WP90', 2, -0.5, 1.5, 'MVA noIso ID V1 WP90'))
-_Electron_plots_withFall17V1.append(Plot1D('mvaFall17V1noIso_WPL', 'mvaFall17V1noIso_WPL', 2, -0.5, 1.5, 'MVA noIso ID V1 loose WP'))
+_Electron_Run2_plots = cms.VPSet()
+for plot in nanoDQM.vplots.Electron.plots:
+    if 'Fall17V2' not in plot.name.value():
+        _Electron_Run2_plots.append(plot)
+_Electron_Run2_plots.extend([
+    Plot1D('dEscaleUp', 'dEscaleUp', 100, -0.01, 0.01, '#Delta E scaleUp'),
+    Plot1D('dEscaleDown', 'dEscaleDown', 100, -0.01, 0.01, '#Delta E scaleDown'),
+    Plot1D('dEsigmaUp', 'dEsigmaUp', 100, -0.1, 0.1, '#Delta E sigmaUp'),
+    Plot1D('dEsigmaDown', 'dEsigmaDown', 100, -0.1, 0.1, '#Delta E sigmaDown'),
+    Plot1D('eCorr', 'eCorr', 20, 0.8, 1.2, 'ratio of the calibrated energy/miniaod energy'),
+])
+run2_egamma.toModify(
+     nanoDQM.vplots.Electron,
+     plots = _Electron_Run2_plots
+)
 
-_Photon_plots_2016 = copy.deepcopy(nanoDQM.vplots.Photon.plots)
-_Photon_plots_2016.append(Plot1D('cutBased', 'cutBased', 4, -0.5, 3.5, 'cut-based Spring16-V2p2 ID (0:fail, 1::loose, 2:medium, 3:tight)'))
-_Photon_plots_2016.append(Plot1D('cutBased17Bitmap', 'cutBased17Bitmap', 8, -0.5, 7.5, 'cut-based Fall17-94X-V1 ID bitmap, 2^(0:loose, 1:medium, 2:tight)'))
-_Photon_plots_2016.append(Plot1D('mvaID17', 'mvaID17', 20, -1, 1, 'MVA Fall17v1p1 ID score'))
-_Photon_plots_2016.append(Plot1D('mvaID17_WP80', 'mvaID17_WP80', 2, -0.5, 1.5, 'MVA Fall17v1p1 ID WP80'))
-_Photon_plots_2016.append(Plot1D('mvaID17_WP90', 'mvaID17_WP90', 2, -0.5, 1.5, 'MVA Fall17v1p1 ID WP90'))
+_Photon_Run2_plots = cms.VPSet()
+def _match(name):
+    if 'Fall17V2' in name: return True
+    if '_quadratic' in name: return True
+    if 'hoe_PUcorr' in name: return True
+    return False
+for plot in nanoDQM.vplots.Photon.plots:
+    if not _match(plot.name.value()):
+        _Photon_Run2_plots.append(plot)
+_Photon_Run2_plots.extend([
+    Plot1D('pfRelIso03_all', 'pfRelIso03_all', 20, 0, 2, 'PF relative isolation dR=0.3, total (with rho*EA PU Fall17V2 corrections)'),
+    Plot1D('pfRelIso03_chg', 'pfRelIso03_chg', 20, 0, 2, 'PF relative isolation dR=0.3, charged component (with rho*EA PU Fall17V2 corrections)'),
+    Plot1D('dEscaleUp', 'dEscaleUp', 100, -0.01, 0.01, '#Delta E scaleUp'),
+    Plot1D('dEscaleDown', 'dEscaleDown', 100, -0.01, 0.01, '#Delta E scaleDown'),
+    Plot1D('dEsigmaUp', 'dEsigmaUp', 100, -0.1, 0.1, '#Delta E sigmaUp'),
+    Plot1D('dEsigmaDown', 'dEsigmaDown', 100, -0.1, 0.1, '#Delta E sigmaDown'),
+    Plot1D('eCorr', 'eCorr', 20, 0.8, 1.2, 'ratio of the calibrated energy/miniaod energy'),
+])
+run2_egamma.toModify(
+     nanoDQM.vplots.Photon,
+     plots = _Photon_Run2_plots
+)
 
-_FatJet_plots_80x = copy.deepcopy(nanoDQM.vplots.FatJet.plots)
-_FatJet_plots_80x.append(Plot1D('msoftdrop_chs', 'msoftdrop_chs', 20, -300, 300, 'Legacy uncorrected soft drop mass with CHS'))
+_FatJet_Run2_plots = cms.VPSet()
+for plot in nanoDQM.vplots.FatJet.plots:
+    if 'EF' not in plot.name.value():
+        _FatJet_Run2_plots.append(plot)
+_FatJet_Run2_plots.extend([
+    Plot1D('btagCSVV2', 'btagCSVV2', 20, -1, 1, ' pfCombinedInclusiveSecondaryVertexV2 b-tag discriminator (aka CSVV2)'),
+    Plot1D('btagDeepB', 'btagDeepB', 20, -1, 1, 'Deep B+BB btag discriminator'),
+    Plot1D('btagHbb', 'btagHbb', 20, -1, 1, 'Higgs to BB tagger discriminator'),
+    Plot1D('btagCMVA', 'btagCMVA', 20, -1, 1, 'CMVA V2 btag discriminator'),
+    Plot1D('btagDDBvLV2', 'btagDDBvLV2', 20, 0, 1, 'DeepDoubleX V2(mass-decorrelated) discriminator for H(Z)->bb vs QCD'),
+    Plot1D('btagDDCvBV2', 'btagDDCvBV2', 20, 0, 1, 'DeepDoubleX V2 (mass-decorrelated) discriminator for H(Z)->cc vs H(Z)->bb'),
+    Plot1D('btagDDCvLV2', 'btagDDCvLV2', 20, 0, 1, 'DeepDoubleX V2 (mass-decorrelated) discriminator for H(Z)->cc vs QCD'),
+    Plot1D('deepTagMD_H4qvsQCD', 'deepTagMD_H4qvsQCD', 20, 0, 1, 'Mass-decorrelated DeepBoostedJet tagger H->4q vs QCD discriminator'),
+    Plot1D('deepTagMD_HbbvsQCD', 'deepTagMD_HbbvsQCD', 20, 0, 1, 'Mass-decorrelated DeepBoostedJet tagger H->bb vs QCD discriminator'),
+    Plot1D('deepTagMD_TvsQCD', 'deepTagMD_TvsQCD', 20, 0, 1, 'Mass-decorrelated DeepBoostedJet tagger top vs QCD discriminator'),
+    Plot1D('deepTagMD_WvsQCD', 'deepTagMD_WvsQCD', 20, 0, 1, 'Mass-decorrelated DeepBoostedJet tagger W vs QCD discriminator'),
+    Plot1D('deepTagMD_ZHbbvsQCD', 'deepTagMD_ZHbbvsQCD', 20, 0, 1, 'Mass-decorrelated DeepBoostedJet tagger Z/H->bb vs QCD discriminator'),
+    Plot1D('deepTagMD_ZHccvsQCD', 'deepTagMD_ZHccvsQCD', 20, 0, 1, 'Mass-decorrelated DeepBoostedJet tagger Z/H->cc vs QCD discriminator'),
+    Plot1D('deepTagMD_ZbbvsQCD', 'deepTagMD_ZbbvsQCD', 20, 0, 1, 'Mass-decorrelated DeepBoostedJet tagger Z->bb vs QCD discriminator'),
+    Plot1D('deepTagMD_ZvsQCD', 'deepTagMD_ZvsQCD', 20, 0, 1, 'Mass-decorrelated DeepBoostedJet tagger Z vs QCD discriminator'),
+    Plot1D('deepTagMD_bbvsLight', 'deepTagMD_bbvsLight', 20, 0, 1, 'Mass-decorrelated DeepBoostedJet tagger Z/H/gluon->bb vs light flavour discriminator'),
+    Plot1D('deepTagMD_ccvsLight', 'deepTagMD_ccvsLight', 20, 0, 1, 'Mass-decorrelated DeepBoostedJet tagger Z/H/gluon->cc vs light flavour discriminator'),
+    Plot1D('deepTag_H', 'deepTag_H', 20, 0, 1, 'DeepBoostedJet tagger H(bb,cc,4q) sum'),
+    Plot1D('deepTag_QCD', 'deepTag_QCD', 20, 0, 1, 'DeepBoostedJet tagger QCD(bb,cc,b,c,others) sum'),
+    Plot1D('deepTag_QCDothers', 'deepTag_QCDothers', 20, 0, 1, 'DeepBoostedJet tagger QCDothers value'),
+    Plot1D('deepTag_TvsQCD', 'deepTag_TvsQCD', 20, 0, 1, 'DeepBoostedJet tagger top vs QCD discriminator'),
+    Plot1D('deepTag_WvsQCD', 'deepTag_WvsQCD', 20, 0, 1, 'DeepBoostedJet tagger W vs QCD discriminator'),
+    Plot1D('deepTag_ZvsQCD', 'deepTag_ZvsQCD', 20, 0, 1, 'DeepBoostedJet tagger Z vs QCD discriminator'),
+    Plot1D('particleNetLegacy_mass', 'particleNetLegacy_mass', 25, 0, 250, 'ParticleNet Legacy Run-2 mass regression'),
+    Plot1D('particleNetLegacy_Xbb', 'particleNetLegacy_Xbb', 20, 0, 1, 'ParticleNet Legacy Run-2 X->bb score'),
+    Plot1D('particleNetLegacy_Xcc', 'particleNetLegacy_Xcc', 20, 0, 1, 'ParticleNet Legacy Run-2 X->cc score'),
+    Plot1D('particleNetLegacy_Xqq', 'particleNetLegacy_Xqq', 20, 0, 1, 'ParticleNet Legacy Run-2 X->qq (uds) score'),
+    Plot1D('particleNetLegacy_QCD', 'particleNetLegacy_QCD', 20, 0, 1, 'ParticleNet Legacy Run-2 QCD score'),
+])
 
-_Flag_plots_80x = copy.deepcopy(nanoDQM.vplots.Flag.plots)
-_Flag_plots_80x.append(Plot1D('BadGlobalMuon', 'BadGlobalMuon', 2, -0.5, 1.5, 'Bad muon flag'))
-_Flag_plots_80x.append(Plot1D('CloneGlobalMuon', 'CloneGlobalMuon', 2, -0.5, 1.5, 'Clone muon flag'))
+_FatJet_EarlyRun3_plots = cms.VPSet()
+for plot in _FatJet_Run2_plots:
+    if 'particleNet_' not in plot.name.value() and 'btagCSVV2' not in plot.name.value() \
+    and 'Multiplicity' not in plot.name.value() and 'EF' not in plot.name.value():
+        _FatJet_EarlyRun3_plots.append(plot)
+_FatJet_EarlyRun3_plots.extend([
+    Plot1D('btagDeepB', 'btagDeepB', 20, -1, 1, 'Deep B+BB btag discriminator'),
+    Plot1D('btagHbb', 'btagHbb', 20, -1, 1, 'Higgs to BB tagger discriminator'),
+    Plot1D('btagCMVA', 'btagCMVA', 20, -1, 1, 'CMVA V2 btag discriminator'),
+    Plot1D('btagDDBvLV2', 'btagDDBvLV2', 20, 0, 1, 'DeepDoubleX V2(mass-decorrelated) discriminator for H(Z)->bb vs QCD'),
+    Plot1D('btagDDCvBV2', 'btagDDCvBV2', 20, 0, 1, 'DeepDoubleX V2 (mass-decorrelated) discriminator for H(Z)->cc vs H(Z)->bb'),
+    Plot1D('btagDDCvLV2', 'btagDDCvLV2', 20, 0, 1, 'DeepDoubleX V2 (mass-decorrelated) discriminator for H(Z)->cc vs QCD'),
+])
 
-for modifier in run2_miniAOD_80XLegacy, run2_nanoAOD_94X2016:
-    modifier.toModify(nanoDQM.vplots.Electron, plots = _Electron_plots_2016)
-    modifier.toModify(nanoDQM.vplots.Photon, plots = _Photon_plots_2016)
-run2_miniAOD_80XLegacy.toModify(nanoDQM.vplots.FatJet, plots = _FatJet_plots_80x)
-run2_miniAOD_80XLegacy.toModify(nanoDQM.vplots.Flag, plots = _Flag_plots_80x)
-(run2_nanoAOD_92X | run2_nanoAOD_94XMiniAODv1 | run2_nanoAOD_94XMiniAODv2 | run2_nanoAOD_94X2016 | run2_nanoAOD_102Xv1).toModify(nanoDQM.vplots.Electron, plots=_Electron_plots_withFall17V1)
+_Jet_Run2_plots = cms.VPSet()
+for plot in nanoDQM.vplots.Jet.plots:
+    _Jet_Run2_plots.append(plot)
+    if 'Multiplicity' not in plot.name.value() and 'hfHEF' not in plot.name.value() and 'hfEmEF' not in plot.name.value():
+        _Jet_Run2_plots.append(plot)
+_Jet_Run2_plots.extend([
+    Plot1D('btagCSVV2', 'btagCSVV2', 20, -1, 1, ' pfCombinedInclusiveSecondaryVertexV2 b-tag discriminator (aka CSVV2)'),
+    Plot1D('btagCMVA', 'btagCMVA', 20, -1, 1, 'CMVA V2 btag discriminator'),
+    Plot1D('btagDeepB', 'btagDeepB', 20, -1, 1, 'Deep B+BB btag discriminator'),
+    Plot1D('btagDeepC', 'btagDeepC', 20, 0, 1, 'DeepCSV charm btag discriminator'),
+    Plot1D('btagDeepCvB', 'btagDeepCvB', 20, -1, 1, 'DeepCSV c vs b+bb discriminator'),
+    Plot1D('btagDeepCvL', 'btagDeepCvL', 20, -1, 1, 'DeepCSV c vs udsg discriminator')
+])
 
-run2_miniAOD_80XLegacy.toModify(nanoDQM.vplots, IsoTrack = None)
+_Jet_EarlyRun3_plots = cms.VPSet()
+for plot in nanoDQM.vplots.Jet.plots:
+    if 'PNet' not in plot.name.value() and 'Multiplicity' not in plot.name.value() \
+    and 'hfHEF' not in plot.name.value() and 'hfEmEF' not in plot.name.value():
+        _Jet_EarlyRun3_plots.append(plot)
+
+
+_SubJet_Run2_plots = cms.VPSet()
+for plot in nanoDQM.vplots.SubJet.plots:
+    _SubJet_Run2_plots.append(plot)
+_SubJet_Run2_plots.extend([
+    Plot1D('btagCSVV2', 'btagCSVV2', 20, -1, 1, ' pfCombinedInclusiveSecondaryVertexV2 b-tag discriminator (aka CSVV2)'),
+])
+_SubJet_EarlyRun3_plots = cms.VPSet()
+for plot in nanoDQM.vplots.SubJet.plots:
+    if 'area' not in plot.name.value():
+        _SubJet_EarlyRun3_plots.append(plot)
+
+run2_nanoAOD_ANY.toModify(
+    nanoDQM.vplots.FatJet,
+    plots = _FatJet_Run2_plots
+).toModify(
+    nanoDQM.vplots.Jet,
+    plots = _Jet_Run2_plots
+).toModify(
+    nanoDQM.vplots.SubJet,
+    plots = _SubJet_Run2_plots
+)
+
+(run3_nanoAOD_122 | run3_nanoAOD_124).toModify(
+    nanoDQM.vplots.FatJet,
+    plots = _FatJet_EarlyRun3_plots
+).toModify(
+    nanoDQM.vplots.Jet,
+    plots = _Jet_EarlyRun3_plots
+).toModify(
+    nanoDQM.vplots.SubJet,
+    plots = _SubJet_EarlyRun3_plots
+)
+
+
+_Pileup_pre13X_plots = cms.VPSet()
+for plot in nanoDQM.vplots.Pileup.plots:
+    if 'pthatmax' not in plot.name.value():
+        _Pileup_pre13X_plots.append(plot)
+
+(run2_nanoAOD_ANY | run3_nanoAOD_122 | run3_nanoAOD_124).toModify(
+    nanoDQM.vplots.Pileup,
+    plots = _Pileup_pre13X_plots
+)
 
 ## MC
 nanoDQMMC = nanoDQM.clone()
@@ -131,13 +280,10 @@ nanoDQMMC.vplots.Jet.sels.PromptB = cms.string("genJetIdx != 1 && hadronFlavour 
 from DQMServices.Core.DQMQualityTester import DQMQualityTester
 nanoDQMQTester = DQMQualityTester(
     qtList = cms.untracked.FileInPath('PhysicsTools/NanoAOD/test/dqmQualityTests.xml'),
-    prescaleFactor = cms.untracked.int32(1),                               
+    prescaleFactor = cms.untracked.int32(1),
     testInEventloop = cms.untracked.bool(False),
     qtestOnEndLumi = cms.untracked.bool(False),
     verboseQT =  cms.untracked.bool(True)
 )
-
-(run3_nanoAOD_devel).toModify(nanoDQM.vplots, Electron = None)
-(run3_nanoAOD_devel).toModify(nanoDQMMC.vplots, Electron = None)
 
 nanoHarvest = cms.Sequence( nanoDQMQTester )

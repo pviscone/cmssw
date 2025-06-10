@@ -179,7 +179,7 @@ testProducerWithPsetDesc = cms.EDProducer('ProducerWithPSetDesc',
     'One:',
     ':Two'
   ),
-  fileInPath = cms.FileInPath('FWCore/Integration/test/ProducerWithPSetDesc.cc'),
+  fileInPath = cms.FileInPath('FWCore/Integration/plugins/ProducerWithPSetDesc.cc'),
   bar = cms.PSet(
     Drinks = cms.uint32(5),
     uDrinks = cms.untracked.uint32(5),
@@ -352,6 +352,21 @@ testProducerWithPsetDesc = cms.EDProducer('ProducerWithPSetDesc',
     ),
     cms.PSet(
       type = cms.string('edmtestAnotherValueMaker'),
+      value = cms.int32(11)
+    )
+  ),
+  plugin4 = cms.PSet(
+    value = cms.int32(5),
+    pluginRecursive = cms.PSet(),
+    type = cms.string('edmtestAnotherMakerWithRecursivePlugin')
+  
+  ),
+  plugin5 = cms.VPSet(
+    cms.PSet(
+      type = cms.string('edmtestAnotherOneMaker')
+    ),
+    cms.PSet(
+      type = cms.string('edmtestAnotherMakerWithRecursivePlugin'),
       value = cms.int32(11)
     )
   ),

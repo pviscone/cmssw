@@ -49,6 +49,10 @@ void L1TGlobalProducer::fillDescriptions(edm::ConfigurationDescriptions& descrip
       ->setComment("InputTag for Calo Trigger Jet (required parameter:  default value is invalid)");
   desc.add<edm::InputTag>("EtSumInputTag", edm::InputTag(""))
       ->setComment("InputTag for Calo Trigger EtSum (required parameter:  default value is invalid)");
+  desc.add<edm::InputTag>("EtSumZdcInputTag", edm::InputTag(""))
+      ->setComment("InputTag for ZDC EtSums Plus and Minus (required parameter:  default value is invalid)");
+  desc.add<edm::InputTag>("CICADAInputTag", edm::InputTag(""))
+      ->setComment("InputTag for CICADA Anomaly Detection (required parameter: default value is invalid)");
   desc.add<edm::InputTag>("ExtInputTag", edm::InputTag(""))
       ->setComment("InputTag for external conditions (not required, but recommend to specify explicitly in config)");
   desc.add<edm::InputTag>("AlgoBlkInputTag", edm::InputTag("hltGtStage2Digis"))
@@ -68,7 +72,17 @@ void L1TGlobalProducer::fillDescriptions(edm::ConfigurationDescriptions& descrip
 
   // switch for muon showers in Run-3
   desc.add<bool>("useMuonShowers", false);
-  desc.add<bool>("resetPSCountersEachLumiSec", true);
+
+  // disables resetting the prescale counters each lumisection (needed for offline)
+  //  originally, the L1T firmware applied the reset of prescale counters at the end of every LS;
+  //  this reset was disabled in the L1T firmware starting from run-362658 (November 25th, 2022), see
+  //  https://github.com/cms-sw/cmssw/pull/37395#issuecomment-1323437044
+  desc.add<bool>("resetPSCountersEachLumiSec", false);
+
+  // initialise prescale counters with a semi-random value in the range [0, prescale*10^precision - 1];
+  // if false, the prescale counters are initialised to zero
+  desc.add<bool>("semiRandomInitialPSCounters", false);
+
   // These parameters have well defined  default values and are not currently
   // part of the L1T/HLT interface.  They can be cleaned up or updated at will:
   desc.add<bool>("ProduceL1GtDaqRecord", true);
@@ -93,6 +107,8 @@ L1TGlobalProducer::L1TGlobalProducer(const edm::ParameterSet& parSet)
       m_tauInputTag(parSet.getParameter<edm::InputTag>("TauInputTag")),
       m_jetInputTag(parSet.getParameter<edm::InputTag>("JetInputTag")),
       m_sumInputTag(parSet.getParameter<edm::InputTag>("EtSumInputTag")),
+      m_sumZdcInputTag(parSet.getParameter<edm::InputTag>("EtSumZdcInputTag")),
+      m_CICADAInputTag(parSet.getParameter<edm::InputTag>("CICADAInputTag")),
       m_extInputTag(parSet.getParameter<edm::InputTag>("ExtInputTag")),
 
       m_produceL1GtDaqRecord(parSet.getParameter<bool>("ProduceL1GtDaqRecord")),
@@ -116,11 +132,14 @@ L1TGlobalProducer::L1TGlobalProducer(const edm::ParameterSet& parSet)
       m_requireMenuToMatchAlgoBlkInput(parSet.getParameter<bool>("RequireMenuToMatchAlgoBlkInput")),
       m_algoblkInputTag(parSet.getParameter<edm::InputTag>("AlgoBlkInputTag")),
       m_resetPSCountersEachLumiSec(parSet.getParameter<bool>("resetPSCountersEachLumiSec")),
+      m_semiRandomInitialPSCounters(parSet.getParameter<bool>("semiRandomInitialPSCounters")),
       m_useMuonShowers(parSet.getParameter<bool>("useMuonShowers")) {
   m_egInputToken = consumes<BXVector<EGamma>>(m_egInputTag);
   m_tauInputToken = consumes<BXVector<Tau>>(m_tauInputTag);
   m_jetInputToken = consumes<BXVector<Jet>>(m_jetInputTag);
   m_sumInputToken = consumes<BXVector<EtSum>>(m_sumInputTag);
+  m_sumZdcInputToken = consumes<BXVector<EtSum>>(m_sumZdcInputTag);
+  m_CICADAInputToken = consumes<BXVector<float>>(m_CICADAInputTag);
   m_muInputToken = consumes<BXVector<Muon>>(m_muInputTag);
   if (m_useMuonShowers)
     m_muShowerInputToken = consumes<BXVector<MuonShower>>(m_muShowerInputTag);
@@ -197,6 +216,7 @@ L1TGlobalProducer::L1TGlobalProducer(const edm::ParameterSet& parSet)
   m_uGtBrd = std::make_unique<GlobalBoard>();
   m_uGtBrd->setVerbosity(m_verbosity);
   m_uGtBrd->setResetPSCountersEachLumiSec(m_resetPSCountersEachLumiSec);
+  m_uGtBrd->setSemiRandomInitialPSCounters(m_semiRandomInitialPSCounters);
 
   // initialize cached IDs
 
@@ -357,6 +377,9 @@ void L1TGlobalProducer::produce(edm::Event& iEvent, const edm::EventSetup& evSet
                                                gtParser.vecMuonShowerTemplate(),
                                                gtParser.vecCaloTemplate(),
                                                gtParser.vecEnergySumTemplate(),
+                                               gtParser.vecEnergySumZdcTemplate(),
+                                               gtParser.vecAXOL1TLTemplate(),
+                                               gtParser.vecCICADATemplate(),
                                                gtParser.vecExternalTemplate(),
                                                gtParser.vecCorrelationTemplate(),
                                                gtParser.vecCorrelationThreeBodyTemplate(),
@@ -501,6 +524,8 @@ void L1TGlobalProducer::produce(edm::Event& iEvent, const edm::EventSetup& evSet
   bool receiveTau = true;
   bool receiveJet = true;
   bool receiveEtSums = true;
+  bool receiveEtSumsZdc = true;
+  bool receiveCICADA = true;
   bool receiveExt = true;
 
   /*  *** Boards need redefining *****
@@ -590,13 +615,17 @@ void L1TGlobalProducer::produce(edm::Event& iEvent, const edm::EventSetup& evSet
                                   m_tauInputToken,
                                   m_jetInputToken,
                                   m_sumInputToken,
+                                  m_sumZdcInputToken,
+                                  m_CICADAInputToken,
                                   receiveEG,
                                   m_nrL1EG,
                                   receiveTau,
                                   m_nrL1Tau,
                                   receiveJet,
                                   m_nrL1Jet,
-                                  receiveEtSums);
+                                  receiveEtSums,
+                                  receiveEtSumsZdc,
+                                  receiveCICADA);
 
   m_uGtBrd->receiveMuonObjectData(iEvent, m_muInputToken, receiveMu, m_nrL1Mu);
 

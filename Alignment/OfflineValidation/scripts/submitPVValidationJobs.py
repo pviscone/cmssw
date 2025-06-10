@@ -73,7 +73,7 @@ def forward_proxy(rundir):
     shutil.copyfile(local_proxy, os.path.join(rundir,".user_proxy"))
 
 ##############################################
-def write_HTCondor_submit_file(path, name, nruns, proxy_path=None):
+def write_HTCondor_submit_file(path, logs, name, nruns, proxy_path=None):
 ##############################################
     """Writes 'job.submit' file in `path`.
     Arguments:
@@ -84,7 +84,7 @@ def write_HTCondor_submit_file(path, name, nruns, proxy_path=None):
         
     job_submit_template="""\
 universe              = vanilla
-requirements          = (OpSysAndVer =?= "CentOS7")
+requirements          = (OpSysAndVer =?= "AlmaLinux9")
 executable            = {script:s}
 output                = {jobm:s}/{out:s}.out
 error                 = {jobm:s}/{out:s}.err
@@ -102,7 +102,7 @@ queue {njobs:s}
     with open(job_submit_file, "w") as f:
         f.write(job_submit_template.format(script = os.path.join(path,name+"_$(ProcId).sh"),
                                            out  = name+"_$(ProcId)",
-                                           jobm = os.path.abspath(path),
+                                           jobm = os.path.abspath(logs),
                                            flavour = "tomorrow",
                                            njobs = str(nruns),
                                            proxy = proxy_path))
@@ -328,21 +328,22 @@ def ConfigSectionMap(config, section):
 
 ###### method to create recursively directories on EOS #############
 def mkdir_eos(out_path):
-    print("creating",out_path)
+    print("============== creating",out_path)
     newpath='/'
     for dir in out_path.split('/'):
         newpath=os.path.join(newpath,dir)
         # do not issue mkdir from very top of the tree
         if newpath.find('test_out') > 0:
             #getCommandOutput("eos mkdir"+newpath)
-            command="/afs/cern.ch/project/eos/installation/cms/bin/eos.select mkdir "+newpath
+            command="eos mkdir "+newpath
             p = subprocess.Popen(command,shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             (out, err) = p.communicate()
+            print("============== created ",out_path)
             #print(out,err)
             p.wait()
 
     # now check that the directory exists
-    command2="/afs/cern.ch/project/eos/installation/cms/bin/eos.select ls "+out_path
+    command2="eos ls "+out_path
     p = subprocess.Popen(command2,shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     (out, err) = p.communicate()
     p.wait()
@@ -443,13 +444,11 @@ class Job:
         self.outputCfgName=self.output_full_name+"_cfg.py"
         fout=open(os.path.join(self.cfg_dir,self.outputCfgName),'w')
 
-        template_cfg_file = os.path.join(self.the_dir,"PVValidation_T_cfg.py")
-
-        fin = open(template_cfg_file)
+        template_cfg_file = os.path.join(self.CMSSW_dir,"src/Alignment/OfflineValidation/test","PVValidation_T_cfg.py")
+        file = open(template_cfg_file,'r')
 
         config_txt = '\n\n' + CopyRights + '\n\n'
-        config_txt += fin.read()
-
+        config_txt += file.read()
         config_txt=config_txt.replace("ISDATEMPLATE",self.isDA)
         config_txt=config_txt.replace("ISMCTEMPLATE",self.isMC)
         config_txt=config_txt.replace("APPLYBOWSTEMPLATE",self.applyBOWS)
@@ -477,27 +476,36 @@ class Job:
         config_txt=config_txt.replace("FILESOURCETEMPLATE","["+",".join(lfn_with_quotes)+"]")
         config_txt=config_txt.replace("OUTFILETEMPLATE",self.output_full_name+".root")
 
+        ### now for the extra conditions
+        textToWrite=''
+        for element in self.extraCondVect :
+            if("Rcd" in element):
+                params = self.extraCondVect[element].split(',')
+                text = '''\n
+          process.conditionsIn{record} = CalibTracker.Configuration.Common.PoolDBESSource_cfi.poolDBESSource.clone(
+               connect = cms.string('{database}'),
+               toGet = cms.VPSet(cms.PSet(record = cms.string('{record}'),
+                                          tag = cms.string('{tag}'),
+                                          label = cms.untracked.string('{label}')
+                                         )
+                                )
+          )
+          process.prefer_conditionsIn{record} = cms.ESPrefer("PoolDBESSource", "conditionsIn{record}")
+        '''.format(record = element, database = params[0], tag = params[1], label = (params[2] if len(params)>2 else ''))
+                textToWrite+=text
+
+        if(self.applyEXTRACOND=="True"):
+            if not self.extraCondVect:
+                raise Exception('Requested extra conditions, but none provided')
+
+            config_txt=config_txt.replace("END OF EXTRA CONDITIONS",textToWrite)
+        else:
+            print("INFO: Will not apply any extra conditions")
+            pass
+
         fout.write(config_txt)
 
-        for line in fin.readlines():
-
-            if 'END OF EXTRA CONDITIONS' in line:
-                for element in self.extraCondVect :
-                    if("Rcd" in element):
-                        params = self.extraCondVect[element].split(',')
-
-                        fout.write(" \n")
-                        fout.write("     process.conditionsIn"+element+"= CalibTracker.Configuration.Common.PoolDBESSource_cfi.poolDBESSource.clone( \n")
-                        fout.write("          connect = cms.string('"+params[0]+"'), \n")
-                        fout.write("          toGet = cms.VPSet(cms.PSet(record = cms.string('"+element+"'), \n")
-                        fout.write("                                     tag = cms.string('"+params[1]+"'), \n")
-                        if (len(params)>2):
-                            fout.write("                                     label = cms.untracked.string('"+params[2]+"') \n")
-                        fout.write("                                     ) \n")
-                        fout.write("                            ) \n")
-                        fout.write("          ) \n")
-                        fout.write("     process.prefer_conditionsIn"+element+" = cms.ESPrefer(\"PoolDBESSource\", \"conditionsIn"+element[0]+"\") \n \n") 
-            fout.write(line)
+        file.close()
         fout.close()
                           
     def createTheLSFFile(self):
@@ -536,7 +544,7 @@ class Job:
         fout.close()
 
 
-    def createTheBashFile(self):
+    def createTheBashFile(self, isUnitTest):
 ###############################
 
        # directory to store the BASH to be submitted
@@ -548,10 +556,6 @@ class Job:
         fout=open(os.path.join(self.BASH_dir,self.output_BASH_name),'w')
     
         job_name = self.output_full_name
-
-        log_dir = os.path.join(self.the_dir,"log")
-        if not os.path.exists(log_dir):
-            os.makedirs(log_dir)
 
         fout.write("#!/bin/bash \n")
         #fout.write("export EOS_MGM_URL=root://eoscms.cern.ch \n")
@@ -569,9 +573,11 @@ class Job:
         fout.write("cp "+os.path.join(self.cfg_dir,self.outputCfgName)+" . \n")
         fout.write("echo \"cmsRun "+self.outputCfgName+"\" \n")
         fout.write("cmsRun "+self.outputCfgName+" \n")
-        fout.write("echo \"Content of working dir is \"`ls -lh` \n")
+        fout.write("echo \"Content of working dir is:\" \n")
+        fout.write("ls -lh | sort \n")
         #fout.write("less condor_exec.exe \n")
-        fout.write("for RootOutputFile in $(ls *root ); do xrdcp -f ${RootOutputFile} root://eoscms//eos/cms${OUT_DIR}/${RootOutputFile} ; done \n")
+        if(not isUnitTest):
+            fout.write("for RootOutputFile in $(ls *root ); do xrdcp -f ${RootOutputFile} root://eoscms//eos/cms${OUT_DIR}/${RootOutputFile} ; done \n")
         #fout.write("mv ${JobName}.out ${CMSSW_DIR}/BASH \n")
         fout.write("echo  \"Job ended at \" `date` \n")
         fout.write("exit 0 \n")
@@ -615,8 +621,7 @@ def main():
 
     # CMSSW section
     input_CMSSW_BASE = os.environ.get('CMSSW_BASE')
-    AnalysisStep_dir = os.path.join(input_CMSSW_BASE,"src/Alignment/OfflineValidation/test")
-    lib_path = os.path.abspath(AnalysisStep_dir)
+    lib_path = os.path.abspath(os.path.join(input_CMSSW_BASE,"src/Alignment/OfflineValidation/test"))
     sys.path.append(lib_path)
 
     ## N.B.: this is dediced here once and for all
@@ -916,7 +921,7 @@ def main():
         ##  print "==========>",conditions
 
         # for hadd script
-        scripts_dir = os.path.join(AnalysisStep_dir,"scripts")
+        scripts_dir = "scripts"
         if not os.path.exists(scripts_dir):
             os.makedirs(scripts_dir)
         hadd_script_file = os.path.join(scripts_dir,jobName[iConf]+"_"+opts.taskname+".sh")
@@ -1048,11 +1053,11 @@ def main():
                        vertextype[iConf], tracktype[iConf],
                        refittertype[iConf], ttrhtype[iConf],
                        applyruncontrol[iConf],
-                       ptcut[iConf],input_CMSSW_BASE,AnalysisStep_dir)
+                       ptcut[iConf],input_CMSSW_BASE,os.getcwd())
             
             aJob.setEOSout(eosdir)
             aJob.createTheCfgFile(theSrcFiles)
-            aJob.createTheBashFile()
+            aJob.createTheBashFile(opts.isUnitTest)
 
             output_file_list1.append("xrdcp root://eoscms//eos/cms"+aJob.getOutputFileName()+" /tmp/$USER/"+opts.taskname+" \n")
             if jobN == 0:
@@ -1063,10 +1068,15 @@ def main():
             output_file_list2.append("/tmp/$USER/"+opts.taskname+"/"+os.path.split(aJob.getOutputFileName())[1]+" ")       
             del aJob
 
-        job_submit_file = write_HTCondor_submit_file(theBashDir,theBaseName,totalJobs,None)
+        ## create the log directory
+        theLogDir = os.path.join(os.getcwd(),"log")
+        if not os.path.exists(theLogDir):
+            os.makedirs(theLogDir)
+
+        job_submit_file = write_HTCondor_submit_file(theBashDir,theLogDir,theBaseName,totalJobs,None)
+        os.system("chmod u+x "+theBashDir+"/*.sh")
 
         if opts.submit:
-            os.system("chmod u+x "+theBashDir+"/*.sh")
             submissionCommand = "condor_submit "+job_submit_file
             submissionOutput = getCommandOutput(submissionCommand)
             print(submissionOutput)

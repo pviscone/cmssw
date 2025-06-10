@@ -69,7 +69,7 @@ namespace edm {
     }
 
     // ---------- const member functions ---------------------
-    bool taskHasFailed() const noexcept { return m_task->exceptionPtr() != nullptr; }
+    bool taskHasFailed() const noexcept { return static_cast<bool>(m_task->exceptionPtr()); }
 
     bool hasTask() const noexcept { return m_task != nullptr; }
     /** since oneapi::tbb::task_group is thread safe, we can return it non-const from here since
@@ -83,7 +83,7 @@ namespace edm {
     /** Use in the case where you need to inform the parent task of a
      failure before some other child task which may be run later reports
      a different, but related failure. You must later call doneWaiting
-     in the same thread passing the same exceptoin.
+     in the same thread passing the same exception.
      */
     void presetTaskAsFailed(std::exception_ptr iExcept) {
       if (iExcept) {

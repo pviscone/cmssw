@@ -67,10 +67,13 @@ namespace edm {
         return T::HasAbility::kRunCache or T::HasAbility::kRunSummaryCache or T::HasAbility::kBeginRunProducer or
                T::HasAbility::kEndRunProducer;
       }
+      bool wantsStreamRuns() const final { return T::HasAbility::kWatchRuns; }
+
       bool wantsGlobalLuminosityBlocks() const final {
         return T::HasAbility::kLuminosityBlockCache or T::HasAbility::kLuminosityBlockSummaryCache or
                T::HasAbility::kBeginLuminosityBlockProducer or T::HasAbility::kEndLuminosityBlockProducer;
       }
+      bool wantsStreamLuminosityBlocks() const final { return T::HasAbility::kWatchLuminosityBlocks; }
 
       bool hasAcquire() const final { return T::HasAbility::kExternalWork; }
 
@@ -101,6 +104,10 @@ namespace edm {
         m_pset = nullptr;
       }
 
+      void preallocRuns(unsigned int iNRuns) final {
+        m_runs.resize(iNRuns);
+        m_runSummaries.resize(iNRuns);
+      }
       void preallocLumis(unsigned int iNLumis) final {
         m_lumis.resize(iNLumis);
         m_lumiSummaries.resize(iNLumis);

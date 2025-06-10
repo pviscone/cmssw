@@ -13,6 +13,7 @@ MicroEventContent = cms.PSet(
         'keep *_slimmedTaus_*_*',
         'keep *_slimmedTausBoosted_*_*',
         'keep *_slimmedCaloJets_*_*',
+        'keep *_slimmedJPTJets_*_*',
         'keep *_slimmedJets_*_*',
         # keep slimmedJets TagInfos, currently only PixelClusterTagInfo
         'keep recoBaseTagInfosOwned_slimmedJets_*_*',
@@ -21,7 +22,6 @@ MicroEventContent = cms.PSet(
         'drop recoBaseTagInfosOwned_slimmedJetsAK8_*_*',
         'keep *_slimmedJetsPuppi_*_*',
         'keep *_slimmedMETs_*_*',
-        'keep *_slimmedMETsNoHF_*_*',
         'keep *_slimmedMETsPuppi_*_*',
         'keep *_slimmedSecondaryVertices_*_*',
         'keep *_slimmedLambdaVertices_*_*',
@@ -95,6 +95,12 @@ MicroEventContent = cms.PSet(
         # patLowPtElectrons
         'keep *_slimmedLowPtElectrons_*_*',
         'keep *_gsfTracksOpenConversions_*_*',
+        # patDisplacedMuons
+        'keep *_slimmedDisplacedMuons_*_*',
+        'keep recoTrackExtras_slimmedDisplacedMuonTrackExtras_*_*',
+        'keep TrackingRecHitsOwned_slimmedDisplacedMuonTrackExtras_*_*',
+        'keep SiPixelClusteredmNewDetSetVector_slimmedDisplacedMuonTrackExtras_*_*',
+        'keep SiStripClusteredmNewDetSetVector_slimmedDisplacedMuonTrackExtras_*_*',
     )
 )
 
@@ -152,6 +158,22 @@ _pp_on_AA_extraCommands = [
 
 from Configuration.ProcessModifiers.pp_on_AA_cff import pp_on_AA
 pp_on_AA.toModify(MicroEventContent, outputCommands = MicroEventContent.outputCommands + _pp_on_AA_extraCommands)
+
+_upc_extraCommands = [
+    'keep patPackedCandidates_hiPixelTracks_*_*',
+    'keep floatedmValueMap_packedPFCandidateTrackChi2_*_*',
+    'keep floatedmValueMap_lostTrackChi2_*_*',
+    'keep recoCentrality_hiCentrality_*_*',
+    'keep recoClusterCompatibility_hiClusterCompatibility_*_*',
+    'keep QIE10DataFrameHcalDataFrameContainer_hcalDigis_ZDC_*',
+]
+
+from Configuration.Eras.Modifier_run3_upc_cff import run3_upc
+run3_upc.toModify(MicroEventContent, outputCommands = MicroEventContent.outputCommands + _upc_extraCommands)
+
+_zdc_extraCommands = ['keep QIE10DataFrameHcalDataFrameContainer_hcalDigis_ZDC_*']
+from Configuration.ProcessModifiers.storeZDCDigis_cff import storeZDCDigis
+storeZDCDigis.toModify(MicroEventContent, outputCommands = MicroEventContent.outputCommands + _zdc_extraCommands)
 
 MicroEventContentMC = cms.PSet(
     outputCommands = cms.untracked.vstring(MicroEventContent.outputCommands)

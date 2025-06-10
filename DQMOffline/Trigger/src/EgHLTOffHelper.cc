@@ -256,6 +256,7 @@ int OffHelper::fillOffEleVec(std::vector<OffEle>& egHLTOffEles) {
     ele.setLooseCutCode(eleLooseCuts_.getCutCode(ele));
 
     std::vector<std::pair<TrigCodes::TrigBitSet, int> > trigCutsCutCodes;
+    trigCutsCutCodes.reserve(trigCuts_.size());
     for (auto& trigCut : trigCuts_)
       trigCutsCutCodes.push_back(std::make_pair(trigCut.first, trigCut.second.getCutCode(ele)));
     ele.setTrigCutsCutCodes(trigCutsCutCodes);
@@ -308,7 +309,7 @@ void OffHelper::fillIsolData(const reco::GsfElectron& ele, OffEle::IsolData& iso
   } else
     isolData.hltTrksPho = 0.;
   if (calHLTEmIsol_)
-    isolData.hltEm = ecalIsolAlgoEB.getEtSum(&ele) + ecalIsolAlgoEE.getEtSum(&ele);
+    isolData.hltEm = ecalIsolAlgoEB.getEtSum(&ele, *thresholds) + ecalIsolAlgoEE.getEtSum(&ele, *thresholds);
   else
     isolData.hltEm = 0.;
 }
@@ -425,6 +426,7 @@ int OffHelper::fillOffPhoVec(std::vector<OffPho>& egHLTOffPhos) {
     pho.setLooseCutCode(phoLooseCuts_.getCutCode(pho));
 
     std::vector<std::pair<TrigCodes::TrigBitSet, int> > trigCutsCutCodes;
+    trigCutsCutCodes.reserve(trigCuts_.size());
     for (auto& trigCut : trigCuts_)
       trigCutsCutCodes.push_back(std::make_pair(trigCut.first, trigCut.second.getCutCode(pho)));
     pho.setTrigCutsCutCodes(trigCutsCutCodes);
@@ -473,7 +475,7 @@ void OffHelper::fillIsolData(const reco::Photon& pho, OffPho::IsolData& isolData
   } else
     isolData.hltTrks = 0.;
   if (calHLTEmIsol_)
-    isolData.hltEm = ecalIsolAlgoEB.getEtSum(&pho) + ecalIsolAlgoEE.getEtSum(&pho);
+    isolData.hltEm = ecalIsolAlgoEB.getEtSum(&pho, *thresholds) + ecalIsolAlgoEE.getEtSum(&pho, *thresholds);
   else
     isolData.hltEm = 0.;
 }

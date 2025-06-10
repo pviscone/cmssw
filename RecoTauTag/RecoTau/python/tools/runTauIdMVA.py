@@ -2,38 +2,33 @@ from __future__ import print_function
 import FWCore.ParameterSet.Config as cms
 from RecoTauTag.RecoTau.TauDiscriminatorTools import noPrediscriminants
 from RecoTauTag.RecoTau.PATTauDiscriminationByMVAIsolationRun2_cff import patDiscriminationByIsolationMVArun2v1raw, patDiscriminationByIsolationMVArun2v1
+from RecoTauTag.RecoTau.DeepTau_cfi import DeepTau
+from RecoTauTag.RecoTau.DeepTauIdSonicProducer_cfi import DeepTauIdSonicProducer
+from RecoTauTag.RecoTau.tauIdWPsDefs import WORKING_POINTS_v2p1, WORKING_POINTS_v2p5, WORKING_POINTS_PHASEII_v2p5
+
 import os
 import re
 
 class TauIDEmbedder(object):
     """class to rerun the tau seq and acces trainings from the database"""
-    availableDiscriminators = [
+    experimentalDiscriminators = [
         "2017v1", "2017v2", "newDM2017v2", "dR0p32017v2", "2016v1", "newDM2016v1",
-        "deepTau2017v1", "deepTau2017v2", "deepTau2017v2p1",
-        "DPFTau_2016_v0", "DPFTau_2016_v1",
-        "againstEle2018",
-        "newDMPhase2v1",
-        "againstElePhase2v1"
+        "againstEle2018"
     ]
+    availableDiscriminators = experimentalDiscriminators.copy()
+    availableDiscriminators.extend([
+        "mvaIso", "mvaIsoNewDM", "mvaIsoDR0p3", #payloads from GT (2017v2)
+        "againstEle", #payloads from GT (2018)
+        "newDMPhase2v1", #payloads from phase2 GT
+        "againstElePhase2v1", #payloads from phase2 GT
+        "deepTau2017v2", "deepTau2017v2p1", "deepTau2018v2p5", "deepTau2026v2p5"
+    ])
 
     def __init__(self, process, debug = False,
                  originalTauName = "slimmedTaus",
                  updatedTauName = "slimmedTausNewID",
                  postfix = "",
-                 toKeep =  ["deepTau2017v2p1"],
-                 tauIdDiscrMVA_trainings_run2_2017 = { 'tauIdMVAIsoDBoldDMwLT2017' : "tauIdMVAIsoDBoldDMwLT2017", },
-                 tauIdDiscrMVA_WPs_run2_2017 = {
-                    'tauIdMVAIsoDBoldDMwLT2017' : {
-                        'Eff95' : "DBoldDMwLTEff95",
-                        'Eff90' : "DBoldDMwLTEff90",
-                        'Eff80' : "DBoldDMwLTEff80",
-                        'Eff70' : "DBoldDMwLTEff70",
-                        'Eff60' : "DBoldDMwLTEff60",
-                        'Eff50' : "DBoldDMwLTEff50",
-                        'Eff40' : "DBoldDMwLTEff40"
-                    }
-                 },
-                 tauIdDiscrMVA_2017_version = "v1",
+                 toKeep =  ["deepTau2017v2p1", "deepTau2018v2p5", "deepTau2026v2p5"],
                  conditionDB = "" # preparational DB: 'frontier://FrontierPrep/CMS_CONDITIONS'
                  ):
         super(TauIDEmbedder, self).__init__()
@@ -42,23 +37,21 @@ class TauIDEmbedder(object):
         self.originalTauName = originalTauName
         self.updatedTauName = updatedTauName
         self.postfix = postfix
-        self.process.load('RecoTauTag.Configuration.loadRecoTauTagMVAsFromPrepDB_cfi')
-        if len(conditionDB) != 0:
-            self.process.CondDBTauConnection.connect = cms.string(conditionDB)
-            self.process.loadRecoTauTagMVAsFromPrepDB.connect = cms.string(conditionDB)
-            # if debug:
-            # 	print self.process.CondDBTauConnection.connect
-            # 	print dir(self.process.loadRecoTauTagMVAsFromPrepDB)
-            # 	print self.process.loadRecoTauTagMVAsFromPrepDB.parameterNames_
 
-        self.tauIdDiscrMVA_trainings_run2_2017 = tauIdDiscrMVA_trainings_run2_2017
-        self.tauIdDiscrMVA_WPs_run2_2017 = tauIdDiscrMVA_WPs_run2_2017
-        self.tauIdDiscrMVA_2017_version = tauIdDiscrMVA_2017_version
         for discr in toKeep:
             if discr not in TauIDEmbedder.availableDiscriminators:
                 raise RuntimeError('TauIDEmbedder: discriminator "{}" is not supported'.format(discr))
         self.toKeep = toKeep
-
+        if not set(toKeep).isdisjoint(TauIDEmbedder.experimentalDiscriminators):
+            print('There are experimental tauIDs not from GT')
+            self.process.load('RecoTauTag.Configuration.loadRecoTauTagMVAsFromPrepDB_cfi')
+            if len(conditionDB) != 0:
+                self.process.CondDBTauConnection.connect = cms.string(conditionDB)
+                self.process.loadRecoTauTagMVAsFromPrepDB.connect = cms.string(conditionDB)
+            # if debug:
+            # 	print self.process.CondDBTauConnection.connect
+            # 	print dir(self.process.loadRecoTauTagMVAsFromPrepDB)
+            # 	print self.process.loadRecoTauTagMVAsFromPrepDB.parameterNames_
     
     @staticmethod
     def get_cmssw_version(debug = False):
@@ -128,10 +121,201 @@ class TauIDEmbedder(object):
                 )
             )
 
+    def load_againstElectronMVA6(self):
+        if self.debug: print ("load_againstElectronMVA6: performed")
+        global cms
+        antiElectronDiscrMVA6_categories = {
+            '0' : "gbr_NoEleMatch_woGwoGSF_BL",
+            '2' : "gbr_NoEleMatch_wGwoGSF_BL",
+            '5' : "gbr_woGwGSF_BL",
+            '7' : "gbr_wGwGSF_BL",
+            '8' : "gbr_NoEleMatch_woGwoGSF_EC",
+            '10' : "gbr_NoEleMatch_wGwoGSF_EC",
+            '13' : "gbr_woGwGSF_EC",
+            '15' : "gbr_wGwGSF_EC"
+        }
+        for category, gbrForestName in antiElectronDiscrMVA6_categories.items():
+            self.process.loadRecoTauTagMVAsFromPrepDB.toGet.append(
+                cms.PSet(
+                    record = cms.string('GBRWrapperRcd'),
+                    tag = cms.string("RecoTauTag_antiElectronMVA6%s_%s" % (self.antiElectronDiscrMVA6_version, gbrForestName)),
+                    label = cms.untracked.string("RecoTauTag_antiElectronMVA6%s_%s" % (self.antiElectronDiscrMVA6_version, gbrForestName))
+                )
+            )
+            for WP in self.antiElectronDiscrMVA6_WPs:
+                self.process.loadRecoTauTagMVAsFromPrepDB.toGet.append(
+                    cms.PSet(
+                        record = cms.string('PhysicsTGraphPayloadRcd'),
+                        tag = cms.string("RecoTauTag_antiElectronMVA6%s_%s_WP%s" % (self.antiElectronDiscrMVA6_version, gbrForestName, WP)),
+                        label = cms.untracked.string("RecoTauTag_antiElectronMVA6%s_%s_WP%s" % (self.antiElectronDiscrMVA6_version, gbrForestName, WP))
+                    )
+                )
+
     def runTauID(self):
         _rerunMvaIsolationTask = cms.Task()
         _rerunMvaIsolationSequence = cms.Sequence()
         tauIDSources = cms.PSet()
+
+        # MVAIso tauIDs with version given by payloads in GT (2017v2)
+        if "mvaIso" in self.toKeep:
+            _byIsolationOldDMMVAraw = "rerunDiscriminationByIsolationOldDMMVAraw"+self.postfix
+            setattr(self.process,_byIsolationOldDMMVAraw,patDiscriminationByIsolationMVArun2v1raw.clone(
+                PATTauProducer = self.originalTauName,
+                Prediscriminants = noPrediscriminants,
+                loadMVAfromDB = cms.bool(True),
+                mvaName = cms.string("RecoTauTag_tauIdMVAIsoDBoldDMwLT"),
+                mvaOpt = cms.string("DBoldDMwLTwGJ"),
+                verbosity = cms.int32(0)
+            ))
+
+            _byIsolationOldDMMVA = "rerunDiscriminationByIsolationOldDMMVA"+self.postfix
+            setattr(self.process,_byIsolationOldDMMVA,patDiscriminationByIsolationMVArun2v1.clone(
+                PATTauProducer = self.originalTauName,
+                Prediscriminants = noPrediscriminants,
+                toMultiplex = _byIsolationOldDMMVAraw,
+                loadMVAfromDB = cms.bool(True),
+                mvaOutput_normalization = cms.string("RecoTauTag_tauIdMVAIsoDBoldDMwLT_mvaOutput_normalization"), #writeTauIdDiscrMVAoutputNormalizations
+                mapping = cms.VPSet(
+                    cms.PSet(
+                        category = cms.uint32(0),
+                        cut = cms.string("RecoTauTag_tauIdMVAIsoDBoldDMwLT"), #writeTauIdDiscrWPs
+                        variable = cms.string("pt"),
+                    )
+                ),
+                workingPoints = cms.vstring(
+                    "_VVLoose",
+                    "_VLoose",
+                    "_Loose",
+                    "_Medium",
+                    "_Tight",
+                    "_VTight",
+                    "_VVTight"
+                )
+            ))
+
+            _rerunIsolationOldDMMVATask =  cms.Task(
+                getattr(self.process,_byIsolationOldDMMVAraw),
+                getattr(self.process,_byIsolationOldDMMVA)
+            )
+            _rerunMvaIsolationTask.add(_rerunIsolationOldDMMVATask)
+            _rerunMvaIsolationSequence += cms.Sequence(_rerunIsolationOldDMMVATask)
+
+            tauIDSources.byIsolationMVArun2DBoldDMwLTraw = self.tauIDMVAinputs(_byIsolationOldDMMVA, "raw")
+            tauIDSources.byVVLooseIsolationMVArun2DBoldDMwLT = self.tauIDMVAinputs(_byIsolationOldDMMVA, "_VVLoose")
+            tauIDSources.byVLooseIsolationMVArun2DBoldDMwLT = self.tauIDMVAinputs(_byIsolationOldDMMVA, "_VLoose")
+            tauIDSources.byLooseIsolationMVArun2DBoldDMwLT = self.tauIDMVAinputs(_byIsolationOldDMMVA, "_Loose")
+            tauIDSources.byMediumIsolationMVArun2DBoldDMwLT = self.tauIDMVAinputs(_byIsolationOldDMMVA, "_Medium")
+            tauIDSources.byTightIsolationMVArun2DBoldDMwLT = self.tauIDMVAinputs(_byIsolationOldDMMVA, "_Tight")
+            tauIDSources.byVTightIsolationMVArun2DBoldDMwLT = self.tauIDMVAinputs(_byIsolationOldDMMVA, "_VTight")
+            tauIDSources.byVVTightIsolationMVArun2DBoldDMwLT = self.tauIDMVAinputs(_byIsolationOldDMMVA, "_VVTight")
+
+        if "mvaIsoNewDM" in self.toKeep:
+            _byIsolationNewDMMVAraw = "rerunDiscriminationByIsolationNewDMMVAraw"+self.postfix
+            setattr(self.process,_byIsolationNewDMMVAraw,patDiscriminationByIsolationMVArun2v1raw.clone(
+                PATTauProducer = self.originalTauName,
+                Prediscriminants = noPrediscriminants,
+                loadMVAfromDB = cms.bool(True),
+                mvaName = cms.string("RecoTauTag_tauIdMVAIsoDBnewDMwLT"),
+                mvaOpt = cms.string("DBnewDMwLTwGJ"),
+                verbosity = cms.int32(0)
+            ))
+
+            _byIsolationNewDMMVA = "rerunDiscriminationByIsolationNewDMMVA"+self.postfix
+            setattr(self.process,_byIsolationNewDMMVA,patDiscriminationByIsolationMVArun2v1.clone(
+                PATTauProducer = self.originalTauName,
+                Prediscriminants = noPrediscriminants,
+                toMultiplex = _byIsolationNewDMMVAraw,
+                loadMVAfromDB = cms.bool(True),
+                mvaOutput_normalization = cms.string("RecoTauTag_tauIdMVAIsoDBnewDMwLT_mvaOutput_normalization"), #writeTauIdDiscrMVAoutputNormalizations
+                mapping = cms.VPSet(
+                    cms.PSet(
+                        category = cms.uint32(0),
+                        cut = cms.string("RecoTauTag_tauIdMVAIsoDBnewDMwLT"), #writeTauIdDiscrWPs
+                        variable = cms.string("pt"),
+                    )
+                ),
+                workingPoints = cms.vstring(
+                    "_VVLoose",
+                    "_VLoose",
+                    "_Loose",
+                    "_Medium",
+                    "_Tight",
+                    "_VTight",
+                    "_VVTight"
+                )
+            ))
+
+            _rerunIsolationNewDMMVATask =  cms.Task(
+                getattr(self.process,_byIsolationNewDMMVAraw),
+                getattr(self.process,_byIsolationNewDMMVA)
+            )
+            _rerunMvaIsolationTask.add(_rerunIsolationNewDMMVATask)
+            _rerunMvaIsolationSequence += cms.Sequence(_rerunIsolationNewDMMVATask)
+
+            tauIDSources.byIsolationMVArun2DBnewDMwLTraw = self.tauIDMVAinputs(_byIsolationNewDMMVA, "raw")
+            tauIDSources.byVVLooseIsolationMVArun2DBnewDMwLT = self.tauIDMVAinputs(_byIsolationNewDMMVA, "_VVLoose")
+            tauIDSources.byVLooseIsolationMVArun2DBnewDMwLT = self.tauIDMVAinputs(_byIsolationNewDMMVA, "_VLoose")
+            tauIDSources.byLooseIsolationMVArun2DBnewDMwLT = self.tauIDMVAinputs(_byIsolationNewDMMVA, "_Loose")
+            tauIDSources.byMediumIsolationMVArun2DBnewDMwLT = self.tauIDMVAinputs(_byIsolationNewDMMVA, "_Medium")
+            tauIDSources.byTightIsolationMVArun2DBnewDMwLT = self.tauIDMVAinputs(_byIsolationNewDMMVA, "_Tight")
+            tauIDSources.byVTightIsolationMVArun2DBnewDMwLT = self.tauIDMVAinputs(_byIsolationNewDMMVA, "_VTight")
+            tauIDSources.byVVTightIsolationMVArun2DBnewDMwLT = self.tauIDMVAinputs(_byIsolationNewDMMVA, "_VVTight")
+
+        if "mvaIsoDR0p3" in self.toKeep:
+            _byIsolationOldDMdR0p3MVAraw = "rerunDiscriminationByIsolationOldDMdR0p3MVAraw"+self.postfix
+            setattr(self.process,_byIsolationOldDMdR0p3MVAraw,patDiscriminationByIsolationMVArun2v1raw.clone(
+                PATTauProducer = self.originalTauName,
+                Prediscriminants = noPrediscriminants,
+                loadMVAfromDB = cms.bool(True),
+                mvaName = cms.string("RecoTauTag_tauIdMVAIsoDBoldDMdR0p3wLT"),
+                mvaOpt = cms.string("DBoldDMwLTwGJ"),
+                srcChargedIsoPtSum = cms.string('chargedIsoPtSumdR03'),
+                srcFootprintCorrection = cms.string('footprintCorrectiondR03'),
+                srcNeutralIsoPtSum = cms.string('neutralIsoPtSumdR03'),
+                srcPhotonPtSumOutsideSignalCone = cms.string('photonPtSumOutsideSignalConedR03'),
+                verbosity = cms.int32(0)
+            ))
+
+            _byIsolationOldDMdR0p3MVA = "rerunDiscriminationByIsolationOldDMdR0p3MVA"+self.postfix
+            setattr(self.process,_byIsolationOldDMdR0p3MVA,patDiscriminationByIsolationMVArun2v1.clone(
+                PATTauProducer = self.originalTauName,
+                Prediscriminants = noPrediscriminants,
+                toMultiplex = _byIsolationOldDMdR0p3MVAraw,
+                loadMVAfromDB = cms.bool(True),
+                mvaOutput_normalization = cms.string("RecoTauTag_tauIdMVAIsoDBoldDMdR0p3wLT_mvaOutput_normalization"), #writeTauIdDiscrMVAoutputNormalizations
+                mapping = cms.VPSet(
+                    cms.PSet(
+                        category = cms.uint32(0),
+                        cut = cms.string("RecoTauTag_tauIdMVAIsoDBoldDMdR0p3wLT"), #writeTauIdDiscrWPs
+                        variable = cms.string("pt"),
+                    )
+                ),
+                workingPoints = cms.vstring(
+                    "_VVLoose",
+                    "_VLoose",
+                    "_Loose",
+                    "_Medium",
+                    "_Tight",
+                    "_VTight",
+                    "_VVTight"
+                )
+            ))
+
+            _rerunIsolationOldDMdR0p3MVATask =  cms.Task(
+                getattr(self.process,_byIsolationOldDMdR0p3MVAraw),
+                getattr(self.process,_byIsolationOldDMdR0p3MVA)
+            )
+            _rerunMvaIsolationTask.add(_rerunIsolationOldDMdR0p3MVATask)
+            _rerunMvaIsolationSequence += cms.Sequence(_rerunIsolationOldDMdR0p3MVATask)
+
+            tauIDSources.byIsolationMVArun2DBoldDMdR0p3wLTraw = self.tauIDMVAinputs(_byIsolationOldDMdR0p3MVA, "raw")
+            tauIDSources.byVVLooseIsolationMVArun2DBoldDMdR0p3wLT = self.tauIDMVAinputs(_byIsolationOldDMdR0p3MVA, "_VVLoose")
+            tauIDSources.byVLooseIsolationMVArun2DBoldDMdR0p3wLT = self.tauIDMVAinputs(_byIsolationOldDMdR0p3MVA, "_VLoose")
+            tauIDSources.byLooseIsolationMVArun2DBoldDMdR0p3wLT = self.tauIDMVAinputs(_byIsolationOldDMdR0p3MVA, "_Loose")
+            tauIDSources.byMediumIsolationMVArun2DBoldDMdR0p3wLT = self.tauIDMVAinputs(_byIsolationOldDMdR0p3MVA, "_Medium")
+            tauIDSources.byTightIsolationMVArun2DBoldDMdR0p3wLT = self.tauIDMVAinputs(_byIsolationOldDMdR0p3MVA, "_Tight")
+            tauIDSources.byVTightIsolationMVArun2DBoldDMdR0p3wLT = self.tauIDMVAinputs(_byIsolationOldDMdR0p3MVA, "_VTight")
+            tauIDSources.byVVTightIsolationMVArun2DBoldDMdR0p3wLT = self.tauIDMVAinputs(_byIsolationOldDMdR0p3MVA, "_VVTight")
 
         # rerun the seq to obtain the 2017 nom training with 0.5 iso cone, old DM, ptph>1, trained on 2017MCv1
         if "2017v1" in self.toKeep:
@@ -151,9 +335,8 @@ class TauIDEmbedder(object):
                 }
             }
             # update the list of available in DB samples
-            if not self.is_above_cmssw_version(9, 4, 4, self.debug):
-                if self.debug: print ("runTauID: not is_above_cmssw_version(9, 4, 4). Will update the list of available in DB samples to access 2017v1")
-                self.loadMVA_WPs_run2_2017()
+            if self.debug: print ("runTauID: Will update the list of available in DB samples to access 2017v1")
+            self.loadMVA_WPs_run2_2017()
 
             _byIsolationOldDMMVArun2017v1raw = "rerunDiscriminationByIsolationOldDMMVArun2017v1raw"+self.postfix
             setattr(self.process,_byIsolationOldDMMVArun2017v1raw,patDiscriminationByIsolationMVArun2v1raw.clone(
@@ -206,7 +389,6 @@ class TauIDEmbedder(object):
             tauIDSources.byVTightIsolationMVArun2017v1DBoldDMwLT2017 = self.tauIDMVAinputs(_byIsolationOldDMMVArun2017v1, "_WPEff50")
             tauIDSources.byVVTightIsolationMVArun2017v1DBoldDMwLT2017 = self.tauIDMVAinputs(_byIsolationOldDMMVArun2017v1, "_WPEff40")
 
-
         if "2017v2" in self.toKeep:
             self.tauIdDiscrMVA_2017_version = "v2"
             self.tauIdDiscrMVA_trainings_run2_2017 = {
@@ -224,9 +406,8 @@ class TauIDEmbedder(object):
                 }
             }
 
-            if not self.is_above_cmssw_version(9, 4, 5, self.debug):
-                if self.debug: print ("runTauID: not is_above_cmssw_version(9, 4, 5). Will update the list of available in DB samples to access 2017v2")
-                self.loadMVA_WPs_run2_2017()
+            if self.debug: print ("runTauID: Will update the list of available in DB samples to access 2017v2")
+            self.loadMVA_WPs_run2_2017()
 
             _byIsolationOldDMMVArun2017v2raw = "rerunDiscriminationByIsolationOldDMMVArun2017v2raw"+self.postfix
             setattr(self.process,_byIsolationOldDMMVArun2017v2raw,patDiscriminationByIsolationMVArun2v1raw.clone(
@@ -297,9 +478,8 @@ class TauIDEmbedder(object):
                 }
             }
 
-            if not self.is_above_cmssw_version(9, 4, 5, self.debug):
-                if self.debug: print ("runTauID: not is_above_cmssw_version(9, 4, 5). Will update the list of available in DB samples to access newDM2017v2")
-                self.loadMVA_WPs_run2_2017()
+            if self.debug: print ("runTauID: Will update the list of available in DB samples to access newDM2017v2")
+            self.loadMVA_WPs_run2_2017()
 
             _byIsolationNewDMMVArun2017v2raw = "rerunDiscriminationByIsolationNewDMMVArun2017v2raw"+self.postfix
             setattr(self.process,_byIsolationNewDMMVArun2017v2raw,patDiscriminationByIsolationMVArun2v1raw.clone(
@@ -370,9 +550,8 @@ class TauIDEmbedder(object):
                 }
             }
 
-            if not self.is_above_cmssw_version(9, 4, 5, self.debug):
-                if self.debug: print ("runTauID: not is_above_cmssw_version(9, 4, 5). Will update the list of available in DB samples to access dR0p32017v2")
-                self.loadMVA_WPs_run2_2017()
+            if self.debug: print ("runTauID: Will update the list of available in DB samples to access dR0p32017v2")
+            self.loadMVA_WPs_run2_2017()
 
             _byIsolationOldDMdR0p3MVArun2017v2raw = "rerunDiscriminationByIsolationOldDMdR0p3MVArun2017v2raw"+self.postfix
             setattr(self.process,_byIsolationOldDMdR0p3MVArun2017v2raw,patDiscriminationByIsolationMVArun2v1raw.clone(
@@ -492,6 +671,23 @@ class TauIDEmbedder(object):
                     )
                 ))
 
+            self.tauIdDiscrMVA_2017_version = "v1"
+            self.tauIdDiscrMVA_trainings_run2_2017 = {
+                'tauIdMVAIsoDBoldDMwLT2016' : "tauIdMVAIsoDBoldDMwLT2016",
+            }
+            self.tauIdDiscrMVA_WPs_run2_2017 = {
+                'tauIdMVAIsoDBoldDMwLT2016' : {
+                    'Eff90' : "DBoldDMwLT2016Eff90",
+                    'Eff80' : "DBoldDMwLT2016Eff80",
+                    'Eff70' : "DBoldDMwLT2016Eff70",
+                    'Eff60' : "DBoldDMwLT2016Eff60",
+                    'Eff50' : "DBoldDMwLT2016Eff50",
+                    'Eff40' : "DBoldDMwLT2016Eff40"
+                }
+            }
+            if self.debug: print ("runTauID: Will update the list of available in DB samples to access 2016v1")
+            self.loadMVA_WPs_run2_2017()
+
             _rerunIsolationOldDMMVArun2016v1Task = cms.Task(
                 getattr(self.process,_byIsolationOldDMMVArun2016v1raw),
                 getattr(self.process,_byIsolationOldDMMVArun2016v1)
@@ -529,7 +725,7 @@ class TauIDEmbedder(object):
                 mapping = cms.VPSet(
                     cms.PSet(
                         category = cms.uint32(0),
-                        cut = cms.string("RecoTauTag_tauIdMVAIsoDBnewDMwLT2016v1_WPEff90"),
+                        cut = cms.string("RecoTauTag_tauIdMVAIsoDBnewDMwLT2016v1"),
                         variable = cms.string("pt"),
                     )
                 ),
@@ -542,6 +738,23 @@ class TauIDEmbedder(object):
                     "_WPEff40"
                 )
             ))
+
+            self.tauIdDiscrMVA_2017_version = "v1"
+            self.tauIdDiscrMVA_trainings_run2_2017 = {
+                'tauIdMVAIsoDBnewDMwLT2016' : "tauIdMVAIsoDBnewDMwLT2016",
+            }
+            self.tauIdDiscrMVA_WPs_run2_2017 = {
+                'tauIdMVAIsoDBnewDMwLT2016' : {
+                    'Eff90' : "DBnewDMwLT2016Eff90",
+                    'Eff80' : "DBnewDMwLT2016Eff80",
+                    'Eff70' : "DBnewDMwLT2016Eff70",
+                    'Eff60' : "DBnewDMwLT2016Eff60",
+                    'Eff50' : "DBnewDMwLT2016Eff50",
+                    'Eff40' : "DBnewDMwLT2016Eff40"
+                }
+            }
+            if self.debug: print ("runTauID: Will update the list of available in DB samples to access newDM2016v1")
+            self.loadMVA_WPs_run2_2017()
 
             _rerunIsolationNewDMMVArun2016v1Task = cms.Task(
                 getattr(self.process,_byIsolationNewDMMVArun2016v1raw),
@@ -558,248 +771,206 @@ class TauIDEmbedder(object):
             tauIDSources.byVTightIsolationMVArun2v1DBnewDMwLT2016 = self.tauIDMVAinputs(_byIsolationNewDMMVArun2016v1, "_WPEff50")
             tauIDSources.byVVTightIsolationMVArun2v1DBnewDMwLT2016 = self.tauIDMVAinputs(_byIsolationNewDMMVArun2016v1, "_WPEff40")
 
-        if "deepTau2017v1" in self.toKeep:
-            if self.debug: print ("Adding DeepTau IDs")
-
-            _deepTauName = "deepTau2017v1"
-            workingPoints_ = {
-                "e": {
-                    "VVVLoose" : 0.96424,
-                    "VVLoose" : 0.98992,
-                    "VLoose" : 0.99574,
-                    "Loose": 0.99831,
-                    "Medium": 0.99868,
-                    "Tight": 0.99898,
-                    "VTight": 0.99911,
-                    "VVTight": 0.99918
-                },
-                "mu": {
-                    "VVVLoose" : 0.959619,
-                    "VVLoose" : 0.997687,
-                    "VLoose" : 0.999392,
-                    "Loose": 0.999755,
-                    "Medium": 0.999854,
-                    "Tight": 0.999886,
-                    "VTight": 0.999944,
-                    "VVTight": 0.9999971
-                },
-
-                "jet": {
-                    "VVVLoose" : 0.5329,
-                    "VVLoose" : 0.7645,
-                    "VLoose" : 0.8623,
-                    "Loose": 0.9140,
-                    "Medium": 0.9464,
-                    "Tight": 0.9635,
-                    "VTight": 0.9760,
-                    "VVTight": 0.9859
-                }
-            }
-            file_names = ['RecoTauTag/TrainingFiles/data/DeepTauId/deepTau_2017v1_20L1024N_quantized.pb']
-            setattr(self.process,_deepTauName+self.postfix,cms.EDProducer("DeepTauId",
-                electrons              = cms.InputTag('slimmedElectrons'),
-                muons                  = cms.InputTag('slimmedMuons'),
-                taus                   = cms.InputTag(self.originalTauName),
-                pfcands                = cms.InputTag('packedPFCandidates'),
-                vertices               = cms.InputTag('offlineSlimmedPrimaryVertices'),
-                rho                    = cms.InputTag('fixedGridRhoAll'),
-                graph_file             = cms.vstring(file_names),
-                mem_mapped             = cms.bool(False),
-                version                = cms.uint32(self.getDeepTauVersion(file_names[0])[1]),
-                debug_level            = cms.int32(0),
-                disable_dxy_pca        = cms.bool(False)
-            ))
-
-            self.processDeepProducer(_deepTauName, tauIDSources, workingPoints_)
-
-            _deepTauProducer = getattr(self.process,_deepTauName+self.postfix)
-            _rerunMvaIsolationTask.add(_deepTauProducer)
-            _rerunMvaIsolationSequence += _deepTauProducer
-
-
         if "deepTau2017v2" in self.toKeep:
-            if self.debug: print ("Adding DeepTau IDs")
+            if self.debug: print ("Adding DeepTau v2 IDs")
 
             _deepTauName = "deepTau2017v2"
-            workingPoints_ = {
-                "e": {
-                    "VVVLoose": 0.0630386,
-                    "VVLoose": 0.1686942,
-                    "VLoose": 0.3628130,
-                    "Loose": 0.6815435,
-                    "Medium": 0.8847544,
-                    "Tight": 0.9675541,
-                    "VTight": 0.9859251,
-                    "VVTight": 0.9928449,
-                },
-                "mu": {
-                    "VLoose": 0.1058354,
-                    "Loose": 0.2158633,
-                    "Medium": 0.5551894,
-                    "Tight": 0.8754835,
-                },
-                "jet": {
-                    "VVVLoose": 0.2599605,
-                    "VVLoose": 0.4249705,
-                    "VLoose": 0.5983682,
-                    "Loose": 0.7848675,
-                    "Medium": 0.8834768,
-                    "Tight": 0.9308689,
-                    "VTight": 0.9573137,
-                    "VVTight": 0.9733927,
-                },
-            }
+            workingPoints_ = WORKING_POINTS_v2p1
 
             file_names = [
                 'core:RecoTauTag/TrainingFiles/data/DeepTauId/deepTau_2017v2p6_e6_core.pb',
                 'inner:RecoTauTag/TrainingFiles/data/DeepTauId/deepTau_2017v2p6_e6_inner.pb',
                 'outer:RecoTauTag/TrainingFiles/data/DeepTauId/deepTau_2017v2p6_e6_outer.pb',
             ]
-            setattr(self.process,_deepTauName+self.postfix,cms.EDProducer("DeepTauId",
-                electrons              = cms.InputTag('slimmedElectrons'),
-                muons                  = cms.InputTag('slimmedMuons'),
-                taus                   = cms.InputTag(self.originalTauName),
-                pfcands                = cms.InputTag('packedPFCandidates'),
-                vertices               = cms.InputTag('offlineSlimmedPrimaryVertices'),
-                rho                    = cms.InputTag('fixedGridRhoAll'),
-                graph_file             = cms.vstring(file_names),
-                mem_mapped             = cms.bool(False),
-                version                = cms.uint32(self.getDeepTauVersion(file_names[0])[1]),
-                debug_level            = cms.int32(0),
-                disable_dxy_pca        = cms.bool(False)
+            full_version = self.getDeepTauVersion(file_names[0])
+            setattr(self.process,_deepTauName+self.postfix,DeepTau.clone(
+                Prediscriminants = noPrediscriminants,
+                taus             = self.originalTauName,
+                graph_file       = file_names,
+                year             = full_version[0],
+                version          = full_version[1],
+                sub_version      = 1 #MB: subversion cannot be properly deduced from file names; it should be 1 also for v2
+            ))
+
+            _deepTauProducer = getattr(self.process,_deepTauName+self.postfix)
+
+            from Configuration.ProcessModifiers.deepTauSonicTriton_cff import deepTauSonicTriton
+            deepTauSonicTriton.toReplaceWith(_deepTauProducer, DeepTauIdSonicProducer.clone(
+                Client = cms.PSet(
+                  mode = cms.string('PseudoAsync'),
+                  allowedTries = cms.untracked.uint32(0),
+                  verbose = cms.untracked.bool(False),
+                  modelName = cms.string("deeptau_2017v2p1"),
+                  modelVersion = cms.string(''),
+                  modelConfigPath = cms.FileInPath("RecoTauTag/TrainingFiles/data/DeepTauIdSONIC/deeptau_2017v2p1/config.pbtxt"),
+                  preferredServer = cms.untracked.string(''),
+                  timeout = cms.untracked.uint32(300),
+                  useSharedMemory = cms.untracked.bool(True),
+                  compression = cms.untracked.string(''),
+                  outputs = cms.untracked.vstring()
+                ),
+                Prediscriminants = noPrediscriminants,
+                taus             = self.originalTauName,
+                year             = full_version[0],
+                version          = full_version[1],
+                sub_version      = 1, #MB: subversion cannot be properly deduced from file names
             ))
 
             self.processDeepProducer(_deepTauName, tauIDSources, workingPoints_)
 
-            _deepTauProducer = getattr(self.process,_deepTauName+self.postfix)
             _rerunMvaIsolationTask.add(_deepTauProducer)
             _rerunMvaIsolationSequence += _deepTauProducer
 
 
         if "deepTau2017v2p1" in self.toKeep:
-            if self.debug: print ("Adding DeepTau IDs")
+            if self.debug: print ("Adding DeepTau v2p1 IDs")
 
             _deepTauName = "deepTau2017v2p1"
-            workingPoints_ = {
-                "e": {
-                    "VVVLoose": 0.0630386,
-                    "VVLoose": 0.1686942,
-                    "VLoose": 0.3628130,
-                    "Loose": 0.6815435,
-                    "Medium": 0.8847544,
-                    "Tight": 0.9675541,
-                    "VTight": 0.9859251,
-                    "VVTight": 0.9928449,
-                },
-                "mu": {
-                    "VLoose": 0.1058354,
-                    "Loose": 0.2158633,
-                    "Medium": 0.5551894,
-                    "Tight": 0.8754835,
-                },
-                "jet": {
-                    "VVVLoose": 0.2599605,
-                    "VVLoose": 0.4249705,
-                    "VLoose": 0.5983682,
-                    "Loose": 0.7848675,
-                    "Medium": 0.8834768,
-                    "Tight": 0.9308689,
-                    "VTight": 0.9573137,
-                    "VVTight": 0.9733927,
-                },
-            }
+            workingPoints_ = WORKING_POINTS_v2p1
 
             file_names = [
                 'core:RecoTauTag/TrainingFiles/data/DeepTauId/deepTau_2017v2p6_e6_core.pb',
                 'inner:RecoTauTag/TrainingFiles/data/DeepTauId/deepTau_2017v2p6_e6_inner.pb',
                 'outer:RecoTauTag/TrainingFiles/data/DeepTauId/deepTau_2017v2p6_e6_outer.pb',
             ]
-            setattr(self.process,_deepTauName+self.postfix,cms.EDProducer("DeepTauId",
-                electrons                = cms.InputTag('slimmedElectrons'),
-                muons                    = cms.InputTag('slimmedMuons'),
-                taus                     = cms.InputTag(self.originalTauName),
-                pfcands                  = cms.InputTag('packedPFCandidates'),
-                vertices                 = cms.InputTag('offlineSlimmedPrimaryVertices'),
-                rho                      = cms.InputTag('fixedGridRhoAll'),
-                graph_file               = cms.vstring(file_names),
-                mem_mapped               = cms.bool(False),
-                version                  = cms.uint32(self.getDeepTauVersion(file_names[0])[1]),
-                debug_level              = cms.int32(0),
-                disable_dxy_pca          = cms.bool(True),
-                is_online                = cms.bool(False)
+            full_version = self.getDeepTauVersion(file_names[0])
+            setattr(self.process,_deepTauName+self.postfix,DeepTau.clone(
+                Prediscriminants = noPrediscriminants,
+                taus             = self.originalTauName,
+                graph_file       = file_names,
+                year             = full_version[0],
+                version          = full_version[1],
+                sub_version      = 1, #MB: subversion cannot be properly deduced from file names
+                disable_dxy_pca  = True
+            ))
+
+            _deepTauProducer = getattr(self.process,_deepTauName+self.postfix)
+
+            from Configuration.ProcessModifiers.deepTauSonicTriton_cff import deepTauSonicTriton
+            deepTauSonicTriton.toReplaceWith(_deepTauProducer, DeepTauIdSonicProducer.clone(
+                Client = cms.PSet(
+                  mode = cms.string('PseudoAsync'),
+                  allowedTries = cms.untracked.uint32(0),
+                  verbose = cms.untracked.bool(False),
+                  modelName = cms.string("deeptau_2017v2p1"),
+                  modelVersion = cms.string(''),
+                  modelConfigPath = cms.FileInPath("RecoTauTag/TrainingFiles/data/DeepTauIdSONIC/deeptau_2017v2p1/config.pbtxt"),
+                  preferredServer = cms.untracked.string(''),
+                  timeout = cms.untracked.uint32(300),
+                  useSharedMemory = cms.untracked.bool(True),
+                  compression = cms.untracked.string(''),
+                  outputs = cms.untracked.vstring()
+                ),
+                Prediscriminants = noPrediscriminants,
+                taus             = self.originalTauName,
+                year             = full_version[0],
+                version          = full_version[1],
+                sub_version      = 1, #MB: subversion cannot be properly deduced from file names
+                disable_dxy_pca  = True
             ))
 
             self.processDeepProducer(_deepTauName, tauIDSources, workingPoints_)
 
-            _deepTauProducer = getattr(self.process,_deepTauName+self.postfix)
             _rerunMvaIsolationTask.add(_deepTauProducer)
             _rerunMvaIsolationSequence += _deepTauProducer
 
+        if "deepTau2018v2p5" in self.toKeep:
+            if self.debug: print ("Adding DeepTau v2p5 IDs")
 
-        if "DPFTau_2016_v0" in self.toKeep:
-            if self.debug: print ("Adding DPFTau isolation (v0)")
+            _deepTauName = "deepTau2018v2p5"
+            workingPoints_ = WORKING_POINTS_v2p5
 
-            _deepTauName = "DPFTau_2016_v0"
-            workingPoints_ = {
-                "all": {
-                    "Tight" : "if(decayMode == 0) return (0.898328 - 0.000160992 * pt);" + \
-                              "if(decayMode == 1) return (0.910138 - 0.000229923 * pt);" + \
-                              "if(decayMode == 10) return (0.873958 - 0.0002328 * pt);" + \
-                              "return 99.0;"
-                    #"Tight" : "? decayMode == 0 ? (0.898328 - 0.000160992 * pt) : " +
-                    #          "(? decayMode == 1 ? 0.910138 - 0.000229923 * pt : " +
-                    #          "(? decayMode == 10 ? (0.873958 - 0.0002328 * pt) : 1))"
-                    # "Tight" : "(decayMode == 0) * (0.898328 - 0.000160992 * pt) + \
-                    #            (decayMode == 1) * (0.910138 - 0.000229923 * pt) + \
-                    #            (decayMode == 10) * (0.873958 - 0.0002328 * pt) "
-                }
-            }
-            file_names = [ 'RecoTauTag/TrainingFiles/data/DPFTauId/DPFIsolation_2017v0_quantized.pb' ]
-            setattr(self.process,_deepTauName+self.postfix,cms.EDProducer("DPFIsolation",
-                pfcands     = cms.InputTag('packedPFCandidates'),
-                taus        = cms.InputTag(self.originalTauName),
-                vertices    = cms.InputTag('offlineSlimmedPrimaryVertices'),
-                graph_file  = cms.vstring(file_names),
-                version     = cms.uint32(self.getDpfTauVersion(file_names[0])),
-                mem_mapped  = cms.bool(False)
+            file_names = [
+                'core:RecoTauTag/TrainingFiles/data/DeepTauId/deepTau_2018v2p5_core.pb',
+                'inner:RecoTauTag/TrainingFiles/data/DeepTauId/deepTau_2018v2p5_inner.pb',
+                'outer:RecoTauTag/TrainingFiles/data/DeepTauId/deepTau_2018v2p5_outer.pb',
+            ]
+            full_version = self.getDeepTauVersion(file_names[0])
+            setattr(self.process,_deepTauName+self.postfix,DeepTau.clone(
+                Prediscriminants                = noPrediscriminants,
+                taus                            = self.originalTauName,
+                graph_file                      = file_names,
+                year                            = full_version[0],
+                version                         = full_version[1],
+                sub_version                     = full_version[2],
+                disable_dxy_pca                 = True,
+                disable_hcalFraction_workaround = True,
+                disable_CellIndex_workaround    = True
+            ))
+
+            _deepTauProducer = getattr(self.process,_deepTauName+self.postfix)
+
+            from Configuration.ProcessModifiers.deepTauSonicTriton_cff import deepTauSonicTriton
+            deepTauSonicTriton.toReplaceWith(_deepTauProducer, DeepTauIdSonicProducer.clone(
+                Client = cms.PSet(
+                  mode = cms.string('PseudoAsync'),
+                  allowedTries = cms.untracked.uint32(0),
+                  verbose = cms.untracked.bool(False),
+                  modelName = cms.string("deeptau_2018v2p5"),
+                  modelVersion = cms.string(''),
+                  modelConfigPath = cms.FileInPath("RecoTauTag/TrainingFiles/data/DeepTauIdSONIC/deeptau_2018v2p5/config.pbtxt"),
+                  preferredServer = cms.untracked.string(''),
+                  timeout = cms.untracked.uint32(300),
+                  useSharedMemory = cms.untracked.bool(True),
+                  compression = cms.untracked.string(''),
+                  outputs = cms.untracked.vstring(),
+                ),
+                Prediscriminants                = noPrediscriminants,
+                taus                            = self.originalTauName,
+                year                            = full_version[0],
+                version                         = full_version[1],
+                sub_version                     = full_version[2],
+                disable_dxy_pca                 = True,
+                disable_hcalFraction_workaround = True,
+                disable_CellIndex_workaround    = True
             ))
 
             self.processDeepProducer(_deepTauName, tauIDSources, workingPoints_)
 
-            _deepTauProducer = getattr(self.process,_deepTauName+self.postfix)
             _rerunMvaIsolationTask.add(_deepTauProducer)
             _rerunMvaIsolationSequence += _deepTauProducer
 
+        if "deepTau2026v2p5" in self.toKeep:
+            if self.debug: print ("Adding Phase2 DeepTau v2p5 IDs")
 
-        if "DPFTau_2016_v1" in self.toKeep:
-            print ("Adding DPFTau isolation (v1)")
-            print ("WARNING: WPs are not defined for DPFTau_2016_v1")
-            print ("WARNING: The score of DPFTau_2016_v1 is inverted: i.e. for Sig->0, for Bkg->1 with -1 for undefined input (preselection not passed).")
+            _deepTauName = "deepTau2026v2p5"
+            workingPoints_ = WORKING_POINTS_PHASEII_v2p5
 
-            _deepTauName = "DPFTau_2016_v1"
-            workingPoints_ = {
-                "all": {"Tight" : 0.123} #FIXME: define WP
-            }
-
-            file_names = [ 'RecoTauTag/TrainingFiles/data/DPFTauId/DPFIsolation_2017v1_quantized.pb' ]
-            setattr(self.process,_deepTauName+self.postfix,cms.EDProducer("DPFIsolation",
-                pfcands     = cms.InputTag('packedPFCandidates'),
-                taus        = cms.InputTag(self.originalTauName),
-                vertices    = cms.InputTag('offlineSlimmedPrimaryVertices'),
-                graph_file  = cms.vstring(file_names),
-                version     = cms.uint32(self.getDpfTauVersion(file_names[0])),
-                mem_mapped  = cms.bool(False)
+            file_names = [
+                'core:RecoTauTag/TrainingFiles/data/DeepTauId/deepTau_2026v2p5_core.pb',
+                'inner:RecoTauTag/TrainingFiles/data/DeepTauId/deepTau_2026v2p5_inner.pb',
+                'outer:RecoTauTag/TrainingFiles/data/DeepTauId/deepTau_2026v2p5_outer.pb',
+            ]
+            full_version = self.getDeepTauVersion(file_names[0])
+            setattr(self.process,_deepTauName+self.postfix,DeepTau.clone(
+                Prediscriminants                = noPrediscriminants,
+                taus                            = self.originalTauName,
+                graph_file                      = file_names,
+                year                            = full_version[0],
+                version                         = full_version[1],
+                sub_version                     = full_version[2],
+                disable_dxy_pca                 = True,
+                disable_hcalFraction_workaround = True,
+                disable_CellIndex_workaround    = True
             ))
+
+            from RecoTauTag.RecoTau.mergedPhase2SlimmedElectronsForTauId_cff import mergedSlimmedElectronsForTauId
+            if not hasattr(self.process,"mergedSlimmedElectronsForTauId"):
+                self.process.mergedSlimmedElectronsForTauId = mergedSlimmedElectronsForTauId
+            setattr(getattr(self.process, _deepTauName+self.postfix), "electrons", cms.InputTag("mergedSlimmedElectronsForTauId"))
+            setattr(getattr(self.process, _deepTauName+self.postfix), "vertices", cms.InputTag("offlineSlimmedPrimaryVertices4D"))
 
             self.processDeepProducer(_deepTauName, tauIDSources, workingPoints_)
 
             _deepTauProducer = getattr(self.process,_deepTauName+self.postfix)
+            _rerunMvaIsolationTask.add(self.process.mergedSlimmedElectronsForTauId)
             _rerunMvaIsolationTask.add(_deepTauProducer)
+            _rerunMvaIsolationSequence += self.process.mergedSlimmedElectronsForTauId
             _rerunMvaIsolationSequence += _deepTauProducer
-
 
         if "againstEle2018" in self.toKeep:
-            antiElectronDiscrMVA6_version = "MVA6v3_noeveto"
+            self.antiElectronDiscrMVA6_version = "v3_noeveto"
+            self.antiElectronDiscrMVA6_WPs = [ "eff98", "eff90", "eff80", "eff70", "eff60" ]
             ### Define new anti-e discriminants
             ## Raw
             from RecoTauTag.RecoTau.patTauDiscriminationAgainstElectronMVA6_cfi import patTauDiscriminationAgainstElectronMVA6
@@ -809,14 +980,14 @@ class TauIDEmbedder(object):
                 Prediscriminants = noPrediscriminants, #already selected for MiniAOD
                 srcElectrons = cms.InputTag('slimmedElectrons'),
                 vetoEcalCracks = cms.bool(False), #keep taus in EB-EE cracks
-                mvaName_NoEleMatch_wGwoGSF_BL = 'RecoTauTag_antiElectron'+antiElectronDiscrMVA6_version+'_gbr_NoEleMatch_wGwoGSF_BL',
-                mvaName_NoEleMatch_wGwoGSF_EC = 'RecoTauTag_antiElectron'+antiElectronDiscrMVA6_version+'_gbr_NoEleMatch_wGwoGSF_EC',
-                mvaName_NoEleMatch_woGwoGSF_BL = 'RecoTauTag_antiElectron'+antiElectronDiscrMVA6_version+'_gbr_NoEleMatch_woGwoGSF_BL',
-                mvaName_NoEleMatch_woGwoGSF_EC = 'RecoTauTag_antiElectron'+antiElectronDiscrMVA6_version+'_gbr_NoEleMatch_woGwoGSF_EC',
-                mvaName_wGwGSF_BL = 'RecoTauTag_antiElectron'+antiElectronDiscrMVA6_version+'_gbr_wGwGSF_BL',
-                mvaName_wGwGSF_EC = 'RecoTauTag_antiElectron'+antiElectronDiscrMVA6_version+'_gbr_wGwGSF_EC',
-                mvaName_woGwGSF_BL = 'RecoTauTag_antiElectron'+antiElectronDiscrMVA6_version+'_gbr_woGwGSF_BL',
-                mvaName_woGwGSF_EC = 'RecoTauTag_antiElectron'+antiElectronDiscrMVA6_version+'_gbr_woGwGSF_EC'
+                mvaName_NoEleMatch_wGwoGSF_BL = 'RecoTauTag_antiElectronMVA6'+self.antiElectronDiscrMVA6_version+'_gbr_NoEleMatch_wGwoGSF_BL',
+                mvaName_NoEleMatch_wGwoGSF_EC = 'RecoTauTag_antiElectronMVA6'+self.antiElectronDiscrMVA6_version+'_gbr_NoEleMatch_wGwoGSF_EC',
+                mvaName_NoEleMatch_woGwoGSF_BL = 'RecoTauTag_antiElectronMVA6'+self.antiElectronDiscrMVA6_version+'_gbr_NoEleMatch_woGwoGSF_BL',
+                mvaName_NoEleMatch_woGwoGSF_EC = 'RecoTauTag_antiElectronMVA6'+self.antiElectronDiscrMVA6_version+'_gbr_NoEleMatch_woGwoGSF_EC',
+                mvaName_wGwGSF_BL = 'RecoTauTag_antiElectronMVA6'+self.antiElectronDiscrMVA6_version+'_gbr_wGwGSF_BL',
+                mvaName_wGwGSF_EC = 'RecoTauTag_antiElectronMVA6'+self.antiElectronDiscrMVA6_version+'_gbr_wGwGSF_EC',
+                mvaName_woGwGSF_BL = 'RecoTauTag_antiElectronMVA6'+self.antiElectronDiscrMVA6_version+'_gbr_woGwGSF_BL',
+                mvaName_woGwGSF_EC = 'RecoTauTag_antiElectronMVA6'+self.antiElectronDiscrMVA6_version+'_gbr_woGwGSF_EC'
             ))
             ## WPs
             from RecoTauTag.RecoTau.PATTauDiscriminantCutMultiplexer_cfi import patTauDiscriminantCutMultiplexer
@@ -828,42 +999,42 @@ class TauIDEmbedder(object):
                 mapping = cms.VPSet(
                     cms.PSet(
                         category = cms.uint32(0),
-                        cut = cms.string('RecoTauTag_antiElectron'+antiElectronDiscrMVA6_version+'_gbr_NoEleMatch_woGwoGSF_BL'),
+                        cut = cms.string('RecoTauTag_antiElectronMVA6'+self.antiElectronDiscrMVA6_version+'_gbr_NoEleMatch_woGwoGSF_BL'),
                         variable = cms.string('pt')
                     ),
                     cms.PSet(
                         category = cms.uint32(2),
-                        cut = cms.string('RecoTauTag_antiElectron'+antiElectronDiscrMVA6_version+'_gbr_NoEleMatch_wGwoGSF_BL'),
+                        cut = cms.string('RecoTauTag_antiElectronMVA6'+self.antiElectronDiscrMVA6_version+'_gbr_NoEleMatch_wGwoGSF_BL'),
                         variable = cms.string('pt')
                     ),
                     cms.PSet(
                         category = cms.uint32(5),
-                        cut = cms.string('RecoTauTag_antiElectron'+antiElectronDiscrMVA6_version+'_gbr_woGwGSF_BL'),
+                        cut = cms.string('RecoTauTag_antiElectronMVA6'+self.antiElectronDiscrMVA6_version+'_gbr_woGwGSF_BL'),
                         variable = cms.string('pt')
                     ),
                     cms.PSet(
                         category = cms.uint32(7),
-                        cut = cms.string('RecoTauTag_antiElectron'+antiElectronDiscrMVA6_version+'_gbr_wGwGSF_BL'),
+                        cut = cms.string('RecoTauTag_antiElectronMVA6'+self.antiElectronDiscrMVA6_version+'_gbr_wGwGSF_BL'),
                         variable = cms.string('pt')
                     ),
                     cms.PSet(
                         category = cms.uint32(8),
-                        cut = cms.string('RecoTauTag_antiElectron'+antiElectronDiscrMVA6_version+'_gbr_NoEleMatch_woGwoGSF_EC'),
+                        cut = cms.string('RecoTauTag_antiElectronMVA6'+self.antiElectronDiscrMVA6_version+'_gbr_NoEleMatch_woGwoGSF_EC'),
                         variable = cms.string('pt')
                     ),
                     cms.PSet(
                         category = cms.uint32(10),
-                        cut = cms.string('RecoTauTag_antiElectron'+antiElectronDiscrMVA6_version+'_gbr_NoEleMatch_wGwoGSF_EC'),
+                        cut = cms.string('RecoTauTag_antiElectronMVA6'+self.antiElectronDiscrMVA6_version+'_gbr_NoEleMatch_wGwoGSF_EC'),
                         variable = cms.string('pt')
                     ),
                     cms.PSet(
                         category = cms.uint32(13),
-                        cut = cms.string('RecoTauTag_antiElectron'+antiElectronDiscrMVA6_version+'_gbr_woGwGSF_EC'),
+                        cut = cms.string('RecoTauTag_antiElectronMVA6'+self.antiElectronDiscrMVA6_version+'_gbr_woGwGSF_EC'),
                         variable = cms.string('pt')
                     ),
                     cms.PSet(
                         category = cms.uint32(15),
-                        cut = cms.string('RecoTauTag_antiElectron'+antiElectronDiscrMVA6_version+'_gbr_wGwGSF_EC'),
+                        cut = cms.string('RecoTauTag_antiElectronMVA6'+self.antiElectronDiscrMVA6_version+'_gbr_wGwGSF_EC'),
                         variable = cms.string('pt')
                     )
                 ),
@@ -875,6 +1046,10 @@ class TauIDEmbedder(object):
                     "_WPeff60"
                 )
             ))
+
+            if self.debug: print ("runTauID: Will update the list of available in DB samples to access againstEle 2018")
+            self.load_againstElectronMVA6()
+
             ### Put all new anti-e discrminats to a sequence
             _patTauDiscriminationByElectronRejectionMVA62018Task = cms.Task(
                 getattr(self.process,_byElectronRejectionMVA62018Raw),
@@ -891,6 +1066,105 @@ class TauIDEmbedder(object):
                 againstElectronMediumMVA62018 = self.tauIDMVAinputs(_byElectronRejectionMVA62018, "_WPeff80"),
                 againstElectronTightMVA62018 = self.tauIDMVAinputs(_byElectronRejectionMVA62018, "_WPeff70"),
                 againstElectronVTightMVA62018 = self.tauIDMVAinputs(_byElectronRejectionMVA62018, "_WPeff60")
+            )
+            _tauIDSourcesWithAgainistEle = cms.PSet(
+                tauIDSources.clone(),
+                _againstElectronTauIDSources
+            )
+            tauIDSources =_tauIDSourcesWithAgainistEle.clone()
+
+        if "againstEle" in self.toKeep:
+            ### Define new anti-e discriminants
+            ## Raw
+            from RecoTauTag.RecoTau.patTauDiscriminationAgainstElectronMVA6_cfi import patTauDiscriminationAgainstElectronMVA6
+            _byElectronRejectionMVA6Raw = "patTauDiscriminationByElectronRejectionMVA6Raw"+self.postfix
+            setattr(self.process,_byElectronRejectionMVA6Raw,patTauDiscriminationAgainstElectronMVA6.clone(
+                PATTauProducer = self.originalTauName,
+                Prediscriminants = noPrediscriminants, #already selected for MiniAOD
+                srcElectrons = cms.InputTag('slimmedElectrons'),
+                vetoEcalCracks = cms.bool(False), #keep taus in EB-EE cracks
+                mvaName_NoEleMatch_wGwoGSF_BL = 'RecoTauTag_antiElectronMVA_NoEleMatch_wGwoGSF_BL',
+                mvaName_NoEleMatch_wGwoGSF_EC = 'RecoTauTag_antiElectronMVA_NoEleMatch_wGwoGSF_EC',
+                mvaName_NoEleMatch_woGwoGSF_BL = 'RecoTauTag_antiElectronMVA_NoEleMatch_woGwoGSF_BL',
+                mvaName_NoEleMatch_woGwoGSF_EC = 'RecoTauTag_antiElectronMVA_NoEleMatch_woGwoGSF_EC',
+                mvaName_wGwGSF_BL = 'RecoTauTag_antiElectronMVA_wGwGSF_BL',
+                mvaName_wGwGSF_EC = 'RecoTauTag_antiElectronMVA_wGwGSF_EC',
+                mvaName_woGwGSF_BL = 'RecoTauTag_antiElectronMVA_woGwGSF_BL',
+                mvaName_woGwGSF_EC = 'RecoTauTag_antiElectronMVA_woGwGSF_EC'
+            ))
+            ## WPs
+            from RecoTauTag.RecoTau.PATTauDiscriminantCutMultiplexer_cfi import patTauDiscriminantCutMultiplexer
+            _byElectronRejectionMVA6 = "patTauDiscriminationByElectronRejectionMVA6"+self.postfix
+            setattr(self.process,"patTauDiscriminationByElectronRejectionMVA6"+self.postfix,patTauDiscriminantCutMultiplexer.clone(
+                PATTauProducer = self.originalTauName,
+                Prediscriminants = noPrediscriminants,
+                toMultiplex = _byElectronRejectionMVA6Raw,
+                mapping = cms.VPSet(
+                    cms.PSet(
+                        category = cms.uint32(0),
+                        cut = cms.string('RecoTauTag_antiElectronMVA_NoEleMatch_woGwoGSF_BL'),
+                        variable = cms.string('pt')
+                    ),
+                    cms.PSet(
+                        category = cms.uint32(2),
+                        cut = cms.string('RecoTauTag_antiElectronMVA_NoEleMatch_wGwoGSF_BL'),
+                        variable = cms.string('pt')
+                    ),
+                    cms.PSet(
+                        category = cms.uint32(5),
+                        cut = cms.string('RecoTauTag_antiElectronMVA_woGwGSF_BL'),
+                        variable = cms.string('pt')
+                    ),
+                    cms.PSet(
+                        category = cms.uint32(7),
+                        cut = cms.string('RecoTauTag_antiElectronMVA_wGwGSF_BL'),
+                        variable = cms.string('pt')
+                    ),
+                    cms.PSet(
+                        category = cms.uint32(8),
+                        cut = cms.string('RecoTauTag_antiElectronMVA_NoEleMatch_woGwoGSF_EC'),
+                        variable = cms.string('pt')
+                    ),
+                    cms.PSet(
+                        category = cms.uint32(10),
+                        cut = cms.string('RecoTauTag_antiElectronMVA_NoEleMatch_wGwoGSF_EC'),
+                        variable = cms.string('pt')
+                    ),
+                    cms.PSet(
+                        category = cms.uint32(13),
+                        cut = cms.string('RecoTauTag_antiElectronMVA_woGwGSF_EC'),
+                        variable = cms.string('pt')
+                    ),
+                    cms.PSet(
+                        category = cms.uint32(15),
+                        cut = cms.string('RecoTauTag_antiElectronMVA_wGwGSF_EC'),
+                        variable = cms.string('pt')
+                    )
+                ),
+                workingPoints = cms.vstring(
+                    "_VLoose",
+                    "_Loose",
+                    "_Medium",
+                    "_Tight",
+                    "_VTight"
+                )
+            ))
+            ### Put all new anti-e discrminats to a sequence
+            _patTauDiscriminationByElectronRejectionMVA6Task = cms.Task(
+                getattr(self.process,_byElectronRejectionMVA6Raw),
+                getattr(self.process,_byElectronRejectionMVA6)
+            )
+            _rerunMvaIsolationTask.add(_patTauDiscriminationByElectronRejectionMVA6Task)
+            _rerunMvaIsolationSequence += cms.Sequence(_patTauDiscriminationByElectronRejectionMVA6Task)
+
+            _againstElectronTauIDSources = cms.PSet(
+                againstElectronMVA6Raw = self.tauIDMVAinputs(_byElectronRejectionMVA6, "raw"),
+                againstElectronMVA6category = self.tauIDMVAinputs(_byElectronRejectionMVA6, "category"),
+                againstElectronVLooseMVA6 = self.tauIDMVAinputs(_byElectronRejectionMVA6, "_VLoose"),
+                againstElectronLooseMVA6 = self.tauIDMVAinputs(_byElectronRejectionMVA6, "_Loose"),
+                againstElectronMediumMVA6 = self.tauIDMVAinputs(_byElectronRejectionMVA6, "_Medium"),
+                againstElectronTightMVA6 = self.tauIDMVAinputs(_byElectronRejectionMVA6, "_Tight"),
+                againstElectronVTightMVA6 = self.tauIDMVAinputs(_byElectronRejectionMVA6, "_VTight")
             )
             _tauIDSourcesWithAgainistEle = cms.PSet(
                 tauIDSources.clone(),
@@ -1032,25 +1306,15 @@ class TauIDEmbedder(object):
 
                 setattr(tauIDSources, 'by{}{}VS{}'.format(point, producer_name[0].upper()+producer_name[1:], target),
                         cms.PSet(inputTag = cms.InputTag(producer_name+self.postfix, 'VS{}'.format(target)), workingPointIndex = cms.int32(index)))
+            if len(cut_expressions) > 0:
+                setattr(getattr(self.process, producer_name+self.postfix), 'VS{}WP'.format(target), cms.vstring(*cut_expressions))
 
-            setattr(getattr(self.process, producer_name+self.postfix), 'VS{}WP'.format(target), cms.vstring(*cut_expressions))
-
-
-    def getDpfTauVersion(self, file_name):
-        """returns the DNN version. File name should contain a version label with data takig year (2011-2, 2015-8) and \
-           version number (vX), e.g. 2017v0, in general the following format: {year}v{version}"""
-        version_search = re.search('201[125678]v([0-9]+)[\._]', file_name)
-        if not version_search:
-            raise RuntimeError('File "{}" has an invalid name pattern, should be in the format "{year}v{version}". \
-                                Unable to extract version number.'.format(file_name))
-        version = version_search.group(1)
-        return int(version)
 
     def getDeepTauVersion(self, file_name):
         """returns the DeepTau year, version, subversion. File name should contain a version label with data takig year \
         (2011-2, 2015-8), version number (vX) and subversion (pX), e.g. 2017v0p6, in general the following format: \
         {year}v{version}p{subversion}"""
-        version_search = re.search('(201[125678])v([0-9]+)(p[0-9]+|)[\._]', file_name)
+        version_search = re.search('(20[1,2][125678])v([0-9]+)(p[0-9]+|)[\._]', file_name)
         if not version_search:
             raise RuntimeError('File "{}" has an invalid name pattern, should be in the format "{year}v{version}p{subversion}". \
                                 Unable to extract version number.'.format(file_name))

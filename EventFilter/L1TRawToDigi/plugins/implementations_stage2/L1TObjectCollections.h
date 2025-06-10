@@ -7,6 +7,7 @@
 #include "DataFormats/L1Trigger/interface/Tau.h"
 #include "DataFormats/L1Trigger/interface/Muon.h"
 #include "DataFormats/L1Trigger/interface/MuonShower.h"
+#include "DataFormats/L1CaloTrigger/interface/CICADA.h"
 
 #include "DataFormats/EcalDigi/interface/EcalDigiCollections.h"
 
@@ -23,8 +24,10 @@ namespace l1t {
       virtual MuonShowerBxCollection* getMuonShowers(const unsigned int copy) { return nullptr; }
       virtual EGammaBxCollection* getEGammas(const unsigned int copy) { return nullptr; }  //= 0;
       virtual EtSumBxCollection* getEtSums(const unsigned int copy) { return nullptr; }
+      virtual EtSumBxCollection* getZDCSums(const unsigned int copy) { return nullptr; }
       virtual JetBxCollection* getJets(const unsigned int copy) { return nullptr; }
       virtual TauBxCollection* getTaus(const unsigned int copy) { return nullptr; }
+      virtual CICADABxCollection* getCICADAScore() { return nullptr; }
 
       virtual EcalTrigPrimDigiCollection* getEcalDigisBx(const unsigned int copy) { return nullptr; };
     };

@@ -13,7 +13,7 @@ process.MessageLogger = cms.Service("MessageLogger",
 
 process.load("Configuration.StandardSequences.GeometryRecoDB_cff")
 from Configuration.AlCa.GlobalTag import GlobalTag
-process.GlobalTag = GlobalTag(None, 'auto:phase1_2021_cosmics', '')
+process.GlobalTag = GlobalTag(None, 'auto:phase1_2022_cosmics', '')
 
 process.load("DQM.Integration.config.environment_cfi")
 process.dqmEnv.subSystemFolder = "GEM"
@@ -40,7 +40,7 @@ process.load("EventFilter.GEMRawToDigi.muonGEMDigis_cfi")
 process.load('RecoLocalMuon.GEMRecHit.gemRecHits_cfi')
 process.load("Configuration.StandardSequences.RawToDigi_Data_cff")
 process.load("Configuration.StandardSequences.Reconstruction_cff")
-process.load('RecoLocalMuon.GEMCSCSegment.gemcscSegments_cfi')
+process.load('RecoLocalMuon.GEMCSCSegment.gemcscSegments_cff')
 process.load("DQM.GEM.gemEffByGEMCSCSegment_cff")
 
 process.muonGEMDigis.useDBEMap = True

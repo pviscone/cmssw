@@ -29,7 +29,6 @@ public:
   typedef edm::DetSet<StripDigiSimLink> LayerLinks;
   typedef std::pair<uint32_t, EncodedEventId> SimHitIdpr;
 
-  MuonTruth(const edm::Event &, const edm::EventSetup &, const edm::ParameterSet &, edm::ConsumesCollector &);
   MuonTruth(const edm::ParameterSet &, edm::ConsumesCollector &&iC);
 
   void initEvent(const edm::Event &, const edm::EventSetup &);
@@ -62,15 +61,20 @@ private:
   const DigiSimLinks *theDigiSimLinks;
   const DigiSimLinks *theWireDigiSimLinks;
 
-  edm::InputTag linksTag;
-  edm::InputTag wireLinksTag;
+  const edm::InputTag linksTag;
+  const edm::InputTag wireLinksTag;
 
-  bool crossingframe;
-  edm::InputTag CSCsimHitsTag;
-  edm::InputTag CSCsimHitsXFTag;
+  const bool crossingframe;
+  const edm::InputTag CSCsimHitsTag;
+  const edm::InputTag CSCsimHitsXFTag;
 
-  edm::ESGetToken<CSCGeometry, MuonGeometryRecord> geomToken_;
-  edm::ESGetToken<CSCBadChambers, CSCBadChambersRcd> badToken_;
+  const edm::ESGetToken<CSCGeometry, MuonGeometryRecord> geomToken_;
+  const edm::ESGetToken<CSCBadChambers, CSCBadChambersRcd> badToken_;
+
+  const edm::EDGetTokenT<DigiSimLinks> linksToken_;
+  const edm::EDGetTokenT<DigiSimLinks> wireLinksToken_;
+  edm::EDGetTokenT<CrossingFrame<PSimHit>> simHitsXFToken_;
+  edm::EDGetTokenT<edm::PSimHitContainer> simHitsToken_;
 
   std::map<unsigned int, edm::PSimHitContainer> theSimHitMap;
 

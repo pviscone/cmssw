@@ -1,5 +1,8 @@
+#include "FWCore/MessageLogger/interface/MessageLogger.h"
 #include "Geometry/HGCalCommonData/interface/HGCalCell.h"
 #include <vector>
+
+//#define EDM_ML_DEBUG
 
 HGCalCell::HGCalCell(double waferSize, int32_t nFine, int32_t nCoarse) {
   ncell_[0] = nFine;
@@ -8,6 +11,10 @@ HGCalCell::HGCalCell(double waferSize, int32_t nFine, int32_t nCoarse) {
     cellX_[k] = waferSize / (3 * ncell_[k]);
     cellY_[k] = sqrt3By2_ * cellX_[k];
   }
+#ifdef EDM_ML_DEBUG
+  edm::LogVerbatim("HGCalGeom") << "HGCalCell initialized with waferSize " << waferSize << " number of cells " << nFine
+                                << ":" << nCoarse;
+#endif
 }
 
 std::pair<double, double> HGCalCell::cellUV2XY1(int32_t u, int32_t v, int32_t placementIndex, int32_t type) {
@@ -227,9 +234,16 @@ std::pair<int, int> HGCalCell::cellUV2Cell(int32_t u, int32_t v, int32_t placeme
   return std::make_pair(cell, cellt);
 }
 
-int HGCalCell::cellPlacementIndex(int32_t iz, int32_t fwdBack, int32_t orient) {
-  int32_t indx = ((iz * fwdBack) > 0) ? orient : (orient + HGCalCell::cellPlacementExtra);
+int HGCalCell::cellPlacementIndex(int32_t iz, int32_t frontBack, int32_t orient) {
+  int32_t indx = ((iz * frontBack) > 0) ? orient : (orient + HGCalCell::cellPlacementExtra);
   return indx;
+}
+
+std::pair<int32_t, int32_t> HGCalCell::cellOrient(int32_t placementIndex) {
+  int32_t orient = (placementIndex >= HGCalCell::cellPlacementExtra) ? (placementIndex - HGCalCell::cellPlacementExtra)
+                                                                     : placementIndex;
+  int32_t frontBackZside = (placementIndex >= HGCalCell::cellPlacementExtra) ? 1 : -1;
+  return std::make_pair(orient, frontBackZside);
 }
 
 std::pair<int32_t, int32_t> HGCalCell::cellType(int32_t u, int32_t v, int32_t ncell, int32_t placementIndex) {
@@ -335,16 +349,16 @@ std::pair<int32_t, int32_t> HGCalCell::cellType(int32_t u, int32_t v, int32_t nc
       cellx = 7;
       cellt = HGCalCell::truncatedCell;
     } else if ((v - u) == (ncell - 1)) {
-      cellx = 10;
+      cellx = 8;
       cellt = HGCalCell::extendedCell;
     } else if (v == (2 * ncell - 1)) {
-      cellx = 8;
+      cellx = 9;
       cellt = HGCalCell::truncatedCell;
     } else if (u == (2 * ncell - 1)) {
-      cellx = 11;
+      cellx = 10;
       cellt = HGCalCell::extendedCell;
     } else if ((u - v) == ncell) {
-      cellx = 9;
+      cellx = 11;
       cellt = HGCalCell::truncatedCell;
     } else if (v == 0) {
       cellx = 12;
@@ -468,22 +482,22 @@ std::pair<int32_t, int32_t> HGCalCell::cellType(int32_t u, int32_t v, int32_t nc
       cellx = 6;
       cellt = HGCalCell::cornerCell;
     } else if (v == 0) {
-      cellx = 10;
+      cellx = 7;
       cellt = HGCalCell::extendedCell;
     } else if ((u - v) == ncell) {
-      cellx = 7;
-      cellt = HGCalCell::truncatedCell;
-    } else if (u == (2 * ncell - 1)) {
-      cellx = 11;
-      cellt = HGCalCell::extendedCell;
-    } else if (v == (2 * ncell - 1)) {
       cellx = 8;
       cellt = HGCalCell::truncatedCell;
+    } else if (u == (2 * ncell - 1)) {
+      cellx = 9;
+      cellt = HGCalCell::extendedCell;
+    } else if (v == (2 * ncell - 1)) {
+      cellx = 10;
+      cellt = HGCalCell::truncatedCell;
     } else if ((v - u) == (ncell - 1)) {
-      cellx = 12;
+      cellx = 11;
       cellt = HGCalCell::extendedCell;
     } else if (u == 0) {
-      cellx = 9;
+      cellx = 12;
       cellt = HGCalCell::truncatedCell;
     }
     switch (placementIndex) {

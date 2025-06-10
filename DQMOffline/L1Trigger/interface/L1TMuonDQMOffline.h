@@ -21,6 +21,7 @@
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/LuminosityBlock.h"
 #include "FWCore/Framework/interface/MakerMacros.h"
+#include "FWCore/Common/interface/TriggerNames.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 #include "DQMServices/Core/interface/DQMStore.h"
 #include "FWCore/ServiceRegistry/interface/Service.h"
@@ -187,6 +188,7 @@ class MuonGmtPair {
 public:
   MuonGmtPair(const reco::Muon* muon, const l1t::Muon* regMu, const PropagateToMuon& propagator, bool useAtVtxCoord);
   MuonGmtPair(const MuonGmtPair& muonGmtPair);
+  MuonGmtPair& operator=(const MuonGmtPair& muonGmtPair) = default;
   ~MuonGmtPair(){};
 
   double dR();

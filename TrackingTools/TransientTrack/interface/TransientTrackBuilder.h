@@ -75,6 +75,7 @@ public:
 
   const MagneticField* field() const { return theField; }
   const edm::ESHandle<GlobalTrackingGeometry> trackingGeometry() const { return theTrackingGeometry; }
+  static constexpr float defaultInvalidTrackTimeReso = 0.350f;
 
 private:
   const MagneticField* theField;

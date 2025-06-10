@@ -27,6 +27,17 @@ from .ExceptionHandling import *
 if sys.getrecursionlimit()<5000:
     sys.setrecursionlimit(5000)
 
+class edm(object):
+    class errors(object):
+        #Allowed errors to be used within Python
+        Configuration = "{Configuration}"
+        UnavailableAccelerator = "{UnavailableAccelerator}"
+
+class EDMException(Exception):
+    def __init__(self, error, message):
+        super().__init__(error+"\n"+message)
+
+
 def checkImportPermission(minLevel = 2, allowedPatterns = []):
     """
     Raise an exception if called by special config files. This checks
@@ -41,7 +52,7 @@ def checkImportPermission(minLevel = 2, allowedPatterns = []):
     import inspect
     import os
 
-    ignorePatterns = ['FWCore/ParameterSet/Config.py','<string>','<frozen ']
+    ignorePatterns = ['FWCore/ParameterSet/Config.py', 'FWCore/ParameterSet/python/Config.py','<string>','<frozen ']
     CMSSWPath = [os.environ['CMSSW_BASE'],os.environ['CMSSW_RELEASE_BASE']]
 
     # Filter the stack to things in CMSSWPath and not in ignorePatterns
@@ -101,6 +112,7 @@ def findProcess(module):
 
 class Process(object):
     """Root class for a CMS configuration process"""
+    _firstProcess = True
     def __init__(self,name,*Mods):
         """The argument 'name' will be the name applied to this Process
             Can optionally pass as additional arguments cms.Modifier instances
@@ -138,14 +150,21 @@ class Process(object):
         self.__isStrict = False
         self.__dict__['_Process__modifiers'] = Mods
         self.__dict__['_Process__accelerators'] = {}
-        self.options = Process.defaultOptions_()
-        self.maxEvents = Process.defaultMaxEvents_()
+        self.__injectValidValue('options', Process.defaultOptions_())
+        self.__injectValidValue('maxEvents', Process.defaultMaxEvents_())
         self.maxLuminosityBlocks = Process.defaultMaxLuminosityBlocks_()
         # intentionally not cloned to ensure that everyone taking
         # MessageLogger still via
         # FWCore.Message(Logger|Service).MessageLogger_cfi
         # use the very same MessageLogger object.
         self.MessageLogger = MessageLogger
+        if Process._firstProcess:
+            Process._firstProcess = False
+        else:
+            if len(Mods) > 0:
+                for m in self.__modifiers:
+                    if not m._isChosen():
+                        raise RuntimeError("The Process {} tried to redefine which Modifiers to use after another Process was already started".format(name))
         for m in self.__modifiers:
             m._setChosen()
 
@@ -239,14 +258,16 @@ class Process(object):
                               deleteNonConsumedUnscheduledModules = untracked.bool(True),
                               sizeOfStackForThreadsInKB = optional.untracked.uint32,
                               Rethrow = untracked.vstring(),
-                              SkipEvent = untracked.vstring(),
-                              FailPath = untracked.vstring(),
+                              TryToContinue = untracked.vstring(),
                               IgnoreCompletely = untracked.vstring(),
+                              modulesToCallForTryToContinue = untracked.vstring(),
                               canDeleteEarly = untracked.vstring(),
+                              holdsReferencesToDeleteEarly = untracked.VPSet(),
+                              modulesToIgnoreForDeleteEarly = untracked.vstring(),
                               dumpOptions = untracked.bool(False),
                               allowUnscheduled = obsolete.untracked.bool,
                               emptyRunLumiMode = obsolete.untracked.string,
-                              makeTriggerResults = obsolete.untracked.bool
+                              makeTriggerResults = obsolete.untracked.bool,
                               )
     def __updateOptions(self,opt):
         newOpts = self.defaultOptions_()
@@ -536,6 +557,10 @@ class Process(object):
                 self._replaceInScheduleDirectly(name, newValue)
 
             self._delattrFromSetattr(name)
+        self.__injectValidValue(name, value, newValue)
+    def __injectValidValue(self, name, value, newValue = None):
+        if newValue is None:
+            newValue = value
         self.__dict__[name]=newValue
         if isinstance(newValue,_Labelable):
             self.__setObjectLabel(newValue, name)
@@ -1260,10 +1285,9 @@ class Process(object):
               iFinalPath.resolve(self.__dict__)
               finalpathValidator.setLabel(finalpathname)
               iFinalPath.visit(finalpathValidator)
-              if finalpathValidator.filtersOnFinalpaths or finalpathValidator.producersOnFinalpaths:
-                  names = [p.label_ for p in finalpathValidator.filtersOnFinalpaths]
-                  names.extend( [p.label_ for p in finalpathValidator.producersOnFinalpaths])
-                  raise RuntimeError("FinalPath %s has non OutputModules %s" % (finalpathname, ",".join(names)))
+              invalidModules = finalpathValidator.invalidModulesOnFinalpaths
+              if invalidModules:
+                  raise RuntimeError("FinalPath %s has non OutputModules %s" % (finalpathname, ",".join(invalidModules)))
               modulesOnFinalPath.extend(iFinalPath.moduleNames())
           for m in modulesOnFinalPath:
             mod = getattr(self, m)
@@ -1440,6 +1464,14 @@ class Process(object):
         all_modules.update(self.filters_())
         all_modules.update(self.analyzers_())
         all_modules.update(self.outputModules_())
+        if hasattr(self.options,"modulesToCallForTryToContinue") :
+            shouldTryToContinue = set(self.options.modulesToCallForTryToContinue)
+            for m in all_modules:
+                if m in shouldTryToContinue:
+                    setattr(getattr(self,m),"@shouldTryToContinue",untracked.bool(True))
+            missing = shouldTryToContinue.difference(all_modules)
+            if missing:
+                print("Warning: The following modules appear in options.modulesToCallForTryToContinue but are not in the Process: {} ".format(",".join(missing)))
         adaptor = TopLevelPSetAcessorAdaptor(processPSet,self)
         self._insertInto(adaptor, self.psets_())
         self._insertInto(adaptor, self.vpsets_())
@@ -1517,14 +1549,38 @@ class Process(object):
                    resolved.update(acc)
             # Sanity check
             if len(invalid) != 0:
-                raise ValueError("Invalid pattern{} of {} in process.options.accelerators, valid values are {} or a pattern matching to some of them.".format(
+                raise ValueError("Invalid pattern{} of '{}' in process.options.accelerators, valid values are '{}' or a pattern matching some of them.".format(
                     "s" if len(invalid) > 2 else "",
-                    ",".join(invalid),
-                    ",".join(sorted(list(allAccelerators)))))
+                    "', '".join(invalid),
+                    "', '".join(sorted(list(allAccelerators)))))
             selectedAccelerators = sorted(list(resolved))
         parameterSet.addVString(False, "@selected_accelerators", selectedAccelerators)
 
-        # Customize
+        # Get and apply module type resolver
+        moduleTypeResolver = None
+        moduleTypeResolverPlugin = ""
+        for acc in self.__dict__['_Process__accelerators'].values():
+            resolver = acc.moduleTypeResolver(selectedAccelerators)
+            if resolver is not None:
+                if moduleTypeResolver is not None:
+                    raise RuntimeError("Module type resolver was already set to {} when {} tried to set it to {}. A job can have at most one ProcessAccelerator that sets module type resolver.".format(
+                        moduleTypeResolver.__class__.__name__,
+                        acc.__class__.__name__,
+                        resolver.__class__.__name__))
+                moduleTypeResolver = resolver
+        if moduleTypeResolver is not None:
+            # Plugin name and its configuration
+            moduleTypeResolverPlugin = moduleTypeResolver.plugin()
+
+            # Customize modules
+            for modlist in [self.producers_, self.filters_, self.analyzers_,
+                            self.es_producers_, self.es_sources_]:
+                for module in modlist().values():
+                    moduleTypeResolver.setModuleVariant(module)
+
+        parameterSet.addString(False, "@module_type_resolver", moduleTypeResolverPlugin)
+
+        # Customize process
         wrapped = ProcessForProcessAccelerator(self)
         for acc in self.__dict__['_Process__accelerators'].values():
             acc.apply(wrapped, selectedAccelerators)
@@ -1724,14 +1780,14 @@ class _BoolModifierBase(object):
             self._rhs = rhs
     def toModify(self,obj, func=None,**kw):
         Modifier._toModifyCheck(obj,func,**kw)
-        if not self._isChosen():
-            return
-        Modifier._toModify(obj,func,**kw)
+        if self._isChosen():
+            Modifier._toModify(obj,func,**kw)
+        return self
     def toReplaceWith(self,toObj,fromObj):
         Modifier._toReplaceWithCheck(toObj,fromObj)
-        if not self._isChosen():
-            return
-        Modifier._toReplaceWith(toObj,fromObj)
+        if self._isChosen():
+            Modifier._toReplaceWith(toObj,fromObj)
+        return self
     def makeProcessModifier(self,func):
         """This is used to create a ProcessModifer that can perform actions on the process as a whole.
             This takes as argument a callable object (e.g. function) that takes as its sole argument an instance of Process.
@@ -1802,9 +1858,9 @@ class Modifier(object):
             mod.toModify(foo, fred = dict(pebbles = 3, friend = "barney)) )
         """
         Modifier._toModifyCheck(obj,func,**kw)
-        if not self._isChosen():
-            return
-        Modifier._toModify(obj,func,**kw)
+        if self._isChosen():
+            Modifier._toModify(obj,func,**kw)
+        return self
     @staticmethod
     def _toModify(obj,func,**kw):
         if func is not None:
@@ -1820,9 +1876,9 @@ class Modifier(object):
         """If the Modifier is chosen the internals of toObj will be associated with the internals of fromObj
         """
         Modifier._toReplaceWithCheck(toObj,fromObj)
-        if not self._isChosen():
-            return
-        Modifier._toReplaceWith(toObj,fromObj)
+        if self._isChosen():
+            Modifier._toReplaceWith(toObj,fromObj)
+        return self
     @staticmethod
     def _toReplaceWith(toObj,fromObj):
         if isinstance(fromObj,_ModuleSequenceType):
@@ -1938,6 +1994,11 @@ class ProcessAccelerator(_ConfigureComponent,_Unlabelable):
     it would be good to have specific unit test for each deriving
     class to ensure that all combinations of the enabled accelerators
     give the same configuration hash.
+
+    The deriving class must do its checks for hardware availability
+    only in enabledLabels(), and possibly in apply() if any further
+    fine-tuning is needed, because those two are the only functions
+    that are guaranteed to be called at the worker node.
     """
     def __init__(self):
         pass
@@ -1967,6 +2028,21 @@ class ProcessAccelerator(_ConfigureComponent,_Unlabelable):
         """Override to return a list of strings for the accelerator labels
         that are enabled in the system the job is being run on."""
         return []
+    def moduleTypeResolver(self, accelerators):
+        """Override to return an object that implements "module type resolver"
+        in python. The object should have the following methods
+        - __init__(self, accelerators)
+          * accelerators = list of selected accelerators
+        - plugin(self):
+          * should return a string for the type resolver plugin name
+        - setModuleVariant(self, module):
+          * Called for each ED and ES module. Should act only if
+            module.type_() contains the magic identifier
+
+        At most one of the ProcessAccelerators in a job can return a
+non-None object
+        """
+        return None
     def apply(self, process, accelerators):
         """Override if need to customize the Process at worker node. The
         selected available accelerator labels are given in the
@@ -1994,6 +2070,11 @@ class ProcessForProcessAccelerator(object):
             if not isinstance(value, Service):
                 raise TypeError("ProcessAccelerator.apply() can only set Services. Tried to set {} with label {}".format(str(type(value)), label))
             setattr(self.__process, label, value)
+    def __delattr__(self, label):
+        value = getattr(self.__process, label)
+        if not isinstance(value, Service):
+            raise TypeError("ProcessAccelerator.apply() can delete only Services. Tried to del {} with label {}".format(str(type(value)), label))
+        delattr(self.__process, label)
     def add_(self, value):
         if not isinstance(value, Service):
             raise TypeError("ProcessAccelerator.apply() can only add Services. Tried to set {} with label {}".format(str(type(value)), label))
@@ -2116,11 +2197,40 @@ if __name__=="__main__":
                 ), **kargs)
     specialImportRegistry.registerSpecialImportForType(SwitchProducerTest2, "from test import SwitchProducerTest2")
 
+    class TestModuleTypeResolver:
+        def __init__(self, accelerators):
+            # first element is used as the default is nothing is set
+            self._valid_backends = []
+            if "test1" in accelerators:
+                self._valid_backends.append("test1_backend")
+            if "test2" in accelerators:
+                self._valid_backends.append("test2_backend")
+            if len(self._valid_backends) == 0:
+                raise EDMException(edm.errors.UnavailableAccelerator, "Machine has no accelerators that Test supports (has {})".format(", ".join(accelerators)))
+
+        def plugin(self):
+            return "TestModuleTypeResolver"
+
+        def setModuleVariant(self, module):
+            if "@test" in module.type_():
+                defaultBackend = self._valid_backends[0]
+                if hasattr(module, "test"):
+                    if hasattr(module.test, "backend"):
+                        if module.test.backend.value() not in self._valid_backends:
+                            raise EDMException(edm.errors.UnavailableAccelerator, "Module {} has the Test backend set explicitly, but its accelerator is not available for the job".format(module.label_()))
+                    else:
+                        module.test.backend = untracked.string(defaultBackend)
+                else:
+                    module.test = untracked.PSet(
+                        backend = untracked.string(defaultBackend)
+                    )
+
     class ProcessAcceleratorTest(ProcessAccelerator):
-        def __init__(self, enabled=["test1", "test2", "anothertest3"]):
-            super(ProcessAcceleratorTest,self).__init__()
+        def __init__(self, enabled=["test1", "test2", "anothertest3"], moduleTypeResolverMaker=None):
+            super().__init__()
             self._labels = ["test1", "test2", "anothertest3"]
             self.setEnabled(enabled)
+            self._moduleTypeResolverMaker = moduleTypeResolverMaker
         def setEnabled(self, enabled):
             invalid = set(enabled).difference(set(self._labels))
             if len(invalid) > 0:
@@ -2134,15 +2244,22 @@ if __name__=="__main__":
             return self._labels
         def enabledLabels(self):
             return self._enabled
+        def moduleTypeResolver(self, accelerators):
+            if not self._moduleTypeResolverMaker:
+                return super().moduleTypeResolver(accelerators)
+            return self._moduleTypeResolverMaker(accelerators)
         def apply(self, process, accelerators):
             process.AcceleratorTestService = Service("AcceleratorTestService")
+            if hasattr(process, "AcceleratorTestServiceRemove"):
+                del process.AcceleratorTestServiceRemove
     specialImportRegistry.registerSpecialImportForType(ProcessAcceleratorTest, "from test import ProcessAcceleratorTest")
 
     class ProcessAcceleratorTest2(ProcessAccelerator):
-        def __init__(self, enabled=["anothertest3", "anothertest4"]):
-            super(ProcessAcceleratorTest2,self).__init__()
+        def __init__(self, enabled=["anothertest3", "anothertest4"], moduleTypeResolverMaker=None):
+            super().__init__()
             self._labels = ["anothertest3", "anothertest4"]
             self.setEnabled(enabled)
+            self._moduleTypeResolverMaker = moduleTypeResolverMaker
         def setEnabled(self, enabled):
             invalid = set(enabled).difference(set(self._labels))
             if len(invalid) > 0:
@@ -2156,6 +2273,10 @@ if __name__=="__main__":
             return self._labels
         def enabledLabels(self):
             return self._enabled
+        def moduleTypeResolver(self, accelerators):
+            if not self._moduleTypeResolverMaker:
+                return super().moduleTypeResolver(accelerators)
+            return self._moduleTypeResolverMaker(accelerators)
         def apply(self, process, accelerators):
             pass
     specialImportRegistry.registerSpecialImportForType(ProcessAcceleratorTest2, "from test import ProcessAcceleratorTest2")
@@ -2340,10 +2461,9 @@ process.maxLuminosityBlocks = cms.untracked.PSet(
 )
 
 process.options = cms.untracked.PSet(
-    FailPath = cms.untracked.vstring(),
     IgnoreCompletely = cms.untracked.vstring(),
     Rethrow = cms.untracked.vstring(),
-    SkipEvent = cms.untracked.vstring(),
+    TryToContinue = cms.untracked.vstring(),
     accelerators = cms.untracked.vstring('*'),
     allowUnscheduled = cms.obsolete.untracked.bool,
     canDeleteEarly = cms.untracked.vstring(),
@@ -2358,7 +2478,10 @@ process.options = cms.untracked.PSet(
     ),
     fileMode = cms.untracked.string('FULLMERGE'),
     forceEventSetupCacheClearOnNewRun = cms.untracked.bool(False),
+    holdsReferencesToDeleteEarly = cms.untracked.VPSet(),
     makeTriggerResults = cms.obsolete.untracked.bool,
+    modulesToCallForTryToContinue = cms.untracked.vstring(),
+    modulesToIgnoreForDeleteEarly = cms.untracked.vstring(),
     numberOfConcurrentLuminosityBlocks = cms.untracked.uint32(0),
     numberOfConcurrentRuns = cms.untracked.uint32(1),
     numberOfStreams = cms.untracked.uint32(0),
@@ -2389,7 +2512,7 @@ process.MessageLogger = cms.Service("MessageLogger",
             limit = cms.untracked.int32(10000000)
         ),
         enable = cms.untracked.bool(True),
-        enableStatistics = cms.untracked.bool(True),
+        enableStatistics = cms.untracked.bool(False),
         lineLength = cms.optional.untracked.int32,
         noLineBreaks = cms.optional.untracked.bool,
         noTimeStamps = cms.untracked.bool(False),
@@ -3202,7 +3325,7 @@ process.s2 = cms.Sequence(process.a+(process.a+process.a))""")
             path = FinalPath(p.a*(p.b+p.c))
             self.assertEqual(str(path),'a+b+c')
             p.es = ESProducer("AnESProducer")
-            self.assertRaises(TypeError,FinalPath,p.es)
+            self.assertRaises(TypeError,FinalPath, p.es)
 
             t = FinalPath()
             self.assertEqual(t.dumpPython(PrintOptions()), 'cms.FinalPath()\n')
@@ -3224,7 +3347,27 @@ process.s2 = cms.Sequence(process.a+(process.a+process.a))""")
             p.t = FinalPath(p.a)
             p.a = OutputModule("ReplacedOutputModule")
             self.assertEqual(p.t.dumpPython(PrintOptions()), 'cms.FinalPath(process.a)\n')
-            
+
+            p.anal = EDAnalyzer("MyAnalyzer")
+            p.t = FinalPath(p.anal)
+            pset = TestMakePSet()
+            self.assertRaises(RuntimeError, p.fillProcessDesc, pset)
+
+            p.prod = EDProducer("MyProducer")
+            p.t = FinalPath(p.prod)
+            pset = TestMakePSet()
+            self.assertRaises(RuntimeError, p.fillProcessDesc, pset)
+
+            p.filt = EDFilter("MyFilter")
+            p.t = FinalPath(p.filt)
+            pset = TestMakePSet()
+            self.assertRaises(RuntimeError, p.fillProcessDesc, pset)
+
+            p.outp = OutputModule("MyOutputModule")
+            p.t = FinalPath(p.outp)
+            pset = TestMakePSet()
+            p.fillProcessDesc(pset)
+
         def testCloneSequence(self):
             p = Process("test")
             a = EDAnalyzer("MyAnalyzer")
@@ -3488,6 +3631,10 @@ process.s2 = cms.Sequence(process.a+(process.a+process.a))""")
                              numberOfThreads =2)
             self.assertEqual(p.options.numberOfThreads.value(),2)
             self.assertEqual(p.options.numberOfStreams.value(),2)
+            del p.options
+            self.assertRaises(TypeError, setattr, p, 'options', untracked.PSet(numberOfThreads = int32(-1)))
+            p.options = untracked.PSet(numberOfThreads = untracked.uint32(4))
+            self.assertEqual(p.options.numberOfThreads.value(), 4)
 
         def testMaxEvents(self):
             p = Process("Test")
@@ -3502,7 +3649,10 @@ process.s2 = cms.Sequence(process.a+(process.a+process.a))""")
             p = Process("Test")
             p.maxEvents = untracked.PSet(input = untracked.int32(5))
             self.assertEqual(p.maxEvents.input.value(), 5)
-
+            del p.maxEvents
+            self.assertRaises(TypeError, setattr, p, 'maxEvents', untracked.PSet(input = untracked.uint32(1)))
+            p.maxEvents = untracked.PSet(input = untracked.int32(1))
+            self.assertEqual(p.maxEvents.input.value(), 1)
         
         def testExamples(self):
             p = Process("Test")
@@ -4061,6 +4211,11 @@ process.schedule = cms.Schedule(*[ process.path1, process.path2 ])""")
             self.assertEqual(p.schedule_().dumpPython(), 'cms.Schedule(tasks=[cms.Task(process.h)])\n')
         def testModifier(self):
             m1 = Modifier()
+            Process._firstProcess = True
+            p = Process("test")
+            self.assertRaises(RuntimeError, lambda: Process("test2", m1))
+            m1 = Modifier()
+            Process._firstProcess = True
             p = Process("test",m1)
             p.a = EDAnalyzer("MyAnalyzer", fred = int32(1))
             def _mod_fred(obj):
@@ -4073,6 +4228,7 @@ process.schedule = cms.Schedule(*[ process.path1, process.path2 ])""")
             self.assertTrue(p.isUsingModifier(m1))
             #check that Modifier not attached to a process doesn't run
             m1 = Modifier()
+            Process._firstProcess = True
             p = Process("test")
             p.a = EDAnalyzer("MyAnalyzer", fred = int32(1))
             m1.toModify(p.a,_mod_fred)
@@ -4083,6 +4239,7 @@ process.schedule = cms.Schedule(*[ process.path1, process.path2 ])""")
             self.assertEqual(p.isUsingModifier(m1),False)
             #make sure clones get the changes
             m1 = Modifier()
+            Process._firstProcess = True
             p = Process("test",m1)
             p.a = EDAnalyzer("MyAnalyzer", fred = int32(1), wilma = int32(1))
             m1.toModify(p.a, fred = int32(2))
@@ -4093,6 +4250,7 @@ process.schedule = cms.Schedule(*[ process.path1, process.path2 ])""")
             self.assertEqual(p.b.wilma.value(),3)
             #test removal of parameter
             m1 = Modifier()
+            Process._firstProcess = True
             p = Process("test",m1)
             p.a = EDAnalyzer("MyAnalyzer", fred = int32(1), wilma = int32(1), fintstones = PSet(fred = int32(1)))
             m1.toModify(p.a, fred = None, fintstones = dict(fred = None))
@@ -4101,6 +4259,7 @@ process.schedule = cms.Schedule(*[ process.path1, process.path2 ])""")
             self.assertEqual(p.a.wilma.value(),1)
             #test adding a parameter
             m1 = Modifier()
+            Process._firstProcess = True
             p = Process("test",m1)
             p.a = EDAnalyzer("MyAnalyzer", fred = int32(1))
             m1.toModify(p.a, wilma = int32(2))
@@ -4108,6 +4267,7 @@ process.schedule = cms.Schedule(*[ process.path1, process.path2 ])""")
             self.assertEqual(p.a.wilma.value(),2)
             #test setting of value in PSet
             m1 = Modifier()
+            Process._firstProcess = True
             p = Process("test",m1)
             p.a = EDAnalyzer("MyAnalyzer", flintstones = PSet(fred = int32(1), wilma = int32(1)))
             m1.toModify(p.a, flintstones = dict(fred = int32(2)))
@@ -4115,12 +4275,14 @@ process.schedule = cms.Schedule(*[ process.path1, process.path2 ])""")
             self.assertEqual(p.a.flintstones.wilma.value(),1)
             #test proper exception from nonexisting parameter name
             m1 = Modifier()
+            Process._firstProcess = True
             p = Process("test",m1)
             p.a = EDAnalyzer("MyAnalyzer", flintstones = PSet(fred = PSet(wilma = int32(1))))
             self.assertRaises(KeyError, lambda: m1.toModify(p.a, flintstones = dict(imnothere = dict(wilma=2))))
             self.assertRaises(KeyError, lambda: m1.toModify(p.a, foo = 1))
             #test setting a value in a VPSet
             m1 = Modifier()
+            Process._firstProcess = True
             p = Process("test",m1)
             p.a = EDAnalyzer("MyAnalyzer", flintstones = VPSet(PSet(fred = int32(1)), PSet(wilma = int32(1))))
             m1.toModify(p.a, flintstones = {1:dict(wilma = int32(2))})
@@ -4128,6 +4290,7 @@ process.schedule = cms.Schedule(*[ process.path1, process.path2 ])""")
             self.assertEqual(p.a.flintstones[1].wilma.value(),2)
             #test setting a value in a list of values
             m1 = Modifier()
+            Process._firstProcess = True
             p = Process("test",m1)
             p.a = EDAnalyzer("MyAnalyzer", fred = vuint32(1,2,3))
             m1.toModify(p.a, fred = {1:7})
@@ -4136,6 +4299,7 @@ process.schedule = cms.Schedule(*[ process.path1, process.path2 ])""")
             self.assertEqual(p.a.fred[2],3)
             #test IndexError setting a value in a list to an item key not in the list
             m1 = Modifier()
+            Process._firstProcess = True
             p = Process("test",m1)
             p.a = EDAnalyzer("MyAnalyzer", fred = vuint32(1,2,3))
             raised = False
@@ -4144,6 +4308,7 @@ process.schedule = cms.Schedule(*[ process.path1, process.path2 ])""")
             self.assertEqual(raised, True)
             #test TypeError setting a value in a list using a key that is not an int
             m1 = Modifier()
+            Process._firstProcess = True
             p = Process("test",m1)
             p.a = EDAnalyzer("MyAnalyzer", flintstones = VPSet(PSet(fred = int32(1)), PSet(wilma = int32(1))))
             raised = False
@@ -4163,6 +4328,7 @@ process.schedule = cms.Schedule(*[ process.path1, process.path2 ])""")
             p.extend(testMod)
             self.assertTrue(hasattr(p,"a"))
             m1 = Modifier()
+            Process._firstProcess = True
             p = Process("test",m1)
             testProcMod = ProcModifierMod(m1,_rem_a)
             p.extend(testMod)
@@ -4171,6 +4337,7 @@ process.schedule = cms.Schedule(*[ process.path1, process.path2 ])""")
             #test ModifierChain
             m1 = Modifier()
             mc = ModifierChain(m1)
+            Process._firstProcess = True
             p = Process("test",mc)
             self.assertTrue(p.isUsingModifier(m1))
             self.assertTrue(p.isUsingModifier(mc))
@@ -4198,6 +4365,7 @@ process.schedule = cms.Schedule(*[ process.path1, process.path2 ])""")
             #check combining
             m1 = Modifier()
             m2 = Modifier()
+            Process._firstProcess = True
             p = Process("test",m1)
             p.a = EDAnalyzer("MyAnalyzer", fred = int32(1), wilma = int32(1))
             (m1 & m2).toModify(p.a, fred = int32(2))
@@ -4205,6 +4373,7 @@ process.schedule = cms.Schedule(*[ process.path1, process.path2 ])""")
             self.assertEqual(p.a.fred, 1)
             m1 = Modifier()
             m2 = Modifier()
+            Process._firstProcess = True
             p = Process("test",m1,m2)
             p.a = EDAnalyzer("MyAnalyzer", fred = int32(1), wilma = int32(1))
             (m1 & m2).toModify(p.a, fred = int32(2))
@@ -4212,6 +4381,7 @@ process.schedule = cms.Schedule(*[ process.path1, process.path2 ])""")
             m1 = Modifier()
             m2 = Modifier()
             m3 = Modifier()
+            Process._firstProcess = True
             p = Process("test",m1,m2,m3)
             p.a = EDAnalyzer("MyAnalyzer", fred = int32(1), wilma = int32(1))
             (m1 & m2 & m3).toModify(p.a, fred = int32(2))
@@ -4223,6 +4393,7 @@ process.schedule = cms.Schedule(*[ process.path1, process.path2 ])""")
             #check inverse
             m1 = Modifier()
             m2 = Modifier()
+            Process._firstProcess = True
             p = Process("test", m1)
             p.a = EDAnalyzer("MyAnalyzer", fred = int32(1), wilma = int32(1))
             (~m1).toModify(p.a, fred=2)
@@ -4235,6 +4406,7 @@ process.schedule = cms.Schedule(*[ process.path1, process.path2 ])""")
             m1 = Modifier()
             m2 = Modifier()
             m3 = Modifier()
+            Process._firstProcess = True
             p = Process("test", m1)
             p.a = EDAnalyzer("MyAnalyzer", fred = int32(1), wilma = int32(1))
             (m1 | m2).toModify(p.a, fred=2)
@@ -4256,6 +4428,7 @@ process.schedule = cms.Schedule(*[ process.path1, process.path2 ])""")
             m2 = Modifier()
             m3 = Modifier()
             m4 = Modifier()
+            Process._firstProcess = True
             p = Process("test", m1, m2)
             p.a = EDAnalyzer("MyAnalyzer", fred = int32(1), wilma = int32(1))
             (m1 & ~m2).toModify(p.a, fred=2)
@@ -4272,6 +4445,7 @@ process.schedule = cms.Schedule(*[ process.path1, process.path2 ])""")
             self.assertEqual(p.a.fred, 5)
             #check toReplaceWith
             m1 = Modifier()
+            Process._firstProcess = True
             p = Process("test",m1)
             p.a =EDAnalyzer("MyAnalyzer", fred = int32(1))
             m1.toReplaceWith(p.a, EDAnalyzer("YourAnalyzer", wilma = int32(3)))
@@ -4310,6 +4484,7 @@ process.schedule = cms.Schedule(*[ process.path1, process.path2 ])""")
             self.assertTrue(p.td._collection == OrderedSet([p.e]))
             #check toReplaceWith doesn't activate not chosen
             m1 = Modifier()
+            Process._firstProcess = True
             p = Process("test")
             p.a =EDAnalyzer("MyAnalyzer", fred = int32(1))
             m1.toReplaceWith(p.a, EDAnalyzer("YourAnalyzer", wilma = int32(3)))
@@ -4319,6 +4494,7 @@ process.schedule = cms.Schedule(*[ process.path1, process.path2 ])""")
             m2 = Modifier()
             m3 = Modifier()
             m4 = Modifier()
+            Process._firstProcess = True
             p = Process("test", m1, m2)
             p.a = EDAnalyzer("MyAnalyzer", fred = int32(1), wilma = int32(1))
             self.assertRaises(TypeError, lambda: (m1 & m2).toReplaceWith(p.a, EDProducer("YourProducer")))
@@ -4339,6 +4515,32 @@ process.schedule = cms.Schedule(*[ process.path1, process.path2 ])""")
             self.assertEqual(p.a.type_(), "YourAnalyzer3")
             (m3 | m4).toReplaceWith(p.a, EDAnalyzer("YourAnalyzer4"))
             self.assertEqual(p.a.type_(), "YourAnalyzer3")
+            #check chaining of toModify and toReplaceWith
+            m1 = Modifier()
+            m2 = Modifier()
+            m3 = Modifier()
+            Process._firstProcess = True
+            p = Process("test", m1, m2)
+            p.a = EDAnalyzer("MyAnalyzer", fred = int32(1), wilma = int32(1))
+            p.b = EDProducer("MyProducer", barney = int32(1), betty = int32(1))
+            (m1 & m2).toModify(p.a, fred = 2).toModify(p.b, betty = 3)
+            self.assertEqual(p.a.fred, 2)
+            self.assertEqual(p.a.wilma, 1)
+            self.assertEqual(p.b.barney, 1)
+            self.assertEqual(p.b.betty, 3)
+            (m1 | m3).toModify(p.a, wilma = 4).toModify(p.b, barney = 5)
+            self.assertEqual(p.a.fred, 2)
+            self.assertEqual(p.a.wilma, 4)
+            self.assertEqual(p.b.barney, 5)
+            self.assertEqual(p.b.betty, 3)
+            (m2 & ~m3).toReplaceWith(p.a, EDAnalyzer("YourAnalyzer")).toModify(p.b, barney = 6)
+            self.assertEqual(p.a.type_(), "YourAnalyzer")
+            self.assertEqual(p.b.barney, 6)
+            self.assertEqual(p.b.betty, 3)
+            (m1 & ~m3).toModify(p.a, param=int32(42)).toReplaceWith(p.b, EDProducer("YourProducer"))
+            self.assertEqual(p.a.type_(), "YourAnalyzer")
+            self.assertEqual(p.a.param, 42)
+            self.assertEqual(p.b.type_(), "YourProducer")
 
             # EDAlias
             a = EDAlias(foo2 = VPSet(PSet(type = string("Foo2"))))
@@ -4448,11 +4650,14 @@ process.schedule = cms.Schedule(*[ process.path1, process.path2 ])""")
             self.assertTrue(["cpu"], p.values["@available_accelerators"][1])
             self.assertFalse(p.values["@selected_accelerators"][0])
             self.assertTrue(["cpu"], p.values["@selected_accelerators"][1])
+            self.assertFalse(p.values["@module_type_resolver"][0])
+            self.assertEqual("", p.values["@module_type_resolver"][1])
 
             proc = Process("TEST")
             self.assertRaises(TypeError, setattr, proc, "processAcceleratorTest", ProcessAcceleratorTest())
             proc.ProcessAcceleratorTest = ProcessAcceleratorTest()
             del proc.MessageLogger # remove boilerplate unnecessary for this test case
+            self.maxDiff = None
             self.assertEqual(proc.dumpPython(),
 """import FWCore.ParameterSet.Config as cms
 from test import ProcessAcceleratorTest
@@ -4469,10 +4674,9 @@ process.maxLuminosityBlocks = cms.untracked.PSet(
 )
 
 process.options = cms.untracked.PSet(
-    FailPath = cms.untracked.vstring(),
     IgnoreCompletely = cms.untracked.vstring(),
     Rethrow = cms.untracked.vstring(),
-    SkipEvent = cms.untracked.vstring(),
+    TryToContinue = cms.untracked.vstring(),
     accelerators = cms.untracked.vstring('*'),
     allowUnscheduled = cms.obsolete.untracked.bool,
     canDeleteEarly = cms.untracked.vstring(),
@@ -4487,7 +4691,10 @@ process.options = cms.untracked.PSet(
     ),
     fileMode = cms.untracked.string('FULLMERGE'),
     forceEventSetupCacheClearOnNewRun = cms.untracked.bool(False),
+    holdsReferencesToDeleteEarly = cms.untracked.VPSet(),
     makeTriggerResults = cms.obsolete.untracked.bool,
+    modulesToCallForTryToContinue = cms.untracked.vstring(),
+    modulesToIgnoreForDeleteEarly = cms.untracked.vstring(),
     numberOfConcurrentLuminosityBlocks = cms.untracked.uint32(0),
     numberOfConcurrentRuns = cms.untracked.uint32(1),
     numberOfStreams = cms.untracked.uint32(0),
@@ -4512,6 +4719,17 @@ process.ProcessAcceleratorTest = ProcessAcceleratorTest(
             self.assertEqual("AcceleratorTestService", p.values["services"][1][0].values["@service_type"][1])
             self.assertFalse(p.values["@available_accelerators"][0])
             self.assertTrue(["anothertest3", "cpu", "test1", "test2"], p.values["@available_accelerators"][1])
+            self.assertFalse(p.values["@module_type_resolver"][0])
+            self.assertEqual("", p.values["@module_type_resolver"][1])
+
+            proc = Process("TEST")
+            proc.ProcessAcceleratorTest = ProcessAcceleratorTest()
+            proc.add_(Service("AcceleratorTestServiceRemove"))
+            p = TestMakePSet()
+            proc.fillProcessDesc(p)
+            services = [x.values["@service_type"][1] for x in p.values["services"][1]]
+            self.assertTrue("AcceleratorTestService" in services)
+            self.assertFalse("AcceleratorTestServiceRemove" in services)
 
             proc = Process("TEST")
             proc.ProcessAcceleratorTest = ProcessAcceleratorTest(enabled=["test1"])
@@ -4644,6 +4862,62 @@ process.ProcessAcceleratorTest = ProcessAcceleratorTest(
                                                              aa = int32(11),
                                                              bb = PSet(cc = int32(12))))
             proc.p = Path(proc.sp)
+            p = TestMakePSet()
+            self.assertRaises(RuntimeError, proc.fillProcessDesc, p)
+
+            proc = Process("TEST")
+            proc.ProcessAcceleratorTest = ProcessAcceleratorTest(
+                moduleTypeResolverMaker=lambda accelerators: TestModuleTypeResolver(accelerators))
+            proc.ProcessAcceleratorTest2 = ProcessAcceleratorTest2()
+            proc.normalProducer = EDProducer("FooProducer")
+            proc.testProducer = EDProducer("BarProducer@test")
+            proc.test2Producer = EDProducer("BarProducer@test", test=untracked.PSet(backend=untracked.string("test2_backend")))
+            proc.testAnalyzer = EDAnalyzer("Analyzer@test")
+            proc.testFilter = EDAnalyzer("Filter@test")
+            proc.testESProducer = ESProducer("ESProducer@test")
+            proc.testESSource = ESSource("ESSource@test")
+            proc.p = Path(proc.normalProducer+proc.testProducer+proc.test2Producer+proc.testAnalyzer+proc.testFilter)
+            p = TestMakePSet()
+            proc.fillProcessDesc(p)
+            self.assertEqual("TestModuleTypeResolver", p.values["@module_type_resolver"][1])
+            self.assertEqual("FooProducer", p.values["normalProducer"][1].values["@module_type"][1])
+            self.assertEqual(len(list(filter(lambda x: not "@" in x, p.values["normalProducer"][1].values.keys()))), 0)
+            self.assertEqual("BarProducer@test", p.values["testProducer"][1].values["@module_type"][1])
+            self.assertEqual(False, p.values["testProducer"][1].values["test"][0])
+            self.assertEqual(False, p.values["testProducer"][1].values["test"][1].values["backend"][0])
+            self.assertEqual("test1_backend", p.values["testProducer"][1].values["test"][1].values["backend"][1])
+            self.assertEqual("BarProducer@test", p.values["test2Producer"][1].values["@module_type"][1])
+            self.assertEqual("test2_backend", p.values["test2Producer"][1].values["test"][1].values["backend"][1])
+            self.assertEqual("Analyzer@test", p.values["testAnalyzer"][1].values["@module_type"][1])
+            self.assertEqual("test1_backend", p.values["testAnalyzer"][1].values["test"][1].values["backend"][1])
+            self.assertEqual("Filter@test", p.values["testFilter"][1].values["@module_type"][1])
+            self.assertEqual("test1_backend", p.values["testFilter"][1].values["test"][1].values["backend"][1])
+            self.assertEqual("ESProducer@test", p.values["ESProducer@test@testESProducer"][1].values["@module_type"][1])
+            self.assertEqual("test1_backend", p.values["ESProducer@test@testESProducer"][1].values["test"][1].values["backend"][1])
+            self.assertEqual("ESSource@test", p.values["ESSource@test@testESSource"][1].values["@module_type"][1])
+            self.assertEqual("test1_backend", p.values["ESSource@test@testESSource"][1].values["test"][1].values["backend"][1])
+
+            # No required accelerators available
+            proc = Process("Test")
+            proc.ProcessAcceleratorTest = ProcessAcceleratorTest(
+                moduleTypeResolverMaker=lambda accelerators: TestModuleTypeResolver(accelerators))
+            proc.options.accelerators = []
+            self.assertRaises(EDMException, proc.fillProcessDesc, p)
+
+            proc = Process("Test")
+            proc.ProcessAcceleratorTest = ProcessAcceleratorTest(
+                moduleTypeResolverMaker=lambda accelerators: TestModuleTypeResolver(accelerators))
+            proc.options.accelerators = ["test1"]
+            proc.test2Producer = EDProducer("BarProducer@test", test=untracked.PSet(backend=untracked.string("test2_backend")))
+            proc.p = Path(proc.test2Producer)
+            self.assertRaises(EDMException, proc.fillProcessDesc, p)
+
+            # Two ProcessAccelerators return type resolver
+            proc = Process("TEST")
+            proc.ProcessAcceleratorTest = ProcessAcceleratorTest(
+                moduleTypeResolverMaker=lambda accelerators: TestModuleTypeResolver(accelerators))
+            proc.ProcessAcceleratorTest2 = ProcessAcceleratorTest2(
+                moduleTypeResolverMaker=lambda accelerators: TestModuleTypeResolver(accelerators))
             p = TestMakePSet()
             self.assertRaises(RuntimeError, proc.fillProcessDesc, p)
 

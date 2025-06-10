@@ -1,3 +1,12 @@
+/****************************************************************
+ * MatchEngineUnit (MEU) is a single instance of the MatchEngine
+ * section of the MatchProcessor (MP)
+ * 
+ * Manual pipelining is implemented to properly emulate the HLS
+ * implementation (required to meet II=1)
+ * 
+ * A total of `nMatchEngines_` MEUs are used in the MP
+ ****************************************************************/
 #ifndef L1Trigger_TrackFindingTracklet_interface_MatchEngineUnit_h
 #define L1Trigger_TrackFindingTracklet_interface_MatchEngineUnit_h
 
@@ -18,7 +27,7 @@ namespace trklet {
 
   class MatchEngineUnit {
   public:
-    MatchEngineUnit(bool barrel, unsigned int layerdisk, const TrackletLUT& luttable);
+    MatchEngineUnit(const Settings& settings, bool barrel, unsigned int layerdisk, const TrackletLUT& luttable);
 
     ~MatchEngineUnit() = default;
 
@@ -35,8 +44,7 @@ namespace trklet {
               bool usesecondMinus,
               bool usesecondPlus,
               bool isPSseed,
-              Tracklet* proj,
-              bool print);
+              Tracklet* proj);
 
     bool empty() const { return candmatches_.empty(); }
 
@@ -46,28 +54,33 @@ namespace trklet {
 
     std::pair<Tracklet*, const Stub*> peek() const { return candmatches_.peek(); }
 
-    Tracklet* currentProj() const { return proj_; }
-
     bool idle() const { return idle_; }
 
-    bool active() const { return !idle_ || goodpair_ || goodpair__ || !empty(); }
+    bool active() const { return !idle_ || good__ || good____ || !empty(); }
 
-    //needed for consistency with HLS FW version ("_" vs "__" indicating different pipelining stages)
-    bool have_() const { return havepair_; }
-    bool have__() const { return havepair__; }
+    void setAlmostFull();
+
+    void setimeu(int imeu) { imeu_ = imeu; }
+
+    void setprint(bool print) { print_ = print; }
 
     void reset();
 
     unsigned int rptr() const { return candmatches_.rptr(); }
     unsigned int wptr() const { return candmatches_.wptr(); }
 
-    void step(bool print);
+    void step();
+
+    void processPipeline();
 
   private:
+    //Provide access to constants
+    const Settings& settings_;
+
     VMStubsMEMemory* vmstubsmemory_;
 
     unsigned int nrzbins_;
-    unsigned int rzbin_;
+    unsigned int rzbin_, rzbin__, rzbin____, rzbin___;
     unsigned int phibin_;
     int shift_;
 
@@ -86,16 +99,32 @@ namespace trklet {
 
     unsigned int layerdisk_;
 
+    //The minimum radius for 2s disks in projection bins
+    unsigned int ir2smin_;
+
+    //Save state at the start of istep
+    bool almostfullsave_;
+
     //LUT for bend consistency with rinv
     const TrackletLUT& luttable_;
 
-    //Pipeline variables
-    std::pair<Tracklet*, const Stub*> tmppair_, tmppair__;
-    bool goodpair_, goodpair__;
-    bool havepair_, havepair__;
+    //Various manually pipelined variables
+    //Each _ represents a layer of pipelining
+    //e.g., good__ is set and one iteration later good____ is updated
+    VMStubME vmstub__, vmstub___, vmstub____;
+    bool isPSseed__, isPSseed___, isPSseed____;
+    bool good__, good___, good____;
+    int projfinerz__, projfinerz___, projfinerz____;
+    int projfinephi__, projfinephi___, projfinephi____;
+    int projrinv__, projrinv___, projrinv____;
+    Tracklet *proj__, *proj___, *proj____;
 
     //save the candidate matches
     CircularBuffer<std::pair<Tracklet*, const Stub*>> candmatches_;
+
+    //debugging help
+    int imeu_;
+    bool print_;
   };
 
 };  // namespace trklet

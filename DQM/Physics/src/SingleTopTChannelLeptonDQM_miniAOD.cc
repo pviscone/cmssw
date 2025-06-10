@@ -16,8 +16,6 @@
 #include "DataFormats/PatCandidates/interface/Jet.h"
 #include "DataFormats/PatCandidates/interface/MET.h"
 
-#include "JetMETCorrections/Objects/interface/JetCorrector.h"
-
 using namespace std;
 namespace SingleTopTChannelLepton_miniAOD {
 
@@ -112,11 +110,6 @@ namespace SingleTopTChannelLepton_miniAOD {
     // empty
     if (cfg.existsAs<edm::ParameterSet>("jetExtras")) {
       edm::ParameterSet jetExtras = cfg.getParameter<edm::ParameterSet>("jetExtras");
-      // jetCorrector is optional; in case it's not found
-      // the InputTag will remain empty
-      if (jetExtras.existsAs<std::string>("jetCorrector")) {
-        jetCorrector_ = iC.esConsumes(edm::ESInputTag("", jetExtras.getParameter<std::string>("jetCorrector")));
-      }
       // read jetID information if it exists
       if (jetExtras.existsAs<edm::ParameterSet>("jetID")) {
         edm::ParameterSet jetID = jetExtras.getParameter<edm::ParameterSet>("jetID");
@@ -275,7 +268,6 @@ namespace SingleTopTChannelLepton_miniAOD {
     // pt of the 4. leading jet (corrected to L2+L3)
     //hists_["jet4Pt_"] = ibooker.book1D("Jet4Pt", "pt_{30,loose}(jet4)", 60, 0., 300.);
     // MET (tc)
-    hists_["slimmedMETsNoHF_"] = ibooker.book1D("slimmedMETsNoHF", "MET_{slimmedNoHF}", 40, 0., 200.);
     // MET (pflow)
     hists_["slimmedMETsPuppi_"] = ibooker.book1D("slimmedMETsPuppi", "MET_{slimmedPuppi}", 40, 0., 200.);
     // dz for muons (to suppress cosmis)
@@ -323,9 +315,9 @@ namespace SingleTopTChannelLepton_miniAOD {
     //hists_["jetBDiscVtx_"] = ibooker.book1D("JetBDiscVtx",
     //    "Disc_{SSVHE}(Jet)", 35, -1., 6.);
     // multiplicity for combined secondary vertex
-    hists_["jetMultBCSVM_"] = ibooker.book1D("JetMultBCSVM", "N_{30}(CSVM)", 10, 0., 10.);
+    hists_["jetMultBDeepJetM_"] = ibooker.book1D("JetMultBDeepJetM", "N_{30}(DeepJetM)", 10, 0., 10.);
     // btag discriminator for combined secondary vertex
-    hists_["jetBCSV_"] = ibooker.book1D("JetDiscCSV", "BJet Disc_{CSV}(JET)", 100, -1., 2.);
+    hists_["jetBDeepJet_"] = ibooker.book1D("JetDiscDeepJet", "BJet Disc_{DeepJet}(JET)", 100, -1., 2.);
     // pt of the 1. leading jet (uncorrected)
     //hists_["jet1PtRaw_"] = ibooker.book1D("Jet1PtRaw", "pt_{Raw}(jet1)", 60, 0., 300.);
     // pt of the 2. leading jet (uncorrected)
@@ -579,7 +571,7 @@ namespace SingleTopTChannelLepton_miniAOD {
     pat::Jet TaggedJetCand;
     vector<double> bJetDiscVal;
 
-    unsigned int mult = 0, loosemult = 0, multBCSVM = 0;
+    unsigned int mult = 0, loosemult = 0, multBDeepJetM = 0;
 
     edm::Handle<edm::View<pat::Jet>> jets;
     if (!event.getByToken(jets_, jets)) {
@@ -590,7 +582,7 @@ namespace SingleTopTChannelLepton_miniAOD {
       // check jetID for calo jets
       //unsigned int idx = jet - jets->begin();
 
-      pat::Jet sel = *jet;
+      const pat::Jet& sel = *jet;
 
       if (jetSelect == nullptr)
         jetSelect = std::make_unique<StringCutObjectSelector<pat::Jet>>(jetSelect_);
@@ -600,7 +592,7 @@ namespace SingleTopTChannelLepton_miniAOD {
       //      if (!jetSelect(sel)) continue;
 
       // prepare jet to fill monitor histograms
-      pat::Jet monitorJet = *jet;
+      const pat::Jet& monitorJet = *jet;
 
       ++mult;
 
@@ -611,25 +603,27 @@ namespace SingleTopTChannelLepton_miniAOD {
         correctedJets.push_back(monitorJet);
         ++loosemult;  // determine jet multiplicity
 
-        fill("jetBCSV_",
-             monitorJet.bDiscriminator(
-                 "pfCombinedInclusiveSecondaryVertexV2BJetTags"));  //hard coded discriminator and value right now.
-        if (monitorJet.bDiscriminator("pfCombinedInclusiveSecondaryVertexV2BJetTags") > 0.89) {
-          if (multBCSVM == 0) {
+        double discriminator = monitorJet.bDiscriminator("pfDeepFlavourJetTags:probb") +
+                               monitorJet.bDiscriminator("pfDeepFlavourJetTags:probbb") +
+                               monitorJet.bDiscriminator("pfDeepFlavourJetTags:problepb");
+
+        fill("jetBDeepJet_", discriminator);  //hard coded discriminator and value right now.
+        if (discriminator > 0.2435) {
+          if (multBDeepJetM == 0) {
             TaggedJetCand = monitorJet;
-            bJetDiscVal.push_back(monitorJet.bDiscriminator("pfCombinedInclusiveSecondaryVertexV2BJetTags"));
-          } else if (multBCSVM == 1) {
-            bJetDiscVal.push_back(monitorJet.bDiscriminator("pfCombinedInclusiveSecondaryVertexV2BJetTags"));
+            bJetDiscVal.push_back(discriminator);
+          } else if (multBDeepJetM == 1) {
+            bJetDiscVal.push_back(discriminator);
             if (bJetDiscVal[1] > bJetDiscVal[0])
               TaggedJetCand = monitorJet;
           }
 
-          ++multBCSVM;
+          ++multBDeepJetM;
         }
 
-        // Fill a vector with Jet b-tag WP for later M3+1tag calculation: CSV
+        // Fill a vector with Jet b-tag WP for later M3+1tag calculation: DeepJet
         // tagger
-        JetTagValues.push_back(monitorJet.bDiscriminator("pfCombinedInclusiveSecondaryVertexV2BJetTags"));
+        JetTagValues.push_back(discriminator);
         //    }
         // fill pt (raw or L2L3) for the leading four jets
         if (loosemult == 1) {
@@ -648,7 +642,7 @@ namespace SingleTopTChannelLepton_miniAOD {
     }
     fill("jetMult_", mult);
     fill("jetLooseMult_", loosemult);
-    fill("jetMultBCSVM_", multBCSVM);
+    fill("jetMultBDeepJetM_", multBDeepJetM);
 
     /*
   ------------------------------------------------------------
@@ -671,8 +665,6 @@ namespace SingleTopTChannelLepton_miniAOD {
         unsigned int idx = met_ - mets_.begin();
         if (idx == 0)
           fill("slimmedMETs_", met->begin()->et());
-        if (idx == 1)
-          fill("slimmedMETsNoHF_", met->begin()->et());
         if (idx == 2)
           fill("slimmedMETsPuppi_", met->begin()->et());
       }
@@ -696,12 +688,12 @@ namespace SingleTopTChannelLepton_miniAOD {
       fill("massTop_", topMass);
     }
 
-    // Fill M3 with Btag (CSV Tight) requirement
+    // Fill M3 with Btag (DeepJet Tight) requirement
 
     // if (!includeBTag_) return;
     //if (correctedJets.size() != JetTagValues.size()) return;
     //double btopMass =
-    //    eventKinematics.massBTopQuark(correctedJets, JetTagValues, 0.89); //hard coded CSVv2 value
+    //    eventKinematics.massBTopQuark(correctedJets, JetTagValues, 0.2435); //hard coded DeepJet value
 
     //if (btopMass >= 0) fill("massBTop_", btopMass);
 
@@ -730,14 +722,14 @@ namespace SingleTopTChannelLepton_miniAOD {
       }
     }
 
-    if (multBCSVM != 0 && mTight == 1) {
+    if (multBDeepJetM != 0 && mTight == 1) {
       double mtW = eventKinematics.tmassWBoson(&mu, mET, TaggedJetCand);
       fill("MTWm_", mtW);
       double MTT = eventKinematics.tmassTopQuark(&mu, mET, TaggedJetCand);
       fill("mMTT_", MTT);
     }
 
-    if (multBCSVM != 0 && eMultIso == 1) {
+    if (multBDeepJetM != 0 && eMultIso == 1) {
       double mtW = eventKinematics.tmassWBoson(&e, mET, TaggedJetCand);
       fill("MTWe_", mtW);
       double MTT = eventKinematics.tmassTopQuark(&e, mET, TaggedJetCand);
@@ -828,7 +820,6 @@ void SingleTopTChannelLeptonDQM_miniAOD::analyze(const edm::Event& event, const 
       return;
   }
 
-  unsigned int passed = 0;
   unsigned int nJetSteps = -1;
 
   for (std::vector<std::string>::const_iterator selIt = selectionOrder_.begin(); selIt != selectionOrder_.end();
@@ -840,8 +831,6 @@ void SingleTopTChannelLeptonDQM_miniAOD::analyze(const edm::Event& event, const 
       }
       if (type == "muons" && MuonStep != nullptr) {
         if (MuonStep->select(event)) {
-          ++passed;
-
           selection_[key].second->fill(event, setup);
         } else
           break;
@@ -849,7 +838,6 @@ void SingleTopTChannelLeptonDQM_miniAOD::analyze(const edm::Event& event, const 
 
       if (type == "elecs" && ElectronStep != nullptr) {
         if (ElectronStep->select(event)) {
-          ++passed;
           selection_[key].second->fill(event, setup);
         } else
           break;
@@ -857,7 +845,6 @@ void SingleTopTChannelLeptonDQM_miniAOD::analyze(const edm::Event& event, const 
 
       if (type == "pvs" && PvStep != nullptr) {
         if (PvStep->selectVertex(event)) {
-          ++passed;
           selection_[key].second->fill(event, setup);
         } else
           break;
@@ -867,7 +854,6 @@ void SingleTopTChannelLeptonDQM_miniAOD::analyze(const edm::Event& event, const 
         nJetSteps++;
         if (JetSteps[nJetSteps] != nullptr) {
           if (JetSteps[nJetSteps]->select(event, setup)) {
-            ++passed;
             selection_[key].second->fill(event, setup);
           } else
             break;
@@ -876,7 +862,6 @@ void SingleTopTChannelLeptonDQM_miniAOD::analyze(const edm::Event& event, const 
 
       if (type == "met" && METStep != nullptr) {
         if (METStep->select(event)) {
-          ++passed;
           selection_[key].second->fill(event, setup);
         } else
           break;
