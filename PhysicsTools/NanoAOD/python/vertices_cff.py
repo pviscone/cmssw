@@ -11,7 +11,7 @@ vertexTable = cms.EDProducer("VertexTableProducer",
     pvSrc = cms.InputTag("offlineSlimmedPrimaryVertices"),
     goodPvCut = cms.string("!isFake && ndof > 4 && abs(z) <= 24 && position.Rho <= 2"), 
     pfcSrc = cms.InputTag("packedPFCandidates"),
-    svSrc = cms.InputTag("linkedObjects", "vertices"),
+    svSrc = cms.InputTag("slimmedSecondaryVertices"),
     svCut = cms.string(""),  # careful: adding a cut here would make the collection matching inconsistent with the SV table
     dlenMin = cms.double(0),
     dlenSigMin = cms.double(3),
