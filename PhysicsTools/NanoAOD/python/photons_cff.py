@@ -180,7 +180,7 @@ run2_egamma.toModify(
 
 
 finalPhotons = cms.EDFilter("PATPhotonRefSelector",
-    src = cms.InputTag("slimmedPhotonsWithUserData"),
+    src = cms.InputTag("slimmedPhotons"),
     cut = cms.string("pt > 5 ")
 )
 
@@ -201,22 +201,22 @@ photonTable = simpleCandidateFlatTableProducer.clone(
         s4 = Var("full5x5_showerShapeVariables().e2x2/full5x5_showerShapeVariables().e5x5",float,doc="e2x2/e5x5 of the supercluster, calculated with full 5x5 region",precision=10),
         etaWidth = Var("superCluster().etaWidth()",float,doc="Width of the photon supercluster in eta", precision=10),
         phiWidth = Var("superCluster().phiWidth()",float,doc="Width of the photon supercluster in phi", precision=10),
-        cutBased = Var(
-            "userInt('cutBasedID_loose')+userInt('cutBasedID_medium')+userInt('cutBasedID_tight')",
-            "uint8",
-            doc="cut-based ID bitmap, RunIIIWinter22V1, (0:fail, 1:loose, 2:medium, 3:tight)",
-        ),
-        vidNestedWPBitmap = Var(
-            "userInt('VIDNestedWPBitmap')",
-            int,
-            doc="RunIIIWinter22V1 " + _bitmapVIDForPho_docstring
-        ),
+        # cutBased = Var(
+        #     "userInt('cutBasedID_loose')+userInt('cutBasedID_medium')+userInt('cutBasedID_tight')",
+        #     "uint8",
+        #     doc="cut-based ID bitmap, RunIIIWinter22V1, (0:fail, 1:loose, 2:medium, 3:tight)",
+        # ),
+        # vidNestedWPBitmap = Var(
+        #     "userInt('VIDNestedWPBitmap')",
+        #     int,
+        #     doc="RunIIIWinter22V1 " + _bitmapVIDForPho_docstring
+        # ),
         electronVeto = Var("passElectronVeto()",bool,doc="pass electron veto"),
         pixelSeed = Var("hasPixelSeed()",bool,doc="has pixel seed"),
         hasConversionTracks = Var("hasConversionTracks()",bool,doc="Variable specifying if photon has associated conversion tracks (one-legged or two-legged)"),
-        mvaID = Var("userFloat('mvaID')",float,doc="MVA ID score, Winter22V1",precision=10),
-        mvaID_WP90 = Var("userInt('mvaID_WP90')",bool,doc="MVA ID WP90, Winter22V1"),
-        mvaID_WP80 = Var("userInt('mvaID_WP80')",bool,doc="MVA ID WP80, Winter22V1"),
+        # mvaID = Var("userFloat('mvaID')",float,doc="MVA ID score, Winter22V1",precision=10),
+        # mvaID_WP90 = Var("userInt('mvaID_WP90')",bool,doc="MVA ID WP90, Winter22V1"),
+        # mvaID_WP80 = Var("userInt('mvaID_WP80')",bool,doc="MVA ID WP80, Winter22V1"),
         trkSumPtHollowConeDR03 = Var("trkSumPtHollowConeDR03()",float,doc="Sum of track pT in a hollow cone of outer radius, inner radius", precision=8),
         trkSumPtSolidConeDR04 = Var("trkSumPtSolidConeDR04()",float,doc="Sum of track pT in a cone of dR=0.4", precision=8),                 
         ecalPFClusterIso = Var("ecalPFClusterIso()",float,doc="sum pt of ecal clusters, vetoing clusters part of photon", precision=8),
@@ -225,13 +225,13 @@ photonTable = simpleCandidateFlatTableProducer.clone(
         pfChargedIso = Var("chargedHadronIso()",float,doc="PF absolute isolation dR=0.3, charged component with dxy,dz match to PV", precision=8),        
         pfChargedIsoPFPV = Var("chargedHadronPFPVIso()",float,doc="PF absolute isolation dR=0.3, charged component (PF PV only)"),
         pfChargedIsoWorstVtx = Var("chargedHadronWorstVtxIso()",float,doc="PF absolute isolation dR=0.3, charged component (Vertex with largest isolation)"),
-        pfRelIso03_chg_quadratic = Var("userFloat('PFIsoChgQuadratic')/pt",float,doc="PF relative isolation dR=0.3, charged hadron component (with quadraticEA*rho*rho + linearEA*rho Winter22V1 corrections)"),
-        pfRelIso03_all_quadratic = Var("userFloat('PFIsoAllQuadratic')/pt",float,doc="PF relative isolation dR=0.3, total (with quadraticEA*rho*rho + linearEA*rho Winter22V1 corrections)"),
+        # pfRelIso03_chg_quadratic = Var("userFloat('PFIsoChgQuadratic')/pt",float,doc="PF relative isolation dR=0.3, charged hadron component (with quadraticEA*rho*rho + linearEA*rho Winter22V1 corrections)"),
+        # pfRelIso03_all_quadratic = Var("userFloat('PFIsoAllQuadratic')/pt",float,doc="PF relative isolation dR=0.3, total (with quadraticEA*rho*rho + linearEA*rho Winter22V1 corrections)"),
         hoe = Var("hadronicOverEm()",float,doc="H over E",precision=8),
-        hoe_PUcorr = Var("userFloat('HoverEQuadratic')",float,doc="PU corrected H/E (cone-based with quadraticEA*rho*rho + linearEA*rho Winter22V1 corrections)",precision=8),
+        # hoe_PUcorr = Var("userFloat('HoverEQuadratic')",float,doc="PU corrected H/E (cone-based with quadraticEA*rho*rho + linearEA*rho Winter22V1 corrections)",precision=8),
         isScEtaEB = Var("abs(superCluster().eta()) < 1.4442",bool,doc="is supercluster eta within barrel acceptance"),
         isScEtaEE = Var("abs(superCluster().eta()) > 1.566 && abs(superCluster().eta()) < 2.5",bool,doc="is supercluster eta within endcap acceptance"),
-        seedGain = Var("userInt('seedGain')","uint8",doc="Gain of the seed crystal"),
+        # seedGain = Var("userInt('seedGain')","uint8",doc="Gain of the seed crystal"),
         seediEtaOriX = Var("superCluster().seedCrysIEtaOrIx","int8",doc="iEta or iX of seed crystal. iEta is barrel-only, iX is endcap-only. iEta runs from -85 to +85, with no crystal at iEta=0. iX runs from 1 to 100."),
         seediPhiOriY = Var("superCluster().seedCrysIPhiOrIy",int,doc="iPhi or iY of seed crystal. iPhi is barrel-only, iY is endcap-only. iPhi runs from 1 to 360. iY runs from 1 to 100."),
         # position of photon is best approximated by position of seed cluster, not the SC centroid
@@ -304,7 +304,7 @@ run2_egamma.toModify(
 )
 
 
-photonTask = cms.Task(bitmapVIDForPho, bitmapVIDForPhoRun2, isoForPho, hOverEForPho, isoForPhoFall17V2, seedGainPho, slimmedPhotonsWithUserData, finalPhotons)
+photonTask = cms.Task(bitmapVIDForPho, bitmapVIDForPhoRun2, isoForPho, hOverEForPho, isoForPhoFall17V2, seedGainPho, finalPhotons)
 
 photonTablesTask = cms.Task(photonTable)
 photonMCTask = cms.Task(photonsMCMatchForTable, photonMCTable)
