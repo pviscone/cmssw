@@ -38,12 +38,12 @@ nanoMetadata = cms.EDProducer("UniqueStringProducer",
 linkedObjects = cms.EDProducer("PATObjectCrossLinker",
    jets=cms.InputTag("finalJetsPuppi"),
    muons=cms.InputTag("finalMuons"),
-   electrons=cms.InputTag("slimmedPFElectronsWithUserData"),
-   lowPtElectrons=cms.InputTag("slimmedLowPtElectronsWithUserData"),
+   electrons=cms.InputTag("finalElectrons"),
+   lowPtElectrons=cms.InputTag("finalLowPtElectrons"),
    taus=cms.InputTag("finalTaus"),
    boostedTaus=cms.InputTag("finalBoostedTaus"),
    photons=cms.InputTag("finalPhotons"),
-   #vertices=cms.InputTag("slimmedSecondaryVertices")
+   vertices=cms.InputTag("slimmedSecondaryVertices")
 )
 
 # Switch to AK4 CHS jets for Run-2
@@ -66,14 +66,13 @@ nanoTableTaskCommon = cms.Task(
     cms.Task(nanoMetadata), 
     jetPuppiTask, jetPuppiForMETTask, jetAK8Task,
     extraFlagsProducersTask, muonTask, tauTask, boostedTauTask,
-    # electronTask , lowPtElectronTask, 
-    photonTask,
+    electronTask , lowPtElectronTask, photonTask,
     vertexTask, isoTrackTask, jetAK8LepTask,  # must be after all the leptons
     softActivityTask,
     cms.Task(linkedObjects),
     jetPuppiTablesTask, jetAK8TablesTask,
     muonTablesTask, fsrTablesTask, tauTablesTask, boostedTauTablesTask,
-    # electronTablesTask, lowPtElectronTablesTask,
+    #electronTablesTask, lowPtElectronTablesTask, 
     photonTablesTask,
     globalTablesTask, vertexTablesTask, metTablesTask, extraFlagsTableTask,
     isoTrackTablesTask,softActivityTablesTask
