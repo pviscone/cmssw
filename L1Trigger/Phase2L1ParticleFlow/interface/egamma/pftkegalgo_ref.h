@@ -192,7 +192,8 @@ namespace l1ct {
     virtual id_score_t compute_score(const CompositeCandidate &cand,
                                      const std::vector<EmCaloObjEmu> &emcalo,
                                      const std::vector<TkObjEmu> &track,
-                                     const std::vector<float> additional_vars) const = 0;
+                                     const std::vector<float> additional_vars,
+                                     std::unordered_map<std::string, float> &tkEle_userFloat) const = 0;
 
     bool geometric_match(const EmCaloObjEmu &emcalo, const TkObjEmu &track) const;
 
@@ -288,7 +289,8 @@ namespace l1ct {
     id_score_t compute_score(const CompositeCandidate &cand,
                              const std::vector<EmCaloObjEmu> &emcalo,
                              const std::vector<TkObjEmu> &track,
-                             const std::vector<float> additional_vars) const override;
+                             const std::vector<float> additional_vars,
+                             std::unordered_map<std::string, float> &tkEle_userFloat) const override;
 
     typedef ap_fixed<21, 12, AP_RND_CONV, AP_SAT> bdt_feature_t;
     typedef ap_fixed<12, 3, AP_RND_CONV, AP_SAT> bdt_score_t;
@@ -304,7 +306,8 @@ namespace l1ct {
     id_score_t compute_score(const CompositeCandidate &cand,
                              const std::vector<EmCaloObjEmu> &emcalo,
                              const std::vector<TkObjEmu> &track,
-                             const std::vector<float> additional_vars) const override;
+                             const std::vector<float> additional_vars,
+                             std::unordered_map<std::string, float> &tkEle_userFloat) const override;
 
     typedef ap_fixed<30, 20, AP_RND_CONV, AP_SAT> bdt_feature_t;
     typedef ap_fixed<30, 20, AP_RND_CONV, AP_SAT> bdt_score_t;
@@ -320,7 +323,8 @@ namespace l1ct {
     id_score_t compute_score(const CompositeCandidate &cand,
                              const std::vector<EmCaloObjEmu> &emcalo,
                              const std::vector<TkObjEmu> &track,
-                             const std::vector<float> additional_vars) const override;
+                             const std::vector<float> additional_vars,
+                             std::unordered_map<std::string, float> &tkEle_userFloat) const override;
 
     typedef ap_fixed<24, 9, AP_RND_CONV, AP_SAT> bdt_feature_t;
     typedef ap_fixed<12, 4, AP_RND_CONV, AP_SAT> bdt_score_t;
@@ -336,7 +340,8 @@ namespace l1ct {
     id_score_t compute_score(const CompositeCandidate &cand,
                              const std::vector<EmCaloObjEmu> &emcalo,
                              const std::vector<TkObjEmu> &track,
-                             const std::vector<float> additional_vars) const override;
+                             const std::vector<float> additional_vars,
+                             std::unordered_map<std::string, float> &tkEle_userFloat) const override;
 
     typedef ap_fixed<8, 1, AP_RND_CONV, AP_SAT> bdt_feature_t;
     typedef ap_fixed<11, 4, AP_RND_CONV, AP_SAT> bdt_score_t;
@@ -388,7 +393,8 @@ namespace l1ct {
                                         const std::vector<EmCaloObjEmu> &emcalo,
                                         const std::vector<TkObjEmu> &track,
                                         std::vector<int> &emCalo2tk,
-                                        std::vector<id_score_t> &emCaloTkBdtScore) const;
+                                        std::vector<id_score_t> &emCaloTkBdtScore,
+                                        std::vector<std::unordered_map<std::string, float>> &tkEle_userFloats) const;
 
     void sel_emCalo(unsigned int nmax_sel,
                     const std::vector<EmCaloObjEmu> &emcalo,
@@ -402,7 +408,8 @@ namespace l1ct {
                  const std::vector<id_score_t> &emCaloTkBdtScore,
                  std::vector<EGObjEmu> &egstas,
                  std::vector<EGIsoObjEmu> &egobjs,
-                 std::vector<EGIsoEleObjEmu> &egeleobjs) const;
+                 std::vector<EGIsoEleObjEmu> &egeleobjs,
+                 const std::vector<std::unordered_map<std::string, float>> &tkEle_userFloats) const;
 
     void addEgObjsToPF(std::vector<EGObjEmu> &egstas,
                        std::vector<EGIsoObjEmu> &egobjs,
@@ -414,6 +421,7 @@ namespace l1ct {
                        const pt_t ptCorr,
                        const int tk_idx,
                        const id_score_t bdtScore,
+                       const std::unordered_map<std::string, float> &tkEle_userFloat,
                        const std::vector<unsigned int> &components = {}) const;
 
     EGObjEmu &addEGStaToPF(std::vector<EGObjEmu> &egobjs,
@@ -432,7 +440,8 @@ namespace l1ct {
                                     const TkObjEmu &track,
                                     const unsigned int hwQual,
                                     const pt_t ptCorr,
-                                    const id_score_t bdtScore) const;
+                                    const id_score_t bdtScore,
+                                    const std::unordered_map<std::string, float> &tkEle_userFloat) const;
 
     template <typename T>
     void ptsort_ref(int nIn, int nOut, const std::vector<T> &in, std::vector<T> &out) const {
