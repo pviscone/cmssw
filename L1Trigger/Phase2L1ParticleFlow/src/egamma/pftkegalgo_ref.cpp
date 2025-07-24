@@ -421,6 +421,18 @@ id_score_t l1ct::TkEgCID_EB_v1::compute_score(const CompositeCandidate &cand,
   bdt_feature_t scaled_cltk_absDeta = scale(cltk_absDeta, 0.0, 2);
   bdt_feature_t scaled_cltk_absDphi = scale(cltk_absDphi, 0.0, 5);
 
+  tkEle_userFloat["scaled_caloPt"] = scaled_cl_pt.to_float();
+  tkEle_userFloat["scaled_caloSS"] = scaled_cl_ss.to_float();
+  tkEle_userFloat["scaled_caloRelIso"] = scaled_cl_relIso.to_float();
+  tkEle_userFloat["scaled_caloStaWP"] = scaled_cl_staWP.to_float();
+  tkEle_userFloat["scaled_caloLooseTkWP"] = scaled_cl_looseTkWP.to_float();
+  tkEle_userFloat["scaled_tkChi2RPhi"] = scaled_tk_chi2RPhi.to_float();
+  tkEle_userFloat["scaled_tkPtFrac"] = scaled_tk_ptFrac.to_float();
+  tkEle_userFloat["scaled_caloTkPtRatio"] = scaled_cltk_ptRatio.to_float();
+  tkEle_userFloat["scaled_caloTkNMatch"] = scaled_cltk_nTkMatch.to_float();
+  tkEle_userFloat["scaled_caloTkAbsDeta"] = scaled_cltk_absDeta.to_float();
+  tkEle_userFloat["scaled_caloTkAbsDphi"] = scaled_cltk_absDphi.to_float();
+
   // Run BDT inference
   std::vector<bdt_feature_t> inputs = {scaled_cl_pt,
                                        scaled_cl_ss,
