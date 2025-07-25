@@ -402,6 +402,7 @@ id_score_t l1ct::TkEgCID_EB_v1::compute_score(const CompositeCandidate &cand,
   tkEle_userFloat["in_caloStaWP"] = cl_staWP;
   tkEle_userFloat["in_caloLooseTkWP"] = cl_looseTkWP;
   tkEle_userFloat["in_tkChi2RPhi"] = tk_chi2RPhi;
+  tkEle_userFloat["in_hwTkChi2RPhi"] = float(tk.hwRedChi2RPhi.to_int());
   tkEle_userFloat["in_tkPtFrac"] = tk_ptFrac;
   tkEle_userFloat["in_caloTkPtRatio"] = cltk_ptRatio;
   tkEle_userFloat["in_caloTkNMatch"] = cltk_nTkMatch;
