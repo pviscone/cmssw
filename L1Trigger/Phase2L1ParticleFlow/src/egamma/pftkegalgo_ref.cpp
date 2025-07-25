@@ -620,6 +620,7 @@ void PFTkEGAlgoEmulator::link_emCalo2tk_composite_eb_ee(const PFRegionEmu &r,
     for (unsigned int icand = 0; icand < nCandPerCluster; icand++) {
       auto &cand = candidates[icand];
       const std::vector<EmCaloObjEmu> &emcalo_sel = emcalo;
+      tkEleCand_userFloat[icand]["hwCaloEta"] = float(r.hwGlbEta(emcalo[cand.cluster_idx].hwEta));
       id_score_t score = tkEleModel_->compute_score(cand, emcalo_sel, track, {float(nTkMatch), sumTkPt}, tkEleCand_userFloat[icand]);
       if ((tkEleModel_->apply_wp_loose(score, emcalo_sel[cand.cluster_idx].floatPt())) && (score > maxScore)) {
         maxScore = score;
