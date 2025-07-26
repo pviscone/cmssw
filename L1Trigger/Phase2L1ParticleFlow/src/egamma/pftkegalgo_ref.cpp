@@ -37,6 +37,8 @@ l1ct::PFTkEGAlgoEmuConfig::PFTkEGAlgoEmuConfig(const edm::ParameterSet &pset)
                           pset.getParameter<std::vector<double>>("dPhiValues"),
                           pset.getParameter<double>("trkQualityPtMin"),
                           pset.getParameter<uint32_t>("algorithm"),
+
+                          pset.getParameter<uint32_t>("TkElePtRegression_algorithm"),
                           pset.getParameter<uint32_t>("nCompCandPerCluster"),
                           pset.getParameter<bool>("writeEGSta"),
                           IsoParameters(pset.getParameter<edm::ParameterSet>("tkIsoParametersTkEle")),
@@ -49,6 +51,8 @@ l1ct::PFTkEGAlgoEmuConfig::PFTkEGAlgoEmuConfig(const edm::ParameterSet &pset)
                           static_cast<EGIsoObjEmu::IsoType>(pset.getParameter<uint32_t>("hwIsoTypeTkEm")),
                           pset.getParameter<std::vector<edm::ParameterSet>>("compositeParametersTkEle")
                               .at(pset.getParameter<uint32_t>("algorithm")),
+                          pset.getParameter<std::vector<edm::ParameterSet>>("TkElePtRegressorParameters")
+                              .at(pset.getParameter<uint32_t>("TkElePtRegression_algorithm")),
                           pset.getUntrackedParameter<uint32_t>("debug", 0)) {}
 
 edm::ParameterSetDescription l1ct::PFTkEGAlgoEmuConfig::getParameterSetDescription() {
@@ -98,6 +102,8 @@ edm::ParameterSetDescription l1ct::PFTkEGAlgoEmuConfig::getParameterSetDescripti
   description.add<unsigned int>("nCompCandPerCluster", 3);
 
   description.addVPSet("compositeParametersTkEle", CompIDParameters::getParameterSetDescription());
+  description.addVPSet("TkElePtRegressorParameters", PtRegressorParameters::getParameterSetDescription());
+  description.add<unsigned int>("TkElePtRegression_algorithm", 0);
 
   return description;
 }
@@ -114,6 +120,18 @@ edm::ParameterSetDescription l1ct::PFTkEGAlgoEmuConfig::IsoParameters::getParame
   description.add<double>("dZ", 0.6);
   description.add<double>("dRMin");
   description.add<double>("dRMax");
+  return description;
+}
+
+l1ct::PFTkEGAlgoEmuConfig::PtRegressorParameters::PtRegressorParameters(const edm::ParameterSet &pset)
+    : PtRegressorParameters(pset.getParameter<std::string>("model")) {}
+
+l1ct::PFTkEGAlgoEmuConfig::PtRegressorParameters::PtRegressorParameters(const std::string &model)
+    : conifer_model_(model) {}
+
+edm::ParameterSetDescription l1ct::PFTkEGAlgoEmuConfig::PtRegressorParameters::getParameterSetDescription() {
+  edm::ParameterSetDescription description;
+  description.addOptional<std::string>("model");
   return description;
 }
 
@@ -156,6 +174,73 @@ l1ct::PFTkEGAlgoEmuConfig::CompIDParameters::CompIDParameters(const std::vector<
       conifer_model_(model),
       dPhi_max_(dphi_max),
       dEta_max_(deta_max) {}
+
+l1ct::TkEGElePtRegressionModel::TkEGElePtRegressionModel(const l1ct::PFTkEGAlgoEmuConfig::PtRegressorParameters &params, int debug){}
+
+l1ct::TkElePtRegressor_EB_v0::TkElePtRegressor_EB_v0(const l1ct::PFTkEGAlgoEmuConfig::PtRegressorParameters &params, int debug)
+    : TkEGElePtRegressionModel(params, debug) {
+#ifdef CMSSW_GIT_HASH
+  auto resolvedFileName = edm::FileInPath(params.conifer_model_).fullPath();
+#else
+  auto resolvedFileName = params.conifer_model_;
+#endif
+  model_ = std::make_unique<conifer::BDT<bdt_feature_t, bdt_out_t, false>>(resolvedFileName);
+}
+
+pt_t l1ct::TkElePtRegressor_EB_v0::compute_ptCorr(const PFRegionEmu &r,
+                                                  const CompositeCandidate &cand,
+                                                  const std::vector<EmCaloObjEmu> &emcalo,
+                                                  const std::vector<TkObjEmu> &track,
+                                                  const std::vector<float> &additional_vars
+                                                ) const {
+  unsigned int nTkMatch = (unsigned int)(additional_vars[0]);
+  float sumTkPt = additional_vars[1];
+
+  // NOTE: not yet ready for HLS testbench
+  // Get the cluster/track objects that form the composite candidate
+  const auto &calo = emcalo[cand.cluster_idx];
+  const auto &tk = track[cand.track_idx];
+
+  // Prepare the input features
+  // NOTE: this could be computed once per cluster and passed directly to the function
+  ap_ufixed<16, 0> tk_invPt = l1ct::invert_with_shift<pt_t, ap_ufixed<16, 0>, 1024>(tk.hwPt);
+
+
+  float cl_eta = abs(r.hwGlbEta(calo.hwEta));
+  float cltk_absDphi = fabs(tk.hwPhi.to_int() - calo.hwPhi.to_int());
+  float tk_chi2RPhi = float(tk.hwRedChi2RPhi.to_int());
+  float cl_pt = calo.floatPt();
+  float cl_relIso = emcalo[cand.cluster_idx].hwRelIso.to_float();
+  float cl_ss = emcalo[cand.cluster_idx].hwShowerShape.to_float();
+  float tk_ptFrac = sumTkPt * tk_invPt.to_float();
+  float cltk_nTkMatch = nTkMatch;
+  float cltk_ptRatio = calo.hwPt * tk_invPt;
+
+  bdt_feature_t scaled_cl_eta         = scale(cl_eta, 0., 8);
+  bdt_feature_t scaled_cltk_absDphi   = scale(cltk_absDphi, 0., 5);
+  bdt_feature_t scaled_tk_chi2RPhi    = scale(tk_chi2RPhi, 0., 3);
+  bdt_feature_t scaled_cl_pt          = scale(cl_pt, 0., 6);
+  bdt_feature_t scaled_cl_relIso      = scale(cl_relIso, 0., -3);
+  bdt_feature_t scaled_cl_ss          = scale(cl_ss, 0., -1);
+  bdt_feature_t scaled_tk_ptFrac      = scale(tk_ptFrac, 0., 3);
+  bdt_feature_t scaled_cltk_nTkMatch  = scale(cltk_nTkMatch, 0., 2);
+  bdt_feature_t scaled_cltk_ptRatio   = scale(cltk_ptRatio, 0., 3);
+
+  // Run BDT inference
+  std::vector<bdt_feature_t> inputs = {scaled_cl_eta,
+                                      scaled_cltk_absDphi,
+                                      scaled_tk_chi2RPhi,
+                                      scaled_cl_pt,
+                                      scaled_cl_relIso,
+                                      scaled_cl_ss,
+                                      scaled_tk_ptFrac,
+                                      scaled_cltk_nTkMatch,
+                                      scaled_cltk_ptRatio};
+  std::vector<bdt_out_t> bdt_output = model_->decision_function(inputs);
+  bdt_out_t corr_factor = bdt_out_t(bdt_output[0]);
+  float corr_pt = calo.hwPt.to_float() * (1. + corr_factor.to_float());
+  return pt_t(corr_pt);
+}
 
 l1ct::TkEGEleAssociationModel::TkEGEleAssociationModel(const l1ct::PFTkEGAlgoEmuConfig::CompIDParameters &params,
                                                        int debug)
@@ -472,7 +557,7 @@ id_score_t l1ct::TkEgCID_EB_v1::compute_score(const CompositeCandidate &cand,
 }
 
 PFTkEGAlgoEmulator::PFTkEGAlgoEmulator(const PFTkEGAlgoEmuConfig &config)
-    : cfg(config), tkEleModel_(nullptr), debug_(cfg.debug) {
+    : cfg(config), tkEleModel_(nullptr), tkEleCorrector_(nullptr), debug_(cfg.debug) {
   if (cfg.algorithm == PFTkEGAlgoEmuConfig::Algo::compositeEE_v0) {
     tkEleModel_ = std::make_unique<TkEgCID_EE_v0>(cfg.compIDparams, cfg.debug);
   } else if (cfg.algorithm == PFTkEGAlgoEmuConfig::Algo::compositeEB_v0) {
@@ -481,6 +566,10 @@ PFTkEGAlgoEmulator::PFTkEGAlgoEmulator(const PFTkEGAlgoEmuConfig &config)
     tkEleModel_ = std::make_unique<TkEgCID_EE_v1>(cfg.compIDparams, cfg.debug);
   } else if (cfg.algorithm == PFTkEGAlgoEmuConfig::Algo::compositeEB_v1) {
     tkEleModel_ = std::make_unique<TkEgCID_EB_v1>(cfg.compIDparams, cfg.debug);
+  }
+
+  if (cfg.ptRegression_algorithm == PFTkEGAlgoEmuConfig::ptRegressorAlgo::EB_v0) {
+    tkEleCorrector_ = std::make_unique<TkElePtRegressor_EB_v0>(cfg.ptRegressorParams, cfg.debug);
   }
 }
 
@@ -636,10 +725,13 @@ void PFTkEGAlgoEmulator::link_emCalo2tk_composite_eb_ee(const PFRegionEmu &r,
     id_score_t maxScore = -(1 << (l1ct::id_score_t::iwidth - 1));
     int ibest = -1;
     std::vector<std::unordered_map<std::string, float>> tkEleCand_userFloat(nCandPerCluster);
+    std::vector<std::vector<float>> additional_vars(nCandPerCluster);
     for (unsigned int icand = 0; icand < nCandPerCluster; icand++) {
       auto &cand = candidates[icand];
       const std::vector<EmCaloObjEmu> &emcalo_sel = emcalo;
       tkEleCand_userFloat[icand]["hwCaloEta"] = float(r.hwGlbEta(emcalo[cand.cluster_idx].hwEta));
+<<<<<<< HEAD
+      additional_vars[icand] = std::vector<float>({float(nTkMatch), sumTkPt});
       id_score_t score = tkEleModel_->compute_score(cand, emcalo_sel, track, {float(nTkMatch), sumTkPt}, tkEleCand_userFloat[icand]);
       #if defined(BDT_DEBUG)
             bdt_debug_datas_.push_back(tkEleModel_->bdtData());
@@ -651,6 +743,10 @@ void PFTkEGAlgoEmulator::link_emCalo2tk_composite_eb_ee(const PFRegionEmu &r,
       }
     }
     if (ibest != -1) {
+      if(tkEleCorrector_){
+        pt_t corrPt = tkEleCorrector_->compute_ptCorr(r, candidates[ibest], emcalo, track, additional_vars[ibest]);
+        tkEleCand_userFloat[ibest]["ptCorr"] = Scales::floatPt(corrPt);
+      }
       emCalo2tk[ic] = candidates[ibest].track_idx;
       emCaloTkBdtScore[ic] = maxScore;
       tkEle_userFloats[ic] = std::unordered_map<std::string, float>(tkEleCand_userFloat[ibest]);

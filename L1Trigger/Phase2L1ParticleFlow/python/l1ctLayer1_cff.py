@@ -106,6 +106,7 @@ l1tLayer1Barrel = cms.EDProducer("L1TCorrelatorLayer1Producer",
         nEM_EGOUT = 10,
         algorithm = 4,
         trkQualityPtMin = 0.,
+        TkElePtRegression_algorithm=cms.uint32(1)
     ),
     tkEgSorterAlgo = cms.string("Barrel"),
     tkEgSorterParameters = tkEgSorterParameters.clone(
@@ -291,7 +292,7 @@ l1tLayer1HGCal = cms.EDProducer("L1TCorrelatorLayer1Producer",
         #     tight_wp=cms.double(0.0527344),
         #     model=cms.string("L1Trigger/Phase2L1ParticleFlow/data/egamma/compositeID_EE_v1.json")
         # ),
-        ), 
+        ),
     tkEgSorterAlgo = cms.string("Endcap"),
     tkEgSorterParameters = tkEgSorterParameters.clone(
         nObjToSort = 5
