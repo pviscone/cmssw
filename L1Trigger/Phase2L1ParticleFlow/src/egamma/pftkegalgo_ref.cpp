@@ -210,7 +210,7 @@ pt_t l1ct::TkElePtRegressor_EB_v0::compute_ptCorr(const PFRegionEmu &r,
   float cltk_absDphi = fabs(tk.hwPhi.to_int() - calo.hwPhi.to_int());
   float tk_chi2RPhi = float(tk.hwRedChi2RPhi.to_int());
   float cl_pt = calo.floatPt();
-  float cl_relIso = emcalo[cand.cluster_idx].hwRelIso.to_float();
+  //float cl_relIso = emcalo[cand.cluster_idx].hwRelIso.to_float();
   float cl_ss = emcalo[cand.cluster_idx].hwShowerShape.to_float();
   float tk_ptFrac = sumTkPt * tk_invPt.to_float();
   float cltk_nTkMatch = nTkMatch;
@@ -220,7 +220,7 @@ pt_t l1ct::TkElePtRegressor_EB_v0::compute_ptCorr(const PFRegionEmu &r,
   bdt_feature_t scaled_cltk_absDphi   = scale(cltk_absDphi, 0., 5);
   bdt_feature_t scaled_tk_chi2RPhi    = scale(tk_chi2RPhi, 0., 3);
   bdt_feature_t scaled_cl_pt          = scale(cl_pt, 0., 6);
-  bdt_feature_t scaled_cl_relIso      = scale(cl_relIso, 0., -3);
+  //bdt_feature_t scaled_cl_relIso      = scale(cl_relIso, 0., -3);
   bdt_feature_t scaled_cl_ss          = scale(cl_ss, 0., -1);
   bdt_feature_t scaled_tk_ptFrac      = scale(tk_ptFrac, 0., 3);
   bdt_feature_t scaled_cltk_nTkMatch  = scale(cltk_nTkMatch, 0., 2);
@@ -231,14 +231,16 @@ pt_t l1ct::TkElePtRegressor_EB_v0::compute_ptCorr(const PFRegionEmu &r,
                                       scaled_cltk_absDphi,
                                       scaled_tk_chi2RPhi,
                                       scaled_cl_pt,
-                                      scaled_cl_relIso,
+                                      //scaled_cl_relIso,
                                       scaled_cl_ss,
                                       scaled_tk_ptFrac,
                                       scaled_cltk_nTkMatch,
                                       scaled_cltk_ptRatio};
+
   std::vector<bdt_out_t> bdt_output = model_->decision_function(inputs);
+
   bdt_out_t corr_factor = bdt_out_t(bdt_output[0]);
-  float corr_pt = calo.hwPt.to_float() * (1. + corr_factor.to_float());
+  float corr_pt = calo.hwPt.to_float() * (517.*pow(2,-9) + corr_factor.to_float());
   return pt_t(corr_pt);
 }
 

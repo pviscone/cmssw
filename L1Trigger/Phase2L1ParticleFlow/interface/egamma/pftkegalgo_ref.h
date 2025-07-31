@@ -232,7 +232,7 @@ namespace l1ct {
                       const std::vector<float> &additional_vars) const override;
 
     typedef ap_fixed<10, 1, AP_RND_CONV, AP_SAT> bdt_feature_t;
-    typedef ap_fixed<10, 2, AP_RND_CONV, AP_SAT> bdt_out_t;
+    typedef ap_fixed<12, 3, AP_RND_CONV, AP_SAT> bdt_out_t;
 
   private:
     std::unique_ptr<conifer::BDT<bdt_feature_t, bdt_out_t, false>> model_;
