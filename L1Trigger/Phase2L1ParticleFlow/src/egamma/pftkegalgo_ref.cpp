@@ -222,8 +222,8 @@ pt_t l1ct::TkElePtRegressor_EB_v0::compute_ptCorr(const PFRegionEmu &r,
   bdt_feature_t scaled_cl_pt          = scale(cl_pt, 0., 6);
   //bdt_feature_t scaled_cl_relIso      = scale(cl_relIso, 0., -3);
   bdt_feature_t scaled_cl_ss          = scale(cl_ss, 0., -1);
-  bdt_feature_t scaled_tk_ptFrac      = scale(tk_ptFrac, 0., 3);
-  bdt_feature_t scaled_cltk_nTkMatch  = scale(cltk_nTkMatch, 0., 2);
+  //bdt_feature_t scaled_tk_ptFrac      = scale(tk_ptFrac, 0., 3);
+  //bdt_feature_t scaled_cltk_nTkMatch  = scale(cltk_nTkMatch, 0., 2);
   bdt_feature_t scaled_cltk_ptRatio   = scale(cltk_ptRatio, 0., 3);
 
   // Run BDT inference
@@ -233,8 +233,8 @@ pt_t l1ct::TkElePtRegressor_EB_v0::compute_ptCorr(const PFRegionEmu &r,
                                       scaled_cl_pt,
                                       //scaled_cl_relIso,
                                       scaled_cl_ss,
-                                      scaled_tk_ptFrac,
-                                      scaled_cltk_nTkMatch,
+                                      //scaled_tk_ptFrac,
+                                      //scaled_cltk_nTkMatch,
                                       scaled_cltk_ptRatio};
 
   std::vector<bdt_out_t> bdt_output = model_->decision_function(inputs);
