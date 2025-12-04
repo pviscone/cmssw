@@ -118,8 +118,8 @@ namespace l1ct {
       pack_into_bits(ret, start, hwPt);
       pack_into_bits(ret, start, hwEta);
       pack_into_bits(ret, start, hwPhi);
-      pack_into_bits(ret, start, hwMassSq);
       pack_into_bits(ret, start, hwZ0);
+      pack_into_bits(ret, start, hwMassSq);
       for (unsigned i = 0; i < NTagFields; i++) {
         pack_into_bits(ret, start, hwTagScores[i]);
       }
