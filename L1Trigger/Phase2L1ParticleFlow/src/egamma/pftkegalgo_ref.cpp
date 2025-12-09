@@ -211,13 +211,12 @@ pt_t l1ct::TkElePtRegressor_EB_v0::compute_ptCorr(const PFRegionEmu &r,
   float cltk_absDphi = fabs(tk.hwPhi.to_int() - calo.hwPhi.to_int());
   float tk_chi2RPhi = float(tk.hwRedChi2RPhi.to_int());
   float cl_pt = calo.floatPt();
-  //float cl_relIso = emcalo[cand.cluster_idx].hwRelIso.to_float();
   float cl_ss = emcalo[cand.cluster_idx].hwShowerShape.to_float();
   float tk_ptFrac = sumTkPt * tk_invPt.to_float();
   float cltk_nTkMatch = nTkMatch;
   float cltk_ptRatio = calo.hwPt * tk_invPt;
 
-  bdt_feature_t scaled_ID             = scale(score, 0., 0);
+  bdt_feature_t scaled_ID             = bdt_feature_t(score);
   bdt_feature_t scaled_cl_eta         = scale(cl_eta*M_PI/720, 0., 0);
   bdt_feature_t scaled_cltk_absDphi   = scale(cltk_absDphi, 0., 5);
   bdt_feature_t scaled_tk_chi2RPhi    = scale(tk_chi2RPhi, 0., 3);
