@@ -81,9 +81,9 @@ TkElePtRegressorParametersVec = cms.VPSet(
     cms.PSet(
         model=cms.string(""),
     ),
-    #Algorithm 0: EB_v0
+    #Algorithm 0: EB_sigVsBkg_v0
     cms.PSet(
-        model=cms.string("L1Trigger/Phase2L1ParticleFlow/data/egamma/TkElePtRegr_EBv0_conifer.json"),
+        model=cms.string("L1Trigger/Phase2L1ParticleFlow/data/egamma/TkElePtRegr_EB_sigVsBkg_v0_conifer.json"),
     )
 )
 

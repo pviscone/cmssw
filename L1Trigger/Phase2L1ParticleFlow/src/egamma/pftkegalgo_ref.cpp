@@ -195,6 +195,7 @@ pt_t l1ct::TkElePtRegressor_EB_v0::compute_ptCorr(const PFRegionEmu &r,
                                                 ) const {
   unsigned int nTkMatch = (unsigned int)(additional_vars[0]);
   float sumTkPt = additional_vars[1];
+  float score   = additional_vars[2];
 
   // NOTE: not yet ready for HLS testbench
   // Get the cluster/track objects that form the composite candidate
@@ -216,31 +217,28 @@ pt_t l1ct::TkElePtRegressor_EB_v0::compute_ptCorr(const PFRegionEmu &r,
   float cltk_nTkMatch = nTkMatch;
   float cltk_ptRatio = calo.hwPt * tk_invPt;
 
-  bdt_feature_t scaled_cl_eta         = scale(cl_eta, 0., 8);
+  bdt_feature_t scaled_ID             = scale(score, 0., 0);
+  bdt_feature_t scaled_cl_eta         = scale(cl_eta*M_PI/720, 0., 0);
   bdt_feature_t scaled_cltk_absDphi   = scale(cltk_absDphi, 0., 5);
   bdt_feature_t scaled_tk_chi2RPhi    = scale(tk_chi2RPhi, 0., 3);
-  bdt_feature_t scaled_cl_pt          = scale(cl_pt, 0., 6);
-  //bdt_feature_t scaled_cl_relIso      = scale(cl_relIso, 0., -3);
+  bdt_feature_t scaled_cl_pt          = scale(cl_pt, 0., 5);
   bdt_feature_t scaled_cl_ss          = scale(cl_ss, 0., -1);
-  //bdt_feature_t scaled_tk_ptFrac      = scale(tk_ptFrac, 0., 3);
-  //bdt_feature_t scaled_cltk_nTkMatch  = scale(cltk_nTkMatch, 0., 2);
   bdt_feature_t scaled_cltk_ptRatio   = scale(cltk_ptRatio, 0., 3);
 
   // Run BDT inference
-  std::vector<bdt_feature_t> inputs = {scaled_cl_eta,
+  std::vector<bdt_feature_t> inputs = {
+                                      scaled_ID,
+                                      scaled_cl_eta,
                                       scaled_cltk_absDphi,
                                       scaled_tk_chi2RPhi,
                                       scaled_cl_pt,
-                                      //scaled_cl_relIso,
                                       scaled_cl_ss,
-                                      //scaled_tk_ptFrac,
-                                      //scaled_cltk_nTkMatch,
                                       scaled_cltk_ptRatio};
 
   std::vector<bdt_out_t> bdt_output = model_->decision_function(inputs);
 
   bdt_out_t corr_factor = bdt_out_t(bdt_output[0]);
-  float corr_pt = calo.hwPt.to_float() * (517.*pow(2,-9) + corr_factor.to_float());
+  float corr_pt = calo.hwPt.to_float() * (512.*pow(2,-9) + corr_factor.to_float());
   return pt_t(corr_pt);
 }
 
@@ -732,9 +730,8 @@ void PFTkEGAlgoEmulator::link_emCalo2tk_composite_eb_ee(const PFRegionEmu &r,
       auto &cand = candidates[icand];
       const std::vector<EmCaloObjEmu> &emcalo_sel = emcalo;
       tkEleCand_userFloat[icand]["hwCaloEta"] = float(r.hwGlbEta(emcalo[cand.cluster_idx].hwEta));
-<<<<<<< HEAD
-      additional_vars[icand] = std::vector<float>({float(nTkMatch), sumTkPt});
       id_score_t score = tkEleModel_->compute_score(cand, emcalo_sel, track, {float(nTkMatch), sumTkPt}, tkEleCand_userFloat[icand]);
+      additional_vars[icand] = std::vector<float>({float(nTkMatch), sumTkPt, float(score)});
       #if defined(BDT_DEBUG)
             bdt_debug_datas_.push_back(tkEleModel_->bdtData());
       #endif
