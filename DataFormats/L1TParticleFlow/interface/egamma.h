@@ -166,6 +166,9 @@ namespace l1ct {
       return ret;
     }
 
+    static const int BITWIDTH_BARREL_SLIM = EGIsoObj::BITWIDTH + tkdeta_t::width + tkdphi_t::width + z0_t::width + id_score_t::width + 1;
+    inline ap_uint<BITWIDTH_BARREL_SLIM> pack_barrel_slim() const {return pack()(BITWIDTH_BARREL_SLIM-1, 0);}
+
     inline void initFromBits(const ap_uint<BITWIDTH> &src) {
       unsigned int start = 0;
       unpack_from_bits(src, start, hwPt);
