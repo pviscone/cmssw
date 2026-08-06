@@ -241,7 +241,7 @@ process.runPF.associate(process.L1TLayer1TaskInputsTask)
 if not args.patternFilesOFF:
     process.l1tLayer2EG.writeInPattern = True
     process.l1tLayer2EG.writeOutPattern = True
-    process.l1tLayer2EG.inPatternFile.maxLinesPerFile = _eventsPerFile*54
+    process.l1tLayer2EG.inPatternFile.maxLinesPerFile = int(162*_eventsPerFile/3+54*(3-1))
     process.l1tLayer2EG.outPatternFile.maxLinesPerFile = _eventsPerFile*54
 
 #####################################################################################################################
