@@ -60,7 +60,7 @@ l1ct::L2TkEleRegressionEmulator::Model_EB_v0::Model_EB_v0(const std::string& mod
 
 l1ct::pt_t l1ct::L2TkEleRegressionEmulator::Model_EB_v0::compute_ptCorr(const EGIsoEleObjEmu& ele) const {
   bdt_feature_t scaled_ID = bdt_feature_t(ele.floatIDScore());
-  bdt_feature_t scaled_cl_eta = scale(fabs(ele.floatEta()), 0., 0);
+  bdt_feature_t scaled_cl_eta = scale(fabs(ele.hwEta.to_float()), 0., 9);
   bdt_feature_t scaled_cltk_absDphi = scale(ele.hwTkCaloDphi.to_float(), 0., 5);
   bdt_feature_t scaled_tk_chi2RPhi = scale(ele.hwTkRedChi2RPhi.to_float(), 0., 3);
   bdt_feature_t scaled_cl_pt = scale(ele.floatPt(), 0., 5);
