@@ -167,7 +167,7 @@ process.l1tLayer1HGCalNNAssoc.puAlgoParameters.useMLAssociation = True
 process.l1tLayer1HGCalNNAssoc.puAlgoParameters.NNVtxAssociation = associationPSset
 
 # we switch off the regression pending FW implementation
-process.l1tLayer2EG.eleRegression.model_types = cms.vuint32(0)
+# process.l1tLayer2EG.eleRegression.model_types = cms.vuint32(0)
 
 if args.serenity:
     process.l1tLayer1.pfProducers[0] = "l1tLayer1BarrelSerenity"
