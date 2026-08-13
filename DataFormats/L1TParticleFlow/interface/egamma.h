@@ -150,9 +150,16 @@ namespace l1ct {
 
     static const int BITWIDTH_ENDCAP = BITWIDTH_SLIM;
 
+    template<PackingStrategy REGION>
+    using PackedT = std::conditional_t<
+        REGION == PackingStrategy::BARREL,
+        ap_uint<BITWIDTH_BARREL>,
+        std::conditional_t<REGION == PackingStrategy::ENDCAP, ap_uint<BITWIDTH_ENDCAP>, ap_uint<BITWIDTH>>>;
 
-    inline ap_uint<BITWIDTH> pack() const {
-      ap_uint<BITWIDTH> ret;
+    //Keep enable_if because HLS does not well support c+1+17 which is required to use if constexpr
+    template<PackingStrategy REGION = PackingStrategy::DEFAULT, std::enable_if_t<REGION != PackingStrategy::ENDCAP, int> = 0>
+    inline PackedT<REGION> pack() const {
+      PackedT<REGION> ret;
       unsigned int start = 0;
       pack_into_bits(ret, start, hwPt);
       pack_into_bits(ret, start, hwEta);
@@ -168,11 +175,28 @@ namespace l1ct {
       pack_into_bits(ret, start, hwTkCaloDphi);
       pack_into_bits(ret, start, hwCaloShowerShape);
       pack_into_bits(ret, start, hwCaloTkPtRatio);
+      return ret;
+    }
+
+    template<PackingStrategy REGION = PackingStrategy::DEFAULT, std::enable_if_t<REGION == PackingStrategy::ENDCAP, int> = 0>
+    inline PackedT<REGION> pack() const {
+      PackedT<REGION> ret;
+      unsigned int start = 0;
+      pack_into_bits(ret, start, hwPt);
+      pack_into_bits(ret, start, hwEta);
+      pack_into_bits(ret, start, hwPhi);
+      pack_into_bits(ret, start, hwQual);
+      pack_into_bits(ret, start, hwIso);
+      pack_into_bits(ret, start, hwDEta);
+      pack_into_bits(ret, start, hwDPhi);
+      pack_into_bits(ret, start, hwZ0);
+      pack_bool_into_bits(ret, start, hwCharge);
+      pack_into_bits(ret, start, hwIDScore);
       return ret;
     }
 
     inline ap_uint<BITWIDTH_SLIM> pack_slim() const {
-      ap_uint<BITWIDTH> ret;
+      ap_uint<BITWIDTH_SLIM> ret;
       unsigned int start = 0;
       pack_into_bits(ret, start, hwPt);
       pack_into_bits(ret, start, hwEta);
@@ -187,49 +211,63 @@ namespace l1ct {
       return ret;
     }
 
-    inline ap_uint<BITWIDTH_BARREL> pack_barrel() const {
-      ap_uint<BITWIDTH> ret;
-      unsigned int start = 0;
-      pack_into_bits(ret, start, hwPt);
-      pack_into_bits(ret, start, hwEta);
-      pack_into_bits(ret, start, hwPhi);
-      pack_into_bits(ret, start, hwQual);
-      pack_into_bits(ret, start, hwIso);
-      pack_into_bits(ret, start, hwDEta);
-      pack_into_bits(ret, start, hwDPhi);
-      pack_into_bits(ret, start, hwZ0);
-      pack_bool_into_bits(ret, start, hwCharge);
-      pack_into_bits(ret, start, hwIDScore);
-      pack_into_bits(ret, start, hwTkRedChi2RPhi);
-      pack_into_bits(ret, start, hwTkCaloDphi);
-      pack_into_bits(ret, start, hwCaloShowerShape);
-      pack_into_bits(ret, start, hwCaloTkPtRatio);
-      return ret;
-    }
-    inline ap_uint<BITWIDTH_ENDCAP> pack_endcap() const {return pack_slim();}
-    
-    inline static EGIsoEleObj unpack(const ap_uint<BITWIDTH> &src) {
+    template<PackingStrategy REGION = PackingStrategy::DEFAULT, std::enable_if_t<REGION != PackingStrategy::ENDCAP, int> = 0>
+    inline static EGIsoEleObj unpack(const PackedT<REGION> &src) {
       EGIsoEleObj ret;
-      ret.initFromBits(src);
+      ret.clear();
+      unsigned int start = 0;
+      unpack_from_bits(src, start, ret.hwPt);
+      unpack_from_bits(src, start, ret.hwEta);
+      unpack_from_bits(src, start, ret.hwPhi);
+      unpack_from_bits(src, start, ret.hwQual);
+      unpack_from_bits(src, start, ret.hwIso);
+      unpack_from_bits(src, start, ret.hwDEta);
+      unpack_from_bits(src, start, ret.hwDPhi);
+      unpack_from_bits(src, start, ret.hwZ0);
+      unpack_bool_from_bits(src, start, ret.hwCharge);
+      unpack_from_bits(src, start, ret.hwIDScore);
+      unpack_from_bits(src, start, ret.hwTkRedChi2RPhi);
+      unpack_from_bits(src, start, ret.hwTkCaloDphi);
+      unpack_from_bits(src, start, ret.hwCaloShowerShape);
+      unpack_from_bits(src, start, ret.hwCaloTkPtRatio);
       return ret;
     }
 
-    inline void initFromBits(const ap_uint<BITWIDTH> &src) {
+    template<PackingStrategy REGION = PackingStrategy::DEFAULT, std::enable_if_t<REGION == PackingStrategy::ENDCAP, int> = 0>
+    inline static EGIsoEleObj unpack(const PackedT<REGION> &src) {
+      EGIsoEleObj ret;
+      ret.clear();
       unsigned int start = 0;
-      unpack_from_bits(src, start, hwPt);
-      unpack_from_bits(src, start, hwEta);
-      unpack_from_bits(src, start, hwPhi);
-      unpack_from_bits(src, start, hwQual);
-      unpack_from_bits(src, start, hwIso);
-      unpack_from_bits(src, start, hwDEta);
-      unpack_from_bits(src, start, hwDPhi);
-      unpack_from_bits(src, start, hwZ0);
-      unpack_bool_from_bits(src, start, hwCharge);
-      unpack_from_bits(src, start, hwIDScore);
-      unpack_from_bits(src, start, hwTkRedChi2RPhi);
-      unpack_from_bits(src, start, hwTkCaloDphi);
-      unpack_from_bits(src, start, hwCaloShowerShape);
-      unpack_from_bits(src, start, hwCaloTkPtRatio);
+      unpack_from_bits(src, start, ret.hwPt);
+      unpack_from_bits(src, start, ret.hwEta);
+      unpack_from_bits(src, start, ret.hwPhi);
+      unpack_from_bits(src, start, ret.hwQual);
+      unpack_from_bits(src, start, ret.hwIso);
+      unpack_from_bits(src, start, ret.hwDEta);
+      unpack_from_bits(src, start, ret.hwDPhi);
+      unpack_from_bits(src, start, ret.hwZ0);
+      unpack_bool_from_bits(src, start, ret.hwCharge);
+      unpack_from_bits(src, start, ret.hwIDScore);
+      return ret;
+    }
+
+    template<int NBITS>
+    inline static EGIsoEleObj unpack_slim(const ap_uint<NBITS> &src) {
+      static_assert(NBITS == BITWIDTH_SLIM || NBITS == BITWIDTH_ENDCAP || NBITS == BITWIDTH_BARREL || NBITS == BITWIDTH, "Invalid number of bits for unpacking EGIsoEleObj");
+      EGIsoEleObj ret;
+      ret.clear();
+      unsigned int start = 0;
+      unpack_from_bits(src, start, ret.hwPt);
+      unpack_from_bits(src, start, ret.hwEta);
+      unpack_from_bits(src, start, ret.hwPhi);
+      unpack_from_bits(src, start, ret.hwQual);
+      unpack_from_bits(src, start, ret.hwIso);
+      unpack_from_bits(src, start, ret.hwDEta);
+      unpack_from_bits(src, start, ret.hwDPhi);
+      unpack_from_bits(src, start, ret.hwZ0);
+      unpack_bool_from_bits(src, start, ret.hwCharge);
+      unpack_from_bits(src, start, ret.hwIDScore);
+      return ret;
     }
 
     l1gt::Electron toGT() const {
