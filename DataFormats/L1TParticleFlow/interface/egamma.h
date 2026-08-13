@@ -156,7 +156,22 @@ namespace l1ct {
         ap_uint<BITWIDTH_BARREL>,
         std::conditional_t<REGION == PackingStrategy::ENDCAP, ap_uint<BITWIDTH_ENDCAP>, ap_uint<BITWIDTH>>>;
 
-    //Keep enable_if because HLS does not well support c+1+17 which is required to use if constexpr
+    //Keep enable_if because HLS does not well support c++17 which is required to use if constexpr
+    //The reason why here there are 2 interfaces implemented for pack/unpack both with templates and _barrel/_endcap are the following:
+    // 1. The TkEle regression functions in the firmware are templated on Barrel/Endcap.
+    //    pack/unpack_barrel/_endcap function could still be selected by the compiler using "if constexpr" but HLS does not support c++17 and it fails to synthesize the code.
+    // 2. As alternative the regression could use the pack/unpack_helper functions. Howhever the regression, contrarly to all the other IP cores,
+    //    works on a single object and not on an array of objects. So instead of using l1pf_pattern_pack/unpack as it's done everywhere else,
+    //    the regression would have to call directly the pack/unpack_helpers.
+    //    The pack/unpack helpers require the number of bits as template parameter which again would require to use "if constexpr"
+    //    to select the correct number of bits for Barrel/Endcap. With template parameters PackedT<REGION> can be used.
+    // 3. pack/unpack_helpers require quite a lot of template parameters. Most of them are deduced automatically by the compiler,
+    //    but all the deduced template parameters are the firsts ones (positionally).
+    //    Outside the regression this is not an issue because the helpers are always called inside l1pf_pattern_pack/unpack but
+    //    calling the helpers in the firmware would require to specify even the deducible template parameters to be able to specify the undeducible ones (the last ones).
+    //    This would make the code more verbose and less readable.
+    // Of course none of the above reasons is a showstopper, each point can be worked around without using "if constexpr" 
+    // but it would require more boilerplate code or code duplication for barrel and endcap
     template<PackingStrategy REGION = PackingStrategy::DEFAULT, std::enable_if_t<REGION != PackingStrategy::ENDCAP, int> = 0>
     inline PackedT<REGION> pack() const {
       PackedT<REGION> ret;
@@ -193,6 +208,15 @@ namespace l1ct {
       pack_bool_into_bits(ret, start, hwCharge);
       pack_into_bits(ret, start, hwIDScore);
       return ret;
+    }
+
+    //needed for the helpers
+    inline PackedT<PackingStrategy::BARREL> pack_barrel() const {
+      return pack<PackingStrategy::BARREL>();
+    }
+
+    inline PackedT<PackingStrategy::ENDCAP> pack_endcap() const {
+      return pack<PackingStrategy::ENDCAP>();
     }
 
     inline ap_uint<BITWIDTH_SLIM> pack_slim() const {
@@ -249,6 +273,15 @@ namespace l1ct {
       unpack_bool_from_bits(src, start, ret.hwCharge);
       unpack_from_bits(src, start, ret.hwIDScore);
       return ret;
+    }
+
+    //needed for the helpers
+    inline static EGIsoEleObj unpack_barrel(const PackedT<PackingStrategy::BARREL> &src) {
+      return unpack<PackingStrategy::BARREL>(src);
+    }
+    
+    inline static EGIsoEleObj unpack_endcap(const PackedT<PackingStrategy::ENDCAP> &src) {
+      return unpack<PackingStrategy::ENDCAP>(src);
     }
 
     template<int NBITS>
