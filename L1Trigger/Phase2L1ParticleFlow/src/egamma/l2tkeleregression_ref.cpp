@@ -67,18 +67,18 @@ l1ct::pt_t l1ct::L2TkEleRegressionEmulator::Model_EB_v0::compute_ptCorr(const EG
   bdt_feature_t scaled_cl_ss = scale(ele.hwCaloShowerShape.to_float(), 0., -1);
   bdt_feature_t scaled_cltk_ptRatio = scale(ele.hwCaloTkPtRatio.to_float(), 0., 0);
 
-  #ifdef DEBUG
-  if (ele.hwPt>0){
-  std::cout << "[EMULATOR] BDT inputs: " << std::endl;
-  std::cout << "  scaled_ID: " << scaled_ID << std::endl;
-  std::cout << "  scaled_cl_eta: " << scaled_cl_eta << std::endl;
-  std::cout << "  scaled_cltk_absDphi: " << scaled_cltk_absDphi << std::endl;
-  std::cout << "  scaled_tk_chi2RPhi: " << scaled_tk_chi2RPhi << std::endl;
-  std::cout << "  scaled_cl_pt: " << scaled_cl_pt << std::endl;
-  std::cout << "  scaled_cl_ss: " << scaled_cl_ss << std::endl;
-  std::cout << "  scaled_cltk_ptRatio: " << scaled_cltk_ptRatio << std::endl;
+#ifdef DEBUG
+  if (ele.hwPt > 0) {
+    std::cout << "[EMULATOR] BDT inputs: " << std::endl;
+    std::cout << "  scaled_ID: " << scaled_ID << std::endl;
+    std::cout << "  scaled_cl_eta: " << scaled_cl_eta << std::endl;
+    std::cout << "  scaled_cltk_absDphi: " << scaled_cltk_absDphi << std::endl;
+    std::cout << "  scaled_tk_chi2RPhi: " << scaled_tk_chi2RPhi << std::endl;
+    std::cout << "  scaled_cl_pt: " << scaled_cl_pt << std::endl;
+    std::cout << "  scaled_cl_ss: " << scaled_cl_ss << std::endl;
+    std::cout << "  scaled_cltk_ptRatio: " << scaled_cltk_ptRatio << std::endl;
   }
-  #endif
+#endif
 
   // Run BDT inference
   std::vector<bdt_feature_t> inputs = {scaled_ID,
@@ -94,11 +94,11 @@ l1ct::pt_t l1ct::L2TkEleRegressionEmulator::Model_EB_v0::compute_ptCorr(const EG
   bdt_out_t corr_factor = bdt_out_t(bdt_output[0]);
   float corr_pt = ele.hwPt.to_float() * (1. + corr_factor.to_float());
 
-  #ifdef DEBUG
-  if(ele.hwPt>0){
-    std::cout << "[EMULATOR] BDT output: " << 1.+corr_factor.to_float() << std::endl;
+#ifdef DEBUG
+  if (ele.hwPt > 0) {
+    std::cout << "[EMULATOR] BDT output: " << 1. + corr_factor.to_float() << std::endl;
   }
-  #endif
+#endif
 
   return pt_t(corr_pt);
 }

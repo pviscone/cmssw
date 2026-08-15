@@ -138,19 +138,20 @@ namespace l1ct {
     float floatCaloShowerShape() const { return Scales::floatShoweShape(hwCaloShowerShape); }
     float floatCaloTkPtRatio() const { return Scales::floatCaloTkPtRatio(hwCaloTkPtRatio); }
 
-    static const int BITWIDTH_SLIM = EGIsoObj::BITWIDTH + tkdeta_t::width + tkdphi_t::width + z0_t::width + id_score_t::width + 1;
+    static const int BITWIDTH_SLIM =
+        EGIsoObj::BITWIDTH + tkdeta_t::width + tkdphi_t::width + z0_t::width + id_score_t::width + 1;
 
     static const int BITWIDTH = EGIsoObj::BITWIDTH + tkdeta_t::width + tkdphi_t::width + z0_t::width +
                                 id_score_t::width + 1 + redChi2Bin_t::width + tkdphi_t::width + shower_shape_t::width +
                                 caloTkPtRatio_t::width;
 
     static const int BITWIDTH_BARREL = EGIsoObj::BITWIDTH + tkdeta_t::width + tkdphi_t::width + z0_t::width +
-                                id_score_t::width + 1 + redChi2Bin_t::width + tkdphi_t::width + shower_shape_t::width +
-                                caloTkPtRatio_t::width;
+                                       id_score_t::width + 1 + redChi2Bin_t::width + tkdphi_t::width +
+                                       shower_shape_t::width + caloTkPtRatio_t::width;
 
     static const int BITWIDTH_ENDCAP = BITWIDTH_SLIM;
 
-    template<PackingStrategy REGION>
+    template <PackingStrategy REGION>
     using PackedT = std::conditional_t<
         REGION == PackingStrategy::BARREL,
         ap_uint<BITWIDTH_BARREL>,
@@ -170,9 +171,10 @@ namespace l1ct {
     //    Outside the regression this is not an issue because the helpers are always called inside l1pf_pattern_pack/unpack but
     //    calling the helpers in the firmware would require to specify even the deducible template parameters to be able to specify the undeducible ones (the last ones).
     //    This would make the code more verbose and less readable.
-    // Of course none of the above reasons is a showstopper, each point can be worked around without using "if constexpr" 
+    // Of course none of the above reasons is a showstopper, each point can be worked around without using "if constexpr"
     // but it would require more boilerplate code or code duplication for barrel and endcap
-    template<PackingStrategy REGION = PackingStrategy::DEFAULT, std::enable_if_t<REGION != PackingStrategy::ENDCAP, int> = 0>
+    template <PackingStrategy REGION = PackingStrategy::DEFAULT,
+              std::enable_if_t<REGION != PackingStrategy::ENDCAP, int> = 0>
     inline PackedT<REGION> pack() const {
       PackedT<REGION> ret;
       unsigned int start = 0;
@@ -193,7 +195,8 @@ namespace l1ct {
       return ret;
     }
 
-    template<PackingStrategy REGION = PackingStrategy::DEFAULT, std::enable_if_t<REGION == PackingStrategy::ENDCAP, int> = 0>
+    template <PackingStrategy REGION = PackingStrategy::DEFAULT,
+              std::enable_if_t<REGION == PackingStrategy::ENDCAP, int> = 0>
     inline PackedT<REGION> pack() const {
       PackedT<REGION> ret;
       unsigned int start = 0;
@@ -211,13 +214,9 @@ namespace l1ct {
     }
 
     //needed for the helpers
-    inline PackedT<PackingStrategy::BARREL> pack_barrel() const {
-      return pack<PackingStrategy::BARREL>();
-    }
+    inline PackedT<PackingStrategy::BARREL> pack_barrel() const { return pack<PackingStrategy::BARREL>(); }
 
-    inline PackedT<PackingStrategy::ENDCAP> pack_endcap() const {
-      return pack<PackingStrategy::ENDCAP>();
-    }
+    inline PackedT<PackingStrategy::ENDCAP> pack_endcap() const { return pack<PackingStrategy::ENDCAP>(); }
 
     inline ap_uint<BITWIDTH_SLIM> pack_slim() const {
       ap_uint<BITWIDTH_SLIM> ret;
@@ -235,7 +234,8 @@ namespace l1ct {
       return ret;
     }
 
-    template<PackingStrategy REGION = PackingStrategy::DEFAULT, std::enable_if_t<REGION != PackingStrategy::ENDCAP, int> = 0>
+    template <PackingStrategy REGION = PackingStrategy::DEFAULT,
+              std::enable_if_t<REGION != PackingStrategy::ENDCAP, int> = 0>
     inline static EGIsoEleObj unpack(const PackedT<REGION> &src) {
       EGIsoEleObj ret;
       ret.clear();
@@ -257,7 +257,8 @@ namespace l1ct {
       return ret;
     }
 
-    template<PackingStrategy REGION = PackingStrategy::DEFAULT, std::enable_if_t<REGION == PackingStrategy::ENDCAP, int> = 0>
+    template <PackingStrategy REGION = PackingStrategy::DEFAULT,
+              std::enable_if_t<REGION == PackingStrategy::ENDCAP, int> = 0>
     inline static EGIsoEleObj unpack(const PackedT<REGION> &src) {
       EGIsoEleObj ret;
       ret.clear();
@@ -279,14 +280,15 @@ namespace l1ct {
     inline static EGIsoEleObj unpack_barrel(const PackedT<PackingStrategy::BARREL> &src) {
       return unpack<PackingStrategy::BARREL>(src);
     }
-    
+
     inline static EGIsoEleObj unpack_endcap(const PackedT<PackingStrategy::ENDCAP> &src) {
       return unpack<PackingStrategy::ENDCAP>(src);
     }
 
-    template<int NBITS>
+    template <int NBITS>
     inline static EGIsoEleObj unpack_slim(const ap_uint<NBITS> &src) {
-      static_assert(NBITS == BITWIDTH_SLIM || NBITS == BITWIDTH_ENDCAP || NBITS == BITWIDTH_BARREL || NBITS == BITWIDTH, "Invalid number of bits for unpacking EGIsoEleObj");
+      static_assert(NBITS == BITWIDTH_SLIM || NBITS == BITWIDTH_ENDCAP || NBITS == BITWIDTH_BARREL || NBITS == BITWIDTH,
+                    "Invalid number of bits for unpacking EGIsoEleObj");
       EGIsoEleObj ret;
       ret.clear();
       unsigned int start = 0;
