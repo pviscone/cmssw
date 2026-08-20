@@ -171,7 +171,7 @@ namespace l1ct {
       return ret;
     }
 
-      inline ap_uint<BITWIDTH_BARREL> pack_barrel() const {
+    inline ap_uint<BITWIDTH_BARREL> pack_barrel() const {
       ap_uint<BITWIDTH_BARREL> ret;
       unsigned int start = 0;
       pack_into_bits(ret, start, hwPt);
@@ -281,7 +281,6 @@ namespace l1ct {
       unpack_from_bits(src, start, ret.hwIDScore);
       return ret;
     }
-
 
     template <int NBITS>
     inline static EGIsoEleObj unpack_slim(const ap_uint<NBITS> &src) {
