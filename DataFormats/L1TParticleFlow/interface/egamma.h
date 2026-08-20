@@ -151,32 +151,8 @@ namespace l1ct {
 
     static const int BITWIDTH_ENDCAP = BITWIDTH_SLIM;
 
-    template <PackingStrategy REGION>
-    using PackedT = std::conditional_t<
-        REGION == PackingStrategy::BARREL,
-        ap_uint<BITWIDTH_BARREL>,
-        std::conditional_t<REGION == PackingStrategy::ENDCAP, ap_uint<BITWIDTH_ENDCAP>, ap_uint<BITWIDTH>>>;
-
-    //Keep enable_if because HLS does not well support c++17 which is required to use if constexpr
-    //The reason why here there are 2 interfaces implemented for pack/unpack both with templates and _barrel/_endcap are the following:
-    // 1. The TkEle regression functions in the firmware are templated on Barrel/Endcap.
-    //    pack/unpack_barrel/_endcap function could still be selected by the compiler using "if constexpr" but HLS does not support c++17 and it fails to synthesize the code.
-    // 2. As alternative the regression could use the pack/unpack_helper functions. Howhever the regression, contrarly to all the other IP cores,
-    //    works on a single object and not on an array of objects. So instead of using l1pf_pattern_pack/unpack as it's done everywhere else,
-    //    the regression would have to call directly the pack/unpack_helpers.
-    //    The pack/unpack helpers require the number of bits as template parameter which again would require to use "if constexpr"
-    //    to select the correct number of bits for Barrel/Endcap. With template parameters PackedT<REGION> can be used.
-    // 3. pack/unpack_helpers require quite a lot of template parameters. Most of them are deduced automatically by the compiler,
-    //    but all the deduced template parameters are the firsts ones (positionally).
-    //    Outside the regression this is not an issue because the helpers are always called inside l1pf_pattern_pack/unpack but
-    //    calling the helpers in the firmware would require to specify even the deducible template parameters to be able to specify the undeducible ones (the last ones).
-    //    This would make the code more verbose and less readable.
-    // Of course none of the above reasons is a showstopper, each point can be worked around without using "if constexpr"
-    // but it would require more boilerplate code or code duplication for barrel and endcap
-    template <PackingStrategy REGION = PackingStrategy::DEFAULT,
-              std::enable_if_t<REGION != PackingStrategy::ENDCAP, int> = 0>
-    inline PackedT<REGION> pack() const {
-      PackedT<REGION> ret;
+    inline ap_uint<BITWIDTH> pack() const {
+      ap_uint<BITWIDTH> ret;
       unsigned int start = 0;
       pack_into_bits(ret, start, hwPt);
       pack_into_bits(ret, start, hwEta);
@@ -195,10 +171,28 @@ namespace l1ct {
       return ret;
     }
 
-    template <PackingStrategy REGION = PackingStrategy::DEFAULT,
-              std::enable_if_t<REGION == PackingStrategy::ENDCAP, int> = 0>
-    inline PackedT<REGION> pack() const {
-      PackedT<REGION> ret;
+      inline ap_uint<BITWIDTH_BARREL> pack_barrel() const {
+      ap_uint<BITWIDTH_BARREL> ret;
+      unsigned int start = 0;
+      pack_into_bits(ret, start, hwPt);
+      pack_into_bits(ret, start, hwEta);
+      pack_into_bits(ret, start, hwPhi);
+      pack_into_bits(ret, start, hwQual);
+      pack_into_bits(ret, start, hwIso);
+      pack_into_bits(ret, start, hwDEta);
+      pack_into_bits(ret, start, hwDPhi);
+      pack_into_bits(ret, start, hwZ0);
+      pack_bool_into_bits(ret, start, hwCharge);
+      pack_into_bits(ret, start, hwIDScore);
+      pack_into_bits(ret, start, hwTkRedChi2RPhi);
+      pack_into_bits(ret, start, hwTkCaloDphi);
+      pack_into_bits(ret, start, hwCaloShowerShape);
+      pack_into_bits(ret, start, hwCaloTkPtRatio);
+      return ret;
+    }
+
+    inline ap_uint<BITWIDTH_ENDCAP> pack_endcap() const {
+      ap_uint<BITWIDTH_ENDCAP> ret;
       unsigned int start = 0;
       pack_into_bits(ret, start, hwPt);
       pack_into_bits(ret, start, hwEta);
@@ -212,11 +206,6 @@ namespace l1ct {
       pack_into_bits(ret, start, hwIDScore);
       return ret;
     }
-
-    //needed for the helpers
-    inline PackedT<PackingStrategy::BARREL> pack_barrel() const { return pack<PackingStrategy::BARREL>(); }
-
-    inline PackedT<PackingStrategy::ENDCAP> pack_endcap() const { return pack<PackingStrategy::ENDCAP>(); }
 
     inline ap_uint<BITWIDTH_SLIM> pack_slim() const {
       ap_uint<BITWIDTH_SLIM> ret;
@@ -234,9 +223,7 @@ namespace l1ct {
       return ret;
     }
 
-    template <PackingStrategy REGION = PackingStrategy::DEFAULT,
-              std::enable_if_t<REGION != PackingStrategy::ENDCAP, int> = 0>
-    inline static EGIsoEleObj unpack(const PackedT<REGION> &src) {
+    inline static EGIsoEleObj unpack(const ap_uint<BITWIDTH> &src) {
       EGIsoEleObj ret;
       ret.clear();
       unsigned int start = 0;
@@ -257,9 +244,28 @@ namespace l1ct {
       return ret;
     }
 
-    template <PackingStrategy REGION = PackingStrategy::DEFAULT,
-              std::enable_if_t<REGION == PackingStrategy::ENDCAP, int> = 0>
-    inline static EGIsoEleObj unpack(const PackedT<REGION> &src) {
+    inline static EGIsoEleObj unpack_barrel(const ap_uint<BITWIDTH> &src) {
+      EGIsoEleObj ret;
+      ret.clear();
+      unsigned int start = 0;
+      unpack_from_bits(src, start, ret.hwPt);
+      unpack_from_bits(src, start, ret.hwEta);
+      unpack_from_bits(src, start, ret.hwPhi);
+      unpack_from_bits(src, start, ret.hwQual);
+      unpack_from_bits(src, start, ret.hwIso);
+      unpack_from_bits(src, start, ret.hwDEta);
+      unpack_from_bits(src, start, ret.hwDPhi);
+      unpack_from_bits(src, start, ret.hwZ0);
+      unpack_bool_from_bits(src, start, ret.hwCharge);
+      unpack_from_bits(src, start, ret.hwIDScore);
+      unpack_from_bits(src, start, ret.hwTkRedChi2RPhi);
+      unpack_from_bits(src, start, ret.hwTkCaloDphi);
+      unpack_from_bits(src, start, ret.hwCaloShowerShape);
+      unpack_from_bits(src, start, ret.hwCaloTkPtRatio);
+      return ret;
+    }
+
+    inline static EGIsoEleObj unpack_endcap(const ap_uint<BITWIDTH_ENDCAP> &src) {
       EGIsoEleObj ret;
       ret.clear();
       unsigned int start = 0;
@@ -276,14 +282,6 @@ namespace l1ct {
       return ret;
     }
 
-    //needed for the helpers
-    inline static EGIsoEleObj unpack_barrel(const PackedT<PackingStrategy::BARREL> &src) {
-      return unpack<PackingStrategy::BARREL>(src);
-    }
-
-    inline static EGIsoEleObj unpack_endcap(const PackedT<PackingStrategy::ENDCAP> &src) {
-      return unpack<PackingStrategy::ENDCAP>(src);
-    }
 
     template <int NBITS>
     inline static EGIsoEleObj unpack_slim(const ap_uint<NBITS> &src) {
@@ -303,6 +301,24 @@ namespace l1ct {
       unpack_bool_from_bits(src, start, ret.hwCharge);
       unpack_from_bits(src, start, ret.hwIDScore);
       return ret;
+    }
+
+    inline void initFromBits(const ap_uint<BITWIDTH> &src) {
+      unsigned int start = 0;
+      unpack_from_bits(src, start, hwPt);
+      unpack_from_bits(src, start, hwEta);
+      unpack_from_bits(src, start, hwPhi);
+      unpack_from_bits(src, start, hwQual);
+      unpack_from_bits(src, start, hwIso);
+      unpack_from_bits(src, start, hwDEta);
+      unpack_from_bits(src, start, hwDPhi);
+      unpack_from_bits(src, start, hwZ0);
+      unpack_bool_from_bits(src, start, hwCharge);
+      unpack_from_bits(src, start, hwIDScore);
+      unpack_from_bits(src, start, hwTkRedChi2RPhi);
+      unpack_from_bits(src, start, hwTkCaloDphi);
+      unpack_from_bits(src, start, hwCaloShowerShape);
+      unpack_from_bits(src, start, hwCaloTkPtRatio);
     }
 
     l1gt::Electron toGT() const {
