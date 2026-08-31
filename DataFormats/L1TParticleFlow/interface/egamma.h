@@ -141,13 +141,11 @@ namespace l1ct {
     static const int BITWIDTH_SLIM =
         EGIsoObj::BITWIDTH + tkdeta_t::width + tkdphi_t::width + z0_t::width + id_score_t::width + 1;
 
-    static const int BITWIDTH = EGIsoObj::BITWIDTH + tkdeta_t::width + tkdphi_t::width + z0_t::width +
-                                id_score_t::width + 1 + redChi2Bin_t::width + tkdphi_t::width + shower_shape_t::width +
-                                caloTkPtRatio_t::width;
+    static const int BITWIDTH =
+        BITWIDTH_SLIM + redChi2Bin_t::width + tkdphi_t::width + shower_shape_t::width + caloTkPtRatio_t::width;
 
-    static const int BITWIDTH_BARREL = EGIsoObj::BITWIDTH + tkdeta_t::width + tkdphi_t::width + z0_t::width +
-                                       id_score_t::width + 1 + redChi2Bin_t::width + tkdphi_t::width +
-                                       shower_shape_t::width + caloTkPtRatio_t::width;
+    static const int BITWIDTH_BARREL =
+        BITWIDTH_SLIM + redChi2Bin_t::width + tkdphi_t::width + shower_shape_t::width + caloTkPtRatio_t::width;
 
     static const int BITWIDTH_ENDCAP = BITWIDTH_SLIM;
 
@@ -244,7 +242,7 @@ namespace l1ct {
       return ret;
     }
 
-    inline static EGIsoEleObj unpack_barrel(const ap_uint<BITWIDTH> &src) {
+    inline static EGIsoEleObj unpack_barrel(const ap_uint<BITWIDTH_BARREL> &src) {
       EGIsoEleObj ret;
       ret.clear();
       unsigned int start = 0;

@@ -67,7 +67,7 @@ l1ct::pt_t l1ct::L2TkEleRegressionEmulator::Model_EB_v0::compute_ptCorr(const EG
   bdt_feature_t scaled_cl_ss = scale(ele.hwCaloShowerShape.to_float(), 0., -1);
   bdt_feature_t scaled_cltk_ptRatio = scale(ele.hwCaloTkPtRatio.to_float(), 0., 0);
 
-#ifdef DEBUG
+#ifdef L2TKELEREG_DEBUG
   if (ele.hwPt > 0) {
     std::cout << "[EMULATOR] BDT inputs: " << std::endl;
     std::cout << "  scaled_ID: " << scaled_ID << std::endl;
@@ -94,7 +94,7 @@ l1ct::pt_t l1ct::L2TkEleRegressionEmulator::Model_EB_v0::compute_ptCorr(const EG
   bdt_out_t corr_factor = bdt_out_t(bdt_output[0]);
   float corr_pt = ele.hwPt.to_float() * (1. + corr_factor.to_float());
 
-#ifdef DEBUG
+#ifdef L2TKELEREG_DEBUG
   if (ele.hwPt > 0) {
     std::cout << "[EMULATOR] BDT output: " << 1. + corr_factor.to_float() << std::endl;
   }
