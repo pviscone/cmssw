@@ -166,7 +166,7 @@ associationPSset.associationThreshold = cms.double(-1.0)
 process.l1tLayer1HGCalNNAssoc.puAlgoParameters.useMLAssociation = True
 process.l1tLayer1HGCalNNAssoc.puAlgoParameters.NNVtxAssociation = associationPSset
 
-# we switch off the regression pending FW implementation
+# To switch off the regression pending FW implementation, uncomment the line below
 # process.l1tLayer2EG.eleRegression.model_types = cms.vuint32(0)
 
 if args.serenity:
