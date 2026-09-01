@@ -22,6 +22,7 @@
 #include "L1Trigger/DemonstratorTools/interface/BoardDataWriter.h"
 #include "L1Trigger/DemonstratorTools/interface/utilities.h"
 
+#include <algorithm>
 #include <iostream>
 #include <vector>
 
@@ -405,6 +406,9 @@ void L1TCtL2EgProducer::produce(edm::StreamID, edm::Event &iEvent, const edm::Ev
   for (auto &region : *regions) {
     std::vector<EGIsoEleObjEmu> regressed_eles;
     l2tkeleregression.run(region.egelectron, regressed_eles);
+    std::stable_sort(regressed_eles.begin(),
+                     regressed_eles.end(),
+                     [](const EGIsoEleObjEmu &a, const EGIsoEleObjEmu &b) { return a.hwPt > b.hwPt; });
     region.egelectron.swap(regressed_eles);
   }
 
