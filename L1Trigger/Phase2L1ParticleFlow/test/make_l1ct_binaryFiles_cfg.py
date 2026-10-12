@@ -58,6 +58,7 @@ process.GlobalTag = GlobalTag(process.GlobalTag, '141X_mcRun4_realistic_v3', '')
 process.load('L1Trigger.Phase2L1ParticleFlow.l1ctLayer1_cff')
 process.load('L1Trigger.Phase2L1ParticleFlow.l1ctLayer2EG_cff')
 process.load('L1Trigger.Phase2L1ParticleFlow.l1pfJetMet_cff')
+process.load('L1Trigger.Phase2L1ParticleFlow.l1tMETPFProducer_cfi')
 process.load('L1Trigger.Phase2L1ParticleFlow.mlAssociation_cfi')
 process.load('L1Trigger.L1TTrackMatch.l1tGTTInputProducer_cfi')
 process.load('L1Trigger.L1TTrackMatch.l1tTrackSelectionProducer_cfi')
@@ -205,6 +206,7 @@ process.l1tNGMHTPFProducer = l1tMHTPFProducer.clone(jets = cms.InputTag("l1tSC4N
 process.l1tLayer1HGCal.hgcalInputConversionParameters.emulateCorrections = True
 process.l1tLayer1HGCalElliptic.hgcalInputConversionParameters.emulateCorrections = True
 process.l1tLayer1HGCalNoTK.hgcalInputConversionParameters.emulateCorrections = True
+process.l1tLayer1HGCalNNAssoc.hgcalInputConversionParameters.emulateCorrections = True
 
 process.runPF = cms.Path( 
         process.l1tGTTInputProducer +
@@ -215,6 +217,7 @@ process.runPF = cms.Path(
         process.l1tLayer1BarrelSerenity +
         process.l1tLayer1BarrelSerenityElliptic +
         process.l1tLayer1HGCal +
+        process.l1tLayer1HGCalNNAssoc + 
         process.l1tLayer1HGCalElliptic +
         process.l1tLayer1HGCalNoTK +
         process.l1tLayer1HF +
@@ -222,6 +225,7 @@ process.runPF = cms.Path(
         process.l1tLayer1BarrelExtended +
         process.l1tLayer1HGCalExtended +
         process.l1tLayer2Deregionizer +
+        process.l1tMETPFProducer +
         process.l1tSC4PFL1PuppiEmulator +
         process.l1tSC4PFL1PuppiCorrectedEmulator +
         process.l1tSC4NGJetProducer +
@@ -243,6 +247,13 @@ if not args.patternFilesOFF:
     process.l1tLayer2EG.writeOutPattern = True
     process.l1tLayer2EG.inPatternFile.maxLinesPerFile = int(162*_eventsPerFile/3+54*(3-1))
     process.l1tLayer2EG.outPatternFile.maxLinesPerFile = _eventsPerFile*54
+
+#####################################################################################################################
+## Layer 2 MET
+if not args.patternFilesOFF:
+    process.l1tMETPFProducer.writeOutputPatternFiles = True
+    process.l1tMETPFProducer.outputPatternFilePSet.maxLinesPerFile = _eventsPerFile*54
+    process.l1tMETPFProducer.outputPatternFilePSet.outputFilename = "L1MET-outputs"
 
 #####################################################################################################################
 ## Layer 2 seeded-cone jets
@@ -285,5 +296,17 @@ if args.split18 and not args.patternFilesOFF:
             barrelSerenityOutputTM18WriterConfig.clone(outputFileName = f"l1BarrelSerenityTM18-outputs-ts{tmSlice}"),
             barrelSerenityVU13PTM18WriterConfig.clone(inputFileName = f"l1BarrelSerenityTM18-inputs-vu13p-ts{tmSlice}")
         )        
+
+if not args.patternFilesOFF:
+    nCTL2InputLinks = sum(int(ps.nLinksPuppi.value()) for ps in process.l1tLayer2Deregionizer.linkConfigs)
+    process.l1tLayer2Deregionizer.writeInputPatternFiles = True
+    process.l1tLayer2Deregionizer.inputPatternFilePSet = cms.PSet(
+        gapLengthOutput = cms.uint32(0),
+        TMUX = cms.uint32(6),
+        maxLinesPerFile = cms.uint32(_eventsPerFile*54+108),
+        outputFilename = cms.string("L1Deregionizer-inputs"),
+        format = cms.string("EMPv2"),
+        outputFileExtension = cms.string("txt.gz")
+    )
 
 process.source.fileNames  = [ '/store/cmst3/group/l1tr/FastPUPPI/14_2_X/fpinputs_140X/v0/TT_PU200/inputs140X_1.root' ]
